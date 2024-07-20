@@ -3,11 +3,23 @@
 #include <DirectXPackedVector.h>
 #include <D3Dcompiler.h>
 #include <WindowsX.h>
+#include <imgui_impl_win32.h>
+
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace
 {
+    // Win32 message handler
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+            return true;
+
         dx12demo::BaseWinApp* pthis = nullptr;
 
         if (msg == WM_NCCREATE)
@@ -43,6 +55,10 @@ dx12demo::BaseWinApp::~BaseWinApp()
     if (m_Device)
     {
         FlushCommandQueue();
+
+        ImGui_ImplDX12_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
     }
 }
 
@@ -83,6 +99,26 @@ bool dx12demo::BaseWinApp::Initialize(int nCmdShow)
 
         CreateRootSignature();
         CreateShaderAndPSO(m_Meshes[0]);
+
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+        //ImGui::StyleColorsLight();
+
+        // Setup Platform/Renderer backends
+        ImGui_ImplWin32_Init(WindowHandle());
+        ImGui_ImplDX12_Init(m_Device.Get(), m_SwapChainBufferCount,
+            m_BackBufferFormat, m_ImGUISrvHeap.Get(),
+            m_ImGUISrvHeap->GetCPUDescriptorHandleForHeapStart(),
+            m_ImGUISrvHeap->GetGPUDescriptorHandleForHeapStart());
 
         OnResize();
         return true;
@@ -257,6 +293,12 @@ void dx12demo::BaseWinApp::CreateDescriptorHeaps()
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_CbvHeap)));
+
+    D3D12_DESCRIPTOR_HEAP_DESC imguiSrvHeapDesc = {};
+    imguiSrvHeapDesc.NumDescriptors = 2;
+    imguiSrvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    imguiSrvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&imguiSrvHeapDesc, IID_PPV_ARGS(&m_ImGUISrvHeap)));
 }
 
 void dx12demo::BaseWinApp::CreateRootSignature()
@@ -378,6 +420,66 @@ void dx12demo::BaseWinApp::OnUpdate()
     ObjConsts objConstants;
     DirectX::XMStoreFloat4x4(&objConstants.MatrixMVP, worldViewProj);
     m_PerObjConstsBuffer->SetData(0, objConstants);
+
+    // Start the Dear ImGui frame
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::BeginMainMenuBar();
+    if (ImGui::MenuItem("Console"))
+    {
+        m_ShowConsoleWindow = true;
+    }
+    ImGui::EndMainMenuBar();
+    ImGui::DockSpaceOverViewport();
+
+
+    // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+    if (m_ShowDemoWindow)
+        ImGui::ShowDemoWindow(&m_ShowDemoWindow);
+
+    // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
+    {
+        static float f = 0.0f;
+        static int counter = 0;
+
+        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+        ImGui::Checkbox("Demo Window", &m_ShowDemoWindow);      // Edit bools storing our window open/close state
+        ImGui::Checkbox("Another Window", &m_ShowAnotherWindow);
+
+        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::ColorEdit3("clear color", (float*)&m_ImGUIClearColor); // Edit 3 floats representing a color
+
+        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+            counter++;
+        ImGui::SameLine();
+        ImGui::Text("counter = %d", counter);
+
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::End();
+    }
+
+    // 3. Show another simple window.
+    if (m_ShowAnotherWindow)
+    {
+        auto srv = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_ImGUISrvHeap->GetGPUDescriptorHandleForHeapStart(), 1, m_CbvSrvUavDescriptorSize);
+        ImGui::Begin("Game View", &m_ShowAnotherWindow);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+        auto contextMin = ImGui::GetWindowContentRegionMin();
+        auto contextMax = ImGui::GetWindowContentRegionMax();
+        auto contextSize = ImVec2(contextMax.x - contextMin.x, contextMax.y - contextMin.y);
+        ImGui::Image((ImTextureID)srv.ptr, contextSize);
+        ImGui::End();
+    }
+
+    if (m_ShowConsoleWindow)
+        ImGui::ShowDebugLogWindow(&m_ShowConsoleWindow);
+
+    // Rendering
+    ImGui::Render();
 }
 
 void dx12demo::BaseWinApp::OnRender()
@@ -416,28 +518,51 @@ void dx12demo::BaseWinApp::OnRender()
         mesh->Draw(m_CommandList.Get());
     }
 
-    if (m_EnableMSAA)
-    {
-        m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_OffScreenRenderTargetBuffer.Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
-        m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST));
-        m_CommandList->ResolveSubresource(BackBuffer(), 0, m_OffScreenRenderTargetBuffer.Get(), 0, m_BackBufferFormat);
-        m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
-            D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT));
-        m_LastOffScreenRenderTargetBufferState = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-    }
-    else
-    {
-        m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_OffScreenRenderTargetBuffer.Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
-        m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST));
-        m_CommandList->CopyResource(BackBuffer(), m_OffScreenRenderTargetBuffer.Get());
-        m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
-            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT));
-        m_LastOffScreenRenderTargetBufferState = D3D12_RESOURCE_STATE_COPY_SOURCE;
-    }
+    // Render Dear ImGui graphics
+    // m_CommandList->OMSetRenderTargets(1, &OffScreenRenderTargetBufferView(), false, nullptr);
+    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_OffScreenRenderTargetBuffer.Get(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
+    m_CommandList->CopyResource(m_GameViewRenderTexture.Get(), m_OffScreenRenderTargetBuffer.Get());
+    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_GameViewRenderTexture.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
+        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+    m_CommandList->OMSetRenderTargets(1, &BackBufferView(), false, nullptr);
+    const float clear_color_with_alpha[4] = { m_ImGUIClearColor.x * m_ImGUIClearColor.w, m_ImGUIClearColor.y * m_ImGUIClearColor.w, m_ImGUIClearColor.z * m_ImGUIClearColor.w, m_ImGUIClearColor.w };
+    ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_ImGUISrvHeap.Get() };
+    m_CommandList->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CommandList.Get());
+
+    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
+        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+    m_LastOffScreenRenderTargetBufferState = D3D12_RESOURCE_STATE_COPY_SOURCE;
+
+    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_GameViewRenderTexture.Get(),
+        D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
+
+    //if (m_EnableMSAA)
+    //{
+    //    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_OffScreenRenderTargetBuffer.Get(),
+    //        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
+    //    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
+    //        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST));
+    //    m_CommandList->ResolveSubresource(BackBuffer(), 0, m_OffScreenRenderTargetBuffer.Get(), 0, m_BackBufferFormat);
+    //    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
+    //        D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT));
+    //    m_LastOffScreenRenderTargetBufferState = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+    //}
+    //else
+    //{
+    //    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_OffScreenRenderTargetBuffer.Get(),
+    //        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
+    //    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
+    //        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST));
+    //    m_CommandList->CopyResource(BackBuffer(), m_OffScreenRenderTargetBuffer.Get());
+    //    m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(BackBuffer(),
+    //        D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT));
+    //    m_LastOffScreenRenderTargetBufferState = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    //}
 
     ExecuteCommandList();
 
@@ -541,6 +666,22 @@ void dx12demo::BaseWinApp::OnResize()
         m_DepthStencilBuffer.Get(),
         D3D12_RESOURCE_STATE_COMMON,
         D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+    // Game View RT
+    m_Device->CreateCommittedResource(
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        D3D12_HEAP_FLAG_NONE,
+        &CD3DX12_RESOURCE_DESC::Tex2D(m_BackBufferFormat, m_ClientWidth, m_ClientHeight, 1, 1),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(&m_GameViewRenderTexture));
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = m_BackBufferFormat;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    m_Device->CreateShaderResourceView(m_GameViewRenderTexture.Get(), &srvDesc,
+        CD3DX12_CPU_DESCRIPTOR_HANDLE(m_ImGUISrvHeap->GetCPUDescriptorHandleForHeapStart(), 1, m_CbvSrvUavDescriptorSize));
 
     ExecuteCommandList();
     FlushCommandQueue();

@@ -1,0 +1,11 @@
+properties:
+  _Color:
+    type: float4
+    value: [1, 1, 1, 1]
+
+passes:
+  - name: sss
+    shader_model: "5.1"
+    vertex: vert
+    fragment: frag
+    file: shaders/test.hlsl

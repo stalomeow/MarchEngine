@@ -8,6 +8,9 @@
 #include <dxgi1_4.h>
 #include <string>
 #include <DirectXMath.h>
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx12.h>
 #include "timer.h"
 #include "dx_exception.h"
 #include "mesh.hpp"
@@ -121,7 +124,7 @@ namespace dx12demo
         UINT m_DsvDescriptorSize;
         UINT m_CbvSrvUavDescriptorSize;
 
-        bool m_EnableMSAA = true;
+        bool m_EnableMSAA = false; // TODO ImGui MSAA
         UINT m_MSAAQuality;
 
         ComPtr<ID3D12CommandQueue> m_CommandQueue;
@@ -134,10 +137,18 @@ namespace dx12demo
         D3D12_RESOURCE_STATES m_LastOffScreenRenderTargetBufferState;
         ComPtr<ID3D12Resource> m_DepthStencilBuffer;
 
+        ComPtr<ID3D12Resource> m_GameViewRenderTexture;
+
         ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
         ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
         ComPtr<ID3D12DescriptorHeap> m_CbvHeap;
+        ComPtr<ID3D12DescriptorHeap> m_ImGUISrvHeap;
         int m_CurrentBackBufferIndex = 0;
+
+        bool m_ShowDemoWindow = true;
+        bool m_ShowAnotherWindow = true;
+        bool m_ShowConsoleWindow = true;
+        ImVec4 m_ImGUIClearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
         D3D12_VIEWPORT m_Viewport;
         D3D12_RECT m_ScissorRect;
