@@ -7,13 +7,22 @@
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <string>
+#include <DirectXMath.h>
 #include "timer.h"
 #include "dx_exception.h"
+#include "mesh.hpp"
+#include "upload_buffer.hpp"
+#include "math_helper.h"
 
 using Microsoft::WRL::ComPtr;
 
 namespace dx12demo
 {
+    struct ObjConsts
+    {
+        DirectX::XMFLOAT4X4 MatrixMVP;
+    };
+
     class BaseWinApp
     {
     protected:
@@ -71,14 +80,18 @@ namespace dx12demo
             OnResize();
         }
         bool GetMSAAState() const { return m_EnableMSAA; }
+        float AspectRatio() const { return static_cast<float>(m_ClientWidth) / m_ClientHeight; }
 
     private:
         bool InitWindow(int nCmdShow);
         bool InitDirect3D();
         void CreateCommandObjects();
         void CreateSwapChain();
-        void CreateRtvAndDsvDescriptorHeaps();
+        void CreateDescriptorHeaps();
+        void CreateRootSignature();
+        void CreateShaderAndPSO(std::shared_ptr<dx12demo::Mesh> mesh);
         void FlushCommandQueue();
+        void ExecuteCommandList();
         void SwapBackBuffer();
         void CalculateFrameStats();
         void LogAdapters();
@@ -88,7 +101,7 @@ namespace dx12demo
     protected:
         virtual void OnRender();
         virtual void OnResize();
-        virtual void OnUpdate() { }
+        virtual void OnUpdate();
         virtual void OnMouseDown(WPARAM btnState, int x, int y) { }
         virtual void OnMouseUp(WPARAM btnState, int x, int y) { }
         virtual void OnMouseMove(WPARAM btnState, int x, int y) { }
@@ -123,6 +136,7 @@ namespace dx12demo
 
         ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
         ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
+        ComPtr<ID3D12DescriptorHeap> m_CbvHeap;
         int m_CurrentBackBufferIndex = 0;
 
         D3D12_VIEWPORT m_Viewport;
@@ -130,6 +144,23 @@ namespace dx12demo
         bool m_IsResizing = false;
         bool m_IsMinimized = false;
         bool m_IsMaximized = false;
+
+        std::vector<std::shared_ptr<Mesh>> m_Meshes{};
+        std::unique_ptr<UploadBuffer<ObjConsts>> m_PerObjConstsBuffer;
+        ComPtr<ID3D12RootSignature> m_RootSignature;
+        ComPtr<ID3DBlob> m_VSByteCode;
+        ComPtr<ID3DBlob> m_PSByteCode;
+        ComPtr<ID3D12PipelineState> m_PSO;
+
+        DirectX::XMFLOAT4X4 m_World = dx12demo::MathHelper::Identity4x4();
+        DirectX::XMFLOAT4X4 m_View = dx12demo::MathHelper::Identity4x4();
+        DirectX::XMFLOAT4X4 m_Proj = dx12demo::MathHelper::Identity4x4();
+
+        float m_Theta = 1.5f * DirectX::XM_PI;
+        float m_Phi = DirectX::XM_PIDIV4;
+        float m_Radius = 5.0f;
+
+        POINT m_LastMousePos;
 
         DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         DXGI_FORMAT m_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;

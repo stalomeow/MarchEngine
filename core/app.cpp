@@ -1,5 +1,7 @@
 #include "app.h"
 #include <DirectXColors.h>
+#include <DirectXPackedVector.h>
+#include <D3Dcompiler.h>
 #include <WindowsX.h>
 
 namespace
@@ -62,6 +64,25 @@ bool dx12demo::BaseWinApp::Initialize(int nCmdShow)
         {
             return false;
         }
+
+        THROW_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
+
+        auto mesh = std::make_shared<SimpleMesh>();
+        mesh->AddSubMeshCube();
+        mesh->BeginUploadToGPU(m_Device.Get(), m_CommandList.Get());
+        ExecuteCommandList();
+        FlushCommandQueue();
+        mesh->EndUploadToGPU();
+        m_Meshes.push_back(std::move(mesh));
+
+        m_PerObjConstsBuffer = std::make_unique<UploadBuffer<ObjConsts>>(m_Device.Get(), UploadBufferType::Constant, 1);
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = m_PerObjConstsBuffer->Resource()->GetGPUVirtualAddress();
+        cbvDesc.SizeInBytes = m_PerObjConstsBuffer->Count() * m_PerObjConstsBuffer->Stride();
+        m_Device->CreateConstantBufferView(&cbvDesc, m_CbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+        CreateRootSignature();
+        CreateShaderAndPSO(m_Meshes[0]);
 
         OnResize();
         return true;
@@ -161,7 +182,7 @@ bool dx12demo::BaseWinApp::InitDirect3D()
 
     CreateCommandObjects();
     CreateSwapChain();
-    CreateRtvAndDsvDescriptorHeaps();
+    CreateDescriptorHeaps();
 
 #if defined(DEBUG) || defined(_DEBUG)
     LogAdapters();
@@ -217,7 +238,7 @@ void dx12demo::BaseWinApp::CreateSwapChain()
     THROW_IF_FAILED(m_Factory->CreateSwapChain(m_CommandQueue.Get(), &swapChainDesc, m_SwapChain.GetAddressOf()));
 }
 
-void dx12demo::BaseWinApp::CreateRtvAndDsvDescriptorHeaps()
+void dx12demo::BaseWinApp::CreateDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
     rtvHeapDesc.NumDescriptors = m_SwapChainBufferCount + 1;
@@ -230,6 +251,133 @@ void dx12demo::BaseWinApp::CreateRtvAndDsvDescriptorHeaps()
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DsvHeap)));
+
+    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
+    cbvHeapDesc.NumDescriptors = 1;
+    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_CbvHeap)));
+}
+
+void dx12demo::BaseWinApp::CreateRootSignature()
+{
+    // Shader programs typically require resources as input (constant buffers,
+    // textures, samplers).  The root signature defines the resources the shader
+    // programs expect.  If we think of the shader programs as a function, and
+    // the input resources as function parameters, then the root signature can be
+    // thought of as defining the function signature.
+
+    // Root parameter can be a table, root descriptor or root constants.
+    CD3DX12_ROOT_PARAMETER slotRootParameter[1];
+
+    // Create a single descriptor table of CBVs.
+    CD3DX12_DESCRIPTOR_RANGE cbvTable;
+    cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+    slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+
+    // A root signature is an array of root parameters.
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr,
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+    // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+    ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    ComPtr<ID3DBlob> errorBlob = nullptr;
+    HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+    if (errorBlob != nullptr)
+    {
+        OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+    }
+    THROW_IF_FAILED(hr);
+
+    THROW_IF_FAILED(m_Device->CreateRootSignature(
+        0,
+        serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(),
+        IID_PPV_ARGS(&m_RootSignature)));
+}
+
+ComPtr<ID3DBlob> CompileShader(
+    const std::wstring& filename,
+    const D3D_SHADER_MACRO* defines,
+    const std::string& entrypoint,
+    const std::string& target)
+{
+    UINT compileFlags = 0;
+#if defined(DEBUG) || defined(_DEBUG)  
+    compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#endif
+
+    HRESULT hr = S_OK;
+
+    ComPtr<ID3DBlob> byteCode = nullptr;
+    ComPtr<ID3DBlob> errors;
+    hr = D3DCompileFromFile(filename.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors);
+
+    if (errors != nullptr)
+        OutputDebugStringA((char*)errors->GetBufferPointer());
+
+    THROW_IF_FAILED(hr);
+
+    return byteCode;
+}
+
+void dx12demo::BaseWinApp::CreateShaderAndPSO(std::shared_ptr<dx12demo::Mesh> mesh)
+{
+    m_VSByteCode = CompileShader(L"C:\\\Projects\\\Graphics\\\dx12-demo\\shaders\\test.hlsl", nullptr, "vert", "vs_5_0");
+    m_PSByteCode = CompileShader(L"C:\\\Projects\\\Graphics\\\dx12-demo\\shaders\\test.hlsl", nullptr, "frag", "ps_5_0");
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = { 0 };
+    psoDesc.InputLayout = mesh->VertexInputLayout();
+    psoDesc.pRootSignature = m_RootSignature.Get();
+    psoDesc.VS =
+    {
+        reinterpret_cast<BYTE*>(m_VSByteCode->GetBufferPointer()),
+        m_VSByteCode->GetBufferSize()
+    };
+    psoDesc.PS =
+    {
+        reinterpret_cast<BYTE*>(m_PSByteCode->GetBufferPointer()),
+        m_PSByteCode->GetBufferSize()
+    };
+    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = m_BackBufferFormat;
+    psoDesc.SampleDesc.Count = m_EnableMSAA ? 4 : 1;
+    psoDesc.SampleDesc.Quality = m_EnableMSAA ? m_MSAAQuality : 0;
+    psoDesc.DSVFormat = m_DepthStencilFormat;
+    THROW_IF_FAILED(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSO)));
+}
+
+void dx12demo::BaseWinApp::OnUpdate()
+{
+    // Convert Spherical to Cartesian coordinates.
+    float x = m_Radius * sinf(m_Phi) * cosf(m_Theta);
+    float z = m_Radius * sinf(m_Phi) * sinf(m_Theta);
+    float y = m_Radius * cosf(m_Phi);
+
+    // Build the view matrix.
+    DirectX::XMVECTOR pos = DirectX::XMVectorSet(x, y, z, 1.0f);
+    DirectX::XMVECTOR target = DirectX::XMVectorZero();
+    DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
+    XMStoreFloat4x4(&m_View, view);
+
+    DirectX::XMMATRIX world = XMLoadFloat4x4(&m_World);
+    DirectX::XMMATRIX proj = XMLoadFloat4x4(&m_Proj);
+    DirectX::XMMATRIX worldViewProj = world * view * proj;
+
+    // Update the constant buffer with the latest worldViewProj matrix.
+    ObjConsts objConstants;
+    DirectX::XMStoreFloat4x4(&objConstants.MatrixMVP, worldViewProj);
+    m_PerObjConstsBuffer->SetData(0, objConstants);
 }
 
 void dx12demo::BaseWinApp::OnRender()
@@ -240,7 +388,7 @@ void dx12demo::BaseWinApp::OnRender()
 
     // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
     // Reusing the command list reuses memory.
-    THROW_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
+    THROW_IF_FAILED(m_CommandList->Reset(m_CommandAllocator.Get(), m_PSO.Get()));
 
     // Indicate a state transition on the resource usage.
     m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_OffScreenRenderTargetBuffer.Get(),
@@ -256,6 +404,17 @@ void dx12demo::BaseWinApp::OnRender()
 
     // Specify the buffers we are going to render to.
     m_CommandList->OMSetRenderTargets(1, &OffScreenRenderTargetBufferView(), true, &DepthStencilView());
+
+    ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvHeap.Get() };
+    m_CommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+    m_CommandList->SetGraphicsRootSignature(m_RootSignature.Get());
+    m_CommandList->SetGraphicsRootDescriptorTable(0, m_CbvHeap->GetGPUDescriptorHandleForHeapStart());
+
+    for (std::shared_ptr<Mesh> mesh : m_Meshes)
+    {
+        mesh->Draw(m_CommandList.Get());
+    }
 
     if (m_EnableMSAA)
     {
@@ -280,15 +439,10 @@ void dx12demo::BaseWinApp::OnRender()
         m_LastOffScreenRenderTargetBufferState = D3D12_RESOURCE_STATE_COPY_SOURCE;
     }
 
-    // Done recording commands.
-    THROW_IF_FAILED(m_CommandList->Close());
-
-    // Add the command list to the queue for execution.
-    ID3D12CommandList* cmdsLists[] = { m_CommandList.Get() };
-    m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+    ExecuteCommandList();
 
     // swap the back and front buffers
-    THROW_IF_FAILED(m_SwapChain->Present(0, 0));
+    THROW_IF_FAILED(m_SwapChain->Present(0, 0)); // No vsync
     SwapBackBuffer();
 
     // Wait until frame commands are complete.  This waiting is inefficient and is
@@ -388,9 +542,7 @@ void dx12demo::BaseWinApp::OnResize()
         D3D12_RESOURCE_STATE_COMMON,
         D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
-    THROW_IF_FAILED(m_CommandList->Close());
-    ID3D12CommandList* cmdsLists[] = { m_CommandList.Get() };
-    m_CommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+    ExecuteCommandList();
     FlushCommandQueue();
 
     m_Viewport.TopLeftX = 0;
@@ -401,6 +553,10 @@ void dx12demo::BaseWinApp::OnResize()
     m_Viewport.MaxDepth = 1.0f;
 
     m_ScissorRect = { 0, 0, m_ClientWidth, m_ClientHeight };
+
+    // The window resized, so update the aspect ratio and recompute the projection matrix.
+    DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, AspectRatio(), 1.0f, 1000.0f);
+    XMStoreFloat4x4(&m_Proj, P);
 }
 
 void dx12demo::BaseWinApp::FlushCommandQueue()
@@ -415,6 +571,13 @@ void dx12demo::BaseWinApp::FlushCommandQueue()
         WaitForSingleObject(eventHandle, INFINITE);
         CloseHandle(eventHandle);
     }
+}
+
+void dx12demo::BaseWinApp::ExecuteCommandList()
+{
+    THROW_IF_FAILED(m_CommandList->Close());
+    ID3D12CommandList* cmdsList = m_CommandList.Get();
+    m_CommandQueue->ExecuteCommandLists(1, &cmdsList);
 }
 
 void dx12demo::BaseWinApp::SwapBackBuffer()

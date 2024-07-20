@@ -16,9 +16,9 @@ find_package(directx-headers CONFIG REQUIRED)
 add_definitions(-DUNICODE -D_UNICODE)
 
 # Add source to this project's executable.
-add_executable(dx12-demo WIN32 "main.cpp" "core/timer.h" "core/timer.cpp" "core/app.h" "core/app.cpp" "core/dx_exception.h" "core/dx_exception.cpp")
+add_executable(dx12-demo WIN32 "main.cpp" "core/timer.h" "core/timer.cpp" "core/app.h" "core/app.cpp" "core/dx_exception.h" "core/dx_exception.cpp" "core/upload_buffer.hpp"  "core/mesh.hpp"  "core/math_helper.h")
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectX-Headers)
-target_link_libraries(dx12-demo PUBLIC "d3dcompiler.lib" "D3D12.lib" "dxgi.lib")
+target_link_libraries(dx12-demo PUBLIC "d3dcompiler.lib" "D3D12.lib" "dxgi.lib" "dxguid.lib")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET dx12-demo PROPERTY CXX_STANDARD 17)

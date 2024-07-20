@@ -1,5 +1,4 @@
 #include "core/app.h"
-#include <iostream>
 
 using namespace std;
 
