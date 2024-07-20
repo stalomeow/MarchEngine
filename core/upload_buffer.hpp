@@ -20,7 +20,6 @@ namespace dx12demo
             {
                 // 必须是 256 的整数倍
                 // 先加 255，再去掉小于 256 的部分
-
                 return (elementSize + 255) & ~255;
             }
 
