@@ -17,9 +17,6 @@ namespace
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-            return true;
-
         dx12demo::BaseWinApp* pthis = nullptr;
 
         if (msg == WM_NCCREATE)
@@ -32,6 +29,11 @@ namespace
         {
             auto ptr = GetWindowLongPtr(hWnd, GWLP_USERDATA);
             pthis = reinterpret_cast<dx12demo::BaseWinApp*>(ptr);
+        }
+
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+        {
+            return true;
         }
 
         if (pthis)
@@ -71,6 +73,8 @@ bool dx12demo::BaseWinApp::Initialize(int nCmdShow)
 {
     try
     {
+        SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
         if (!InitWindow(nCmdShow))
         {
             return false;
@@ -101,20 +105,31 @@ bool dx12demo::BaseWinApp::Initialize(int nCmdShow)
         CreateShaderAndPSO(m_Meshes[0]);
 
         // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
-
-        // Setup Dear ImGui style
-        ImGui::StyleColorsDark();
-        //ImGui::StyleColorsLight();
 
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(WindowHandle());
+
+        float dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_WindowHandle);
+
+        io.Fonts->AddFontFromFileTTF(
+            "C:\\Projects\\Graphics\\dx12-demo\\fonts\\Inter-Regular.otf",
+            15.0f * dpiScale,
+            nullptr, io.Fonts->GetGlyphRangesChineseFull());
+        io.Fonts->AddFontDefault();
+        io.Fonts->Build();
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsDark();
+        ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+        ImGui::GetStyle().FrameBorderSize = 1.0f;
+        ImGui::GetStyle().FrameRounding = 2.0f;
+        // ImGui::GetStyle().ScaleAllSizes(dpiScale); 有些值在 scale 以后会取整，多次 scale 后就会和一开始值有误差
+
         ImGui_ImplDX12_Init(m_Device.Get(), m_SwapChainBufferCount,
             m_BackBufferFormat, m_ImGUISrvHeap.Get(),
             m_ImGUISrvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -397,6 +412,20 @@ void dx12demo::BaseWinApp::CreateShaderAndPSO(std::shared_ptr<dx12demo::Mesh> me
     THROW_IF_FAILED(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSO)));
 }
 
+namespace
+{
+    void DrawVec3(const std::string& label, float* values, float speed = 0.1f)
+    {
+        static float maxLabelWidth = 120.0f;
+
+        ImGui::Text(label.c_str());
+        ImGui::SameLine(maxLabelWidth);
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+        ImGui::DragFloat3(("##" + label).c_str(), values, speed);
+        ImGui::PopItemWidth();
+    }
+}
+
 void dx12demo::BaseWinApp::OnUpdate()
 {
     // Convert Spherical to Cartesian coordinates.
@@ -426,14 +455,47 @@ void dx12demo::BaseWinApp::OnUpdate()
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::BeginMainMenuBar();
-    if (ImGui::MenuItem("Console"))
+    static bool showStyleEditor = false;
+    static bool showMetrics = false;
+
+    if (ImGui::BeginMainMenuBar())
     {
-        m_ShowConsoleWindow = true;
+        if (ImGui::BeginMenu("Windows"))
+        {
+            if (ImGui::BeginMenu("ImGui Tools"))
+            {
+                if (ImGui::MenuItem("Style Editor"))
+                {
+                    showStyleEditor = true;
+                }
+
+                if (ImGui::MenuItem("Metrics"))
+                {
+                    showMetrics = true;
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Console"))
+            {
+                m_ShowConsoleWindow = true;
+            }
+
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
     }
-    ImGui::EndMainMenuBar();
+
     ImGui::DockSpaceOverViewport();
 
+    if (showStyleEditor)
+    {
+        ImGui::Begin("Style Editor", &showStyleEditor);
+        ImGui::ShowStyleEditor();
+        ImGui::End();
+    }
+    if (showMetrics) ImGui::ShowMetricsWindow(&showMetrics);
 
     // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
     if (m_ShowDemoWindow)
@@ -441,25 +503,47 @@ void dx12demo::BaseWinApp::OnUpdate()
 
     // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
     {
-        static float f = 0.0f;
-        static int counter = 0;
+        ImGui::Begin("Inspector");
 
-        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+        static bool active = true;
+        static char name[128] = "New Object";
 
-        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-        ImGui::Checkbox("Demo Window", &m_ShowDemoWindow);      // Edit bools storing our window open/close state
-        ImGui::Checkbox("Another Window", &m_ShowAnotherWindow);
-
-        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-        ImGui::ColorEdit3("clear color", (float*)&m_ImGUIClearColor); // Edit 3 floats representing a color
-
-        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-            counter++;
+        ImGui::Checkbox("##GameObjectActive", &active);
         ImGui::SameLine();
-        ImGui::Text("counter = %d", counter);
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+        ImGui::InputText("##GameObjectName", name, _countof(name));
+        ImGui::PopItemWidth();
+        ImGui::SeparatorText("Components");
 
-        ImGuiIO& io = ImGui::GetIO();
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        static bool hasTrans = true;
+
+        if (ImGui::CollapsingHeader("Transform", &hasTrans, ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            DrawVec3("Position", (float*)&m_CubePosition, 0.1f);
+            DrawVec3("Rotation", (float*)&m_CubeRotation, 0.1f);
+            DrawVec3("Scale", (float*)&m_CubeScale, 0.1f);
+
+            auto world = DirectX::XMMatrixScaling(m_CubeScale.x, m_CubeScale.y, m_CubeScale.z) *
+                DirectX::XMMatrixRotationRollPitchYaw(m_CubeRotation.x, m_CubeRotation.y, m_CubeRotation.z) *
+                DirectX::XMMatrixTranslation(m_CubePosition.x, m_CubePosition.y, m_CubePosition.z);
+            XMStoreFloat4x4(&m_World, world);
+        }
+
+        ImGui::Spacing();
+
+        auto windowWidth = ImGui::GetWindowSize().x;
+        auto textWidth = ImGui::CalcTextSize("Add Component").x;
+        float padding = 80.0f;
+        ImGui::SetCursorPosX((windowWidth - textWidth - padding) * 0.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(padding * 0.5f, ImGui::GetStyle().FramePadding.y));
+
+        if (ImGui::Button("Add Component", ImVec2(0, 0)))
+        {
+            hasTrans = true;
+        }
+
+        ImGui::PopStyleVar();
+
         ImGui::End();
     }
 
@@ -467,7 +551,7 @@ void dx12demo::BaseWinApp::OnUpdate()
     if (m_ShowAnotherWindow)
     {
         auto srv = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_ImGUISrvHeap->GetGPUDescriptorHandleForHeapStart(), 1, m_CbvSrvUavDescriptorSize);
-        ImGui::Begin("Game View", &m_ShowAnotherWindow);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+        ImGui::Begin("Scene", &m_ShowAnotherWindow);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
         auto contextMin = ImGui::GetWindowContentRegionMin();
         auto contextMax = ImGui::GetWindowContentRegionMax();
         auto contextSize = ImVec2(contextMax.x - contextMin.x, contextMax.y - contextMin.y);
@@ -695,6 +779,8 @@ void dx12demo::BaseWinApp::OnResize()
 
     m_ScissorRect = { 0, 0, m_ClientWidth, m_ClientHeight };
 
+    OutputDebugStringA(("Window Resized: " + std::to_string(m_ClientWidth) + "x" + std::to_string(m_ClientHeight) + "\n").c_str());
+
     // The window resized, so update the aspect ratio and recompute the projection matrix.
     DirectX::XMMATRIX P = DirectX::XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, AspectRatio(), 1.0f, 1000.0f);
     XMStoreFloat4x4(&m_Proj, P);
@@ -741,6 +827,8 @@ int dx12demo::BaseWinApp::Run()
             continue;
         }
 
+        // OutputDebugStringA("Main\n");
+
         if (!m_Timer.Tick())
         {
             Sleep(100);
@@ -752,6 +840,7 @@ int dx12demo::BaseWinApp::Run()
             CalculateFrameStats();
             OnUpdate();
             OnRender();
+            // OutputDebugStringA("Frame Rendered\n");
         }
         catch (const DxException& e)
         {
@@ -781,74 +870,42 @@ LRESULT dx12demo::BaseWinApp::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, 
         }
         return 0;
 
+    case WM_DPICHANGED:
+    {
+        float dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_WindowHandle);
+        OutputDebugStringA(("DPI Changed: " + std::to_string(dpiScale) + "\n").c_str());
+        auto& io = ImGui::GetIO();
+        io.Fonts->Clear();
+        io.Fonts->AddFontFromFileTTF(
+            "C:\\Projects\\Graphics\\dx12-demo\\fonts\\Inter-Regular.otf",
+            15.0f * dpiScale,
+            nullptr, io.Fonts->GetGlyphRangesChineseFull());
+        io.Fonts->AddFontDefault();
+        io.Fonts->Build();
+        ImGui_ImplDX12_InvalidateDeviceObjects();
+
+        RECT* const prcNewWindow = (RECT*)lParam;
+        SetWindowPos(hWnd,
+            NULL,
+            prcNewWindow->left,
+            prcNewWindow->top,
+            prcNewWindow->right - prcNewWindow->left,
+            prcNewWindow->bottom - prcNewWindow->top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        return 0;
+    }
+
     // WM_SIZE is sent when the user resizes the window.  
     case WM_SIZE:
         // Save the new client area dimensions.
         m_ClientWidth = LOWORD(lParam);
         m_ClientHeight = HIWORD(lParam);
 
-        if (m_Device)
+        if (m_Device != nullptr && wParam != SIZE_MINIMIZED)
         {
-            if (wParam == SIZE_MINIMIZED)
-            {
-                m_Timer.Stop();
-                m_IsMinimized = true;
-                m_IsMaximized = false;
-            }
-            else if (wParam == SIZE_MAXIMIZED)
-            {
-                m_Timer.Start();
-                m_IsMinimized = false;
-                m_IsMaximized = true;
-                OnResize();
-            }
-            else if (wParam == SIZE_RESTORED)
-            {
-                // Restoring from minimized state?
-                if (m_IsMinimized)
-                {
-                    m_Timer.Start();
-                    m_IsMinimized = false;
-                    OnResize();
-                }
-                // Restoring from maximized state?
-                else if (m_IsMaximized)
-                {
-                    m_Timer.Start();
-                    m_IsMaximized = false;
-                    OnResize();
-                }
-                else if (m_IsResizing)
-                {
-                    // If user is dragging the resize bars, we do not resize 
-                    // the buffers here because as the user continuously 
-                    // drags the resize bars, a stream of WM_SIZE messages are
-                    // sent to the window, and it would be pointless (and slow)
-                    // to resize for each WM_SIZE message received from dragging
-                    // the resize bars.  So instead, we reset after the user is 
-                    // done resizing the window and releases the resize bars, which 
-                    // sends a WM_EXITSIZEMOVE message.
-                }
-                else // API call such as SetWindowPos or mSwapChain->SetFullscreenState.
-                {
-                    OnResize();
-                }
-            }
+            OnResize();
+            // OutputDebugStringA("Window Resized\n");
         }
-        return 0;
-
-    // WM_EXITSIZEMOVE is sent when the user grabs the resize bars.
-    case WM_ENTERSIZEMOVE:
-        m_IsResizing = true;
-        m_Timer.Stop();
-        return 0;
-
-    // WM_EXITSIZEMOVE is sent when the user releases the resize bars.
-    // Here we reset everything based on the new window dimensions.
-    case WM_EXITSIZEMOVE:
-        m_IsResizing = false;
-        m_Timer.Start();
-        OnResize();
         return 0;
 
     // The WM_MENUCHAR message is sent when a menu is active and the user presses 

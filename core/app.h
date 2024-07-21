@@ -152,9 +152,6 @@ namespace dx12demo
 
         D3D12_VIEWPORT m_Viewport;
         D3D12_RECT m_ScissorRect;
-        bool m_IsResizing = false;
-        bool m_IsMinimized = false;
-        bool m_IsMaximized = false;
 
         std::vector<std::shared_ptr<Mesh>> m_Meshes{};
         std::unique_ptr<UploadBuffer<ObjConsts>> m_PerObjConstsBuffer;
@@ -162,6 +159,10 @@ namespace dx12demo
         ComPtr<ID3DBlob> m_VSByteCode;
         ComPtr<ID3DBlob> m_PSByteCode;
         ComPtr<ID3D12PipelineState> m_PSO;
+
+        ImVec4 m_CubePosition = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+        ImVec4 m_CubeRotation = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+        ImVec4 m_CubeScale = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
         DirectX::XMFLOAT4X4 m_World = dx12demo::MathHelper::Identity4x4();
         DirectX::XMFLOAT4X4 m_View = dx12demo::MathHelper::Identity4x4();
