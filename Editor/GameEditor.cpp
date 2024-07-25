@@ -174,7 +174,7 @@ namespace dx12demo
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
-        ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+        // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
         ImGui::GetStyle().FrameBorderSize = 1.0f;
         ImGui::GetStyle().FrameRounding = 2.0f;
 
@@ -470,6 +470,16 @@ namespace dx12demo
                     selectedLog = i;
                 }
 
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Copy"))
+                    {
+                        ImGui::SetClipboardText(item.Message.c_str());
+                    }
+
+                    ImGui::EndPopup();
+                }
+
                 ImGui::SameLine();
                 ImGui::SetCursorPos(cursorPos);
 
@@ -519,9 +529,7 @@ namespace dx12demo
                 {
                     if (ImGui::MenuItem("Copy"))
                     {
-                        ImGui::LogToClipboard();
-                        ImGui::LogText("%s", item.Message.c_str());
-                        ImGui::LogFinish();
+                        ImGui::SetClipboardText(item.Message.c_str());
                     }
 
                     ImGui::EndPopup();
@@ -698,13 +706,16 @@ namespace dx12demo
         // Call with nullptr to get list count.
         output->GetDisplayModeList(format, flags, &count, nullptr);
 
-        std::vector<DXGI_MODE_DESC> modeList(count);
-        output->GetDisplayModeList(format, flags, &count, &modeList[0]);
+        auto modeList = std::make_unique<DXGI_MODE_DESC[]>(count);
+        output->GetDisplayModeList(format, flags, &count, modeList.get());
 
-        for (auto& x : modeList)
+        for (int i = 0; i < count; i++)
         {
+            auto& x = modeList[i];
             UINT n = x.RefreshRate.Numerator;
             UINT d = x.RefreshRate.Denominator;
+            OutputDebugStringA(("Width = " + std::to_string(x.Width) + ", Height = " + std::to_string(x.Height) +
+                ", Refresh = " + std::to_string(n) + "/" + std::to_string(d) + "\n").c_str());
             DEBUG_LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
         }
     }
