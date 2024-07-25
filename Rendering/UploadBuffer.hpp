@@ -3,7 +3,7 @@
 #include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <wrl.h>
-#include "dx_exception.h"
+#include "Rendering/DxException.h"
 
 namespace dx12demo
 {
@@ -11,21 +11,6 @@ namespace dx12demo
     {
         Constant,
     };
-
-    namespace
-    {
-        UINT CalculateStride(UploadBufferType type, int elementSize)
-        {
-            if (type == UploadBufferType::Constant)
-            {
-                // 必须是 256 的整数倍
-                // 先加 255，再去掉小于 256 的部分
-                return (elementSize + 255) & ~255;
-            }
-
-            return elementSize;
-        }
-    }
 
     template<typename T>
     class UploadBuffer
@@ -68,9 +53,9 @@ namespace dx12demo
             }
         }
 
-        UINT Stride() const { return m_Stride; }
-        UINT Count() const { return m_Count; }
-        ID3D12Resource* Resource() const { return m_Buffer.Get(); }
+        UINT GetStride() const { return m_Stride; }
+        UINT GetCount() const { return m_Count; }
+        ID3D12Resource* GetResource() const { return m_Buffer.Get(); }
 
         void SetData(UINT index, const T& data)
         {
@@ -100,6 +85,18 @@ namespace dx12demo
         }
 
         bool IsPermanentlyMapped() const { return m_Type == UploadBufferType::Constant; }
+
+        static UINT CalculateStride(UploadBufferType type, int elementSize)
+        {
+            if (type == UploadBufferType::Constant)
+            {
+                // 必须是 256 的整数倍
+                // 先加 255，再去掉小于 256 的部分
+                return (elementSize + 255) & ~255;
+            }
+
+            return elementSize;
+        }
 
     private:
         UploadBufferType m_Type;

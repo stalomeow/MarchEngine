@@ -6,9 +6,7 @@
 #include <DirectXMath.h>
 #include <vector>
 #include <DirectXColors.h>
-#include "dx_exception.h"
-
-using namespace DirectX;
+#include "Rendering/DxException.h"
 
 namespace dx12demo
 {
@@ -30,13 +28,8 @@ namespace dx12demo
     public:
         virtual ~Mesh() = default;
 
-        virtual void BeginUploadToGPU(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList) = 0;
-        virtual void EndUploadToGPU() = 0;
-
         // subMeshIndex = -1 means draw all sub-meshes
-        virtual void Draw(ID3D12GraphicsCommandList* cmdList, int subMeshIndex = -1) const = 0;
-
-        virtual D3D12_INPUT_LAYOUT_DESC VertexInputLayout() const = 0;
+        virtual void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& tempRes, int subMeshIndex = -1) = 0;
     };
 
     template<typename TVertex, typename TIndex>
@@ -50,17 +43,14 @@ namespace dx12demo
         MeshImpl& operator=(const MeshImpl& rhs) = delete;
         ~MeshImpl() override = default;
 
-        void BeginUploadToGPU(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList) override;
-        void EndUploadToGPU() override;
-
         void ClearSubMeshes();
         void AddSubMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices);
 
-        void Draw(ID3D12GraphicsCommandList* cmdList, int subMeshIndex = -1) const override;
+        void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& tempRes, int subMeshIndex = -1) override;
 
-        D3D12_INPUT_LAYOUT_DESC VertexInputLayout() const override
+        static D3D12_INPUT_LAYOUT_DESC VertexInputLayout()
         {
-            D3D12_INPUT_LAYOUT_DESC desc;
+            D3D12_INPUT_LAYOUT_DESC desc = {};
             desc.pInputElementDescs = TVertex::InputDesc;
             desc.NumElements = _countof(TVertex::InputDesc);
             return desc;
@@ -76,9 +66,8 @@ namespace dx12demo
         std::vector<SubMesh> m_SubMeshes{};
         std::vector<TVertex> m_Vertices{};
         std::vector<TIndex> m_Indices{};
+        bool m_IsDirty = false;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBufferUploader = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_IndexBufferUploader = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_IndexBuffer = nullptr;
     };
@@ -129,33 +118,13 @@ namespace dx12demo
     }
 
     template<typename TVertex, typename TIndex>
-    void MeshImpl<TVertex, TIndex>::BeginUploadToGPU(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList)
-    {
-        if (m_VertexBufferUploader != nullptr || m_IndexBufferUploader != nullptr)
-        {
-            OutputDebugStringW(L"WARN: Mesh Buffer Uploader is not null");
-        }
-
-        // Vertex Buffer 和 Index Buffer 都放在默认堆，优化性能
-        // 上传数据时，借助上传堆中转
-
-        UINT64 vertexBufferSize = sizeof(TVertex) * m_Vertices.size();
-        RecreateBufferAndUpload(device, cmdList, m_VertexBuffer, m_VertexBufferUploader, m_Vertices.data(), vertexBufferSize);
-
-        UINT64 indexBufferSize = sizeof(TIndex) * m_Indices.size();
-        RecreateBufferAndUpload(device, cmdList, m_IndexBuffer, m_IndexBufferUploader, m_Indices.data(), indexBufferSize);
-    }
-
-    template<typename TVertex, typename TIndex>
-    void MeshImpl<TVertex, TIndex>::EndUploadToGPU()
-    {
-        m_VertexBufferUploader.Reset();
-        m_IndexBufferUploader.Reset();
-    }
-
-    template<typename TVertex, typename TIndex>
     void MeshImpl<TVertex, TIndex>::ClearSubMeshes()
     {
+        if (m_SubMeshes.size() > 0)
+        {
+            m_IsDirty = true;
+        }
+
         m_SubMeshes.clear();
         m_Vertices.clear();
         m_Indices.clear();
@@ -169,14 +138,35 @@ namespace dx12demo
         subMesh.IndexCount = indices.size();
         subMesh.StartIndexLocation = m_Indices.size();
 
+        m_IsDirty = true;
         m_SubMeshes.push_back(subMesh);
         m_Vertices.insert(m_Vertices.end(), vertices.begin(), vertices.end());
         m_Indices.insert(m_Indices.end(), indices.begin(), indices.end());
     }
 
     template<typename TVertex, typename TIndex>
-    void MeshImpl<TVertex, TIndex>::Draw(ID3D12GraphicsCommandList* cmdList, int subMeshIndex) const
+    void MeshImpl<TVertex, TIndex>::Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& tempRes, int subMeshIndex)
     {
+        if (m_IsDirty)
+        {
+            m_IsDirty = false;
+
+            // Vertex Buffer 和 Index Buffer 都放在默认堆，优化性能
+            // 上传数据时，借助上传堆中转
+
+            Microsoft::WRL::ComPtr<ID3D12Resource> vertexUploader = nullptr;
+            Microsoft::WRL::ComPtr<ID3D12Resource> indexUploader = nullptr;
+
+            UINT64 vertexBufferSize = sizeof(TVertex) * m_Vertices.size();
+            RecreateBufferAndUpload(device, cmdList, m_VertexBuffer, vertexUploader, m_Vertices.data(), vertexBufferSize);
+
+            UINT64 indexBufferSize = sizeof(TIndex) * m_Indices.size();
+            RecreateBufferAndUpload(device, cmdList, m_IndexBuffer, indexUploader, m_Indices.data(), indexBufferSize);
+
+            tempRes.push_back(vertexUploader);
+            tempRes.push_back(indexUploader);
+        }
+
         D3D12_VERTEX_BUFFER_VIEW vbv;
         vbv.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
         vbv.SizeInBytes = sizeof(TVertex) * m_Vertices.size();
@@ -230,14 +220,14 @@ namespace dx12demo
         {
             std::vector<SimpleMeshVertex> vertices =
             {
-                { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) },
-                { XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) },
-                { XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) },
-                { XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) },
-                { XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) },
-                { XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) },
-                { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) },
-                { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) }
+                { DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::White) },
+                { DirectX::XMFLOAT3(-1.0f, +1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Black) },
+                { DirectX::XMFLOAT3(+1.0f, +1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Red) },
+                { DirectX::XMFLOAT3(+1.0f, -1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Green) },
+                { DirectX::XMFLOAT3(-1.0f, -1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Blue) },
+                { DirectX::XMFLOAT3(-1.0f, +1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Yellow) },
+                { DirectX::XMFLOAT3(+1.0f, +1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Cyan) },
+                { DirectX::XMFLOAT3(+1.0f, -1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Magenta) }
             };
 
             std::vector<std::uint16_t> indices =

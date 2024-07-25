@@ -4,10 +4,10 @@
 
 namespace dx12demo
 {
-    class Timer
+    class GameTimer
     {
     public:
-        Timer();
+        GameTimer();
 
         void Reset();
         void Start();
@@ -15,9 +15,9 @@ namespace dx12demo
         void Stop();
         bool Tick();
 
-        float DeltaTime() const;
-        float ElapsedTime() const;
-        bool IsRunning() const;
+        float GetDeltaTime() const { return m_DeltaTime; }
+        float GetElapsedTime() const { return m_ElapsedTime; }
+        bool GetIsRunning() const { return m_IsRunning; }
 
     private:
         double m_Count2Seconds;

@@ -20,11 +20,13 @@ find_package(imgui CONFIG REQUIRED)
 add_definitions(-DUNICODE -D_UNICODE)
 
 # Add source to this project's executable.
-add_executable(dx12-demo WIN32 "main.cpp" "core/timer.h" "core/timer.cpp" "core/app.h" "core/app.cpp" "core/dx_exception.h" "core/dx_exception.cpp" "core/upload_buffer.hpp"  "core/mesh.hpp"  "core/math_helper.h")
+add_executable(dx12-demo WIN32 "App/WinMain.cpp" "Core/GameTimer.h" "Core/GameTimer.cpp" "Rendering/DxException.h" "Rendering/DxException.cpp" "Rendering/UploadBuffer.hpp"  "Rendering/Mesh.hpp"  "Rendering/DxMathHelper.h" "App/WinApplication.h"  "App/WinApplication.cpp" "App/IApplicationEventListener.h" "Rendering/RenderPipeline.h" "Rendering/RenderPipeline.cpp" "Rendering/FrameResouce.h" "Rendering/FrameResource.cpp" "Core/GameObject.h" "Core/IComponent.h" "Core/Transform.h" "Editor/GameEditor.h" "Editor/GameEditor.cpp" "Core/Debug.h" "Core/Debug.cpp" "Core/StringUtility.h")
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids)
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXShaderCompiler)
 target_link_libraries(dx12-demo PRIVATE "d3dcompiler.lib" "D3D12.lib" "dxgi.lib")
 target_link_libraries(dx12-demo PRIVATE imgui::imgui)
+
+target_include_directories(dx12-demo PRIVATE ${PROJECT_SOURCE_DIR})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET dx12-demo PROPERTY CXX_STANDARD 17)

@@ -2,7 +2,7 @@
 
 #include <DirectXMath.h>
 
-namespace dx12demo::MathHelper
+namespace dx12demo::DxMathHelper
 {
     inline DirectX::XMFLOAT4X4 Identity4x4()
     {
