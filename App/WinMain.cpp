@@ -1,4 +1,5 @@
 #include "App/WinApplication.h"
+#include "Rendering/GfxManager.h"
 #include "Editor/GameEditor.h"
 
 using namespace dx12demo;
@@ -15,11 +16,15 @@ int WINAPI wWinMain(
 #endif
 
     WinApplication& app = GetApp();
+    GfxManager& gfxManager = GetGfxManager();
 
     if (!app.Initialize(hInstance, nCmdShow))
     {
         return 0;
     }
+
+    auto [width, height] = app.GetClientWidthAndHeight();
+    gfxManager.Initialize(app.GetHWND(), width, height);
 
     GameEditor editor{};
     app.AddEventListener(&editor);

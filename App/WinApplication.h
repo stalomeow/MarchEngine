@@ -1,12 +1,12 @@
 #pragma once
 
+#include "App/IApplicationEventListener.h"
+#include "Core/GameTimer.h"
 #include <Windows.h>
 #include <string>
 #include <tuple>
 #include <vector>
 #include <functional>
-#include "App/IApplicationEventListener.h"
-#include "Core/GameTimer.h"
 
 namespace dx12demo
 {

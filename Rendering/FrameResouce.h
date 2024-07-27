@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rendering/UploadBuffer.hpp"
+#include "Rendering/Resource/GpuBuffer.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <DirectXMath.h>
@@ -35,7 +35,7 @@ namespace dx12demo
     public:
         UINT64 FenceValue;
         Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator;
-        std::unique_ptr<UploadBuffer<PerObjConstants>> PerObjectConstBuffer;
-        std::unique_ptr<UploadBuffer<PerDrawConstants>> PerDrawConstBuffer;
+        std::unique_ptr<ConstantBuffer<PerObjConstants>> PerObjectConstBuffer;
+        std::unique_ptr<ConstantBuffer<PerDrawConstants>> PerDrawConstBuffer;
     };
 }

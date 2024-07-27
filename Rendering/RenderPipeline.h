@@ -6,12 +6,12 @@
 #include <dxgi1_4.h>
 #include <wrl.h>
 #include <memory>
-#include <queue>
 #include <tuple>
 #include <functional>
 #include "Rendering/FrameResouce.h"
 #include "Rendering/Mesh.hpp"
 #include "Rendering/DxMathHelper.h"
+#include "Rendering/DescriptorHeap.h"
 #include "Core/GameObject.h"
 
 namespace dx12demo
@@ -19,12 +19,11 @@ namespace dx12demo
     class RenderPipeline
     {
     public:
-        RenderPipeline(Microsoft::WRL::ComPtr<ID3D12Device> device, int width, int height, int meshCount);
-        ~RenderPipeline();
+        RenderPipeline(int width, int height, int meshCount);
+        ~RenderPipeline() = default;
 
         void Resize(int width, int height);
         void Render(const std::vector<std::unique_ptr<GameObject>>& gameObjects, std::function<void(ID3D12GraphicsCommandList*)> action);
-        void WaitForGPUIdle();
 
         bool GetEnableMSAA() const { return m_EnableMSAA; }
         void SetEnableMSAA(bool value)
@@ -38,22 +37,6 @@ namespace dx12demo
 
         ID3D12Resource* GetResolvedColorTarget() const { return m_ResolvedColorTarget.Get(); }
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetResolvedColorTargetSrvCPU() const
-        {
-            return m_SrvHeap->GetCPUDescriptorHandleForHeapStart();
-        }
-
-        D3D12_GPU_DESCRIPTOR_HANDLE GetResolvedColorTargetSrvGPU() const
-        {
-            return m_SrvHeap->GetGPUDescriptorHandleForHeapStart();
-        }
-
-        ID3D12DescriptorHeap* GetSrvHeap() const { return m_SrvHeap.Get(); }
-
-        DXGI_FORMAT GetColorFormat() const { return m_ColorFormat; }
-
-        ID3D12CommandQueue* GetCommandQueue() const { return m_CommandQueue.Get(); }
-
         int GetFrameResourceCount() const { return m_FrameResources.size(); }
 
     private:
@@ -63,33 +46,22 @@ namespace dx12demo
         void CreateDescriptorHeaps();
         void CreateRootSignature();
         void CreateShaderAndPSO();
-        void WaitForFence(UINT64 fence);
+
         void ExecuteCommandList();
         D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView();
         D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView();
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Device> m_Device;
-        Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence;
-        UINT64 m_CurrentFence = 0;
-        HANDLE m_FenceEventHandle;
-
         int m_MeshCount;
 
         bool m_EnableMSAA = false;
         UINT m_MSAAQuality;
 
-        Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
         Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 
-        UINT m_RtvDescriptorSize;
-        UINT m_DsvDescriptorSize;
-        UINT m_CbvSrvUavDescriptorSize;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_CbvHeap;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_SrvHeap;
+        std::unique_ptr<DescriptorHeap> m_RtvHeap;
+        std::unique_ptr<DescriptorHeap> m_DsvHeap;
 
         Microsoft::WRL::ComPtr<ID3DBlob> m_VSByteCode;
         Microsoft::WRL::ComPtr<ID3DBlob> m_PSByteCode;
@@ -115,14 +87,13 @@ namespace dx12demo
         std::vector<std::unique_ptr<FrameResource>> m_FrameResources{};
         int m_CurrentFrameResourceIndex = 0;
 
-        std::queue<std::tuple<Microsoft::WRL::ComPtr<ID3D12Resource>, UINT64>> m_TempResources{};
+        std::vector<ComPtr<ID3D12Resource>> m_TempResources{};
 
         float m_Theta = 1.5f * DirectX::XM_PI;
         float m_Phi = DirectX::XM_PIDIV4;
         float m_Radius = 5.0f;
 
     private:
-        DXGI_FORMAT m_ColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         DXGI_FORMAT m_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
         UINT m_MSAASampleCount = 4;
     };

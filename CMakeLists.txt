@@ -18,9 +18,10 @@ find_package(directx-dxc CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
 add_definitions(-DUNICODE -D_UNICODE)
+add_compile_definitions(ENABLE_GFX_DEBUG_NAME)
 
 # Add source to this project's executable.
-add_executable(dx12-demo WIN32 "App/WinMain.cpp" "Core/GameTimer.h" "Core/GameTimer.cpp" "Rendering/DxException.h" "Rendering/DxException.cpp" "Rendering/UploadBuffer.hpp"  "Rendering/Mesh.hpp"  "Rendering/DxMathHelper.h" "App/WinApplication.h"  "App/WinApplication.cpp" "App/IApplicationEventListener.h" "Rendering/RenderPipeline.h" "Rendering/RenderPipeline.cpp" "Rendering/FrameResouce.h" "Rendering/FrameResource.cpp" "Core/GameObject.h" "Core/IComponent.h" "Core/Transform.h" "Editor/GameEditor.h" "Editor/GameEditor.cpp" "Core/Debug.h" "Core/Debug.cpp" "Core/StringUtility.h")
+add_executable(dx12-demo WIN32 "App/WinMain.cpp" "Core/GameTimer.h" "Core/GameTimer.cpp" "Rendering/DxException.h" "Rendering/DxException.cpp" "Rendering/Mesh.hpp" "Rendering/DxMathHelper.h" "App/WinApplication.h"  "App/WinApplication.cpp" "App/IApplicationEventListener.h" "Rendering/RenderPipeline.h" "Rendering/RenderPipeline.cpp" "Rendering/FrameResouce.h" "Rendering/FrameResource.cpp" "Core/GameObject.h" "Core/IComponent.h" "Core/Transform.h" "Editor/GameEditor.h" "Editor/GameEditor.cpp" "Core/Debug.h" "Core/Debug.cpp" "Core/StringUtility.h" "Core/Scene.h"  "Rendering/Resource/GpuResource.h" "Rendering/Resource/GpuBuffer.h" "Rendering/Resource/GpuBuffer.cpp"  "Rendering/GfxManager.h" "Rendering/DescriptorHeap.h" "Rendering/DescriptorHeap.cpp" "Rendering/GfxManager.cpp")
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids)
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXShaderCompiler)
 target_link_libraries(dx12-demo PRIVATE "d3dcompiler.lib" "D3D12.lib" "dxgi.lib")

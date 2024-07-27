@@ -22,6 +22,9 @@ namespace dx12demo
         entry.Line = line;
         s_LogCounts[entry.Type]++;
         s_Logs.push_back(entry);
+
+        OutputDebugStringA((GetTimePrefix(entry.Time) + " " +
+            GetTypePrefix(entry.Type) + " " + entry.Message + "\n").c_str());
     }
 
     void Debug::AddLog(const std::string& file, int line, const std::string& message, LogType type)
@@ -40,6 +43,9 @@ namespace dx12demo
         entry.Line = line;
         s_LogCounts[entry.Type]++;
         s_Logs.push_back(entry);
+
+        OutputDebugStringA((GetTimePrefix(entry.Time) + " " +
+            GetTypePrefix(entry.Type) + " " + entry.Message + "\n").c_str());
     }
 
     int Debug::GetLogCount(LogType type)

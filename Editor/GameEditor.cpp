@@ -1,6 +1,7 @@
 #include "Editor/GameEditor.h"
 #include "App/WinApplication.h"
 #include "Rendering/DxException.h"
+#include "Rendering/GfxManager.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
@@ -28,131 +29,24 @@ namespace dx12demo
 
     void GameEditor::OnAppStart()
     {
-        // 开启调试层
-#if defined(DEBUG) || defined(_DEBUG)
-        ComPtr<ID3D12Debug> debugController;
-        THROW_IF_FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
-        debugController->EnableDebugLayer();
-#endif
-
-        THROW_IF_FAILED(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
-
-        // 默认设备
-        HRESULT hardwareResult = D3D12CreateDevice(
-            nullptr,
-            D3D_FEATURE_LEVEL_11_0,
-            IID_PPV_ARGS(&m_Device));
-
-        // 回退到 WARP 设备
-        if (FAILED(hardwareResult))
-        {
-            ComPtr<IDXGIAdapter> warpAdapter;
-            THROW_IF_FAILED(m_Factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
-            THROW_IF_FAILED(D3D12CreateDevice(
-                warpAdapter.Get(),
-                D3D_FEATURE_LEVEL_11_0,
-                IID_PPV_ARGS(&m_Device)));
-        }
-
-        THROW_IF_FAILED(m_Device->QueryInterface(IID_PPV_ARGS(&m_DebugInfoQueue)));
-        DWORD cookie;
-        THROW_IF_FAILED(m_DebugInfoQueue->RegisterMessageCallback([](
-            D3D12_MESSAGE_CATEGORY Category,
-            D3D12_MESSAGE_SEVERITY Severity,
-            D3D12_MESSAGE_ID ID,
-            LPCSTR pDescription,
-            void* pContext)
-            {
-                switch (Severity)
-                {
-                case D3D12_MESSAGE_SEVERITY_INFO:
-                case D3D12_MESSAGE_SEVERITY_MESSAGE:
-                    DEBUG_LOG_INFO("%s", pDescription);
-                    break;
-
-                case D3D12_MESSAGE_SEVERITY_WARNING:
-                    DEBUG_LOG_WARN("%s", pDescription);
-                    break;
-
-                case D3D12_MESSAGE_SEVERITY_CORRUPTION:
-                case D3D12_MESSAGE_SEVERITY_ERROR:
-                    DEBUG_LOG_ERROR("%s", pDescription);
-                    break;
-
-                default:
-                    DEBUG_LOG_WARN("Unknown D3D12_MESSAGE_SEVERITY: %d; %s", Severity, pDescription);
-                    break;
-                }
-            }, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &cookie));
-
         m_GameObjects.push_back(std::make_unique<GameObject>());
         m_GameObjects.push_back(std::make_unique<GameObject>());
         m_GameObjects.push_back(std::make_unique<GameObject>());
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
-        m_RenderPipeline = std::make_unique<RenderPipeline>(m_Device, width, height, m_GameObjects.size());
+        m_RenderPipeline = std::make_unique<RenderPipeline>(width, height, m_GameObjects.size());
 
         CreateDescriptorHeaps();
-        CreateSwapChain();
         InitImGui();
-        LogAdapters();
-    }
-
-    void GameEditor::CreateSwapChain()
-    {
-        m_SwapChain.Reset();
-
-        // The ability to create an MSAA DXGI swap chain is only supported for the older "bit-blt" style presentation modes,
-        // specifically DXGI_SWAP_EFFECT_DISCARD or DXGI_SWAP_EFFECT_SEQUENTIAL.
-        // The newer "flip" style presentation modes DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL or DXGI_SWAP_EFFECT_FLIP_DISCARD
-        // required for Universal Windows Platform (UWP) apps and Direct3D 12 doesn't support
-        // creating MSAA swap chains--attempts to create a swap chain with SampleDesc.Count > 1 will fail.
-        // Instead, you create your own MSAA render target and explicitly resolve
-        // to the DXGI back-buffer for presentation as shown here.
-
-        auto [width, height] = GetApp().GetClientWidthAndHeight();
-
-        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-        swapChainDesc.BufferDesc.Width = width;
-        swapChainDesc.BufferDesc.Height = height;
-        swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
-        swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-        swapChainDesc.BufferDesc.Format = m_RenderPipeline->GetColorFormat();
-        swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-        swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-        swapChainDesc.SampleDesc.Count = 1;
-        swapChainDesc.SampleDesc.Quality = 0;
-        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.BufferCount = m_SwapChainBufferCount;
-        swapChainDesc.OutputWindow = GetApp().GetHWND();
-        swapChainDesc.Windowed = true;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-        THROW_IF_FAILED(m_Factory->CreateSwapChain(m_RenderPipeline->GetCommandQueue(), &swapChainDesc, m_SwapChain.GetAddressOf()));
-    
-        ResizeSwapChain();
     }
 
     void GameEditor::CreateDescriptorHeaps()
     {
-        m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_CbvSrvUavDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        m_SrvHeap = std::make_unique<DescriptorHeap>(L"EditorSrvHeap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0, 2);
 
-        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-        rtvHeapDesc.NumDescriptors = m_SwapChainBufferCount;
-        rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_RtvHeap)));
-
-        D3D12_DESCRIPTOR_HEAP_DESC imguiSrvHeapDesc = {};
-        imguiSrvHeapDesc.NumDescriptors = 2;
-        imguiSrvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        imguiSrvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&imguiSrvHeapDesc, IID_PPV_ARGS(&m_SrvHeap)));
-
-        CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(m_SrvHeap->GetCPUDescriptorHandleForHeapStart());
-        srvHandle.Offset(1, m_CbvSrvUavDescriptorSize);
-        m_Device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
+        auto device = GetGfxManager().GetDevice();
+        auto srvHandle = m_SrvHeap->GetCpuHandleForFixedDescriptor(1);
+        device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 
     void GameEditor::InitImGui()
@@ -178,27 +72,19 @@ namespace dx12demo
         ImGui::GetStyle().FrameBorderSize = 1.0f;
         ImGui::GetStyle().FrameRounding = 2.0f;
 
-        ImGui_ImplDX12_Init(m_Device.Get(), m_RenderPipeline->GetFrameResourceCount(),
-            m_RenderPipeline->GetColorFormat(), m_SrvHeap.Get(),
-            m_SrvHeap->GetCPUDescriptorHandleForHeapStart(),
-            m_SrvHeap->GetGPUDescriptorHandleForHeapStart());
-    }
-
-    void GameEditor::SwapBackBuffer()
-    {
-        m_CurrentBackBufferIndex++;
-        m_CurrentBackBufferIndex %= m_SwapChainBufferCount;
+        auto device = GetGfxManager().GetDevice();
+        ImGui_ImplDX12_Init(device, m_RenderPipeline->GetFrameResourceCount(),
+            GetGfxManager().GetBackBufferFormat(), m_SrvHeap->GetHeapPointer(),
+            m_SrvHeap->GetCpuHandleForFixedDescriptor(0),
+            m_SrvHeap->GetGpuHandleForFixedDescriptor(0));
     }
 
     void GameEditor::OnAppQuit()
     {
-        if (m_Device)
-        {
-            m_RenderPipeline->WaitForGPUIdle();
-            ImGui_ImplDX12_Shutdown();
-            ImGui_ImplWin32_Shutdown();
-            ImGui::DestroyContext();
-        }
+        GetGfxManager().WaitForGpuIdle();
+        ImGui_ImplDX12_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
     }
 
     namespace
@@ -227,7 +113,12 @@ namespace dx12demo
 
         if (ImGui::BeginMainMenuBar())
         {
-            if (ImGui::BeginMenu("Windows"))
+            if (ImGui::BeginMenu("File"))
+            {
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Window"))
             {
                 if (ImGui::BeginMenu("ImGui Tools"))
                 {
@@ -349,8 +240,7 @@ namespace dx12demo
                 ResizeRenderPipeline(m_LastSceneViewWidth, m_LastSceneViewHeight);
             }
 
-            CD3DX12_GPU_DESCRIPTOR_HANDLE srvHandle(m_SrvHeap->GetGPUDescriptorHandleForHeapStart());
-            srvHandle.Offset(1, m_CbvSrvUavDescriptorSize);
+            auto srvHandle = m_SrvHeap->GetGpuHandleForFixedDescriptor(1);
             ImGui::Image((ImTextureID)srvHandle.ptr, contextSize);
             ImGui::End();
         }
@@ -553,70 +443,40 @@ namespace dx12demo
         m_RenderPipeline->Render(m_GameObjects, [this](ID3D12GraphicsCommandList* cmdList)
             {
                 // Render Dear ImGui graphics
-                cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBuffer(),
+                cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
                     D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-                cmdList->OMSetRenderTargets(1, &GetBackBufferView(), false, nullptr);
+                cmdList->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
 
                 const float clear_color_with_alpha[4] = { m_ImGUIClearColor.x * m_ImGUIClearColor.w, m_ImGUIClearColor.y * m_ImGUIClearColor.w, m_ImGUIClearColor.z * m_ImGUIClearColor.w, m_ImGUIClearColor.w };
-                ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap.Get() };
+                ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap->GetHeapPointer() };
                 cmdList->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
                 ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList);
 
-                cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBuffer(),
+                cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
                     D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
             });
 
-        // swap the back and front buffers
-        THROW_IF_FAILED(m_SwapChain->Present(0, 0)); // No vsync
-        SwapBackBuffer();
+        GetGfxManager().SignalFenceAndPresent();
     }
 
     void GameEditor::OnAppResized()
     {
-        ResizeSwapChain();
+        auto [width, height] = GetApp().GetClientWidthAndHeight();
+        GetGfxManager().ResizeSwapChain(width, height);
     }
 
     void GameEditor::ResizeRenderPipeline(int width, int height)
     {
-        m_RenderPipeline->Resize(width, height); // Wait for gpu idle
+        m_RenderPipeline->Resize(width, height);
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(m_SrvHeap->GetCPUDescriptorHandleForHeapStart());
-        srvHandle.Offset(1, m_CbvSrvUavDescriptorSize);
-        m_Device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
-    }
-
-    void GameEditor::ResizeSwapChain()
-    {
-        m_RenderPipeline->WaitForGPUIdle();
-        auto [width, height] = GetApp().GetClientWidthAndHeight();
-
-        // 先释放之前的 buffer 引用，然后才能 resize
-        for (int i = 0; i < m_SwapChainBufferCount; i++)
-        {
-            m_SwapChainBuffers[i].Reset();
-        }
-
-        m_SwapChain->ResizeBuffers(
-            m_SwapChainBufferCount,
-            width,
-            height,
-            m_RenderPipeline->GetColorFormat(),
-            DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-        m_CurrentBackBufferIndex = 0;
-
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-
-        for (int i = 0; i < m_SwapChainBufferCount; i++)
-        {
-            THROW_IF_FAILED(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&m_SwapChainBuffers[i])));
-            m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, rtvHeapHandle);
-            rtvHeapHandle.Offset(1, m_RtvDescriptorSize);
-        }
+        auto device = GetGfxManager().GetDevice();
+        auto srvHandle = m_SrvHeap->GetCpuHandleForFixedDescriptor(1);
+        device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 
     void GameEditor::OnAppDisplayScaleChanged()
     {
-        OutputDebugStringA(("DPI Changed: " + std::to_string(GetApp().GetDisplayScale()) + "\n").c_str());
+        DEBUG_LOG_INFO("DPI Changed: %f", GetApp().GetDisplayScale());
 
         auto& io = ImGui::GetIO();
         io.Fonts->Clear();
@@ -660,63 +520,6 @@ namespace dx12demo
             // Reset for next average.
             frameCnt = 0;
             timeElapsed += 1.0f;
-        }
-    }
-
-    void GameEditor::LogAdapters()
-    {
-        UINT i = 0;
-        IDXGIAdapter* adapter = nullptr;
-
-        while (m_Factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
-        {
-            DXGI_ADAPTER_DESC desc;
-            adapter->GetDesc(&desc);
-
-            DEBUG_LOG_INFO(L"***Adapter: %s", desc.Description);
-
-            LogAdapterOutputs(adapter);
-            adapter->Release();
-            ++i;
-        }
-    }
-
-    void GameEditor::LogAdapterOutputs(IDXGIAdapter* adapter)
-    {
-        UINT i = 0;
-        IDXGIOutput* output = nullptr;
-        while (adapter->EnumOutputs(i, &output) != DXGI_ERROR_NOT_FOUND)
-        {
-            DXGI_OUTPUT_DESC desc;
-            output->GetDesc(&desc);
-
-            DEBUG_LOG_INFO(L"***Output: %s", desc.DeviceName);
-
-            LogOutputDisplayModes(output, m_RenderPipeline->GetColorFormat());
-            output->Release();
-            ++i;
-        }
-    }
-
-    void GameEditor::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
-    {
-        UINT count = 0;
-        UINT flags = 0;
-
-        // Call with nullptr to get list count.
-        output->GetDisplayModeList(format, flags, &count, nullptr);
-
-        auto modeList = std::make_unique<DXGI_MODE_DESC[]>(count);
-        output->GetDisplayModeList(format, flags, &count, modeList.get());
-
-        for (int i = 0; i < count; i++)
-        {
-            auto& x = modeList[i];
-            UINT n = x.RefreshRate.Numerator;
-            UINT d = x.RefreshRate.Denominator;
-            OutputDebugStringA(("Width = " + std::to_string(x.Width) + ", Height = " + std::to_string(x.Height) +
-                ", Refresh = " + std::to_string(n) + "/" + std::to_string(d) + "\n").c_str());
-            DEBUG_LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
         }
     }
 }

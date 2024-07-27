@@ -1,6 +1,8 @@
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/DxException.h"
+#include "Rendering/GfxManager.h"
 #include "Core/GameObject.h"
+#include "Core/Debug.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
@@ -9,12 +11,9 @@ using Microsoft::WRL::ComPtr;
 
 namespace dx12demo
 {
-    RenderPipeline::RenderPipeline(ComPtr<ID3D12Device> device, int width, int height, int meshCount)
-        : m_Device(device), m_MeshCount(meshCount)
+    RenderPipeline::RenderPipeline(int width, int height, int meshCount)
+        : m_MeshCount(meshCount)
     {
-        THROW_IF_FAILED(m_Device->CreateFence(m_CurrentFence, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
-        m_FenceEventHandle = CreateEventExW(NULL, NULL, NULL, EVENT_ALL_ACCESS);
-
         CheckMSAAQuailty();
         CreateCommandObjects();
         CreateFrameResources();
@@ -24,20 +23,15 @@ namespace dx12demo
         Resize(width, height);
     }
 
-    RenderPipeline::~RenderPipeline()
-    {
-        // 等待 GPU 完成所有命令，防止崩溃
-        WaitForGPUIdle();
-        CloseHandle(m_FenceEventHandle);
-    }
-
     void RenderPipeline::CheckMSAAQuailty()
     {
+        auto device = GetGfxManager().GetDevice();
+
         D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels = {};
-        msQualityLevels.Format = m_ColorFormat;
+        msQualityLevels.Format = GetGfxManager().GetBackBufferFormat();
         msQualityLevels.SampleCount = m_MSAASampleCount;
         msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-        THROW_IF_FAILED(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        THROW_IF_FAILED(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
             &msQualityLevels, sizeof(msQualityLevels)));
 
         m_MSAAQuality = msQualityLevels.NumQualityLevels - 1;
@@ -45,15 +39,11 @@ namespace dx12demo
 
     void RenderPipeline::CreateCommandObjects()
     {
-        const D3D12_COMMAND_LIST_TYPE cmdListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        auto device = GetGfxManager().GetDevice();
+        D3D12_COMMAND_LIST_TYPE cmdListType = GetGfxManager().GetCommandListType();
 
-        D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-        queueDesc.Type = cmdListType;
-        queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-
-        THROW_IF_FAILED(m_Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_CommandQueue)));
-        THROW_IF_FAILED(m_Device->CreateCommandAllocator(cmdListType, IID_PPV_ARGS(&m_CommandAllocator)));
-        THROW_IF_FAILED(m_Device->CreateCommandList(0, cmdListType, m_CommandAllocator.Get(),
+        THROW_IF_FAILED(device->CreateCommandAllocator(cmdListType, IID_PPV_ARGS(&m_CommandAllocator)));
+        THROW_IF_FAILED(device->CreateCommandList(0, cmdListType, m_CommandAllocator.Get(),
             nullptr, IID_PPV_ARGS(&m_CommandList)));
 
         m_CommandList->Close();
@@ -61,80 +51,29 @@ namespace dx12demo
 
     void RenderPipeline::CreateFrameResources()
     {
+        auto device = GetGfxManager().GetDevice();
+        auto currentFence = GetGfxManager().GetCurrentFenceValue();
+
         for (int i = 0; i < 3; i++)
         {
-            m_FrameResources.push_back(std::make_unique<FrameResource>(m_Device.Get(), m_CurrentFence, m_MeshCount, 1));
+            m_FrameResources.push_back(std::make_unique<FrameResource>(device, currentFence, m_MeshCount, 1));
         }
     }
 
     void RenderPipeline::CreateDescriptorHeaps()
     {
-        m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_DsvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-        m_CbvSrvUavDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-        rtvHeapDesc.NumDescriptors = 1;
-        rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_RtvHeap)));
-
-        D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-        dsvHeapDesc.NumDescriptors = 1;
-        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DsvHeap)));
-
-        D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-        cbvHeapDesc.NumDescriptors = (m_MeshCount + 1) * static_cast<int>(m_FrameResources.size());
-        cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_CbvHeap)));
-
-        D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-        srvHeapDesc.NumDescriptors = 1;
-        srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_SrvHeap)));
-
-        CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(m_CbvHeap->GetCPUDescriptorHandleForHeapStart());
-        for (int i = 0; i < m_FrameResources.size(); i++)
-        {
-            FrameResource* res = m_FrameResources[i].get();
-
-            D3D12_CONSTANT_BUFFER_VIEW_DESC perObjCbvDesc = {};
-            perObjCbvDesc.SizeInBytes = res->PerObjectConstBuffer->GetStride();
-            perObjCbvDesc.BufferLocation = res->PerObjectConstBuffer->GetResource()->GetGPUVirtualAddress();
-
-            for (int j = 0; j < m_MeshCount; j++)
-            {
-                m_Device->CreateConstantBufferView(&perObjCbvDesc, cbvHandle);
-                perObjCbvDesc.BufferLocation += perObjCbvDesc.SizeInBytes;
-                cbvHandle.Offset(1, m_CbvSrvUavDescriptorSize);
-            }
-
-            D3D12_CONSTANT_BUFFER_VIEW_DESC perDrawCbvDesc = {};
-            perDrawCbvDesc.SizeInBytes = res->PerDrawConstBuffer->GetStride();
-            perDrawCbvDesc.BufferLocation = res->PerDrawConstBuffer->GetResource()->GetGPUVirtualAddress();
-            m_Device->CreateConstantBufferView(&perDrawCbvDesc, cbvHandle);
-            cbvHandle.Offset(1, m_CbvSrvUavDescriptorSize);
-        }
+        m_RtvHeap = std::make_unique<DescriptorHeap>(L"Rtv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 0, 1, false);
+        m_DsvHeap = std::make_unique<DescriptorHeap>(L"Dsv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 0, 1, false);
     }
 
     void RenderPipeline::CreateRootSignature()
     {
-        CD3DX12_DESCRIPTOR_RANGE cbvTable0;
-        cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-
-        CD3DX12_DESCRIPTOR_RANGE cbvTable1;
-        cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
-
         // Root parameter can be a table, root descriptor or root constants.
         CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
         // Create root CBVs.
-        slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0);
-        slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);
+        slotRootParameter[0].InitAsConstantBufferView(0);
+        slotRootParameter[1].InitAsConstantBufferView(1);
 
         // A root signature is an array of root parameters.
         CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2, slotRootParameter, 0, nullptr,
@@ -148,11 +87,11 @@ namespace dx12demo
 
         if (errorBlob != nullptr)
         {
-            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            DEBUG_LOG_ERROR(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
         }
         THROW_IF_FAILED(hr);
 
-        THROW_IF_FAILED(m_Device->CreateRootSignature(
+        THROW_IF_FAILED(GetGfxManager().GetDevice()->CreateRootSignature(
             0,
             serializedRootSig->GetBufferPointer(),
             serializedRootSig->GetBufferSize(),
@@ -178,7 +117,7 @@ namespace dx12demo
             entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors);
 
         if (errors != nullptr)
-            OutputDebugStringA((char*)errors->GetBufferPointer());
+            DEBUG_LOG_ERROR(reinterpret_cast<char*>(errors->GetBufferPointer()));
 
         THROW_IF_FAILED(hr);
 
@@ -189,6 +128,8 @@ namespace dx12demo
     {
         m_VSByteCode = CompileShader(L"C:\\\Projects\\\Graphics\\\dx12-demo\\shaders\\test.hlsl", nullptr, "vert", "vs_5_0");
         m_PSByteCode = CompileShader(L"C:\\\Projects\\\Graphics\\\dx12-demo\\shaders\\test.hlsl", nullptr, "frag", "ps_5_0");
+
+        auto device = GetGfxManager().GetDevice();
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = { 0 };
         psoDesc.InputLayout = SimpleMesh::VertexInputLayout();
@@ -209,95 +150,78 @@ namespace dx12demo
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
-        psoDesc.RTVFormats[0] = m_ColorFormat;
+        psoDesc.RTVFormats[0] = GetGfxManager().GetBackBufferFormat();
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleDesc.Quality = 0;
         psoDesc.DSVFormat = m_DepthStencilFormat;
-        THROW_IF_FAILED(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSONormal)));
+        THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSONormal)));
 
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
-        THROW_IF_FAILED(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSOWireframe)));
+        THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSOWireframe)));
 
         psoDesc.SampleDesc.Count = m_MSAASampleCount;
         psoDesc.SampleDesc.Quality = m_MSAAQuality;
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        THROW_IF_FAILED(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSONormalMSAA)));
+        THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSONormalMSAA)));
 
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
-        THROW_IF_FAILED(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSOWireframeMSAA)));
-    }
-
-    void RenderPipeline::WaitForFence(UINT64 fence)
-    {
-        if (m_Fence->GetCompletedValue() < fence)
-        {
-            THROW_IF_FAILED(m_Fence->SetEventOnCompletion(fence, m_FenceEventHandle));
-            WaitForSingleObject(m_FenceEventHandle, INFINITE);
-        }
-    }
-
-    void RenderPipeline::WaitForGPUIdle()
-    {
-        m_CurrentFence++;
-        THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_CurrentFence));
-        WaitForFence(m_CurrentFence);
+        THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSOWireframeMSAA)));
     }
 
     void RenderPipeline::ExecuteCommandList()
     {
         THROW_IF_FAILED(m_CommandList->Close());
         ID3D12CommandList* cmdsList = m_CommandList.Get();
-        m_CommandQueue->ExecuteCommandLists(1, &cmdsList);
+        GetGfxManager().GetCommandQueue()->ExecuteCommandLists(1, &cmdsList);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView()
     {
-        return m_RtvHeap->GetCPUDescriptorHandleForHeapStart();
+        return m_RtvHeap->GetCpuHandleForFixedDescriptor(0);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetDepthStencilTargetView()
     {
-        return m_DsvHeap->GetCPUDescriptorHandleForHeapStart();
+        return m_DsvHeap->GetCpuHandleForFixedDescriptor(0);
     }
 
     void RenderPipeline::Resize(int width, int height)
     {
-        WaitForGPUIdle();
+        GetGfxManager().WaitForGpuIdle();
 
         width = max(width, 10);
         height = max(height, 10);
+        auto device = GetGfxManager().GetDevice();
 
         D3D12_CLEAR_VALUE colorClearValue = {};
-        colorClearValue.Format = m_ColorFormat;
+        colorClearValue.Format = GetGfxManager().GetBackBufferFormat();
         memcpy(colorClearValue.Color, DirectX::Colors::Black, sizeof(colorClearValue.Color));
-        THROW_IF_FAILED(m_Device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Tex2D(m_ColorFormat, width, height, 1, 1,
+            &CD3DX12_RESOURCE_DESC::Tex2D(GetGfxManager().GetBackBufferFormat(), width, height, 1, 1,
                 m_EnableMSAA ? m_MSAASampleCount : 1,
                 m_EnableMSAA ? m_MSAAQuality : 0,
                 D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET),
             D3D12_RESOURCE_STATE_COMMON,
             &colorClearValue, IID_PPV_ARGS(&m_ColorTarget)));
         m_LastColorTargetState = D3D12_RESOURCE_STATE_COMMON;
-        m_Device->CreateRenderTargetView(m_ColorTarget.Get(), nullptr,
-            m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
+        device->CreateRenderTargetView(m_ColorTarget.Get(), nullptr,
+            m_RtvHeap->GetCpuHandleForFixedDescriptor(0));
 
-        THROW_IF_FAILED(m_Device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Tex2D(m_ColorFormat, width, height, 1, 1, 1, 0),
+            &CD3DX12_RESOURCE_DESC::Tex2D(GetGfxManager().GetBackBufferFormat(), width, height, 1, 1, 1, 0),
             D3D12_RESOURCE_STATE_COMMON,
             nullptr, IID_PPV_ARGS(&m_ResolvedColorTarget)));
         m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_COMMON;
-        m_Device->CreateShaderResourceView(m_ResolvedColorTarget.Get(), nullptr,
-            m_SrvHeap->GetCPUDescriptorHandleForHeapStart());
 
         D3D12_CLEAR_VALUE dsClearValue = {};
         dsClearValue.Format = m_DepthStencilFormat;
         dsClearValue.DepthStencil.Depth = 1.0f;
         dsClearValue.DepthStencil.Stencil = 0;
-        THROW_IF_FAILED(m_Device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
             &CD3DX12_RESOURCE_DESC::Tex2D(m_DepthStencilFormat, width, height, 1, 1,
@@ -306,8 +230,8 @@ namespace dx12demo
                 D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
             D3D12_RESOURCE_STATE_DEPTH_WRITE,
             &dsClearValue, IID_PPV_ARGS(&m_DepthStencilTarget)));
-        m_Device->CreateDepthStencilView(m_DepthStencilTarget.Get(), nullptr,
-            m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
+        device->CreateDepthStencilView(m_DepthStencilTarget.Get(), nullptr,
+            m_DsvHeap->GetCpuHandleForFixedDescriptor(0));
 
         m_RenderTargetWidth = width;
         m_RenderTargetHeight = height;
@@ -326,7 +250,7 @@ namespace dx12demo
     {
         m_CurrentFrameResourceIndex = (m_CurrentFrameResourceIndex + 1) % m_FrameResources.size();
         FrameResource* frameRes = m_FrameResources[m_CurrentFrameResourceIndex].get();
-        WaitForFence(frameRes->FenceValue);
+        GetGfxManager().WaitForFence(frameRes->FenceValue);
 
         // Free Temp res
         //while (!m_TempResources.empty())
@@ -412,13 +336,8 @@ namespace dx12demo
         // Specify the buffers we are going to render to.
         m_CommandList->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
-        ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvHeap.Get() };
-        m_CommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
         m_CommandList->SetGraphicsRootSignature(m_RootSignature.Get());
-        CD3DX12_GPU_DESCRIPTOR_HANDLE perDrawCbvHandle(m_CbvHeap->GetGPUDescriptorHandleForHeapStart());
-        perDrawCbvHandle.Offset((m_MeshCount + 1) * m_CurrentFrameResourceIndex + m_MeshCount, m_CbvSrvUavDescriptorSize);
-        m_CommandList->SetGraphicsRootDescriptorTable(1, perDrawCbvHandle);
+        m_CommandList->SetGraphicsRootConstantBufferView(1, frameRes->PerDrawConstBuffer->GetGpuVirtualAddress());
 
         std::vector<ComPtr<ID3D12Resource>> tempRes{};
 
@@ -429,12 +348,12 @@ namespace dx12demo
                 continue;
             }
 
-            CD3DX12_GPU_DESCRIPTOR_HANDLE perObjCbvHandle(m_CbvHeap->GetGPUDescriptorHandleForHeapStart());
-            perObjCbvHandle.Offset((m_MeshCount + 1) * m_CurrentFrameResourceIndex + i, m_CbvSrvUavDescriptorSize);
-            m_CommandList->SetGraphicsRootDescriptorTable(0, perObjCbvHandle);
+            D3D12_GPU_VIRTUAL_ADDRESS addr = frameRes->PerObjectConstBuffer->GetGpuVirtualAddress();
+            addr = addr + frameRes->PerObjectConstBuffer->GetStride() * i;
+            m_CommandList->SetGraphicsRootConstantBufferView(0, addr);
 
             tempRes.clear();
-            gameObjects[i]->GetMesh()->Draw(m_Device.Get(), m_CommandList.Get(), tempRes);
+            gameObjects[i]->GetMesh()->Draw(GetGfxManager().GetDevice(), m_CommandList.Get(), tempRes);
 
             if (tempRes.size() > 0)
             {
@@ -446,7 +365,7 @@ namespace dx12demo
 
                 for (auto& res : tempRes)
                 {
-                    m_TempResources.push(std::make_tuple(res, m_CurrentFence));
+                    m_TempResources.push_back(res);
                 }
             }
         }
@@ -462,7 +381,7 @@ namespace dx12demo
                     m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_RESOLVE_DEST));
             }
 
-            m_CommandList->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, m_ColorFormat);
+            m_CommandList->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, GetGfxManager().GetBackBufferFormat());
             m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
@@ -491,9 +410,6 @@ namespace dx12demo
         action(m_CommandList.Get());
 
         ExecuteCommandList();
-
-        m_CurrentFence++;
-        frameRes->FenceValue = m_CurrentFence;
-        THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), frameRes->FenceValue));
+        frameRes->FenceValue = GetGfxManager().GetNextFenceValue();
     }
 }
