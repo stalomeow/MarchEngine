@@ -2,6 +2,7 @@
 #include "App/WinApplication.h"
 #include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
+#include "Rendering/Command/CommandContext.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
@@ -232,7 +233,7 @@ namespace dx12demo
             }
 
             auto contextSize = ImGui::GetContentRegionAvail();
-            
+
             if (m_LastSceneViewWidth != contextSize.x || m_LastSceneViewHeight != contextSize.y)
             {
                 m_LastSceneViewWidth = contextSize.x;
@@ -440,29 +441,32 @@ namespace dx12demo
         CalculateFrameStats();
 
         DrawImGui();
-        m_RenderPipeline->Render(m_GameObjects, [this](ID3D12GraphicsCommandList* cmdList)
-            {
-                // Render Dear ImGui graphics
-                cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
-                    D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-                cmdList->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
 
-                const float clear_color_with_alpha[4] = { m_ImGUIClearColor.x * m_ImGUIClearColor.w, m_ImGUIClearColor.y * m_ImGUIClearColor.w, m_ImGUIClearColor.z * m_ImGUIClearColor.w, m_ImGUIClearColor.w };
-                ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap->GetHeapPointer() };
-                cmdList->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
-                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList);
+        CommandContext* context = GetGfxManager().GetCommandContext();
 
-                cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
-                    D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-            });
+        m_RenderPipeline->Render(context, m_GameObjects);
 
-        GetGfxManager().SignalFenceAndPresent();
+        // Render Dear ImGui graphics
+        context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+        context->GetList()->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
+
+        const float clear_color_with_alpha[4] = { m_ImGUIClearColor.x * m_ImGUIClearColor.w, m_ImGUIClearColor.y * m_ImGUIClearColor.w, m_ImGUIClearColor.z * m_ImGUIClearColor.w, m_ImGUIClearColor.w };
+        ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap->GetHeapPointer() };
+        context->GetList()->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context->GetList());
+
+        context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+        GetGfxManager().ExecuteAndRelease(context);
+        GetGfxManager().Present();
     }
 
     void GameEditor::OnAppResized()
     {
         auto [width, height] = GetApp().GetClientWidthAndHeight();
-        GetGfxManager().ResizeSwapChain(width, height);
+        GetGfxManager().ResizeBackBuffer(width, height);
     }
 
     void GameEditor::ResizeRenderPipeline(int width, int height)

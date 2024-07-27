@@ -34,7 +34,6 @@ namespace dx12demo
 
     public:
         UINT64 FenceValue;
-        Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CommandAllocator;
         std::unique_ptr<ConstantBuffer<PerObjConstants>> PerObjectConstBuffer;
         std::unique_ptr<ConstantBuffer<PerDrawConstants>> PerDrawConstBuffer;
     };

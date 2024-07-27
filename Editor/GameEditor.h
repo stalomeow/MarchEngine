@@ -1,6 +1,10 @@
 #pragma once
 
 #include <directx/d3dx12.h>
+#include "App/IApplicationEventListener.h"
+#include "Rendering/RenderPipeline.h"
+#include "Rendering/DescriptorHeap.h"
+#include "Core/GameObject.h"
 #include <d3d12.h>
 #include <vector>
 #include <wrl.h>
@@ -8,10 +12,6 @@
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx12.h>
-#include "App/IApplicationEventListener.h"
-#include "Rendering/RenderPipeline.h"
-#include "Rendering/DescriptorHeap.h"
-#include "Core/GameObject.h"
 
 namespace dx12demo
 {

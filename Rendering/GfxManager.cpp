@@ -32,7 +32,7 @@ namespace dx12demo
 
         InitDeviceAndFactory();
         InitDebugInfoCallback();
-        InitCommandQueueAndFence();
+        InitCommandObjectsAndFence();
         InitDescriptorHeaps();
         InitSwapChain(window, width, height);
 
@@ -94,12 +94,14 @@ namespace dx12demo
             }, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &cookie));
     }
 
-    void GfxManager::InitCommandQueueAndFence()
+    void GfxManager::InitCommandObjectsAndFence()
     {
         D3D12_COMMAND_QUEUE_DESC queueDesc = {};
         queueDesc.Type = m_CommandListType;
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
         THROW_IF_FAILED(m_Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_CommandQueue)));
+
+        m_CommandAllocatorPool = std::make_unique<CommandAllocatorPool>(m_Device, m_CommandListType);
 
         THROW_IF_FAILED(m_Device->CreateFence(m_FenceCurrentValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
         m_FenceEventHandle = CreateEventExW(NULL, NULL, NULL, EVENT_ALL_ACCESS);
@@ -144,7 +146,48 @@ namespace dx12demo
         swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
         THROW_IF_FAILED(m_Factory->CreateSwapChain(m_CommandQueue.Get(), &swapChainDesc, &m_SwapChain));
-        ResizeSwapChain(width, height);
+        ResizeBackBuffer(width, height);
+    }
+
+    void GfxManager::SignalNextFenceValue()
+    {
+        m_FenceCurrentValue++;
+        THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_FenceCurrentValue));
+    }
+
+    CommandContext* GfxManager::GetCommandContext()
+    {
+        ID3D12CommandAllocator* allocator = m_CommandAllocatorPool->Get(GetCompletedFenceValue());
+
+        if (!m_CommandContextPool.empty())
+        {
+            CommandContext* context = m_CommandContextPool.front();
+            m_CommandContextPool.pop();
+
+            context->Reset(allocator);
+            return context;
+        }
+
+        auto pCtx = std::make_unique<CommandContext>(m_CommandListType);
+        pCtx->Initialize(m_Device.Get(), allocator);
+        m_CommandContextRefs.push_back(std::move(pCtx));
+        return m_CommandContextRefs.back().get();
+    }
+
+    void GfxManager::ExecuteAndRelease(CommandContext* context, bool waitForCompletion)
+    {
+        ID3D12CommandAllocator* allocator = context->Close();
+        ID3D12CommandList* list = context->GetList();
+        m_CommandQueue->ExecuteCommandLists(1, &list);
+        m_CommandContextPool.push(context);
+
+        SignalNextFenceValue();
+        m_CommandAllocatorPool->Release(allocator, GetCurrentFenceValue());
+
+        if (waitForCompletion)
+        {
+            WaitForFence(GetCurrentFenceValue());
+        }
     }
 
     void GfxManager::WaitForFence(UINT64 fenceValue)
@@ -158,12 +201,11 @@ namespace dx12demo
 
     void GfxManager::WaitForGpuIdle()
     {
-        m_FenceCurrentValue++;
-        THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_FenceCurrentValue));
-        WaitForFence(m_FenceCurrentValue);
+        SignalNextFenceValue();
+        WaitForFence(GetCurrentFenceValue());
     }
 
-    void GfxManager::ResizeSwapChain(int width, int height)
+    void GfxManager::ResizeBackBuffer(int width, int height)
     {
         WaitForGpuIdle();
 
@@ -187,11 +229,8 @@ namespace dx12demo
         }
     }
 
-    void GfxManager::SignalFenceAndPresent()
+    void GfxManager::Present()
     {
-        m_FenceCurrentValue++;
-        THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_FenceCurrentValue));
-
         THROW_IF_FAILED(m_SwapChain->Present(0, 0)); // No vsync
 
         // swap the back and front buffers

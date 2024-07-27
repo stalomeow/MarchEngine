@@ -16,8 +16,8 @@ namespace dx12demo
 
         ID3D12DescriptorHeap* GetHeapPointer() const { return m_Heap.Get(); }
 
-        void Append(D3D12_CPU_DESCRIPTOR_HANDLE descriptor);
-        void Clear(UINT64 completedFenceValue, UINT64 nextFenceValue);
+        void Append(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, UINT64 completedFenceValue);
+        void Clear(UINT64 fenceValue);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandleForDynamicHeapStart() const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandleForDynamicHeapStart() const;

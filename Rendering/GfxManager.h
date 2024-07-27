@@ -1,10 +1,15 @@
 #pragma once
 
 #include <directx/d3dx12.h>
+#include "Rendering/Command/CommandContext.h"
+#include "Rendering/Command/CommandAllocatorPool.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl.h>
 #include <Windows.h>
+#include <memory>
+#include <queue>
+#include <vector>
 
 namespace dx12demo
 {
@@ -15,15 +20,16 @@ namespace dx12demo
         ~GfxManager();
 
         void Initialize(HWND window, int width, int height);
+        CommandContext* GetCommandContext();
+        void ExecuteAndRelease(CommandContext* context, bool waitForCompletion = false);
         void WaitForFence(UINT64 fence);
         void WaitForGpuIdle();
-        void ResizeSwapChain(int width, int height);
-        void SignalFenceAndPresent();
+        void ResizeBackBuffer(int width, int height);
+        void Present();
         void LogAdapters(DXGI_FORMAT format);
 
         IDXGIFactory4* GetFactory() const { return m_Factory.Get(); }
         ID3D12Device* GetDevice() const { return m_Device.Get(); }
-        ID3D12CommandQueue* GetCommandQueue() const { return m_CommandQueue.Get(); }
 
         UINT64 GetCompletedFenceValue() const { return m_Fence->GetCompletedValue(); }
         UINT64 GetCurrentFenceValue() const { return m_FenceCurrentValue; }
@@ -43,10 +49,11 @@ namespace dx12demo
     private:
         void InitDeviceAndFactory();
         void InitDebugInfoCallback();
-        void InitCommandQueueAndFence();
+        void InitCommandObjectsAndFence();
         void InitDescriptorHeaps();
         void InitSwapChain(HWND window, int width, int height);
 
+        void SignalNextFenceValue();
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);
         void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
 
@@ -56,6 +63,10 @@ namespace dx12demo
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue = nullptr;
 
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue = nullptr;
+        std::unique_ptr<CommandAllocatorPool> m_CommandAllocatorPool = nullptr;
+        std::vector<std::unique_ptr<CommandContext>> m_CommandContextRefs{};
+        std::queue<CommandContext*> m_CommandContextPool{};
+
         Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence = nullptr;
         UINT64 m_FenceCurrentValue = 0;
         HANDLE m_FenceEventHandle;

@@ -1,6 +1,12 @@
 #pragma once
 
 #include <directx/d3dx12.h>
+#include "Rendering/FrameResouce.h"
+#include "Rendering/Mesh.hpp"
+#include "Rendering/DxMathHelper.h"
+#include "Rendering/DescriptorHeap.h"
+#include "Rendering/Command/CommandContext.h"
+#include "Core/GameObject.h"
 #include <d3d12.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
@@ -8,11 +14,6 @@
 #include <memory>
 #include <tuple>
 #include <functional>
-#include "Rendering/FrameResouce.h"
-#include "Rendering/Mesh.hpp"
-#include "Rendering/DxMathHelper.h"
-#include "Rendering/DescriptorHeap.h"
-#include "Core/GameObject.h"
 
 namespace dx12demo
 {
@@ -23,7 +24,7 @@ namespace dx12demo
         ~RenderPipeline() = default;
 
         void Resize(int width, int height);
-        void Render(const std::vector<std::unique_ptr<GameObject>>& gameObjects, std::function<void(ID3D12GraphicsCommandList*)> action);
+        void Render(CommandContext* context, const std::vector<std::unique_ptr<GameObject>>& gameObjects);
 
         bool GetEnableMSAA() const { return m_EnableMSAA; }
         void SetEnableMSAA(bool value)
@@ -41,13 +42,11 @@ namespace dx12demo
 
     private:
         void CheckMSAAQuailty();
-        void CreateCommandObjects();
         void CreateFrameResources();
         void CreateDescriptorHeaps();
         void CreateRootSignature();
         void CreateShaderAndPSO();
 
-        void ExecuteCommandList();
         D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView();
         D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView();
 
@@ -56,9 +55,6 @@ namespace dx12demo
 
         bool m_EnableMSAA = false;
         UINT m_MSAAQuality;
-
-        Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 
         std::unique_ptr<DescriptorHeap> m_RtvHeap;
         std::unique_ptr<DescriptorHeap> m_DsvHeap;

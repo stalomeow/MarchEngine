@@ -15,7 +15,6 @@ namespace dx12demo
         : m_MeshCount(meshCount)
     {
         CheckMSAAQuailty();
-        CreateCommandObjects();
         CreateFrameResources();
         CreateDescriptorHeaps();
         CreateRootSignature();
@@ -35,18 +34,6 @@ namespace dx12demo
             &msQualityLevels, sizeof(msQualityLevels)));
 
         m_MSAAQuality = msQualityLevels.NumQualityLevels - 1;
-    }
-
-    void RenderPipeline::CreateCommandObjects()
-    {
-        auto device = GetGfxManager().GetDevice();
-        D3D12_COMMAND_LIST_TYPE cmdListType = GetGfxManager().GetCommandListType();
-
-        THROW_IF_FAILED(device->CreateCommandAllocator(cmdListType, IID_PPV_ARGS(&m_CommandAllocator)));
-        THROW_IF_FAILED(device->CreateCommandList(0, cmdListType, m_CommandAllocator.Get(),
-            nullptr, IID_PPV_ARGS(&m_CommandList)));
-
-        m_CommandList->Close();
     }
 
     void RenderPipeline::CreateFrameResources()
@@ -168,13 +155,6 @@ namespace dx12demo
         THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PSOWireframeMSAA)));
     }
 
-    void RenderPipeline::ExecuteCommandList()
-    {
-        THROW_IF_FAILED(m_CommandList->Close());
-        ID3D12CommandList* cmdsList = m_CommandList.Get();
-        GetGfxManager().GetCommandQueue()->ExecuteCommandLists(1, &cmdsList);
-    }
-
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView()
     {
         return m_RtvHeap->GetCpuHandleForFixedDescriptor(0);
@@ -246,25 +226,11 @@ namespace dx12demo
         m_ScissorRect = { 0, 0, width, height };
     }
 
-    void RenderPipeline::Render(const std::vector<std::unique_ptr<GameObject>>& gameObjects, std::function<void(ID3D12GraphicsCommandList*)> action)
+    void RenderPipeline::Render(CommandContext* context, const std::vector<std::unique_ptr<GameObject>>& gameObjects)
     {
         m_CurrentFrameResourceIndex = (m_CurrentFrameResourceIndex + 1) % m_FrameResources.size();
         FrameResource* frameRes = m_FrameResources[m_CurrentFrameResourceIndex].get();
         GetGfxManager().WaitForFence(frameRes->FenceValue);
-
-        // Free Temp res
-        //while (!m_TempResources.empty())
-        //{
-        //    auto& [_, fence] = m_TempResources.front();
-
-        //    if (m_Fence->GetCompletedValue() < fence)
-        //    {
-        //        break;
-        //    }
-
-        //    m_TempResources.pop();
-        //    OutputDebugStringA("Free Temp Res\n");
-        //}
 
         PerDrawConstants drawConsts = {};
 
@@ -301,43 +267,39 @@ namespace dx12demo
             frameRes->PerObjectConstBuffer->SetData(i, consts);
         }
 
-        // Reuse the memory associated with command recording.
-        // We can only reset when the associated command lists have finished execution on the GPU.
-        THROW_IF_FAILED(frameRes->CommandAllocator->Reset());
-
         // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
         // Reusing the command list reuses memory.
         if (m_EnableMSAA)
         {
             ID3D12PipelineState* pso = m_IsWireframe ? m_PSOWireframeMSAA.Get() : m_PSONormalMSAA.Get();
-            THROW_IF_FAILED(m_CommandList->Reset(frameRes->CommandAllocator.Get(), pso));
+            context->GetList()->SetPipelineState(pso);
         }
         else
         {
             ID3D12PipelineState* pso = m_IsWireframe ? m_PSOWireframe.Get() : m_PSONormal.Get();
-            THROW_IF_FAILED(m_CommandList->Reset(frameRes->CommandAllocator.Get(), pso));
+            context->GetList()->SetPipelineState(pso);
         }
 
         // Indicate a state transition on the resource usage.
         if (m_LastColorTargetState != D3D12_RESOURCE_STATE_RENDER_TARGET)
         {
-            m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
+            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
                 m_LastColorTargetState, D3D12_RESOURCE_STATE_RENDER_TARGET));
         }
 
         // Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-        m_CommandList->RSSetViewports(1, &m_Viewport);
-        m_CommandList->RSSetScissorRects(1, &m_ScissorRect);
+        context->GetList()->RSSetViewports(1, &m_Viewport);
+        context->GetList()->RSSetScissorRects(1, &m_ScissorRect);
 
         // Clear the back buffer and depth buffer.
-        m_CommandList->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
-        m_CommandList->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+        context->GetList()->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
+        context->GetList()->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
         // Specify the buffers we are going to render to.
-        m_CommandList->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
+        context->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
-        m_CommandList->SetGraphicsRootSignature(m_RootSignature.Get());
-        m_CommandList->SetGraphicsRootConstantBufferView(1, frameRes->PerDrawConstBuffer->GetGpuVirtualAddress());
+        context->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
+        context->GetList()->SetGraphicsRootConstantBufferView(1, frameRes->PerDrawConstBuffer->GetGpuVirtualAddress());
 
         std::vector<ComPtr<ID3D12Resource>> tempRes{};
 
@@ -350,10 +312,10 @@ namespace dx12demo
 
             D3D12_GPU_VIRTUAL_ADDRESS addr = frameRes->PerObjectConstBuffer->GetGpuVirtualAddress();
             addr = addr + frameRes->PerObjectConstBuffer->GetStride() * i;
-            m_CommandList->SetGraphicsRootConstantBufferView(0, addr);
+            context->GetList()->SetGraphicsRootConstantBufferView(0, addr);
 
             tempRes.clear();
-            gameObjects[i]->GetMesh()->Draw(GetGfxManager().GetDevice(), m_CommandList.Get(), tempRes);
+            gameObjects[i]->GetMesh()->Draw(GetGfxManager().GetDevice(), context->GetList(), tempRes);
 
             if (tempRes.size() > 0)
             {
@@ -372,17 +334,17 @@ namespace dx12demo
 
         if (m_EnableMSAA)
         {
-            m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
+            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
 
             if (m_LastResolvedColorTargetState != D3D12_RESOURCE_STATE_RESOLVE_DEST)
             {
-                m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+                context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                     m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_RESOLVE_DEST));
             }
 
-            m_CommandList->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, GetGfxManager().GetBackBufferFormat());
-            m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+            context->GetList()->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, GetGfxManager().GetBackBufferFormat());
+            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
             m_LastColorTargetState = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
@@ -390,26 +352,23 @@ namespace dx12demo
         }
         else
         {
-            m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
+            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
             if (m_LastResolvedColorTargetState != D3D12_RESOURCE_STATE_COPY_DEST)
             {
-                m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+                context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                     m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_COPY_DEST));
             }
 
-            m_CommandList->CopyResource(m_ResolvedColorTarget.Get(), m_ColorTarget.Get());
-            m_CommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+            context->GetList()->CopyResource(m_ResolvedColorTarget.Get(), m_ColorTarget.Get());
+            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                 D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
             m_LastColorTargetState = D3D12_RESOURCE_STATE_COPY_SOURCE;
             m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_GENERIC_READ;
         }
 
-        action(m_CommandList.Get());
-
-        ExecuteCommandList();
         frameRes->FenceValue = GetGfxManager().GetNextFenceValue();
     }
 }

@@ -32,11 +32,20 @@ namespace dx12demo
 #endif
     }
 
-    void DescriptorHeap::Append(D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
+    void DescriptorHeap::Append(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, UINT64 completedFenceValue)
     {
         if (m_DynamicBufCapacity == 0)
         {
             throw std::out_of_range("The capacity of dynamic descriptor heap is zero");
+        }
+
+        // 清理已经使用完成的空间
+        while (!m_DynamicBufUsed.empty() && m_DynamicBufUsed.front().first <= completedFenceValue)
+        {
+            m_DynamicBufEnd = m_DynamicBufUsed.front().second;
+            m_DynamicBufUsed.pop();
+
+            DEBUG_LOG_INFO("Clear dynamic descriptor heap, completed-fence=%d", completedFenceValue);
         }
 
         if ((m_DynamicBufNext + 1) % m_DynamicBufCapacity == m_DynamicBufEnd)
@@ -52,19 +61,10 @@ namespace dx12demo
         device->CopyDescriptorsSimple(1, handle, descriptor, m_Heap->GetDesc().Type);
     }
 
-    void DescriptorHeap::Clear(UINT64 completedFenceValue, UINT64 nextFenceValue)
+    void DescriptorHeap::Clear(UINT64 fenceValue)
     {
-        m_DynamicBufUsed.push(std::make_pair(nextFenceValue, m_DynamicBufNext));
+        m_DynamicBufUsed.push(std::make_pair(fenceValue, m_DynamicBufNext));
         m_DynamicBufBase = m_DynamicBufNext; // 更新起点
-
-        // 清理已经使用完成的空间
-        while (!m_DynamicBufUsed.empty() && m_DynamicBufUsed.front().first <= completedFenceValue)
-        {
-            m_DynamicBufEnd = m_DynamicBufUsed.front().second;
-            m_DynamicBufUsed.pop();
-
-            DEBUG_LOG_INFO("Clear dynamic descriptor heap, completed-fence=%d", completedFenceValue);
-        }
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandleForDynamicHeapStart() const
