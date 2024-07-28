@@ -23,18 +23,4 @@ namespace dx12demo
         DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
         DirectX::XMFLOAT4 Time; // elapsed time, delta time, unused, unused
     };
-
-    class FrameResource
-    {
-    public:
-        FrameResource(ID3D12Device* device, UINT64 fence, UINT objectCount, UINT drawCount);
-        FrameResource(const FrameResource& rhs) = delete;
-        FrameResource& operator=(const FrameResource& rhs) = delete;
-        ~FrameResource() = default;
-
-    public:
-        UINT64 FenceValue;
-        std::unique_ptr<ConstantBuffer<PerObjConstants>> PerObjectConstBuffer;
-        std::unique_ptr<ConstantBuffer<PerDrawConstants>> PerDrawConstBuffer;
-    };
 }

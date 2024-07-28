@@ -3,6 +3,7 @@
 #include <directx/d3dx12.h>
 #include "Rendering/Command/CommandContext.h"
 #include "Rendering/Command/CommandAllocatorPool.h"
+#include "Rendering/Resource/UploadHeapAllocator.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl.h>
@@ -25,6 +26,7 @@ namespace dx12demo
         void WaitForFence(UINT64 fence);
         void WaitForGpuIdle();
         void ResizeBackBuffer(int width, int height);
+        void WaitForFameLatency() const;
         void Present();
         void LogAdapters(DXGI_FORMAT format);
 
@@ -46,10 +48,16 @@ namespace dx12demo
         DXGI_FORMAT GetBackBufferFormat() const { return m_BackBufferFormat; }
         D3D12_COMMAND_LIST_TYPE GetCommandListType() const { return m_CommandListType; }
 
+        UploadHeapSpan AllocateUploadHeap(UINT size) const
+        {
+            return m_UploadHeapAllocator->Allocate(size, GetCompletedFenceValue());
+        }
+
     private:
         void InitDeviceAndFactory();
         void InitDebugInfoCallback();
         void InitCommandObjectsAndFence();
+        void InitUploadHeapAllocator();
         void InitDescriptorHeaps();
         void InitSwapChain(HWND window, int width, int height);
 
@@ -59,7 +67,7 @@ namespace dx12demo
 
     private:
         Microsoft::WRL::ComPtr<IDXGIFactory4> m_Factory = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Device> m_Device = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Device4> m_Device = nullptr;
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue = nullptr;
 
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue = nullptr;
@@ -71,13 +79,16 @@ namespace dx12demo
         UINT64 m_FenceCurrentValue = 0;
         HANDLE m_FenceEventHandle;
 
+        std::unique_ptr<UploadHeapAllocator> m_UploadHeapAllocator = nullptr;
+
         UINT m_RtvDescriptorSize;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap = nullptr;
 
-        static const int s_SwapChainBufferCount = 2;
-        Microsoft::WRL::ComPtr<IDXGISwapChain> m_SwapChain = nullptr;
+        static const int s_SwapChainBufferCount = 3; // TODO: why 2 will make msaa broken
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_SwapChainBuffers[s_SwapChainBufferCount];
         int m_CurrentBackBufferIndex = 0;
+        HANDLE m_FrameLatencyWaitEventHandle;
 
         const DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;

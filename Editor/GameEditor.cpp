@@ -30,12 +30,8 @@ namespace dx12demo
 
     void GameEditor::OnAppStart()
     {
-        m_GameObjects.push_back(std::make_unique<GameObject>());
-        m_GameObjects.push_back(std::make_unique<GameObject>());
-        m_GameObjects.push_back(std::make_unique<GameObject>());
-
         auto [width, height] = GetApp().GetClientWidthAndHeight();
-        m_RenderPipeline = std::make_unique<RenderPipeline>(width, height, m_GameObjects.size());
+        m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
 
         CreateDescriptorHeaps();
         InitImGui();
@@ -74,7 +70,7 @@ namespace dx12demo
         ImGui::GetStyle().FrameRounding = 2.0f;
 
         auto device = GetGfxManager().GetDevice();
-        ImGui_ImplDX12_Init(device, m_RenderPipeline->GetFrameResourceCount(),
+        ImGui_ImplDX12_Init(device, 3,//m_RenderPipeline->GetFrameResourceCount(),
             GetGfxManager().GetBackBufferFormat(), m_SrvHeap->GetHeapPointer(),
             m_SrvHeap->GetCpuHandleForFixedDescriptor(0),
             m_SrvHeap->GetGpuHandleForFixedDescriptor(0));
@@ -162,45 +158,52 @@ namespace dx12demo
 
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
-            GameObject* go = m_GameObjects[m_SelectedGameObjectIndex].get();
-
             ImGui::Begin("Inspector");
 
-            ImGui::Checkbox("##GameObjectActive", &go->IsActive);
-            ImGui::SameLine();
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
-            ImGui::InputText("##GameObjectName", &go->Name);
-            ImGui::PopItemWidth();
-            ImGui::SeparatorText("Components");
-
-            static bool hasTrans = true;
-
-            if (ImGui::CollapsingHeader("Transform", &hasTrans, ImGuiTreeNodeFlags_DefaultOpen))
+            if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < m_GameObjects.size())
             {
-                Transform* trans = go->GetTransform();
-                DrawVec3("Position", (float*)&trans->Position, 0.1f);
-                DrawVec3("Rotation", (float*)&trans->RotationEuler, 0.1f);
-                DrawVec3("Scale", (float*)&trans->Scale, 0.1f);
+                GameObject* go = m_GameObjects[m_SelectedGameObjectIndex].get();
 
-                auto euler = DirectX::XMLoadFloat3(&trans->RotationEuler);
-                auto quaternion = DirectX::XMQuaternionRotationRollPitchYawFromVector(euler);
-                DirectX::XMStoreFloat4(&trans->Rotation, quaternion);
+                ImGui::Checkbox("##GameObjectActive", &go->IsActive);
+                ImGui::SameLine();
+                ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+                ImGui::InputText("##GameObjectName", &go->Name);
+                ImGui::PopItemWidth();
+                ImGui::SeparatorText("Components");
+
+                static bool hasTrans = true;
+
+                if (ImGui::CollapsingHeader("Transform", &hasTrans, ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    Transform* trans = go->GetTransform();
+                    DrawVec3("Position", (float*)&trans->Position, 0.1f);
+                    DrawVec3("Rotation", (float*)&trans->RotationEuler, 0.1f);
+                    DrawVec3("Scale", (float*)&trans->Scale, 0.1f);
+
+                    auto euler = DirectX::XMLoadFloat3(&trans->RotationEuler);
+                    auto quaternion = DirectX::XMQuaternionRotationRollPitchYawFromVector(euler);
+                    DirectX::XMStoreFloat4(&trans->Rotation, quaternion);
+                }
+
+                ImGui::Spacing();
+
+                auto windowWidth = ImGui::GetWindowSize().x;
+                auto textWidth = ImGui::CalcTextSize("Add Component").x;
+                float padding = 80.0f;
+                ImGui::SetCursorPosX((windowWidth - textWidth - padding) * 0.5f);
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(padding * 0.5f, ImGui::GetStyle().FramePadding.y));
+
+                if (ImGui::Button("Add Component", ImVec2(0, 0)))
+                {
+                    hasTrans = true;
+                }
+
+                ImGui::PopStyleVar();
             }
-
-            ImGui::Spacing();
-
-            auto windowWidth = ImGui::GetWindowSize().x;
-            auto textWidth = ImGui::CalcTextSize("Add Component").x;
-            float padding = 80.0f;
-            ImGui::SetCursorPosX((windowWidth - textWidth - padding) * 0.5f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(padding * 0.5f, ImGui::GetStyle().FramePadding.y));
-
-            if (ImGui::Button("Add Component", ImVec2(0, 0)))
+            else
             {
-                hasTrans = true;
+                m_SelectedGameObjectIndex = -1;
             }
-
-            ImGui::PopStyleVar();
 
             ImGui::End();
         }
@@ -249,6 +252,18 @@ namespace dx12demo
         if (m_ShowHierarchyWindow)
         {
             ImGui::Begin("Hierarchy", &m_ShowHierarchyWindow);
+
+            if (ImGui::BeginPopupContextWindow())
+            {
+                if (ImGui::MenuItem("Create Cube"))
+                {
+                    m_GameObjects.push_back(std::make_unique<GameObject>());
+                }
+
+                ImGui::EndPopup();
+            }
+
+
 
             for (int i = 0; i < m_GameObjects.size(); i++)
             {
@@ -438,6 +453,7 @@ namespace dx12demo
 
     void GameEditor::OnAppTick()
     {
+        GetGfxManager().WaitForFameLatency();
         CalculateFrameStats();
 
         DrawImGui();

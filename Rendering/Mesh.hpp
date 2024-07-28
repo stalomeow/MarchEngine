@@ -1,12 +1,14 @@
 #pragma once
 
 #include <directx/d3dx12.h>
+#include "Rendering/DxException.h"
+#include "Rendering/Resource/UploadHeapAllocator.h"
+#include "Rendering/GfxManager.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
 #include <vector>
 #include <DirectXColors.h>
-#include "Rendering/DxException.h"
 
 namespace dx12demo
 {
@@ -29,7 +31,7 @@ namespace dx12demo
         virtual ~Mesh() = default;
 
         // subMeshIndex = -1 means draw all sub-meshes
-        virtual void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& tempRes, int subMeshIndex = -1) = 0;
+        virtual void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int subMeshIndex = -1) = 0;
     };
 
     template<typename TVertex, typename TIndex>
@@ -46,7 +48,7 @@ namespace dx12demo
         void ClearSubMeshes();
         void AddSubMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices);
 
-        void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& tempRes, int subMeshIndex = -1) override;
+        void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int subMeshIndex = -1) override;
 
         static D3D12_INPUT_LAYOUT_DESC VertexInputLayout()
         {
@@ -86,7 +88,6 @@ namespace dx12demo
             ID3D12Device* device,
             ID3D12GraphicsCommandList* cmdList,
             ComPtr<ID3D12Resource>& dest,
-            ComPtr<ID3D12Resource>& uploader,
             const void* pData,
             UINT64 size)
         {
@@ -98,20 +99,17 @@ namespace dx12demo
                 nullptr,
                 IID_PPV_ARGS(dest.ReleaseAndGetAddressOf())));
 
-            THROW_IF_FAILED(device->CreateCommittedResource(
-                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-                D3D12_HEAP_FLAG_NONE,
-                &CD3DX12_RESOURCE_DESC::Buffer(size),
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                nullptr,
-                IID_PPV_ARGS(uploader.ReleaseAndGetAddressOf())));
-
             D3D12_SUBRESOURCE_DATA subResData;
             subResData.pData = pData;
             subResData.RowPitch = size;
             subResData.SlicePitch = size;
 
-            UpdateSubresources<1>(cmdList, dest.Get(), uploader.Get(), 0, 0, 1, &subResData);
+            // Vertex Buffer 和 Index Buffer 都放在默认堆，优化性能
+            // 上传数据时，借助上传堆中转
+            UploadHeapSpan span = GetGfxManager().AllocateUploadHeap(size);
+            UpdateSubresources<1>(cmdList, dest.Get(), span.GetResource(), span.GetOffsetInResource(), 0, 1, &subResData);
+            span.Free(GetGfxManager().GetNextFenceValue());
+
             cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest.Get(),
                 D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
         }
@@ -145,26 +143,17 @@ namespace dx12demo
     }
 
     template<typename TVertex, typename TIndex>
-    void MeshImpl<TVertex, TIndex>::Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& tempRes, int subMeshIndex)
+    void MeshImpl<TVertex, TIndex>::Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int subMeshIndex)
     {
         if (m_IsDirty)
         {
             m_IsDirty = false;
 
-            // Vertex Buffer 和 Index Buffer 都放在默认堆，优化性能
-            // 上传数据时，借助上传堆中转
-
-            Microsoft::WRL::ComPtr<ID3D12Resource> vertexUploader = nullptr;
-            Microsoft::WRL::ComPtr<ID3D12Resource> indexUploader = nullptr;
-
             UINT64 vertexBufferSize = sizeof(TVertex) * m_Vertices.size();
-            RecreateBufferAndUpload(device, cmdList, m_VertexBuffer, vertexUploader, m_Vertices.data(), vertexBufferSize);
+            RecreateBufferAndUpload(device, cmdList, m_VertexBuffer, m_Vertices.data(), vertexBufferSize);
 
             UINT64 indexBufferSize = sizeof(TIndex) * m_Indices.size();
-            RecreateBufferAndUpload(device, cmdList, m_IndexBuffer, indexUploader, m_Indices.data(), indexBufferSize);
-
-            tempRes.push_back(vertexUploader);
-            tempRes.push_back(indexUploader);
+            RecreateBufferAndUpload(device, cmdList, m_IndexBuffer, m_Indices.data(), indexBufferSize);
         }
 
         D3D12_VERTEX_BUFFER_VIEW vbv;

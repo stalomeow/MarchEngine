@@ -23,6 +23,31 @@ namespace dx12demo
         UINT m_Count;
     };
 
+    class UploadBuffer : public GpuBuffer
+    {
+    public:
+        UploadBuffer(const std::wstring& name, UINT size)
+            : GpuBuffer(name, size, 1, D3D12_HEAP_TYPE_UPLOAD)
+        {
+            THROW_IF_FAILED(m_Resource->Map(0, nullptr, reinterpret_cast<void**>(&m_MappedData)));
+        }
+
+        ~UploadBuffer()
+        {
+            m_Resource->Unmap(0, nullptr);
+            m_MappedData = nullptr;
+        }
+
+        BYTE* GetPointer() const { return m_MappedData; }
+
+        UINT GetStride() const = delete;
+
+        UINT GetCount() const = delete;
+
+    protected:
+        BYTE* m_MappedData;
+    };
+
     template<typename T>
     class ConstantBuffer : public GpuBuffer
     {
@@ -45,13 +70,13 @@ namespace dx12demo
             memcpy(&m_MappedData[index * m_Stride], &data, sizeof(T));
         }
 
-    protected:
         static UINT CalculateStride()
         {
             // 必须是 256 的整数倍，先加 255，再去掉小于 256 的部分
             return (sizeof(T) + 255) & ~255;
         }
 
+    protected:
         BYTE* m_MappedData;
     };
 

@@ -11,11 +11,9 @@ using Microsoft::WRL::ComPtr;
 
 namespace dx12demo
 {
-    RenderPipeline::RenderPipeline(int width, int height, int meshCount)
-        : m_MeshCount(meshCount)
+    RenderPipeline::RenderPipeline(int width, int height)
     {
         CheckMSAAQuailty();
-        CreateFrameResources();
         CreateDescriptorHeaps();
         CreateRootSignature();
         CreateShaderAndPSO();
@@ -34,17 +32,6 @@ namespace dx12demo
             &msQualityLevels, sizeof(msQualityLevels)));
 
         m_MSAAQuality = msQualityLevels.NumQualityLevels - 1;
-    }
-
-    void RenderPipeline::CreateFrameResources()
-    {
-        auto device = GetGfxManager().GetDevice();
-        auto currentFence = GetGfxManager().GetCurrentFenceValue();
-
-        for (int i = 0; i < 3; i++)
-        {
-            m_FrameResources.push_back(std::make_unique<FrameResource>(device, currentFence, m_MeshCount, 1));
-        }
     }
 
     void RenderPipeline::CreateDescriptorHeaps()
@@ -228,9 +215,10 @@ namespace dx12demo
 
     void RenderPipeline::Render(CommandContext* context, const std::vector<std::unique_ptr<GameObject>>& gameObjects)
     {
-        m_CurrentFrameResourceIndex = (m_CurrentFrameResourceIndex + 1) % m_FrameResources.size();
-        FrameResource* frameRes = m_FrameResources[m_CurrentFrameResourceIndex].get();
-        GetGfxManager().WaitForFence(frameRes->FenceValue);
+        if (gameObjects.empty())
+        {
+            return;
+        }
 
         PerDrawConstants drawConsts = {};
 
@@ -258,13 +246,17 @@ namespace dx12demo
         DirectX::XMStoreFloat4x4(&drawConsts.ViewProjectionMatrix, viewProj);
         DirectX::XMStoreFloat4x4(&drawConsts.InvViewProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
 
-        frameRes->PerDrawConstBuffer->SetData(0, drawConsts);
+        UploadHeapSpan cbPerDraw = GetGfxManager().AllocateUploadHeap(ConstantBuffer<PerDrawConstants>::CalculateStride());
+        cbPerDraw.GetPointer<PerDrawConstants>()[0] = drawConsts;
+
+        UploadHeapSpan cbPerObj = GetGfxManager().AllocateUploadHeap(
+            ConstantBuffer<PerObjConstants>::CalculateStride() * gameObjects.size());
 
         for (int i = 0; i < gameObjects.size(); i++)
         {
             PerObjConstants consts = {};
             consts.WorldMatrix = gameObjects[i]->GetTransform()->GetWorldMatrix();
-            frameRes->PerObjectConstBuffer->SetData(i, consts);
+            memcpy(&cbPerObj.GetPointer()[i * ConstantBuffer<PerObjConstants>::CalculateStride()], &consts, sizeof(consts));
         }
 
         // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
@@ -299,9 +291,7 @@ namespace dx12demo
         context->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
         context->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
-        context->GetList()->SetGraphicsRootConstantBufferView(1, frameRes->PerDrawConstBuffer->GetGpuVirtualAddress());
-
-        std::vector<ComPtr<ID3D12Resource>> tempRes{};
+        context->GetList()->SetGraphicsRootConstantBufferView(1, cbPerDraw.GetGpuVirtualAddress());
 
         for (int i = 0; i < gameObjects.size(); i++)
         {
@@ -310,26 +300,11 @@ namespace dx12demo
                 continue;
             }
 
-            D3D12_GPU_VIRTUAL_ADDRESS addr = frameRes->PerObjectConstBuffer->GetGpuVirtualAddress();
-            addr = addr + frameRes->PerObjectConstBuffer->GetStride() * i;
+            D3D12_GPU_VIRTUAL_ADDRESS addr = cbPerObj.GetGpuVirtualAddress();
+            addr = addr + ConstantBuffer<PerObjConstants>::CalculateStride() * i;
             context->GetList()->SetGraphicsRootConstantBufferView(0, addr);
 
-            tempRes.clear();
-            gameObjects[i]->GetMesh()->Draw(GetGfxManager().GetDevice(), context->GetList(), tempRes);
-
-            if (tempRes.size() > 0)
-            {
-                /*ExecuteCommandList();
-                THROW_IF_FAILED(m_CommandList->Reset(frameRes->CommandAllocator.Get(), pso));
-
-                m_CurrentFence++;
-                THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_CurrentFence));*/
-
-                for (auto& res : tempRes)
-                {
-                    m_TempResources.push_back(res);
-                }
-            }
+            gameObjects[i]->GetMesh()->Draw(GetGfxManager().GetDevice(), context->GetList());
         }
 
         if (m_EnableMSAA)
@@ -369,6 +344,7 @@ namespace dx12demo
             m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_GENERIC_READ;
         }
 
-        frameRes->FenceValue = GetGfxManager().GetNextFenceValue();
+        cbPerDraw.Free(GetGfxManager().GetNextFenceValue());
+        cbPerObj.Free(GetGfxManager().GetNextFenceValue());
     }
 }

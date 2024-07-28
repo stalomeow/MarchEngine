@@ -20,7 +20,7 @@ namespace dx12demo
     class RenderPipeline
     {
     public:
-        RenderPipeline(int width, int height, int meshCount);
+        RenderPipeline(int width, int height);
         ~RenderPipeline() = default;
 
         void Resize(int width, int height);
@@ -38,11 +38,8 @@ namespace dx12demo
 
         ID3D12Resource* GetResolvedColorTarget() const { return m_ResolvedColorTarget.Get(); }
 
-        int GetFrameResourceCount() const { return m_FrameResources.size(); }
-
     private:
         void CheckMSAAQuailty();
-        void CreateFrameResources();
         void CreateDescriptorHeaps();
         void CreateRootSignature();
         void CreateShaderAndPSO();
@@ -51,8 +48,6 @@ namespace dx12demo
         D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView();
 
     private:
-        int m_MeshCount;
-
         bool m_EnableMSAA = false;
         UINT m_MSAAQuality;
 
@@ -79,11 +74,6 @@ namespace dx12demo
         D3D12_RECT m_ScissorRect;
 
         bool m_IsWireframe = false;
-
-        std::vector<std::unique_ptr<FrameResource>> m_FrameResources{};
-        int m_CurrentFrameResourceIndex = 0;
-
-        std::vector<ComPtr<ID3D12Resource>> m_TempResources{};
 
         float m_Theta = 1.5f * DirectX::XM_PI;
         float m_Phi = DirectX::XM_PIDIV4;

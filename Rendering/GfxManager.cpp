@@ -18,6 +18,7 @@ namespace dx12demo
             // 等待 GPU 完成所有命令，防止崩溃
             WaitForGpuIdle();
             CloseHandle(m_FenceEventHandle);
+            CloseHandle(m_FrameLatencyWaitEventHandle);
         }
     }
 
@@ -33,6 +34,7 @@ namespace dx12demo
         InitDeviceAndFactory();
         InitDebugInfoCallback();
         InitCommandObjectsAndFence();
+        InitUploadHeapAllocator();
         InitDescriptorHeaps();
         InitSwapChain(window, width, height);
 
@@ -107,6 +109,11 @@ namespace dx12demo
         m_FenceEventHandle = CreateEventExW(NULL, NULL, NULL, EVENT_ALL_ACCESS);
     }
 
+    void GfxManager::InitUploadHeapAllocator()
+    {
+        m_UploadHeapAllocator = std::make_unique<UploadHeapAllocator>(4096);
+    }
+
     void GfxManager::InitDescriptorHeaps()
     {
         m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -128,24 +135,32 @@ namespace dx12demo
         // Instead, you create your own MSAA render target and explicitly resolve
         // to the DXGI back-buffer for presentation as shown here.
 
-        DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-        swapChainDesc.BufferDesc.Width = width;
-        swapChainDesc.BufferDesc.Height = height;
-        swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
-        swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-        swapChainDesc.BufferDesc.Format = m_BackBufferFormat;
-        swapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-        swapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+        swapChainDesc.Width = width;
+        swapChainDesc.Height = height;
+        swapChainDesc.Format = m_BackBufferFormat;
+        swapChainDesc.Stereo = FALSE;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
         swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swapChainDesc.BufferCount = s_SwapChainBufferCount;
-        swapChainDesc.OutputWindow = window;
-        swapChainDesc.Windowed = true;
+        swapChainDesc.Scaling = DXGI_SCALING_NONE;
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+        swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+        swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-        THROW_IF_FAILED(m_Factory->CreateSwapChain(m_CommandQueue.Get(), &swapChainDesc, &m_SwapChain));
+        // Starting with Direct3D 11.1, we recommend not to use CreateSwapChain anymore to create a swap chain.
+        // Instead, use CreateSwapChainForHwnd, CreateSwapChainForCoreWindow,
+        // or CreateSwapChainForComposition depending on how you want to create the swap chain.
+        // THROW_IF_FAILED(m_Factory->CreateSwapChain(m_CommandQueue.Get(), &swapChainDesc, &m_SwapChain));
+        THROW_IF_FAILED(m_Factory->CreateSwapChainForHwnd(m_CommandQueue.Get(),
+            window, &swapChainDesc, nullptr, nullptr, &m_SwapChain));
+
+        ComPtr<IDXGISwapChain2> s;
+        THROW_IF_FAILED(m_SwapChain.As(&s));
+        THROW_IF_FAILED(s->SetMaximumFrameLatency(3));
+        m_FrameLatencyWaitEventHandle = s->GetFrameLatencyWaitableObject();
+
         ResizeBackBuffer(width, height);
     }
 
@@ -216,7 +231,7 @@ namespace dx12demo
         }
 
         m_SwapChain->ResizeBuffers(s_SwapChainBufferCount, width, height, m_BackBufferFormat,
-            DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+            DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
         m_CurrentBackBufferIndex = 0;
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
@@ -227,6 +242,11 @@ namespace dx12demo
             m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, rtvHeapHandle);
             rtvHeapHandle.Offset(1, m_RtvDescriptorSize);
         }
+    }
+
+    void GfxManager::WaitForFameLatency() const
+    {
+        WaitForSingleObjectEx(m_FrameLatencyWaitEventHandle, INFINITE, FALSE);
     }
 
     void GfxManager::Present()
