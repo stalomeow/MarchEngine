@@ -1,22 +1,20 @@
 #include "Rendering/Command/CommandAllocatorPool.h"
+#include "Rendering/GfxManager.h"
 #include "Rendering/DxException.h"
+#include "Rendering/GfxManager.h"
 
 using namespace Microsoft::WRL;
 
 namespace dx12demo
 {
-    CommandAllocatorPool::CommandAllocatorPool(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type)
-        : m_Device(device), m_CmdListType(type), m_AllocatorRefs{}, m_AllocatorPool{}
+    ID3D12CommandAllocator* CommandAllocatorPool::Get(D3D12_COMMAND_LIST_TYPE type)
     {
+        std::queue<std::pair<UINT64, ID3D12CommandAllocator*>>& pool = m_Pools[type];
 
-    }
-
-    ID3D12CommandAllocator* CommandAllocatorPool::Get(UINT64 completedFenceValue)
-    {
-        if (!m_AllocatorPool.empty() && m_AllocatorPool.front().first <= completedFenceValue)
+        if (!pool.empty() && pool.front().first <= GetGfxManager().GetCompletedFenceValue())
         {
-            ID3D12CommandAllocator* allocator = m_AllocatorPool.front().second;
-            m_AllocatorPool.pop();
+            ID3D12CommandAllocator* allocator = pool.front().second;
+            pool.pop();
 
             // Reuse the memory associated with command recording.
             // We can only reset when the associated command lists have finished execution on the GPU.
@@ -24,14 +22,15 @@ namespace dx12demo
             return allocator;
         }
 
+        auto device = GetGfxManager().GetDevice();
         ComPtr<ID3D12CommandAllocator> result = nullptr;
-        THROW_IF_FAILED(m_Device->CreateCommandAllocator(m_CmdListType, IID_PPV_ARGS(result.GetAddressOf())));
-        m_AllocatorRefs.push_back(result);
+        THROW_IF_FAILED(device->CreateCommandAllocator(type, IID_PPV_ARGS(result.GetAddressOf())));
+        m_Refs.push_back(result);
         return result.Get();
     }
 
-    void CommandAllocatorPool::Release(ID3D12CommandAllocator* allocator, UINT64 fenceValue)
+    void CommandAllocatorPool::Release(ID3D12CommandAllocator* allocator, D3D12_COMMAND_LIST_TYPE type, UINT64 fenceValue)
     {
-        m_AllocatorPool.push(std::make_pair(fenceValue, allocator));
+        m_Pools[type].emplace(fenceValue, allocator);
     }
 }

@@ -34,7 +34,6 @@ namespace dx12demo
         InitDeviceAndFactory();
         InitDebugInfoCallback();
         InitCommandObjectsAndFence();
-        InitUploadHeapAllocator();
         InitDescriptorHeaps();
         InitSwapChain(window, width, height);
 
@@ -103,15 +102,8 @@ namespace dx12demo
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
         THROW_IF_FAILED(m_Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_CommandQueue)));
 
-        m_CommandAllocatorPool = std::make_unique<CommandAllocatorPool>(m_Device, m_CommandListType);
-
         THROW_IF_FAILED(m_Device->CreateFence(m_FenceCurrentValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
         m_FenceEventHandle = CreateEventExW(NULL, NULL, NULL, EVENT_ALL_ACCESS);
-    }
-
-    void GfxManager::InitUploadHeapAllocator()
-    {
-        m_UploadHeapAllocator = std::make_unique<UploadHeapAllocator>(4096);
     }
 
     void GfxManager::InitDescriptorHeaps()
@@ -164,45 +156,11 @@ namespace dx12demo
         ResizeBackBuffer(width, height);
     }
 
-    void GfxManager::SignalNextFenceValue()
+    UINT64 GfxManager::SignalNextFenceValue()
     {
         m_FenceCurrentValue++;
         THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_FenceCurrentValue));
-    }
-
-    CommandContext* GfxManager::GetCommandContext()
-    {
-        ID3D12CommandAllocator* allocator = m_CommandAllocatorPool->Get(GetCompletedFenceValue());
-
-        if (!m_CommandContextPool.empty())
-        {
-            CommandContext* context = m_CommandContextPool.front();
-            m_CommandContextPool.pop();
-
-            context->Reset(allocator);
-            return context;
-        }
-
-        auto pCtx = std::make_unique<CommandContext>(m_CommandListType);
-        pCtx->Initialize(m_Device.Get(), allocator);
-        m_CommandContextRefs.push_back(std::move(pCtx));
-        return m_CommandContextRefs.back().get();
-    }
-
-    void GfxManager::ExecuteAndRelease(CommandContext* context, bool waitForCompletion)
-    {
-        ID3D12CommandAllocator* allocator = context->Close();
-        ID3D12CommandList* list = context->GetList();
-        m_CommandQueue->ExecuteCommandLists(1, &list);
-        m_CommandContextPool.push(context);
-
-        SignalNextFenceValue();
-        m_CommandAllocatorPool->Release(allocator, GetCurrentFenceValue());
-
-        if (waitForCompletion)
-        {
-            WaitForFence(GetCurrentFenceValue());
-        }
+        return m_FenceCurrentValue;
     }
 
     void GfxManager::WaitForFence(UINT64 fenceValue)

@@ -16,18 +16,12 @@ int WINAPI wWinMain(
 #endif
 
     WinApplication& app = GetApp();
-    GfxManager& gfxManager = GetGfxManager();
 
     if (!app.Initialize(hInstance, nCmdShow))
     {
         return 0;
     }
 
-    auto [width, height] = app.GetClientWidthAndHeight();
-    gfxManager.Initialize(app.GetHWND(), width, height);
-
     GameEditor editor{};
-    app.AddEventListener(&editor);
-
-    return app.Run();
+    return app.RunEngine(&editor);
 }

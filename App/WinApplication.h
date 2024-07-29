@@ -1,12 +1,10 @@
 #pragma once
 
-#include "App/IApplicationEventListener.h"
+#include "Core/IEngine.h"
 #include "Core/GameTimer.h"
 #include <Windows.h>
 #include <string>
 #include <tuple>
-#include <vector>
-#include <functional>
 
 namespace dx12demo
 {
@@ -18,19 +16,8 @@ namespace dx12demo
 
     public:
         bool Initialize(HINSTANCE hInstance, int nCmdShow, int clientWidth = 800, int clientHeight = 600);
-        int Run();
+        int RunEngine(IEngine* engine);
         void Quit(int exitCode = 0);
-
-        void AddEventListener(IApplicationEventListener* const listener)
-        {
-            m_EventListeners.push_back(listener);
-        }
-
-        void RemoveEventListener(IApplicationEventListener* const listener)
-        {
-            auto begin = std::remove(m_EventListeners.begin(), m_EventListeners.end(), listener);
-            m_EventListeners.erase(begin, m_EventListeners.end());
-        }
 
         float GetDeltaTime() const { return m_Timer.GetDeltaTime(); }
 
@@ -68,12 +55,11 @@ namespace dx12demo
 
     private:
         bool InitWindow(int nCmdShow, int clientWidth, int clientHeight);
-        void InvokeEvent(std::function<void(IApplicationEventListener* const)> invoke);
         LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
         static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     private:
-        std::vector<IApplicationEventListener*> m_EventListeners{};
+        IEngine* m_Engine = nullptr;
         GameTimer m_Timer{};
         HINSTANCE m_InstanceHandle = nullptr;
         HWND m_WindowHandle = nullptr;

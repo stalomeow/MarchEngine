@@ -69,13 +69,15 @@ namespace dx12demo
         return true;
     }
 
-    int WinApplication::Run()
+    int WinApplication::RunEngine(IEngine* engine)
     {
+        m_Engine = engine;
+
         try
         {
             MSG msg = { 0 };
             m_Timer.Restart();
-            InvokeEvent([](auto listener) { listener->OnAppStart(); });
+            m_Engine->OnStart();
 
             while (msg.message != WM_QUIT)
             {
@@ -100,23 +102,23 @@ namespace dx12demo
 
                 if (m_Timer.Tick())
                 {
-                    InvokeEvent([](auto listener) { listener->OnAppTick(); });
+                    m_Engine->OnTick();
                 }
             }
 
-            InvokeEvent([](auto listener) { listener->OnAppQuit(); });
+            m_Engine->OnQuit();
             return (int)msg.wParam;
         }
         catch (const std::exception& e)
         {
             ShowErrorMessageBoxA(e.what());
-            InvokeEvent([](auto listener) { listener->OnAppQuit(); });
+            m_Engine->OnQuit();
             return 0;
         }
         catch (const DxException& e)
         {
             ShowErrorMessageBoxW(e.ToString());
-            InvokeEvent([](auto listener) { listener->OnAppQuit(); });
+            m_Engine->OnQuit();
             return 0;
         }
     }
@@ -126,20 +128,12 @@ namespace dx12demo
         PostQuitMessage(exitCode);
     }
 
-    void WinApplication::InvokeEvent(std::function<void(IApplicationEventListener* const)> invoke)
-    {
-        for (IApplicationEventListener* const listener : m_EventListeners)
-        {
-            invoke(listener);
-        }
-    }
-
     LRESULT WinApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        for (IApplicationEventListener* const listener : m_EventListeners)
+        if (m_Engine != nullptr)
         {
             LRESULT result = 0;
-            if (listener->OnAppMessage(msg, wParam, lParam, result))
+            if (m_Engine->OnMessage(msg, wParam, lParam, result))
             {
                 return result;
             }
@@ -152,12 +146,12 @@ namespace dx12demo
             if (LOWORD(wParam) == WA_INACTIVE)
             {
                 m_Timer.Stop();
-                InvokeEvent([](auto listener) { listener->OnAppPaused(); });
+                if (m_Engine != nullptr) m_Engine->OnPaused();
             }
             else
             {
                 m_Timer.Start();
-                InvokeEvent([](auto listener) { listener->OnAppResumed(); });
+                if (m_Engine != nullptr) m_Engine->OnResumed();
             }
             return 0;
         }
@@ -173,13 +167,13 @@ namespace dx12demo
                 prcNewWindow->bottom - prcNewWindow->top,
                 SWP_NOZORDER | SWP_NOACTIVATE);
 
-            InvokeEvent([](auto listener) { listener->OnAppDisplayScaleChanged(); });
+            if (m_Engine != nullptr) m_Engine->OnDisplayScaleChanged();
             return 0;
         }
 
         case WM_PAINT:
         {
-            InvokeEvent([](auto listener) { listener->OnAppPaint(); });
+            if (m_Engine != nullptr) m_Engine->OnPaint();
             ValidateRect(GetHWND(), nullptr);
             return 0;
         }
@@ -188,7 +182,7 @@ namespace dx12demo
         {
             if (wParam != SIZE_MINIMIZED)
             {
-                InvokeEvent([](auto listener) { listener->OnAppResized(); });
+                if (m_Engine != nullptr) m_Engine->OnResized();
             }
             return 0;
         }
@@ -209,8 +203,7 @@ namespace dx12demo
         case WM_MBUTTONDOWN:
         case WM_RBUTTONDOWN:
         {
-            InvokeEvent([wParam, lParam](auto listener) {
-                listener->OnAppMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); });
+            if (m_Engine != nullptr) m_Engine->OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
         }
 
@@ -218,27 +211,25 @@ namespace dx12demo
         case WM_MBUTTONUP:
         case WM_RBUTTONUP:
         {
-            InvokeEvent([wParam, lParam](auto listener) {
-                listener->OnAppMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); });
+            if (m_Engine != nullptr) m_Engine->OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
         }
 
         case WM_MOUSEMOVE:
         {
-            InvokeEvent([wParam, lParam](auto listener) {
-                listener->OnAppMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); });
+            if (m_Engine != nullptr) m_Engine->OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
         }
 
         case WM_KEYDOWN:
         {
-            InvokeEvent([wParam](auto listener) {listener->OnAppKeyDown(wParam); });
+            if (m_Engine != nullptr) m_Engine->OnKeyDown(wParam);
             return 0;
         }
 
         case WM_KEYUP:
         {
-            InvokeEvent([wParam](auto listener) {listener->OnAppKeyUp(wParam); });
+            if (m_Engine != nullptr) m_Engine->OnKeyUp(wParam);
             return 0;
         }
 

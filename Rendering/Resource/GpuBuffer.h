@@ -1,9 +1,10 @@
 #pragma once
 
 #include <directx/d3dx12.h>
-#include <string>
 #include "Rendering/Resource/GpuResource.h"
 #include "Rendering/DxException.h"
+#include "Core/MathHelper.h"
+#include <string>
 
 namespace dx12demo
 {
@@ -48,12 +49,14 @@ namespace dx12demo
         BYTE* m_MappedData;
     };
 
+    const UINT ConstantBufferAlignment = 256;
+
     template<typename T>
     class ConstantBuffer : public GpuBuffer
     {
     public:
         ConstantBuffer(const std::wstring& name, UINT count)
-            : GpuBuffer(name, CalculateStride(), count, D3D12_HEAP_TYPE_UPLOAD)
+            : GpuBuffer(name, MathHelper::AlignUp(sizeof(T), ConstantBufferAlignment), count, D3D12_HEAP_TYPE_UPLOAD)
         {
             CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
             THROW_IF_FAILED(m_Resource->Map(0, &readRange, reinterpret_cast<void**>(&m_MappedData)));

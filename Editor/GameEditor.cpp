@@ -2,7 +2,7 @@
 #include "App/WinApplication.h"
 #include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
-#include "Rendering/Command/CommandContext.h"
+#include "Rendering/Command/CommandBuffer.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
@@ -18,7 +18,7 @@ namespace dx12demo
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    bool GameEditor::OnAppMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult)
+    bool GameEditor::OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult)
     {
         if (ImGui_ImplWin32_WndProcHandler(GetApp().GetHWND(), msg, wParam, lParam))
         {
@@ -28,9 +28,10 @@ namespace dx12demo
         return false;
     }
 
-    void GameEditor::OnAppStart()
+    void GameEditor::OnStart()
     {
         auto [width, height] = GetApp().GetClientWidthAndHeight();
+        GetGfxManager().Initialize(GetApp().GetHWND(), width, height);
         m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
 
         CreateDescriptorHeaps();
@@ -76,7 +77,7 @@ namespace dx12demo
             m_SrvHeap->GetGpuHandleForFixedDescriptor(0));
     }
 
-    void GameEditor::OnAppQuit()
+    void GameEditor::OnQuit()
     {
         GetGfxManager().WaitForGpuIdle();
         ImGui_ImplDX12_Shutdown();
@@ -258,12 +259,12 @@ namespace dx12demo
                 if (ImGui::MenuItem("Create Cube"))
                 {
                     m_GameObjects.push_back(std::make_unique<GameObject>());
+                    m_GameObjects.back()->Name = "Cube";
+                    m_SelectedGameObjectIndex = m_GameObjects.size() - 1;
                 }
 
                 ImGui::EndPopup();
             }
-
-
 
             for (int i = 0; i < m_GameObjects.size(); i++)
             {
@@ -451,35 +452,35 @@ namespace dx12demo
         ImGui::End();
     }
 
-    void GameEditor::OnAppTick()
+    void GameEditor::OnTick()
     {
         GetGfxManager().WaitForFameLatency();
         CalculateFrameStats();
 
         DrawImGui();
 
-        CommandContext* context = GetGfxManager().GetCommandContext();
+        CommandBuffer* cmd = CommandBuffer::Get();
 
-        m_RenderPipeline->Render(context, m_GameObjects);
+        m_RenderPipeline->Render(cmd, m_GameObjects);
 
         // Render Dear ImGui graphics
-        context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
+        cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-        context->GetList()->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
+        cmd->GetList()->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
 
         const float clear_color_with_alpha[4] = { m_ImGUIClearColor.x * m_ImGUIClearColor.w, m_ImGUIClearColor.y * m_ImGUIClearColor.w, m_ImGUIClearColor.z * m_ImGUIClearColor.w, m_ImGUIClearColor.w };
         ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap->GetHeapPointer() };
-        context->GetList()->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context->GetList());
+        cmd->GetList()->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd->GetList());
 
-        context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
+        cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
-        GetGfxManager().ExecuteAndRelease(context);
+        cmd->ExecuteAndRelease();
         GetGfxManager().Present();
     }
 
-    void GameEditor::OnAppResized()
+    void GameEditor::OnResized()
     {
         auto [width, height] = GetApp().GetClientWidthAndHeight();
         GetGfxManager().ResizeBackBuffer(width, height);
@@ -494,7 +495,7 @@ namespace dx12demo
         device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 
-    void GameEditor::OnAppDisplayScaleChanged()
+    void GameEditor::OnDisplayScaleChanged()
     {
         DEBUG_LOG_INFO("DPI Changed: %f", GetApp().GetDisplayScale());
 
@@ -508,9 +509,9 @@ namespace dx12demo
         ImGui_ImplDX12_InvalidateDeviceObjects();
     }
 
-    void GameEditor::OnAppPaint()
+    void GameEditor::OnPaint()
     {
-        OnAppTick();
+        OnTick();
     }
 
     void GameEditor::CalculateFrameStats()

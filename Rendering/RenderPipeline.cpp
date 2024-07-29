@@ -213,7 +213,7 @@ namespace dx12demo
         m_ScissorRect = { 0, 0, width, height };
     }
 
-    void RenderPipeline::Render(CommandContext* context, const std::vector<std::unique_ptr<GameObject>>& gameObjects)
+    void RenderPipeline::Render(CommandBuffer* cmd, const std::vector<std::unique_ptr<GameObject>>& gameObjects)
     {
         if (gameObjects.empty())
         {
@@ -246,17 +246,16 @@ namespace dx12demo
         DirectX::XMStoreFloat4x4(&drawConsts.ViewProjectionMatrix, viewProj);
         DirectX::XMStoreFloat4x4(&drawConsts.InvViewProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
 
-        UploadHeapSpan cbPerDraw = GetGfxManager().AllocateUploadHeap(ConstantBuffer<PerDrawConstants>::CalculateStride());
-        cbPerDraw.GetPointer<PerDrawConstants>()[0] = drawConsts;
+        auto cbPerDraw = cmd->AllocateTempUploadHeap<PerDrawConstants>(1, ConstantBufferAlignment);
+        cbPerDraw.SetData(0, drawConsts);
 
-        UploadHeapSpan cbPerObj = GetGfxManager().AllocateUploadHeap(
-            ConstantBuffer<PerObjConstants>::CalculateStride() * gameObjects.size());
+        auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(gameObjects.size(), ConstantBufferAlignment);
 
         for (int i = 0; i < gameObjects.size(); i++)
         {
             PerObjConstants consts = {};
             consts.WorldMatrix = gameObjects[i]->GetTransform()->GetWorldMatrix();
-            memcpy(&cbPerObj.GetPointer()[i * ConstantBuffer<PerObjConstants>::CalculateStride()], &consts, sizeof(consts));
+            cbPerObj.SetData(i, consts);
         }
 
         // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
@@ -264,34 +263,34 @@ namespace dx12demo
         if (m_EnableMSAA)
         {
             ID3D12PipelineState* pso = m_IsWireframe ? m_PSOWireframeMSAA.Get() : m_PSONormalMSAA.Get();
-            context->GetList()->SetPipelineState(pso);
+            cmd->GetList()->SetPipelineState(pso);
         }
         else
         {
             ID3D12PipelineState* pso = m_IsWireframe ? m_PSOWireframe.Get() : m_PSONormal.Get();
-            context->GetList()->SetPipelineState(pso);
+            cmd->GetList()->SetPipelineState(pso);
         }
 
         // Indicate a state transition on the resource usage.
         if (m_LastColorTargetState != D3D12_RESOURCE_STATE_RENDER_TARGET)
         {
-            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
+            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
                 m_LastColorTargetState, D3D12_RESOURCE_STATE_RENDER_TARGET));
         }
 
         // Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-        context->GetList()->RSSetViewports(1, &m_Viewport);
-        context->GetList()->RSSetScissorRects(1, &m_ScissorRect);
+        cmd->GetList()->RSSetViewports(1, &m_Viewport);
+        cmd->GetList()->RSSetScissorRects(1, &m_ScissorRect);
 
         // Clear the back buffer and depth buffer.
-        context->GetList()->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
-        context->GetList()->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+        cmd->GetList()->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
+        cmd->GetList()->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
         // Specify the buffers we are going to render to.
-        context->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
+        cmd->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
-        context->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
-        context->GetList()->SetGraphicsRootConstantBufferView(1, cbPerDraw.GetGpuVirtualAddress());
+        cmd->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
+        cmd->GetList()->SetGraphicsRootConstantBufferView(1, cbPerDraw.GetGpuVirtualAddress());
 
         for (int i = 0; i < gameObjects.size(); i++)
         {
@@ -300,26 +299,23 @@ namespace dx12demo
                 continue;
             }
 
-            D3D12_GPU_VIRTUAL_ADDRESS addr = cbPerObj.GetGpuVirtualAddress();
-            addr = addr + ConstantBuffer<PerObjConstants>::CalculateStride() * i;
-            context->GetList()->SetGraphicsRootConstantBufferView(0, addr);
-
-            gameObjects[i]->GetMesh()->Draw(GetGfxManager().GetDevice(), context->GetList());
+            cmd->GetList()->SetGraphicsRootConstantBufferView(0, cbPerObj.GetGpuVirtualAddress(i));
+            gameObjects[i]->GetMesh()->Draw(cmd);
         }
 
         if (m_EnableMSAA)
         {
-            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
+            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
 
             if (m_LastResolvedColorTargetState != D3D12_RESOURCE_STATE_RESOLVE_DEST)
             {
-                context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+                cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                     m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_RESOLVE_DEST));
             }
 
-            context->GetList()->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, GetGfxManager().GetBackBufferFormat());
-            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+            cmd->GetList()->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, GetGfxManager().GetBackBufferFormat());
+            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
             m_LastColorTargetState = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
@@ -327,24 +323,21 @@ namespace dx12demo
         }
         else
         {
-            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
+            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
                 D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
 
             if (m_LastResolvedColorTargetState != D3D12_RESOURCE_STATE_COPY_DEST)
             {
-                context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+                cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                     m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_COPY_DEST));
             }
 
-            context->GetList()->CopyResource(m_ResolvedColorTarget.Get(), m_ColorTarget.Get());
-            context->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
+            cmd->GetList()->CopyResource(m_ResolvedColorTarget.Get(), m_ColorTarget.Get());
+            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
                 D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
 
             m_LastColorTargetState = D3D12_RESOURCE_STATE_COPY_SOURCE;
             m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_GENERIC_READ;
         }
-
-        cbPerDraw.Free(GetGfxManager().GetNextFenceValue());
-        cbPerObj.Free(GetGfxManager().GetNextFenceValue());
     }
 }

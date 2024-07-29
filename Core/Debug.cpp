@@ -1,5 +1,6 @@
 #include "Debug.h"
 #include <memory>
+#include <Windows.h>
 
 namespace dx12demo
 {
@@ -8,11 +9,11 @@ namespace dx12demo
 
     void Debug::AddLog(const std::string& file, int line, const std::wstring& message, LogType type)
     {
-        while (s_Logs.size() > 2000)
-        {
-            s_LogCounts[s_Logs.front().Type]--;
-            s_Logs.pop_front();
-        }
+        //while (s_Logs.size() > 2000)
+        //{
+        //    s_LogCounts[s_Logs.front().Type]--;
+        //    s_Logs.pop_front();
+        //}
 
         LogEntry entry = {};
         entry.Type = type;
@@ -29,11 +30,11 @@ namespace dx12demo
 
     void Debug::AddLog(const std::string& file, int line, const std::string& message, LogType type)
     {
-        while (s_Logs.size() > 2000)
-        {
-            s_LogCounts[s_Logs.front().Type]--;
-            s_Logs.pop_front();
-        }
+        //while (s_Logs.size() > 2000)
+        //{
+        //    s_LogCounts[s_Logs.front().Type]--;
+        //    s_Logs.pop_front();
+        //}
 
         LogEntry entry = {};
         entry.Type = type;

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Editor/GameEditor.h"
 #include "Core/StringUtility.h"
 #include <string>
 #include <deque>

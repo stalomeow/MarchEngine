@@ -7,7 +7,7 @@ namespace dx12demo
     GpuBuffer::GpuBuffer(const std::wstring& name, UINT stride, UINT count, D3D12_HEAP_TYPE heapType)
         : m_Stride(stride), m_Count(count)
     {
-        m_State = D3D12_RESOURCE_STATE_GENERIC_READ;
+        m_State = D3D12_RESOURCE_STATE_COMMON;
 
         auto device = GetGfxManager().GetDevice();
         THROW_IF_FAILED(device->CreateCommittedResource(

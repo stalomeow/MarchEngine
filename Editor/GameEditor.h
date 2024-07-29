@@ -1,7 +1,7 @@
 #pragma once
 
 #include <directx/d3dx12.h>
-#include "App/IApplicationEventListener.h"
+#include "Core/IEngine.h"
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/DescriptorHeap.h"
 #include "Core/GameObject.h"
@@ -15,16 +15,16 @@
 
 namespace dx12demo
 {
-    class GameEditor : public IApplicationEventListener
+    class GameEditor : public IEngine
     {
     public:
-        bool OnAppMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
-        void OnAppStart() override;
-        void OnAppQuit() override;
-        void OnAppTick() override;
-        void OnAppResized() override;
-        void OnAppDisplayScaleChanged() override;
-        void OnAppPaint() override;
+        bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
+        void OnStart() override;
+        void OnQuit() override;
+        void OnTick() override;
+        void OnResized() override;
+        void OnDisplayScaleChanged() override;
+        void OnPaint() override;
 
     private:
         void CreateDescriptorHeaps();

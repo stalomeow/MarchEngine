@@ -2,13 +2,15 @@
 
 #include <directx/d3dx12.h>
 #include "Rendering/DxException.h"
-#include "Rendering/Resource/UploadHeapAllocator.h"
+#include "Rendering/Command/CommandBuffer.h"
+#include "Rendering/Resource/GpuBuffer.h"
 #include "Rendering/GfxManager.h"
-#include <wrl.h>
 #include <d3d12.h>
+#include <wrl.h>
 #include <DirectXMath.h>
-#include <vector>
 #include <DirectXColors.h>
+#include <vector>
+#include <memory>
 
 namespace dx12demo
 {
@@ -31,7 +33,7 @@ namespace dx12demo
         virtual ~Mesh() = default;
 
         // subMeshIndex = -1 means draw all sub-meshes
-        virtual void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int subMeshIndex = -1) = 0;
+        virtual void Draw(CommandBuffer* cmd, int subMeshIndex = -1) = 0;
     };
 
     template<typename TVertex, typename TIndex>
@@ -48,7 +50,7 @@ namespace dx12demo
         void ClearSubMeshes();
         void AddSubMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices);
 
-        void Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int subMeshIndex = -1) override;
+        void Draw(CommandBuffer* cmd, int subMeshIndex = -1) override;
 
         static D3D12_INPUT_LAYOUT_DESC VertexInputLayout()
         {
@@ -70,8 +72,8 @@ namespace dx12demo
         std::vector<TIndex> m_Indices{};
         bool m_IsDirty = false;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_VertexBuffer = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_IndexBuffer = nullptr;
+        std::unique_ptr<VertexBuffer<TVertex>> m_VertexBuffer = nullptr;
+        std::unique_ptr<IndexBuffer<TIndex>> m_IndexBuffer = nullptr;
     };
 
     template<typename TVertex, typename TIndex>
@@ -84,34 +86,21 @@ namespace dx12demo
     {
         using namespace Microsoft::WRL;
 
-        void RecreateBufferAndUpload(
-            ID3D12Device* device,
-            ID3D12GraphicsCommandList* cmdList,
-            ComPtr<ID3D12Resource>& dest,
-            const void* pData,
-            UINT64 size)
+        void UploadToGpuBuffer(CommandBuffer* cmd, GpuBuffer* dest, const void* pData, UINT64 size)
         {
-            THROW_IF_FAILED(device->CreateCommittedResource(
-                &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-                D3D12_HEAP_FLAG_NONE,
-                &CD3DX12_RESOURCE_DESC::Buffer(size),
-                D3D12_RESOURCE_STATE_COPY_DEST,
-                nullptr,
-                IID_PPV_ARGS(dest.ReleaseAndGetAddressOf())));
-
-            D3D12_SUBRESOURCE_DATA subResData;
+            D3D12_SUBRESOURCE_DATA subResData = {};
             subResData.pData = pData;
             subResData.RowPitch = size;
             subResData.SlicePitch = size;
 
             // Vertex Buffer 和 Index Buffer 都放在默认堆，优化性能
             // 上传数据时，借助上传堆中转
-            UploadHeapSpan span = GetGfxManager().AllocateUploadHeap(size);
-            UpdateSubresources<1>(cmdList, dest.Get(), span.GetResource(), span.GetOffsetInResource(), 0, 1, &subResData);
-            span.Free(GetGfxManager().GetNextFenceValue());
+            UploadHeapSpan<BYTE> span = cmd->AllocateTempUploadHeap(size);
 
-            cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dest.Get(),
-                D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+            dest->ResourceBarrier(cmd->GetList(), D3D12_RESOURCE_STATE_COPY_DEST);
+            UpdateSubresources<1>(cmd->GetList(), dest->GetResource(),
+                span.GetResource(), span.GetOffsetInResource(), 0, 1, &subResData);
+            dest->ResourceBarrier(cmd->GetList(), D3D12_RESOURCE_STATE_GENERIC_READ);
         }
     }
 
@@ -143,45 +132,35 @@ namespace dx12demo
     }
 
     template<typename TVertex, typename TIndex>
-    void MeshImpl<TVertex, TIndex>::Draw(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, int subMeshIndex)
+    void MeshImpl<TVertex, TIndex>::Draw(CommandBuffer* cmd, int subMeshIndex)
     {
         if (m_IsDirty)
         {
             m_IsDirty = false;
 
-            UINT64 vertexBufferSize = sizeof(TVertex) * m_Vertices.size();
-            RecreateBufferAndUpload(device, cmdList, m_VertexBuffer, m_Vertices.data(), vertexBufferSize);
+            m_VertexBuffer = std::make_unique<VertexBuffer<TVertex>>(L"", m_Vertices.size());
+            m_IndexBuffer = std::make_unique<IndexBuffer<TIndex>>(L"", m_Indices.size());
 
-            UINT64 indexBufferSize = sizeof(TIndex) * m_Indices.size();
-            RecreateBufferAndUpload(device, cmdList, m_IndexBuffer, m_Indices.data(), indexBufferSize);
+            UploadToGpuBuffer(cmd, m_VertexBuffer.get(), m_Vertices.data(), m_VertexBuffer->GetSize());
+            UploadToGpuBuffer(cmd, m_IndexBuffer.get(), m_Indices.data(), m_IndexBuffer->GetSize());
         }
 
-        D3D12_VERTEX_BUFFER_VIEW vbv;
-        vbv.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
-        vbv.SizeInBytes = sizeof(TVertex) * m_Vertices.size();
-        vbv.StrideInBytes = sizeof(TVertex);
-
-        D3D12_INDEX_BUFFER_VIEW ibv;
-        ibv.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
-        ibv.SizeInBytes = sizeof(TIndex) * m_Indices.size();
-        ibv.Format = sizeof(TIndex) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-
-        cmdList->IASetVertexBuffers(0, 1, &vbv);
-        cmdList->IASetIndexBuffer(&ibv);
-        cmdList->IASetPrimitiveTopology(m_Topology);
+        cmd->GetList()->IASetVertexBuffers(0, 1, &m_VertexBuffer->GetView());
+        cmd->GetList()->IASetIndexBuffer(&m_IndexBuffer->GetView());
+        cmd->GetList()->IASetPrimitiveTopology(m_Topology);
 
         if (subMeshIndex == -1)
         {
             for (auto& subMesh : m_SubMeshes)
             {
-                cmdList->DrawIndexedInstanced(subMesh.IndexCount, 1,
+                cmd->GetList()->DrawIndexedInstanced(subMesh.IndexCount, 1,
                     subMesh.StartIndexLocation, subMesh.BaseVertexLocation, 0);
             }
         }
         else
         {
             auto& subMesh = m_SubMeshes[subMeshIndex];
-            cmdList->DrawIndexedInstanced(subMesh.IndexCount, 1,
+            cmd->GetList()->DrawIndexedInstanced(subMesh.IndexCount, 1,
                 subMesh.StartIndexLocation, subMesh.BaseVertexLocation, 0);
         }
     }

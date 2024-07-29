@@ -1,26 +1,26 @@
 #pragma once
 
+#include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <wrl.h>
 #include <queue>
 #include <vector>
+#include <unordered_map>
 
 namespace dx12demo
 {
     class CommandAllocatorPool
     {
     public:
-        CommandAllocatorPool(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type);
+        CommandAllocatorPool() = default;
         ~CommandAllocatorPool() = default;
 
-        ID3D12CommandAllocator* Get(UINT64 completedFenceValue);
-        void Release(ID3D12CommandAllocator* allocator, UINT64 fenceValue);
+        ID3D12CommandAllocator* Get(D3D12_COMMAND_LIST_TYPE type);
+        void Release(ID3D12CommandAllocator* allocator, D3D12_COMMAND_LIST_TYPE type, UINT64 fenceValue);
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Device> m_Device;
-        D3D12_COMMAND_LIST_TYPE m_CmdListType;
-
-        std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_AllocatorRefs;
-        std::queue<std::pair<UINT64, ID3D12CommandAllocator*>> m_AllocatorPool;
+        std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_Refs{};
+        std::unordered_map<D3D12_COMMAND_LIST_TYPE,
+            std::queue<std::pair<UINT64, ID3D12CommandAllocator*>>> m_Pools{};
     };
 }

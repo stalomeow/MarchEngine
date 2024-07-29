@@ -3,9 +3,8 @@
 #include <directx/d3dx12.h>
 #include "Rendering/FrameResouce.h"
 #include "Rendering/Mesh.hpp"
-#include "Rendering/DxMathHelper.h"
 #include "Rendering/DescriptorHeap.h"
-#include "Rendering/Command/CommandContext.h"
+#include "Rendering/Command/CommandBuffer.h"
 #include "Core/GameObject.h"
 #include <d3d12.h>
 #include <dxgi.h>
@@ -24,7 +23,7 @@ namespace dx12demo
         ~RenderPipeline() = default;
 
         void Resize(int width, int height);
-        void Render(CommandContext* context, const std::vector<std::unique_ptr<GameObject>>& gameObjects);
+        void Render(CommandBuffer* cmd, const std::vector<std::unique_ptr<GameObject>>& gameObjects);
 
         bool GetEnableMSAA() const { return m_EnableMSAA; }
         void SetEnableMSAA(bool value)

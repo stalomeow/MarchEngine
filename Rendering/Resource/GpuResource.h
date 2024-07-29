@@ -1,5 +1,6 @@
 #pragma once
 
+#include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <wrl.h>
 
@@ -22,6 +23,17 @@ namespace dx12demo
         void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
 
         bool NeedTransition(D3D12_RESOURCE_STATES state) const { return (m_State & state) != state; }
+
+        void ResourceBarrier(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateAfter)
+        {
+            if (!NeedTransition(stateAfter))
+            {
+                return;
+            }
+
+            cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetResource(), GetState(), stateAfter));
+            SetState(stateAfter);
+        }
 
     protected:
         GpuResource() = default;
