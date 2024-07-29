@@ -14,12 +14,11 @@ namespace dx12demo
         {
             m_Transform = std::make_unique<Transform>();
             m_Mesh = std::make_unique<SimpleMesh>();
-            m_Mesh->AddSubMeshCube();
         }
         ~GameObject() = default;
 
         Transform* GetTransform() const { return m_Transform.get(); }
-        Mesh* GetMesh() const { return m_Mesh.get(); }
+        SimpleMesh* GetMesh() const { return m_Mesh.get(); }
 
     public:
         bool IsActive = true;

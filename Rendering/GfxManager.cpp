@@ -150,7 +150,7 @@ namespace dx12demo
 
         ComPtr<IDXGISwapChain2> s;
         THROW_IF_FAILED(m_SwapChain.As(&s));
-        THROW_IF_FAILED(s->SetMaximumFrameLatency(3));
+        THROW_IF_FAILED(s->SetMaximumFrameLatency(m_MaxFrameLatency));
         m_FrameLatencyWaitEventHandle = s->GetFrameLatencyWaitableObject();
 
         ResizeBackBuffer(width, height);

@@ -21,8 +21,7 @@ namespace dx12demo
         UploadHeapPage(const std::wstring& name, UINT size);
         ~UploadHeapPage() = default;
 
-        template<typename T>
-        bool Allocate(UINT count, UINT alignment, UINT* outStride, UINT* outOffset);
+        bool Allocate(UINT alignment, UINT alignedSize, UINT* outOffset);
         void Reset();
 
         UploadBuffer* GetBuffer() const { return m_Buffer.get(); }
@@ -87,84 +86,48 @@ namespace dx12demo
         void FlushPages(UINT64 fenceValue);
 
     private:
+        UploadHeapPage* RequestNormalPage(UINT64 completedFenceValue);
+        void FreeLargePages(UINT64 completedFenceValue);
+
         UINT m_PageSize;
-        std::vector<std::unique_ptr<UploadHeapPage>> m_AllPages{};       // 所有分配过的 page
-        std::queue<std::pair<UINT64, UploadHeapPage*>> m_PendingPages{}; // 等待使用结束的 page
-        std::vector<UploadHeapPage*> m_ActivePages{};                    // 正在使用的 page
+        std::vector<std::unique_ptr<UploadHeapPage>> m_AllNormalPages{};                      // 所有分配过的 normal page
+        std::queue<std::pair<UINT64, UploadHeapPage*>> m_PendingNormalPages{};                // 等待使用结束的 normal page
+        std::vector<UploadHeapPage*> m_ActiveNormalPages{};                                   // 正在使用的 normal page
+
+        std::queue<std::pair<UINT64, std::unique_ptr<UploadHeapPage>>> m_PendingLargePages{}; // 等待使用结束的 large page
+        std::vector<std::unique_ptr<UploadHeapPage>> m_ActiveLargePages{};                    // 正在使用的 large page
     };
-
-    template<typename T>
-    bool UploadHeapPage::Allocate(UINT count, UINT alignment, UINT* outStride, UINT* outOffset)
-    {
-        *outStride = MathHelper::AlignUp(sizeof(T), alignment);
-        UINT size = (*outStride) * count;
-
-        for (auto it = m_FreeList.begin(); it != m_FreeList.end(); ++it)
-        {
-            UINT alignedStart = MathHelper::AlignUp(it->first, alignment);
-
-            if (it->second - alignedStart >= size)
-            {
-                UINT alignedEnd = alignedStart + size;
-
-                if (it->first == alignedStart)
-                {
-                    it->first = alignedEnd;
-                }
-                else if (it->second == alignedEnd)
-                {
-                    it->second = alignedStart;
-                }
-                else
-                {
-                    m_FreeList.insert(it, std::make_pair(it->first, alignedStart));
-                    it->first = alignedEnd;
-                }
-
-                if (it->first == it->second)
-                {
-                    m_FreeList.erase(it);
-                }
-
-                *outOffset = alignedStart;
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     template<typename T>
     UploadHeapSpan<T> UploadHeapAllocator::Allocate(UINT count, UINT alignment)
     {
-        UINT stride = 0;
+        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
+        FreeLargePages(completedFenceValue);
+
+        UINT stride = MathHelper::AlignUp(sizeof(T), alignment);
+        UINT alignedSize = stride * count;
         UINT offset = 0;
 
-        for (UploadHeapPage* page : m_ActivePages)
+        if (alignedSize > m_PageSize)
         {
-            if (page->Allocate<T>(count, alignment, &stride, &offset))
+            DEBUG_LOG_INFO("Large upload heap page allocated, size: %d", alignedSize);
+            m_ActiveLargePages.push_back(std::make_unique<UploadHeapPage>(L"UploadHeapAllocatorLargePage", alignedSize));
+            UploadHeapPage* largePage = m_ActiveLargePages.back().get();
+            assert(largePage->Allocate(alignment, alignedSize, &offset));
+            return UploadHeapSpan<T>(largePage->GetBuffer(), offset, stride, count);
+        }
+
+        // 尝试从已有的 page 中分配
+        for (UploadHeapPage* page : m_ActiveNormalPages)
+        {
+            if (page->Allocate(alignment, alignedSize, &offset))
             {
                 return UploadHeapSpan<T>(page->GetBuffer(), offset, stride, count);
             }
         }
 
-        UploadHeapPage* newPage;
-
-        if (!m_PendingPages.empty() && m_PendingPages.front().first <= GetGfxManager().GetCompletedFenceValue())
-        {
-            newPage = m_PendingPages.front().second;
-            newPage->Reset();
-            m_PendingPages.pop();
-        }
-        else
-        {
-            DEBUG_LOG_INFO("New upload heap page allocated, size: %d", m_PageSize);
-            m_AllPages.push_back(std::make_unique<UploadHeapPage>(L"UploadHeapAllocatorPage", m_PageSize));
-            newPage = m_AllPages.back().get();
-        }
-
-        m_ActivePages.push_back(newPage);
-        assert(newPage->Allocate<T>(count, alignment, &stride, &offset));
+        UploadHeapPage* newPage = RequestNormalPage(completedFenceValue);
+        assert(newPage->Allocate(alignment, alignedSize, &offset));
         return UploadHeapSpan<T>(newPage->GetBuffer(), offset, stride, count);
     }
 }

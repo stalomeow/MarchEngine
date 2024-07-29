@@ -35,8 +35,6 @@ namespace dx12demo
         void CalculateFrameStats();
 
     private:
-        std::vector<std::unique_ptr<GameObject>> m_GameObjects{};
-
         std::unique_ptr<DescriptorHeap> m_SrvHeap = nullptr;
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
 

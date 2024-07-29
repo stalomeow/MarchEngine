@@ -138,8 +138,8 @@ namespace dx12demo
         {
             m_IsDirty = false;
 
-            m_VertexBuffer = std::make_unique<VertexBuffer<TVertex>>(L"", m_Vertices.size());
-            m_IndexBuffer = std::make_unique<IndexBuffer<TIndex>>(L"", m_Indices.size());
+            m_VertexBuffer = std::make_unique<VertexBuffer<TVertex>>(L"Mesh Vertex Buffer", m_Vertices.size());
+            m_IndexBuffer = std::make_unique<IndexBuffer<TIndex>>(L"Mesh Index Buffer", m_Indices.size());
 
             UploadToGpuBuffer(cmd, m_VertexBuffer.get(), m_Vertices.data(), m_VertexBuffer->GetSize());
             UploadToGpuBuffer(cmd, m_IndexBuffer.get(), m_Indices.data(), m_IndexBuffer->GetSize());
@@ -188,14 +188,14 @@ namespace dx12demo
         {
             std::vector<SimpleMeshVertex> vertices =
             {
-                { DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::White) },
-                { DirectX::XMFLOAT3(-1.0f, +1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Black) },
-                { DirectX::XMFLOAT3(+1.0f, +1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Red) },
-                { DirectX::XMFLOAT3(+1.0f, -1.0f, -1.0f), DirectX::XMFLOAT4(DirectX::Colors::Green) },
-                { DirectX::XMFLOAT3(-1.0f, -1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Blue) },
-                { DirectX::XMFLOAT3(-1.0f, +1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Yellow) },
-                { DirectX::XMFLOAT3(+1.0f, +1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Cyan) },
-                { DirectX::XMFLOAT3(+1.0f, -1.0f, +1.0f), DirectX::XMFLOAT4(DirectX::Colors::Magenta) }
+                { DirectX::XMFLOAT3(-0.5f, -0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::White) },
+                { DirectX::XMFLOAT3(-0.5f, +0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::Black) },
+                { DirectX::XMFLOAT3(+0.5f, +0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::Red) },
+                { DirectX::XMFLOAT3(+0.5f, -0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::Green) },
+                { DirectX::XMFLOAT3(-0.5f, -0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Blue) },
+                { DirectX::XMFLOAT3(-0.5f, +0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Yellow) },
+                { DirectX::XMFLOAT3(+0.5f, +0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Cyan) },
+                { DirectX::XMFLOAT3(+0.5f, -0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Magenta) }
             };
 
             std::vector<std::uint16_t> indices =
@@ -224,6 +224,98 @@ namespace dx12demo
                 4, 0, 3,
                 4, 3, 7
             };
+
+            AddSubMesh(vertices, indices);
+        }
+
+        void AddSubMeshSphere(float radius, UINT sliceCount, UINT stackCount)
+        {
+            std::vector<SimpleMeshVertex> vertices;
+            std::vector<std::uint16_t> indices;
+
+            // top
+            vertices.push_back({ DirectX::XMFLOAT3(0.0f, radius, 0.0f), DirectX::XMFLOAT4(DirectX::Colors::White) });
+
+            float phiStep = DirectX::XM_PI / stackCount;
+            float thetaStep = 2.0f * DirectX::XM_PI / sliceCount;
+
+            // Compute vertices for each stack ring (do not count the poles as rings).
+            for (UINT i = 1; i <= stackCount - 1; ++i)
+            {
+                float phi = i * phiStep;
+
+                // Vertices of ring.
+                for (UINT j = 0; j <= sliceCount; ++j)
+                {
+                    float theta = j * thetaStep;
+
+                    SimpleMeshVertex v;
+
+                    // spherical to cartesian
+                    v.Position.x = radius * sinf(phi) * cosf(theta);
+                    v.Position.y = radius * cosf(phi);
+                    v.Position.z = radius * sinf(phi) * sinf(theta);
+
+                    v.Color = DirectX::XMFLOAT4(DirectX::Colors::White);
+
+                    vertices.push_back(v);
+                }
+            }
+
+            // bottom
+            vertices.push_back({ DirectX::XMFLOAT3(0.0f, -radius, 0.0f), DirectX::XMFLOAT4(DirectX::Colors::White) });
+
+            //
+            // Compute indices for top stack.  The top stack was written first to the vertex buffer
+            // and connects the top pole to the first ring.
+            //
+
+            for (UINT i = 1; i <= sliceCount; ++i)
+            {
+                indices.push_back(0);
+                indices.push_back(i + 1);
+                indices.push_back(i);
+            }
+
+            //
+            // Compute indices for inner stacks (not connected to poles).
+            //
+
+            // Offset the indices to the index of the first vertex in the first ring.
+            // This is just skipping the top pole vertex.
+            UINT baseIndex = 1;
+            UINT ringVertexCount = sliceCount + 1;
+            for (UINT i = 0; i < stackCount - 2; ++i)
+            {
+                for (UINT j = 0; j < sliceCount; ++j)
+                {
+                    indices.push_back(baseIndex + i * ringVertexCount + j);
+                    indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+                    indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+
+                    indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+                    indices.push_back(baseIndex + i * ringVertexCount + j + 1);
+                    indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+                }
+            }
+
+            //
+            // Compute indices for bottom stack.  The bottom stack was written last to the vertex buffer
+            // and connects the bottom pole to the bottom ring.
+            //
+
+            // South pole vertex was added last.
+            UINT southPoleIndex = (UINT)vertices.size() - 1;
+
+            // Offset the indices to the index of the first vertex in the last ring.
+            baseIndex = southPoleIndex - ringVertexCount;
+
+            for (UINT i = 0; i < sliceCount; ++i)
+            {
+                indices.push_back(southPoleIndex);
+                indices.push_back(baseIndex + i);
+                indices.push_back(baseIndex + i + 1);
+            }
 
             AddSubMesh(vertices, indices);
         }

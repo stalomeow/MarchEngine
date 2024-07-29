@@ -3,6 +3,7 @@
 #include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
 #include "Rendering/Command/CommandBuffer.h"
+#include "Core/Scene.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
@@ -71,7 +72,7 @@ namespace dx12demo
         ImGui::GetStyle().FrameRounding = 2.0f;
 
         auto device = GetGfxManager().GetDevice();
-        ImGui_ImplDX12_Init(device, 3,//m_RenderPipeline->GetFrameResourceCount(),
+        ImGui_ImplDX12_Init(device, GetGfxManager().GetMaxFrameLatency(),
             GetGfxManager().GetBackBufferFormat(), m_SrvHeap->GetHeapPointer(),
             m_SrvHeap->GetCpuHandleForFixedDescriptor(0),
             m_SrvHeap->GetGpuHandleForFixedDescriptor(0));
@@ -161,9 +162,9 @@ namespace dx12demo
         {
             ImGui::Begin("Inspector");
 
-            if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < m_GameObjects.size())
+            if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < Scene::GetCurrent()->GameObjects.size())
             {
-                GameObject* go = m_GameObjects[m_SelectedGameObjectIndex].get();
+                GameObject* go = Scene::GetCurrent()->GameObjects[m_SelectedGameObjectIndex].get();
 
                 ImGui::Checkbox("##GameObjectActive", &go->IsActive);
                 ImGui::SameLine();
@@ -258,35 +259,47 @@ namespace dx12demo
             {
                 if (ImGui::MenuItem("Create Cube"))
                 {
-                    m_GameObjects.push_back(std::make_unique<GameObject>());
-                    m_GameObjects.back()->Name = "Cube";
-                    m_SelectedGameObjectIndex = m_GameObjects.size() - 1;
+                    Scene::GetCurrent()->GameObjects.push_back(std::make_unique<GameObject>());
+                    Scene::GetCurrent()->GameObjects.back()->Name = "Cube";
+                    Scene::GetCurrent()->GameObjects.back()->GetMesh()->AddSubMeshCube();
+                    m_SelectedGameObjectIndex = Scene::GetCurrent()->GameObjects.size() - 1;
+                }
+
+                if (ImGui::MenuItem("Create Sphere"))
+                {
+                    Scene::GetCurrent()->GameObjects.push_back(std::make_unique<GameObject>());
+                    Scene::GetCurrent()->GameObjects.back()->Name = "Sphere";
+                    Scene::GetCurrent()->GameObjects.back()->GetMesh()->AddSubMeshSphere(0.5f, 40, 40);
+                    m_SelectedGameObjectIndex = Scene::GetCurrent()->GameObjects.size() - 1;
                 }
 
                 ImGui::EndPopup();
             }
 
-            for (int i = 0; i < m_GameObjects.size(); i++)
+            if (ImGui::CollapsingHeader(Scene::GetCurrent()->Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-
-                if (i == m_SelectedGameObjectIndex)
+                for (int i = 0; i < Scene::GetCurrent()->GameObjects.size(); i++)
                 {
-                    flags |= ImGuiTreeNodeFlags_Selected;
-                }
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
 
-                ImGui::PushID("##GameObject");
-                bool nodeOpen = ImGui::TreeNodeEx(m_GameObjects[i]->Name.c_str(), flags);
-                ImGui::PopID();
-
-                if (nodeOpen)
-                {
-                    if (ImGui::IsItemClicked())
+                    if (i == m_SelectedGameObjectIndex)
                     {
-                        m_SelectedGameObjectIndex = i;
+                        flags |= ImGuiTreeNodeFlags_Selected;
                     }
 
-                    ImGui::TreePop();
+                    ImGui::PushID("##GameObject");
+                    bool nodeOpen = ImGui::TreeNodeEx(Scene::GetCurrent()->GameObjects[i]->Name.c_str(), flags);
+                    ImGui::PopID();
+
+                    if (nodeOpen)
+                    {
+                        if (ImGui::IsItemClicked())
+                        {
+                            m_SelectedGameObjectIndex = i;
+                        }
+
+                        ImGui::TreePop();
+                    }
                 }
             }
 
@@ -461,7 +474,7 @@ namespace dx12demo
 
         CommandBuffer* cmd = CommandBuffer::Get();
 
-        m_RenderPipeline->Render(cmd, m_GameObjects);
+        m_RenderPipeline->Render(cmd, Scene::GetCurrent()->GameObjects);
 
         // Render Dear ImGui graphics
         cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),

@@ -32,7 +32,7 @@ namespace dx12demo
     {
         THROW_IF_FAILED(m_CmdList->Close());
         ID3D12CommandList* cmdList = m_CmdList.Get();
-        GetGfxManager().GetCommandQueue()->ExecuteCommandLists(1, &cmdList);
+        GetGfxManager().GetCommandQueue(m_Type)->ExecuteCommandLists(1, &cmdList);
 
         UINT64 fenceValue = GetGfxManager().SignalNextFenceValue();
         s_CommandAllocatorPool->Release(std::exchange(m_CmdAllocator, nullptr), m_Type, fenceValue);

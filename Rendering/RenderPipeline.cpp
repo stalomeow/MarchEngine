@@ -152,12 +152,16 @@ namespace dx12demo
         return m_DsvHeap->GetCpuHandleForFixedDescriptor(0);
     }
 
-    void RenderPipeline::Resize(int width, int height)
+    void RenderPipeline::SetEnableMSAA(bool value)
     {
-        GetGfxManager().WaitForGpuIdle();
+        m_EnableMSAA = value;
 
-        width = max(width, 10);
-        height = max(height, 10);
+        GetGfxManager().WaitForGpuIdle();
+        CreateColorAndDepthStencilTarget(m_RenderTargetWidth, m_RenderTargetHeight);
+    }
+
+    void RenderPipeline::CreateColorAndDepthStencilTarget(int width, int height)
+    {
         auto device = GetGfxManager().GetDevice();
 
         D3D12_CLEAR_VALUE colorClearValue = {};
@@ -176,14 +180,6 @@ namespace dx12demo
         device->CreateRenderTargetView(m_ColorTarget.Get(), nullptr,
             m_RtvHeap->GetCpuHandleForFixedDescriptor(0));
 
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Tex2D(GetGfxManager().GetBackBufferFormat(), width, height, 1, 1, 1, 0),
-            D3D12_RESOURCE_STATE_COMMON,
-            nullptr, IID_PPV_ARGS(&m_ResolvedColorTarget)));
-        m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_COMMON;
-
         D3D12_CLEAR_VALUE dsClearValue = {};
         dsClearValue.Format = m_DepthStencilFormat;
         dsClearValue.DepthStencil.Depth = 1.0f;
@@ -199,6 +195,23 @@ namespace dx12demo
             &dsClearValue, IID_PPV_ARGS(&m_DepthStencilTarget)));
         device->CreateDepthStencilView(m_DepthStencilTarget.Get(), nullptr,
             m_DsvHeap->GetCpuHandleForFixedDescriptor(0));
+    }
+
+    void RenderPipeline::Resize(int width, int height)
+    {
+        GetGfxManager().WaitForGpuIdle();
+
+        width = max(width, 10);
+        height = max(height, 10);
+        CreateColorAndDepthStencilTarget(width, height);
+
+        THROW_IF_FAILED(GetGfxManager().GetDevice()->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Tex2D(GetGfxManager().GetBackBufferFormat(), width, height, 1, 1, 1, 0),
+            D3D12_RESOURCE_STATE_COMMON,
+            nullptr, IID_PPV_ARGS(&m_ResolvedColorTarget)));
+        m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_COMMON;
 
         m_RenderTargetWidth = width;
         m_RenderTargetHeight = height;

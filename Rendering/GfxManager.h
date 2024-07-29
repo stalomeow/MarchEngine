@@ -8,6 +8,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
+#include <stdexcept>
 
 namespace dx12demo
 {
@@ -28,7 +29,15 @@ namespace dx12demo
 
         IDXGIFactory4* GetFactory() const { return m_Factory.Get(); }
         ID3D12Device* GetDevice() const { return m_Device.Get(); }
-        ID3D12CommandQueue* GetCommandQueue() const { return m_CommandQueue.Get(); }
+        ID3D12CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
+        {
+            if (type != GetCommandListType())
+            {
+                throw std::runtime_error("Command list type is not supported");
+            }
+
+            return m_CommandQueue.Get();
+        }
 
         UINT64 GetCompletedFenceValue() const { return m_Fence->GetCompletedValue(); }
         UINT64 GetCurrentFenceValue() const { return m_FenceCurrentValue; }
@@ -44,6 +53,7 @@ namespace dx12demo
 
         DXGI_FORMAT GetBackBufferFormat() const { return m_BackBufferFormat; }
         D3D12_COMMAND_LIST_TYPE GetCommandListType() const { return m_CommandListType; }
+        UINT GetMaxFrameLatency() const { return m_MaxFrameLatency; }
 
     private:
         void InitDeviceAndFactory();
@@ -68,7 +78,7 @@ namespace dx12demo
         UINT m_RtvDescriptorSize;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap = nullptr;
 
-        static const int s_SwapChainBufferCount = 3; // TODO: why 2 will make msaa broken
+        static const int s_SwapChainBufferCount = 2;
         Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_SwapChainBuffers[s_SwapChainBufferCount];
         int m_CurrentBackBufferIndex = 0;
@@ -76,6 +86,7 @@ namespace dx12demo
 
         const DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        const UINT m_MaxFrameLatency = 3;
     };
 
     GfxManager& GetGfxManager();

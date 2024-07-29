@@ -1,7 +1,6 @@
 #pragma once
 
 #include <directx/d3dx12.h>
-#include "Rendering/FrameResouce.h"
 #include "Rendering/Mesh.hpp"
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/Command/CommandBuffer.h"
@@ -16,6 +15,22 @@
 
 namespace dx12demo
 {
+    struct PerObjConstants
+    {
+        DirectX::XMFLOAT4X4 WorldMatrix;
+    };
+
+    struct PerDrawConstants
+    {
+        DirectX::XMFLOAT4X4 ViewMatrix;
+        DirectX::XMFLOAT4X4 ProjectionMatrix;
+        DirectX::XMFLOAT4X4 ViewProjectionMatrix;
+        DirectX::XMFLOAT4X4 InvViewMatrix;
+        DirectX::XMFLOAT4X4 InvProjectionMatrix;
+        DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
+        DirectX::XMFLOAT4 Time; // elapsed time, delta time, unused, unused
+    };
+
     class RenderPipeline
     {
     public:
@@ -26,11 +41,7 @@ namespace dx12demo
         void Render(CommandBuffer* cmd, const std::vector<std::unique_ptr<GameObject>>& gameObjects);
 
         bool GetEnableMSAA() const { return m_EnableMSAA; }
-        void SetEnableMSAA(bool value)
-        {
-            m_EnableMSAA = value;
-            Resize(m_RenderTargetWidth, m_RenderTargetHeight);
-        }
+        void SetEnableMSAA(bool value);
 
         bool GetIsWireframe() const { return m_IsWireframe; }
         void SetIsWireframe(bool value) { m_IsWireframe = value; }
@@ -42,6 +53,7 @@ namespace dx12demo
         void CreateDescriptorHeaps();
         void CreateRootSignature();
         void CreateShaderAndPSO();
+        void CreateColorAndDepthStencilTarget(int width, int height);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView();
         D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView();
