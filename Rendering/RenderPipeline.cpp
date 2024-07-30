@@ -43,14 +43,15 @@ namespace dx12demo
     void RenderPipeline::CreateRootSignature()
     {
         // Root parameter can be a table, root descriptor or root constants.
-        CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+        CD3DX12_ROOT_PARAMETER slotRootParameter[3];
 
         // Create root CBVs.
         slotRootParameter[0].InitAsConstantBufferView(0);
         slotRootParameter[1].InitAsConstantBufferView(1);
+        slotRootParameter[2].InitAsConstantBufferView(2);
 
         // A root signature is an array of root parameters.
-        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2, slotRootParameter, 0, nullptr,
+        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter, 0, nullptr,
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
         // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
@@ -100,8 +101,8 @@ namespace dx12demo
 
     void RenderPipeline::CreateShaderAndPSO()
     {
-        m_VSByteCode = CompileShader(L"C:\\\Projects\\\Graphics\\\dx12-demo\\shaders\\test.hlsl", nullptr, "vert", "vs_5_0");
-        m_PSByteCode = CompileShader(L"C:\\\Projects\\\Graphics\\\dx12-demo\\shaders\\test.hlsl", nullptr, "frag", "ps_5_0");
+        m_VSByteCode = CompileShader(L"C:\\Projects\\Graphics\\dx12-demo\\Shaders\\Default.hlsl", nullptr, "vert", "vs_5_0");
+        m_PSByteCode = CompileShader(L"C:\\Projects\\Graphics\\dx12-demo\\Shaders\\Default.hlsl", nullptr, "frag", "ps_5_0");
 
         auto device = GetGfxManager().GetDevice();
 
@@ -233,7 +234,7 @@ namespace dx12demo
             return;
         }
 
-        PerDrawConstants drawConsts = {};
+        PerPassConstants passConsts = {};
 
         // Convert Spherical to Cartesian coordinates.
         float x = m_Radius * sinf(m_Phi) * cosf(m_Theta);
@@ -246,21 +247,35 @@ namespace dx12demo
         DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
         DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
-        DirectX::XMStoreFloat4x4(&drawConsts.ViewMatrix, view);
-        DirectX::XMStoreFloat4x4(&drawConsts.InvViewMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(view), view));
+        DirectX::XMStoreFloat4x4(&passConsts.ViewMatrix, view);
+        DirectX::XMStoreFloat4x4(&passConsts.InvViewMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(view), view));
 
         // The window resized, so update the aspect ratio and recompute the projection matrix.
         float asp = static_cast<float>(m_RenderTargetWidth) / static_cast<float>(m_RenderTargetHeight);
         DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, asp, 1.0f, 1000.0f);
-        DirectX::XMStoreFloat4x4(&drawConsts.ProjectionMatrix, proj);
-        DirectX::XMStoreFloat4x4(&drawConsts.InvProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(proj), proj));
+        DirectX::XMStoreFloat4x4(&passConsts.ProjectionMatrix, proj);
+        DirectX::XMStoreFloat4x4(&passConsts.InvProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(proj), proj));
 
         DirectX::XMMATRIX viewProj = DirectX::XMMatrixMultiply(view, proj);
-        DirectX::XMStoreFloat4x4(&drawConsts.ViewProjectionMatrix, viewProj);
-        DirectX::XMStoreFloat4x4(&drawConsts.InvViewProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
+        DirectX::XMStoreFloat4x4(&passConsts.ViewProjectionMatrix, viewProj);
+        DirectX::XMStoreFloat4x4(&passConsts.InvViewProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
 
-        auto cbPerDraw = cmd->AllocateTempUploadHeap<PerDrawConstants>(1, ConstantBufferAlignment);
-        cbPerDraw.SetData(0, drawConsts);
+        DirectX::XMStoreFloat4(&passConsts.CameraPositionWS, pos);
+
+        passConsts.LightCount = 0;
+        for (auto& go : gameObjects)
+        {
+            if (!go->IsActive || go->GetLight() == nullptr)
+            {
+                continue;
+            }
+
+            go->GetLight()->FillLightData(go->GetTransform(), passConsts.Lights[passConsts.LightCount]);
+            passConsts.LightCount++;
+        }
+
+        auto cbPass = cmd->AllocateTempUploadHeap<PerPassConstants>(1, ConstantBufferAlignment);
+        cbPass.SetData(0, passConsts);
 
         auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(gameObjects.size(), ConstantBufferAlignment);
 
@@ -303,16 +318,17 @@ namespace dx12demo
         cmd->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
         cmd->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
-        cmd->GetList()->SetGraphicsRootConstantBufferView(1, cbPerDraw.GetGpuVirtualAddress());
+        cmd->GetList()->SetGraphicsRootConstantBufferView(2, cbPass.GetGpuVirtualAddress());
 
         for (int i = 0; i < gameObjects.size(); i++)
         {
-            if (!gameObjects[i]->IsActive)
+            if (!gameObjects[i]->IsActive || gameObjects[i]->GetMesh() == nullptr)
             {
                 continue;
             }
 
             cmd->GetList()->SetGraphicsRootConstantBufferView(0, cbPerObj.GetGpuVirtualAddress(i));
+            cmd->GetList()->SetGraphicsRootConstantBufferView(1, gameObjects[i]->GetMaterialBuffer()->GetGpuVirtualAddress());
             gameObjects[i]->GetMesh()->Draw(cmd);
         }
 

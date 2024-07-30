@@ -20,10 +20,19 @@ namespace dx12demo
             return ret;
         }
 
+        DirectX::XMFLOAT3 GetForward() const
+        {
+            DirectX::XMFLOAT3 forward = { 0.0f, 0.0f, 1.0f };
+            DirectX::XMVECTOR f = DirectX::XMLoadFloat3(&forward);
+            f = DirectX::XMVector3Rotate(f, DirectX::XMLoadFloat4(&Rotation));
+            DirectX::XMStoreFloat3(&forward, f);
+            return forward;
+        }
+
     public:
         DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT3 RotationEuler = { 0.0f, 0.0f, 0.0f };
+        DirectX::XMFLOAT3 RotationEulerAngles = { 0.0f, 0.0f, 0.0f };
     };
 }

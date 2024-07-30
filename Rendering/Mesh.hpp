@@ -49,6 +49,7 @@ namespace dx12demo
 
         void ClearSubMeshes();
         void AddSubMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices);
+        void RecalculateNormals();
 
         void Draw(CommandBuffer* cmd, int subMeshIndex = -1) override;
 
@@ -132,6 +133,41 @@ namespace dx12demo
     }
 
     template<typename TVertex, typename TIndex>
+    void MeshImpl<TVertex, TIndex>::RecalculateNormals()
+    {
+        m_IsDirty = true;
+        assert(m_Topology == D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        for (TVertex& v : m_Vertices)
+        {
+            v.Normal = { 0.0, 0.0, 0.0 };
+        }
+
+        for (int i = 0; i < m_Indices.size() / 3; i++)
+        {
+            TVertex& v0 = m_Vertices[m_Indices[i * 3 + 0]];
+            TVertex& v1 = m_Vertices[m_Indices[i * 3 + 1]];
+            TVertex& v2 = m_Vertices[m_Indices[i * 3 + 2]];
+
+            DirectX::XMVECTOR p0 = DirectX::XMLoadFloat3(&v0.Position);
+            DirectX::XMVECTOR p1 = DirectX::XMLoadFloat3(&v1.Position);
+            DirectX::XMVECTOR p2 = DirectX::XMLoadFloat3(&v2.Position);
+            DirectX::XMVECTOR vec1 = DirectX::XMVectorSubtract(p1, p0);
+            DirectX::XMVECTOR vec2 = DirectX::XMVectorSubtract(p2, p0);
+            DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vec1, vec2));
+
+            DirectX::XMStoreFloat3(&v0.Normal, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&v0.Normal), normal));
+            DirectX::XMStoreFloat3(&v1.Normal, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&v1.Normal), normal));
+            DirectX::XMStoreFloat3(&v2.Normal, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&v2.Normal), normal));
+        }
+
+        for (TVertex& v : m_Vertices)
+        {
+            DirectX::XMStoreFloat3(&v.Normal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&v.Normal)));
+        }
+    }
+
+    template<typename TVertex, typename TIndex>
     void MeshImpl<TVertex, TIndex>::Draw(CommandBuffer* cmd, int subMeshIndex)
     {
         if (m_IsDirty)
@@ -168,11 +204,11 @@ namespace dx12demo
     struct SimpleMeshVertex
     {
         DirectX::XMFLOAT3 Position;
-        DirectX::XMFLOAT4 Color;
+        DirectX::XMFLOAT3 Normal;
 
         static constexpr D3D12_INPUT_ELEMENT_DESC InputDesc[] = {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
     };
 
@@ -188,14 +224,14 @@ namespace dx12demo
         {
             std::vector<SimpleMeshVertex> vertices =
             {
-                { DirectX::XMFLOAT3(-0.5f, -0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::White) },
-                { DirectX::XMFLOAT3(-0.5f, +0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::Black) },
-                { DirectX::XMFLOAT3(+0.5f, +0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::Red) },
-                { DirectX::XMFLOAT3(+0.5f, -0.5f, -0.5f), DirectX::XMFLOAT4(DirectX::Colors::Green) },
-                { DirectX::XMFLOAT3(-0.5f, -0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Blue) },
-                { DirectX::XMFLOAT3(-0.5f, +0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Yellow) },
-                { DirectX::XMFLOAT3(+0.5f, +0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Cyan) },
-                { DirectX::XMFLOAT3(+0.5f, -0.5f, +0.5f), DirectX::XMFLOAT4(DirectX::Colors::Magenta) }
+                { DirectX::XMFLOAT3(-0.5f, -0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(-0.5f, +0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(+0.5f, +0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(+0.5f, -0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(-0.5f, -0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(-0.5f, +0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(+0.5f, +0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } },
+                { DirectX::XMFLOAT3(+0.5f, -0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } }
             };
 
             std::vector<std::uint16_t> indices =
@@ -226,6 +262,7 @@ namespace dx12demo
             };
 
             AddSubMesh(vertices, indices);
+            RecalculateNormals();
         }
 
         void AddSubMeshSphere(float radius, UINT sliceCount, UINT stackCount)
@@ -234,7 +271,7 @@ namespace dx12demo
             std::vector<std::uint16_t> indices;
 
             // top
-            vertices.push_back({ DirectX::XMFLOAT3(0.0f, radius, 0.0f), DirectX::XMFLOAT4(DirectX::Colors::White) });
+            vertices.push_back({ DirectX::XMFLOAT3(0.0f, radius, 0.0f), { 0.0f, 0.0f, 0.0f } });
 
             float phiStep = DirectX::XM_PI / stackCount;
             float thetaStep = 2.0f * DirectX::XM_PI / sliceCount;
@@ -256,14 +293,12 @@ namespace dx12demo
                     v.Position.y = radius * cosf(phi);
                     v.Position.z = radius * sinf(phi) * sinf(theta);
 
-                    v.Color = DirectX::XMFLOAT4(DirectX::Colors::White);
-
                     vertices.push_back(v);
                 }
             }
 
             // bottom
-            vertices.push_back({ DirectX::XMFLOAT3(0.0f, -radius, 0.0f), DirectX::XMFLOAT4(DirectX::Colors::White) });
+            vertices.push_back({ DirectX::XMFLOAT3(0.0f, -radius, 0.0f), { 0.0f, 0.0f, 0.0f } });
 
             //
             // Compute indices for top stack.  The top stack was written first to the vertex buffer
@@ -318,6 +353,7 @@ namespace dx12demo
             }
 
             AddSubMesh(vertices, indices);
+            RecalculateNormals();
         }
     };
 }

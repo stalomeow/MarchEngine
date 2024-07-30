@@ -4,6 +4,7 @@
 #include "Rendering/Mesh.hpp"
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/Command/CommandBuffer.h"
+#include "Rendering/Light.h"
 #include "Core/GameObject.h"
 #include <d3d12.h>
 #include <dxgi.h>
@@ -20,7 +21,7 @@ namespace dx12demo
         DirectX::XMFLOAT4X4 WorldMatrix;
     };
 
-    struct PerDrawConstants
+    struct PerPassConstants
     {
         DirectX::XMFLOAT4X4 ViewMatrix;
         DirectX::XMFLOAT4X4 ProjectionMatrix;
@@ -29,6 +30,10 @@ namespace dx12demo
         DirectX::XMFLOAT4X4 InvProjectionMatrix;
         DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
         DirectX::XMFLOAT4 Time; // elapsed time, delta time, unused, unused
+        DirectX::XMFLOAT4 CameraPositionWS;
+
+        LightData Lights[LightData::MaxCount];
+        int LightCount;
     };
 
     class RenderPipeline
