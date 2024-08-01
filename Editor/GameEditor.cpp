@@ -9,6 +9,7 @@
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
 #include <imgui_stdlib.h>
+#include <tuple>
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -32,6 +33,8 @@ namespace dx12demo
 
     void GameEditor::OnStart()
     {
+        m_RenderDoc.Load();
+
         auto [width, height] = GetApp().GetClientWidthAndHeight();
         GetGfxManager().Initialize(GetApp().GetHWND(), width, height);
         m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
@@ -146,6 +149,43 @@ namespace dx12demo
 
                 ImGui::EndMenu();
             }
+
+            if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
+            {
+                m_RenderDoc.CaptureSingleFrame();
+            }
+
+            if (ImGui::BeginMenu("RenderDoc"))
+            {
+                if (ImGui::MenuItem("Capture", "Alt+C", nullptr, m_RenderDoc.IsLoaded()))
+                {
+                    m_RenderDoc.CaptureSingleFrame();
+                }
+
+                ImGui::SeparatorText("Information");
+
+                if (ImGui::BeginMenu("Library"))
+                {
+                    ImGui::TextUnformatted(m_RenderDoc.GetLibraryPath().c_str());
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu("API Version"))
+                {
+                    auto [major, minor, patch] = m_RenderDoc.GetVersion();
+                    ImGui::Text("%d.%d.%d", major, minor, patch);
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu("Num Captures"))
+                {
+                    ImGui::Text("%d", m_RenderDoc.GetNumCaptures());
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMainMenuBar();
         }
 

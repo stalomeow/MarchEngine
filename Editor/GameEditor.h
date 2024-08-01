@@ -4,6 +4,7 @@
 #include "Core/IEngine.h"
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/DescriptorHeap.h"
+#include "Rendering/RenderDoc.h"
 #include "Core/GameObject.h"
 #include <d3d12.h>
 #include <vector>
@@ -49,6 +50,8 @@ namespace dx12demo
         bool m_ShowHierarchyWindow = true;
         int m_SelectedGameObjectIndex = 0;
         ImVec4 m_ImGUIClearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+        RenderDoc m_RenderDoc{};
 
     private:
         float m_FontSize = 15.0f;
