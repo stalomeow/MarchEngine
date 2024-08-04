@@ -6,6 +6,7 @@
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/RenderDoc.h"
 #include "Core/GameObject.h"
+#include "Scripting/DotNet.h"
 #include <d3d12.h>
 #include <vector>
 #include <wrl.h>
@@ -52,6 +53,7 @@ namespace dx12demo
         ImVec4 m_ImGUIClearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
         RenderDoc m_RenderDoc{};
+        DotNetEnv m_DotNet{};
 
     private:
         float m_FontSize = 15.0f;

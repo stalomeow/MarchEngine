@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <BaseOutputPath>..\..\out\build\Managed\Binding\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>..\..\out\build\Managed\Binding\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <AssemblyName>DX12Demo.Binding</AssemblyName>
+    <RootNamespace>DX12Demo.Binding</RootNamespace>
+    <EnableDynamicLoading>True</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BindingSourceGen\BindingSourceGen.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

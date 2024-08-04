@@ -33,7 +33,8 @@ namespace dx12demo
 
     void GameEditor::OnStart()
     {
-        m_RenderDoc.Load();
+        m_RenderDoc.Load(); // 越早越好
+        m_DotNet.Load(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
         GetGfxManager().Initialize(GetApp().GetHWND(), width, height);
@@ -41,6 +42,8 @@ namespace dx12demo
 
         CreateDescriptorHeaps();
         InitImGui();
+
+        m_DotNet.InvokeMainFunc();
     }
 
     void GameEditor::CreateDescriptorHeaps()
@@ -468,9 +471,9 @@ namespace dx12demo
         }
 
         ImGui::SeparatorText(StringUtility::Format("%d Info | %d Warn | %d Error",
-            Debug::GetLogCount(Debug::LogType::Info),
-            Debug::GetLogCount(Debug::LogType::Warn),
-            Debug::GetLogCount(Debug::LogType::Error)).c_str());
+            Debug::GetLogCount(LogType::Info),
+            Debug::GetLogCount(LogType::Warn),
+            Debug::GetLogCount(LogType::Error)).c_str());
 
         if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), ImGuiChildFlags_ResizeY | ImGuiChildFlags_Border, ImGuiWindowFlags_None))
         {
@@ -478,9 +481,9 @@ namespace dx12demo
             {
                 const auto& item = Debug::s_Logs[i];
 
-                if ((logTypeFilter == 1 && item.Type != Debug::LogType::Info)  ||
-                    (logTypeFilter == 2 && item.Type != Debug::LogType::Warn)  ||
-                    (logTypeFilter == 3 && item.Type != Debug::LogType::Error) ||
+                if ((logTypeFilter == 1 && item.Type != LogType::Info)  ||
+                    (logTypeFilter == 2 && item.Type != LogType::Warn)  ||
+                    (logTypeFilter == 3 && item.Type != LogType::Error) ||
                     (logMsgFilter.IsActive() && !logMsgFilter.PassFilter(item.Message.c_str())))
                 {
                     if (selectedLog == i)
@@ -521,9 +524,9 @@ namespace dx12demo
 
                 ImVec4 color;
                 bool has_color = false;
-                if (item.Type == Debug::LogType::Info) { color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); has_color = true; }
-                else if (item.Type == Debug::LogType::Error) { color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); has_color = true; }
-                else if (item.Type == Debug::LogType::Warn) { color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); has_color = true; }
+                if (item.Type == LogType::Info) { color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); has_color = true; }
+                else if (item.Type == LogType::Error) { color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); has_color = true; }
+                else if (item.Type == LogType::Warn) { color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); has_color = true; }
 
                 if (has_color) ImGui::PushStyleColor(ImGuiCol_Text, color);
                 ImGui::TextUnformatted(Debug::GetTypePrefix(item.Type).c_str());
@@ -545,13 +548,17 @@ namespace dx12demo
         {
             if (selectedLog >= 0 && selectedLog < Debug::s_Logs.size())
             {
-                const auto& item = Debug::s_Logs[selectedLog];
+                const LogEntry& item = Debug::s_Logs[selectedLog];
 
                 ImGui::PushTextWrapPos();
                 ImGui::TextUnformatted(item.Message.c_str());
                 ImGui::Spacing();
-                ImGui::TextUnformatted(("File: " + item.File).c_str());
-                ImGui::TextUnformatted(("Line: " + std::to_string(item.Line)).c_str());
+
+                for (const LogStackFrame& frame : item.StackTrace)
+                {
+                    ImGui::Text("%s (at %s : %d)", frame.Function.c_str(), frame.Filename.c_str(), frame.Line);
+                }
+
                 ImGui::PopTextWrapPos();
 
                 if (ImGui::BeginPopupContextWindow())
@@ -579,6 +586,7 @@ namespace dx12demo
         GetGfxManager().WaitForFameLatency();
         CalculateFrameStats();
 
+        m_DotNet.InvokeTickFunc();
         DrawImGui();
 
         CommandBuffer* cmd = CommandBuffer::Get();
