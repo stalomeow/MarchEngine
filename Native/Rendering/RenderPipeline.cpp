@@ -1,7 +1,6 @@
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
-#include "Core/GameObject.h"
 #include "Core/Debug.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
@@ -227,9 +226,9 @@ namespace dx12demo
         m_ScissorRect = { 0, 0, width, height };
     }
 
-    void RenderPipeline::Render(CommandBuffer* cmd, const std::vector<std::unique_ptr<GameObject>>& gameObjects)
+    void RenderPipeline::Render(CommandBuffer* cmd)
     {
-        if (gameObjects.empty())
+        if (m_RenderObjects.empty())
         {
             return;
         }
@@ -262,27 +261,26 @@ namespace dx12demo
 
         DirectX::XMStoreFloat4(&passConsts.CameraPositionWS, pos);
 
-        passConsts.LightCount = 0;
-        for (auto& go : gameObjects)
+        passConsts.LightCount = m_Lights.size();
+        for (int i = 0; i < m_Lights.size(); i++)
         {
-            if (!go->IsActive || go->GetLight() == nullptr)
+            if (!m_Lights[i]->IsActive)
             {
                 continue;
             }
 
-            go->GetLight()->FillLightData(go->GetTransform(), passConsts.Lights[passConsts.LightCount]);
-            passConsts.LightCount++;
+            m_Lights[i]->FillLightData(passConsts.Lights[i]);
         }
 
         auto cbPass = cmd->AllocateTempUploadHeap<PerPassConstants>(1, ConstantBufferAlignment);
         cbPass.SetData(0, passConsts);
 
-        auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(gameObjects.size(), ConstantBufferAlignment);
+        auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(m_RenderObjects.size(), ConstantBufferAlignment);
 
-        for (int i = 0; i < gameObjects.size(); i++)
+        for (int i = 0; i < m_RenderObjects.size(); i++)
         {
             PerObjConstants consts = {};
-            consts.WorldMatrix = gameObjects[i]->GetTransform()->GetWorldMatrix();
+            consts.WorldMatrix = m_RenderObjects[i]->GetWorldMatrix();
             cbPerObj.SetData(i, consts);
         }
 
@@ -320,16 +318,16 @@ namespace dx12demo
         cmd->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
         cmd->GetList()->SetGraphicsRootConstantBufferView(2, cbPass.GetGpuVirtualAddress());
 
-        for (int i = 0; i < gameObjects.size(); i++)
+        for (int i = 0; i < m_RenderObjects.size(); i++)
         {
-            if (!gameObjects[i]->IsActive || gameObjects[i]->GetMesh() == nullptr)
+            if (!m_RenderObjects[i]->IsActive || m_RenderObjects[i]->Mesh == nullptr)
             {
                 continue;
             }
 
             cmd->GetList()->SetGraphicsRootConstantBufferView(0, cbPerObj.GetGpuVirtualAddress(i));
-            cmd->GetList()->SetGraphicsRootConstantBufferView(1, gameObjects[i]->GetMaterialBuffer()->GetGpuVirtualAddress());
-            gameObjects[i]->GetMesh()->Draw(cmd);
+            cmd->GetList()->SetGraphicsRootConstantBufferView(1, m_RenderObjects[i]->GetMaterialBuffer()->GetGpuVirtualAddress());
+            m_RenderObjects[i]->Mesh->Draw(cmd);
         }
 
         if (m_EnableMSAA)

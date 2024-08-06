@@ -12,7 +12,7 @@ find_package(imgui CONFIG REQUIRED)
 
 add_definitions(-DUNICODE -D_UNICODE)
 
-file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h" "*.cpp")
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h" "*.cpp" "*.hpp")
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCES})
 
 # Add source to this project's executable.
@@ -34,11 +34,11 @@ add_custom_command(TARGET dx12-demo POST_BUILD
                $<TARGET_FILE_DIR:dx12-demo>)
 
 # C# 程序集
-add_dependencies(dx12-demo Binding)
+add_dependencies(dx12-demo Core)
 add_custom_command(TARGET dx12-demo POST_BUILD 
                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-               "${CMAKE_SOURCE_DIR}/out/build/Managed/Binding/bin/$<CONFIG>/net8.0/DX12Demo.Binding.dll" # 会自动 copy pdb
-               "${CMAKE_SOURCE_DIR}/out/build/Managed/Binding/bin/$<CONFIG>/net8.0/DX12Demo.Binding.runtimeconfig.json"
+               "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/DX12Demo.Core.dll" # 会自动 copy pdb
+               "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/DX12Demo.Core.runtimeconfig.json"
                $<TARGET_FILE_DIR:dx12-demo>)
 
 target_include_directories(dx12-demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

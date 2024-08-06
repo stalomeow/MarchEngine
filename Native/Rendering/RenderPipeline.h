@@ -5,7 +5,8 @@
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/Light.h"
-#include "Core/GameObject.h"
+#include "Rendering/RenderObject.h"
+#include "Scripting/ScriptTypes.h"
 #include <d3d12.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
@@ -13,6 +14,7 @@
 #include <memory>
 #include <tuple>
 #include <functional>
+#include <vector>
 
 namespace dx12demo
 {
@@ -43,7 +45,7 @@ namespace dx12demo
         ~RenderPipeline() = default;
 
         void Resize(int width, int height);
-        void Render(CommandBuffer* cmd, const std::vector<std::unique_ptr<GameObject>>& gameObjects);
+        void Render(CommandBuffer* cmd);
 
         bool GetEnableMSAA() const { return m_EnableMSAA; }
         void SetEnableMSAA(bool value);
@@ -52,6 +54,30 @@ namespace dx12demo
         void SetIsWireframe(bool value) { m_IsWireframe = value; }
 
         ID3D12Resource* GetResolvedColorTarget() const { return m_ResolvedColorTarget.Get(); }
+
+        void AddRenderObject(RenderObject* obj) { m_RenderObjects.push_back(obj); }
+
+        void RemoveRenderObject(RenderObject* obj)
+        {
+            auto it = std::find(m_RenderObjects.begin(), m_RenderObjects.end(), obj);
+
+            if (it != m_RenderObjects.end())
+            {
+                m_RenderObjects.erase(it);
+            }
+        }
+
+        void AddLight(Light* light) { m_Lights.push_back(light); }
+
+        void RemoveLight(Light* light)
+        {
+            auto it = std::find(m_Lights.begin(), m_Lights.end(), light);
+
+            if (it != m_Lights.end())
+            {
+                m_Lights.erase(it);
+            }
+        }
 
     private:
         void CheckMSAAQuailty();
@@ -95,8 +121,34 @@ namespace dx12demo
         float m_Phi = DirectX::XM_PIDIV4;
         float m_Radius = 5.0f;
 
+        std::vector<RenderObject*> m_RenderObjects{};
+        std::vector<Light*> m_Lights{};
+
     private:
         DXGI_FORMAT m_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
         UINT m_MSAASampleCount = 4;
     };
+
+    namespace binding
+    {
+        inline CSHARP_API(void) RenderPipeline_AddRenderObject(RenderPipeline* pPipeline, RenderObject* pObject)
+        {
+            pPipeline->AddRenderObject(pObject);
+        }
+
+        inline CSHARP_API(void) RenderPipeline_RemoveRenderObject(RenderPipeline* pPipeline, RenderObject* pObject)
+        {
+            pPipeline->RemoveRenderObject(pObject);
+        }
+
+        inline CSHARP_API(void) RenderPipeline_AddLight(RenderPipeline* pPipeline, Light* pLight)
+        {
+            pPipeline->AddLight(pLight);
+        }
+
+        inline CSHARP_API(void) RenderPipeline_RemoveLight(RenderPipeline* pPipeline, Light* pLight)
+        {
+            pPipeline->RemoveLight(pLight);
+        }
+    }
 };

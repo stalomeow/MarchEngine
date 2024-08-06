@@ -5,7 +5,6 @@
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/RenderDoc.h"
-#include "Core/GameObject.h"
 #include "Scripting/DotNet.h"
 #include <d3d12.h>
 #include <vector>
@@ -27,6 +26,9 @@ namespace dx12demo
         void OnResized() override;
         void OnDisplayScaleChanged() override;
         void OnPaint() override;
+
+    public:
+        RenderPipeline* GetRenderPipeline() override { return m_RenderPipeline.get(); }
 
     private:
         void CreateDescriptorHeaps();

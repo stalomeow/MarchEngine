@@ -2,6 +2,7 @@
 
 #include "Core/IEngine.h"
 #include "Core/GameTimer.h"
+#include "Scripting/ScriptTypes.h"
 #include <Windows.h>
 #include <string>
 #include <tuple>
@@ -52,6 +53,7 @@ namespace dx12demo
 
         HINSTANCE GetHINSTANCE() const { return m_InstanceHandle; }
         HWND GetHWND() const { return m_WindowHandle; }
+        IEngine* GetEngine() const { return m_Engine; }
 
     private:
         bool InitWindow(int nCmdShow, int clientWidth, int clientHeight);
@@ -66,4 +68,22 @@ namespace dx12demo
     };
 
     WinApplication& GetApp();
+
+    namespace binding
+    {
+        inline CSHARP_API(CSharpFloat) Application_GetDeltaTime()
+        {
+            return GetApp().GetDeltaTime();
+        }
+
+        inline CSHARP_API(CSharpFloat) Application_GetElapsedTime()
+        {
+            return GetApp().GetElapsedTime();
+        }
+
+        inline CSHARP_API(IEngine*) Application_GetEngine()
+        {
+            return GetApp().GetEngine();
+        }
+    }
 }

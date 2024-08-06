@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Rendering/RenderPipeline.h"
+#include "Scripting/ScriptTypes.h"
 #include <Windows.h>
 
 namespace dx12demo
@@ -26,5 +28,16 @@ namespace dx12demo
         virtual void OnKeyUp(WPARAM btnState) { }
 
         virtual bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) { return false; }
+
+    public:
+        virtual RenderPipeline* GetRenderPipeline() = 0;
     };
+
+    namespace binding
+    {
+        inline CSHARP_API(RenderPipeline*) IEngine_GetRenderPipeline(IEngine* pEngine)
+        {
+            return pEngine->GetRenderPipeline();
+        }
+    }
 }

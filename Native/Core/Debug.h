@@ -35,17 +35,24 @@ namespace dx12demo
 
     namespace binding
     {
-        CSHARP_API(void) Debug_Info(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message);
-        CSHARP_API(void) Debug_Warn(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message);
-        CSHARP_API(void) Debug_Error(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message);
+        struct CSharpLogStackFrame
+        {
+            CSharpString MethodName;
+            CSharpString Filename;
+            CSharpInt Line;
+        };
+
+        CSHARP_API(void) Debug_Info(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
+        CSHARP_API(void) Debug_Warn(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
+        CSHARP_API(void) Debug_Error(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
     }
 
     class Debug
     {
         friend class GameEditor;
-        friend CSHARP_API(void) binding::Debug_Info(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message);
-        friend CSHARP_API(void) binding::Debug_Warn(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message);
-        friend CSHARP_API(void) binding::Debug_Error(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message);
+        friend CSHARP_API(void) binding::Debug_Info(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
+        friend CSHARP_API(void) binding::Debug_Warn(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
+        friend CSHARP_API(void) binding::Debug_Error(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
 
     public:
         template<typename ... Args>

@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project("dx12-demo")
 
+include_external_msproject(Core "${CMAKE_SOURCE_DIR}/Managed/Core/Core.csproj" PLATFORM AnyCPU)
 include_external_msproject(Binding "${CMAKE_SOURCE_DIR}/Managed/Binding/Binding.csproj" PLATFORM AnyCPU)
-include_external_msproject(BindingSourceGen "${CMAKE_SOURCE_DIR}/Managed/BindingSourceGen/BindingSourceGen.csproj" PLATFORM AnyCPU)
 
 add_subdirectory(Native)
 

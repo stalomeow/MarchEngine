@@ -88,37 +88,37 @@ namespace dx12demo
 
     namespace binding
     {
-        CSHARP_API(void) Debug_Info(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message)
+        CSHARP_API(void) Debug_Info(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount)
         {
             std::vector<LogStackFrame> stackTrace;
 
-            for (CSharpInt i = 0; i < stackTraceFrameCount; i++)
+            for (CSharpInt i = 0; i < framCount; i++)
             {
-                stackTrace.push_back({ CSharpString_ToUtf8(methods[i]), CSharpString_ToUtf8(filenames[i]), lines[i] });
+                stackTrace.push_back({ CSharpString_ToUtf8(pFrames[i].MethodName), CSharpString_ToUtf8(pFrames[i].Filename), pFrames[i].Line });
             }
 
             Debug::AddLog(stackTrace, CSharpString_ToUtf8(message), LogType::Info);
         }
 
-        CSHARP_API(void) Debug_Warn(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message)
+        CSHARP_API(void) Debug_Warn(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount)
         {
             std::vector<LogStackFrame> stackTrace;
 
-            for (CSharpInt i = 0; i < stackTraceFrameCount; i++)
+            for (CSharpInt i = 0; i < framCount; i++)
             {
-                stackTrace.push_back({ CSharpString_ToUtf8(methods[i]), CSharpString_ToUtf8(filenames[i]), lines[i] });
+                stackTrace.push_back({ CSharpString_ToUtf8(pFrames[i].MethodName), CSharpString_ToUtf8(pFrames[i].Filename), pFrames[i].Line });
             }
 
             Debug::AddLog(stackTrace, CSharpString_ToUtf8(message), LogType::Warn);
         }
 
-        CSHARP_API(void) Debug_Error(CSharpInt stackTraceFrameCount, CSharpString* methods, CSharpString* filenames, CSharpInt* lines, CSharpString message)
+        CSHARP_API(void) Debug_Error(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount)
         {
             std::vector<LogStackFrame> stackTrace;
 
-            for (CSharpInt i = 0; i < stackTraceFrameCount; i++)
+            for (CSharpInt i = 0; i < framCount; i++)
             {
-                stackTrace.push_back({ CSharpString_ToUtf8(methods[i]), CSharpString_ToUtf8(filenames[i]), lines[i] });
+                stackTrace.push_back({ CSharpString_ToUtf8(pFrames[i].MethodName), CSharpString_ToUtf8(pFrames[i].Filename), pFrames[i].Line });
             }
 
             Debug::AddLog(stackTrace, CSharpString_ToUtf8(message), LogType::Error);

@@ -1,9 +1,18 @@
 #include "Scripting/DotNet.h"
 #include "Scripting/ScriptTypes.h"
 #include "Core/Debug.h"
+#include "App/WinApplication.h"
+#include "Rendering/RenderObject.h"
+#include "Rendering/Mesh.hpp"
+#include "Rendering/RenderPipeline.h"
+#include "Core/IEngine.h"
 #include <Windows.h>
 #include <assert.h>
 #include <unordered_map>
+
+using namespace dx12demo::binding;
+
+#define CSHARP_BINDING_ENTRY(name) { u8#name, ::dx12demo::binding::##name }
 
 namespace dx12demo
 {
@@ -11,16 +20,61 @@ namespace dx12demo
     {
         std::unordered_map<std::string, void*> g_ExportFuncs =
         {
-            { "Debug_LogInfo", ::dx12demo::binding::Debug_Info },
-            { "Debug_LogWarn", ::dx12demo::binding::Debug_Warn },
-            { "Debug_LogError", ::dx12demo::binding::Debug_Error },
+            CSHARP_BINDING_ENTRY(MarshalString),
+            CSHARP_BINDING_ENTRY(UnmarshalString),
+            CSHARP_BINDING_ENTRY(FreeString),
+
+            CSHARP_BINDING_ENTRY(Debug_Info),
+            CSHARP_BINDING_ENTRY(Debug_Warn),
+            CSHARP_BINDING_ENTRY(Debug_Error),
+
+            CSHARP_BINDING_ENTRY(IEngine_GetRenderPipeline),
+
+            CSHARP_BINDING_ENTRY(Application_GetDeltaTime),
+            CSHARP_BINDING_ENTRY(Application_GetElapsedTime),
+            CSHARP_BINDING_ENTRY(Application_GetEngine),
+
+            CSHARP_BINDING_ENTRY(RenderObject_New),
+            CSHARP_BINDING_ENTRY(RenderObject_Delete),
+            CSHARP_BINDING_ENTRY(RenderObject_SetPosition),
+            CSHARP_BINDING_ENTRY(RenderObject_SetRotation),
+            CSHARP_BINDING_ENTRY(RenderObject_SetScale),
+            CSHARP_BINDING_ENTRY(RenderObject_GetMesh),
+            CSHARP_BINDING_ENTRY(RenderObject_SetMesh),
+            CSHARP_BINDING_ENTRY(RenderObject_GetIsActive),
+            CSHARP_BINDING_ENTRY(RenderObject_SetIsActive),
+
+            CSHARP_BINDING_ENTRY(SimpleMesh_New),
+            CSHARP_BINDING_ENTRY(SimpleMesh_Delete),
+            CSHARP_BINDING_ENTRY(SimpleMesh_ClearSubMeshes),
+            CSHARP_BINDING_ENTRY(SimpleMesh_AddSubMeshCube),
+            CSHARP_BINDING_ENTRY(SimpleMesh_AddSubMeshSphere),
+
+            CSHARP_BINDING_ENTRY(RenderPipeline_AddRenderObject),
+            CSHARP_BINDING_ENTRY(RenderPipeline_RemoveRenderObject),
+            CSHARP_BINDING_ENTRY(RenderPipeline_AddLight),
+            CSHARP_BINDING_ENTRY(RenderPipeline_RemoveLight),
+
+            CSHARP_BINDING_ENTRY(Light_New),
+            CSHARP_BINDING_ENTRY(Light_Delete),
+            CSHARP_BINDING_ENTRY(Light_SetPosition),
+            CSHARP_BINDING_ENTRY(Light_SetRotation),
+            CSHARP_BINDING_ENTRY(Light_SetIsActive),
+            CSHARP_BINDING_ENTRY(Light_GetType),
+            CSHARP_BINDING_ENTRY(Light_SetType),
+            CSHARP_BINDING_ENTRY(Light_GetColor),
+            CSHARP_BINDING_ENTRY(Light_SetColor),
+            CSHARP_BINDING_ENTRY(Light_GetFalloffRange),
+            CSHARP_BINDING_ENTRY(Light_SetFalloffRange),
+            CSHARP_BINDING_ENTRY(Light_GetSpotPower),
+            CSHARP_BINDING_ENTRY(Light_SetSpotPower),
         };
 
-        void* LookUpExportFunc(CSharpString key)
+        CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)
         {
-            std::string k = CSharpString_ToUtf8(key);
-            auto v = g_ExportFuncs.find(k);
-            return v == g_ExportFuncs.end() ? nullptr : v->second;
+            std::string key = CSharpString_ToUtf8(pKey, keyLength);
+            auto func = g_ExportFuncs.find(key);
+            return func == g_ExportFuncs.end() ? nullptr : func->second;
         }
     }
 
@@ -44,7 +98,7 @@ namespace dx12demo
         load_assembly_and_get_function_pointer_fn load_assembly_and_get_function_pointer = nullptr;
         get_function_pointer_fn get_function_pointer = nullptr;
         hostfxr_handle contextHandle = nullptr;
-        rc = init_fptr(L"DX12Demo.Binding.runtimeconfig.json",
+        rc = init_fptr(L"DX12Demo.Core.runtimeconfig.json",
             nullptr, &contextHandle);
 
         if (rc != 0)
@@ -72,8 +126,8 @@ namespace dx12demo
         // Function pointer to managed delegate
 
         rc = load_assembly_and_get_function_pointer(
-            L"DX12Demo.Binding.dll",
-            L"DX12Demo.Binding.NativeFunctionAttribute,DX12Demo.Binding",
+            L"DX12Demo.Core.dll",
+            L"DX12Demo.Binding.NativeFunctionAttribute,DX12Demo.Core",
             L"SetLookUpFn",
             UNMANAGEDCALLERSONLY_METHOD,
             nullptr,
@@ -81,12 +135,21 @@ namespace dx12demo
         assert(rc == 0);
 
         rc = load_assembly_and_get_function_pointer(
-            L"DX12Demo.Binding.dll",
-            L"DX12Demo.Binding.EntryPoint,DX12Demo.Binding",
+            L"DX12Demo.Core.dll",
+            L"DX12Demo.Core.EntryPoint,DX12Demo.Core",
             L"OnNativeTick",
             UNMANAGEDCALLERSONLY_METHOD,
             nullptr,
             reinterpret_cast<void**>(&m_TickFunc));
+        assert(rc == 0);
+
+        rc = load_assembly_and_get_function_pointer(
+            L"DX12Demo.Core.dll",
+            L"DX12Demo.Core.EntryPoint,DX12Demo.Core",
+            L"OnNativeInitialize",
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr,
+            reinterpret_cast<void**>(&m_InitFunc));
         assert(rc == 0);
     }
 
@@ -98,5 +161,10 @@ namespace dx12demo
     void DotNetEnv::InvokeTickFunc()
     {
         m_TickFunc();
+    }
+
+    void DotNetEnv::InvokeInitFunc()
+    {
+        m_InitFunc();
     }
 }

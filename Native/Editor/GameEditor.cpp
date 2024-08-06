@@ -4,7 +4,6 @@
 #include "Rendering/GfxManager.h"
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/Resource/GpuBuffer.h"
-#include "Core/Scene.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
@@ -44,6 +43,7 @@ namespace dx12demo
         InitImGui();
 
         m_DotNet.InvokeMainFunc();
+        m_DotNet.InvokeInitFunc();
     }
 
     void GameEditor::CreateDescriptorHeaps()
@@ -210,104 +210,104 @@ namespace dx12demo
         {
             ImGui::Begin("Inspector");
 
-            if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < Scene::GetCurrent()->GameObjects.size())
-            {
-                GameObject* go = Scene::GetCurrent()->GameObjects[m_SelectedGameObjectIndex].get();
+            //if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < Scene::GetCurrent()->GameObjects.size())
+            //{
+            //    GameObject* go = Scene::GetCurrent()->GameObjects[m_SelectedGameObjectIndex].get();
 
-                ImGui::Checkbox("##GameObjectActive", &go->IsActive);
-                ImGui::SameLine();
-                ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
-                ImGui::InputText("##GameObjectName", &go->Name);
-                ImGui::PopItemWidth();
-                ImGui::SeparatorText("Components");
+            //    ImGui::Checkbox("##GameObjectActive", &go->IsActive);
+            //    ImGui::SameLine();
+            //    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+            //    ImGui::InputText("##GameObjectName", &go->Name);
+            //    ImGui::PopItemWidth();
+            //    ImGui::SeparatorText("Components");
 
-                if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-                {
-                    Transform* trans = go->GetTransform();
-                    DrawVec3("Position", (float*)&trans->Position, 0.1f);
-                    DrawVec3("Rotation", (float*)&trans->RotationEulerAngles, 0.1f);
-                    DrawVec3("Scale", (float*)&trans->Scale, 0.1f);
+            //    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+            //    {
+            //        Transform* trans = go->GetTransform();
+            //        DrawVec3("Position", (float*)&trans->Position, 0.1f);
+            //        DrawVec3("Rotation", (float*)&trans->RotationEulerAngles, 0.1f);
+            //        DrawVec3("Scale", (float*)&trans->Scale, 0.1f);
 
-                    DirectX::XMVECTOR euler = {};
-                    euler = DirectX::XMVectorSetX(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.x));
-                    euler = DirectX::XMVectorSetY(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.y));
-                    euler = DirectX::XMVectorSetZ(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.z));
-                    auto quaternion = DirectX::XMQuaternionRotationRollPitchYawFromVector(euler);
-                    DirectX::XMStoreFloat4(&trans->Rotation, quaternion);
-                }
+            //        DirectX::XMVECTOR euler = {};
+            //        euler = DirectX::XMVectorSetX(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.x));
+            //        euler = DirectX::XMVectorSetY(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.y));
+            //        euler = DirectX::XMVectorSetZ(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.z));
+            //        auto quaternion = DirectX::XMQuaternionRotationRollPitchYawFromVector(euler);
+            //        DirectX::XMStoreFloat4(&trans->Rotation, quaternion);
+            //    }
 
-                if (go->GetLight() != nullptr && ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
-                {
-                    Light* light = go->GetLight();
+            //    if (go->GetLight() != nullptr && ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+            //    {
+            //        Light* light = go->GetLight();
 
-                    SameLineLabel("Type");
-                    ImGui::Combo("##Type", reinterpret_cast<int*>(&light->Type), "Directional\0Point\0Spot\0\0");
+            //        SameLineLabel("Type");
+            //        ImGui::Combo("##Type", reinterpret_cast<int*>(&light->Type), "Directional\0Point\0Spot\0\0");
 
-                    SameLineLabel("Color");
-                    ImGui::ColorEdit3("##Color", (float*)&light->Color);
+            //        SameLineLabel("Color");
+            //        ImGui::ColorEdit3("##Color", (float*)&light->Color);
 
-                    if (light->Type != LightType::Directional)
-                    {
-                        SameLineLabel("Falloff Range");
-                        ImGui::DragFloatRange2("##FalloffRange", &light->FalloffRange.x, &light->FalloffRange.y, 0.1f, 0.1f, FLT_MAX);
-                    }
+            //        if (light->Type != LightType::Directional)
+            //        {
+            //            SameLineLabel("Falloff Range");
+            //            ImGui::DragFloatRange2("##FalloffRange", &light->FalloffRange.x, &light->FalloffRange.y, 0.1f, 0.1f, FLT_MAX);
+            //        }
 
-                    if (light->Type == LightType::Spot)
-                    {
-                        SameLineLabel("Spot Power");
-                        ImGui::DragFloat("##SpotPower", &light->SpotPower, 0.1f, 0.1f, FLT_MAX);
-                    }
-                }
+            //        if (light->Type == LightType::Spot)
+            //        {
+            //            SameLineLabel("Spot Power");
+            //            ImGui::DragFloat("##SpotPower", &light->SpotPower, 0.1f, 0.1f, FLT_MAX);
+            //        }
+            //    }
 
-                if (go->GetMesh() != nullptr && ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
-                {
-                    MaterialData& data = go->GetMaterialData();
-                    bool dirty = false;
+            //    if (go->GetMesh() != nullptr && ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
+            //    {
+            //        MaterialData& data = go->GetMaterialData();
+            //        bool dirty = false;
 
-                    SameLineLabel("Diffuse Albedo");
-                    if (ImGui::ColorEdit4("##DiffuseAlbedo", (float*)&data.DiffuseAlbedo))
-                    {
-                        dirty = true;
-                    }
+            //        SameLineLabel("Diffuse Albedo");
+            //        if (ImGui::ColorEdit4("##DiffuseAlbedo", (float*)&data.DiffuseAlbedo))
+            //        {
+            //            dirty = true;
+            //        }
 
-                    SameLineLabel("Fresnel R0");
-                    if (ImGui::ColorEdit3("##FresnelR0", (float*)&data.FresnelR0, ImGuiColorEditFlags_Float))
-                    {
-                        dirty = true;
-                    }
+            //        SameLineLabel("Fresnel R0");
+            //        if (ImGui::ColorEdit3("##FresnelR0", (float*)&data.FresnelR0, ImGuiColorEditFlags_Float))
+            //        {
+            //            dirty = true;
+            //        }
 
-                    SameLineLabel("Roughness");
-                    if (ImGui::SliderFloat("##Roughness", &data.Roughness, 0.0f, 1.0f))
-                    {
-                        dirty = true;
-                    }
+            //        SameLineLabel("Roughness");
+            //        if (ImGui::SliderFloat("##Roughness", &data.Roughness, 0.0f, 1.0f))
+            //        {
+            //            dirty = true;
+            //        }
 
-                    if (dirty)
-                    {
-                        ConstantBuffer<MaterialData>* matBuffer = go->GetMaterialBuffer();
-                        matBuffer->SetData(0, data);
-                    }
-                }
+            //        if (dirty)
+            //        {
+            //            ConstantBuffer<MaterialData>* matBuffer = go->GetMaterialBuffer();
+            //            matBuffer->SetData(0, data);
+            //        }
+            //    }
 
-                ImGui::Spacing();
+            //    ImGui::Spacing();
 
-                auto windowWidth = ImGui::GetWindowSize().x;
-                auto textWidth = ImGui::CalcTextSize("Add Component").x;
-                float padding = 80.0f;
-                ImGui::SetCursorPosX((windowWidth - textWidth - padding) * 0.5f);
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(padding * 0.5f, ImGui::GetStyle().FramePadding.y));
+            //    auto windowWidth = ImGui::GetWindowSize().x;
+            //    auto textWidth = ImGui::CalcTextSize("Add Component").x;
+            //    float padding = 80.0f;
+            //    ImGui::SetCursorPosX((windowWidth - textWidth - padding) * 0.5f);
+            //    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(padding * 0.5f, ImGui::GetStyle().FramePadding.y));
 
-                if (ImGui::Button("Add Component", ImVec2(0, 0)))
-                {
-                    // hasTrans = true;
-                }
+            //    if (ImGui::Button("Add Component", ImVec2(0, 0)))
+            //    {
+            //        // hasTrans = true;
+            //    }
 
-                ImGui::PopStyleVar();
-            }
-            else
-            {
-                m_SelectedGameObjectIndex = -1;
-            }
+            //    ImGui::PopStyleVar();
+            //}
+            //else
+            //{
+            //    m_SelectedGameObjectIndex = -1;
+            //}
 
             ImGui::End();
         }
@@ -359,7 +359,7 @@ namespace dx12demo
 
             if (ImGui::BeginPopupContextWindow())
             {
-                if (ImGui::MenuItem("Create Cube"))
+                /*if (ImGui::MenuItem("Create Cube"))
                 {
                     Scene::GetCurrent()->GameObjects.push_back(std::make_unique<GameObject>());
                     Scene::GetCurrent()->GameObjects.back()->Name = "Cube";
@@ -383,12 +383,12 @@ namespace dx12demo
                     Scene::GetCurrent()->GameObjects.back()->Name = "Light";
                     Scene::GetCurrent()->GameObjects.back()->AddLight();
                     m_SelectedGameObjectIndex = Scene::GetCurrent()->GameObjects.size() - 1;
-                }
+                }*/
 
                 ImGui::EndPopup();
             }
 
-            if (ImGui::CollapsingHeader(Scene::GetCurrent()->Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+           /* if (ImGui::CollapsingHeader(Scene::GetCurrent()->Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
             {
                 for (int i = 0; i < Scene::GetCurrent()->GameObjects.size(); i++)
                 {
@@ -413,7 +413,7 @@ namespace dx12demo
                         ImGui::TreePop();
                     }
                 }
-            }
+            }*/
 
             ImGui::End();
         }
@@ -591,7 +591,7 @@ namespace dx12demo
 
         CommandBuffer* cmd = CommandBuffer::Get();
 
-        m_RenderPipeline->Render(cmd, Scene::GetCurrent()->GameObjects);
+        m_RenderPipeline->Render(cmd);
 
         // Render Dear ImGui graphics
         cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),

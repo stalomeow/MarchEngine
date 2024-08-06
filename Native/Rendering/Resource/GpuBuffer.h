@@ -55,11 +55,11 @@ namespace dx12demo
     class ConstantBuffer : public GpuBuffer
     {
     public:
-        ConstantBuffer(const std::wstring& name, UINT count)
+        ConstantBuffer(const std::wstring& name, UINT count, bool readable)
             : GpuBuffer(name, MathHelper::AlignUp(sizeof(T), ConstantBufferAlignment), count, D3D12_HEAP_TYPE_UPLOAD)
         {
             CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
-            THROW_IF_FAILED(m_Resource->Map(0, &readRange, reinterpret_cast<void**>(&m_MappedData)));
+            THROW_IF_FAILED(m_Resource->Map(0, (readable ? nullptr : &readRange), reinterpret_cast<void**>(&m_MappedData)));
         }
 
         ~ConstantBuffer()
@@ -71,6 +71,11 @@ namespace dx12demo
         void SetData(UINT index, const T& data)
         {
             memcpy(&m_MappedData[index * m_Stride], &data, sizeof(T));
+        }
+
+        T* GetPointer(UINT index) const
+        {
+            return reinterpret_cast<T*>(&m_MappedData[index * m_Stride]);
         }
 
         static UINT CalculateStride()

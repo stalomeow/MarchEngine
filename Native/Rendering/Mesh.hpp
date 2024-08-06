@@ -5,6 +5,7 @@
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/Resource/GpuBuffer.h"
 #include "Rendering/GfxManager.h"
+#include "Scripting/ScriptTypes.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <DirectXMath.h>
@@ -356,4 +357,32 @@ namespace dx12demo
             RecalculateNormals();
         }
     };
+
+    namespace binding
+    {
+        inline CSHARP_API(SimpleMesh*) SimpleMesh_New()
+        {
+            return new SimpleMesh();
+        }
+
+        inline CSHARP_API(void) SimpleMesh_Delete(SimpleMesh* pObject)
+        {
+            delete pObject;
+        }
+
+        inline CSHARP_API(void) SimpleMesh_ClearSubMeshes(SimpleMesh* pObject)
+        {
+            pObject->ClearSubMeshes();
+        }
+
+        inline CSHARP_API(void) SimpleMesh_AddSubMeshCube(SimpleMesh* pObject)
+        {
+            pObject->AddSubMeshCube();
+        }
+
+        inline CSHARP_API(void) SimpleMesh_AddSubMeshSphere(SimpleMesh* pObject, CSharpFloat radius, CSharpUInt sliceCount, CSharpUInt stackCount)
+        {
+            pObject->AddSubMeshSphere(radius, sliceCount, stackCount);
+        }
+    }
 }

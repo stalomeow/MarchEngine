@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -12,28 +11,6 @@ namespace DX12Demo.BindingSourceGen
     [Generator]
     public class BindingGenerator : ISourceGenerator
     {
-        public const string FixedStringText = @"
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-
-namespace DX12Demo.Binding
-{
-    [StructLayout(LayoutKind.Sequential)]
-    internal unsafe struct FixedString
-    {
-        public char* Data;
-        public int Length;
-
-        public static FixedString Pin(string s, out GCHandle handle)
-        {
-            handle = GCHandle.Alloc(s, GCHandleType.Pinned);
-            char* data = (char*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(s.AsSpan()));
-            return new FixedString { Data = data, Length = s.Length };
-        }
-    }
-}
-";
-
         public const string AttributeText = @"
 using System;
 
@@ -47,13 +24,13 @@ namespace DX12Demo.Binding
         public string? Name { get; set; }
 
         [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
-        public static unsafe delegate* unmanaged[Stdcall]<global::DX12Demo.Binding.FixedString, nint> LookUpFn;
+        public static unsafe delegate* unmanaged[Stdcall]<char*, int, nint> LookUpFn;
 
         [global::System.Runtime.InteropServices.UnmanagedCallersOnly]
         [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
         public static unsafe void SetLookUpFn(nint fn)
         {
-            LookUpFn = (delegate* unmanaged[Stdcall]<global::DX12Demo.Binding.FixedString, nint>)fn;
+            LookUpFn = (delegate* unmanaged[Stdcall]<char*, int, nint>)fn;
         }
     }
 }
@@ -64,11 +41,7 @@ namespace DX12Demo.Binding
 
         public void Initialize(GeneratorInitializationContext context)
         {
-            context.RegisterForPostInitialization(i =>
-            {
-                i.AddSource("FixedString.g.cs", SourceText.From(FixedStringText, Encoding.UTF8));
-                i.AddSource("NativeFunctionAttribute.g.cs", SourceText.From(AttributeText, Encoding.UTF8));
-            });
+            context.RegisterForPostInitialization(i => i.AddSource("NativeFunctionAttribute.g.cs", SourceText.From(AttributeText, Encoding.UTF8)));
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
         }
 
@@ -80,16 +53,15 @@ namespace DX12Demo.Binding
             }
 
             INamedTypeSymbol attrSymbol = context.Compilation.GetTypeByMetadataName("DX12Demo.Binding.NativeFunctionAttribute");
-            INamedTypeSymbol stringSymbol = context.Compilation.GetTypeByMetadataName("System.String");
 
             foreach (var group in receiver.Methods.GroupBy<IMethodSymbol, INamedTypeSymbol>(f => f.ContainingType, SymbolEqualityComparer.Default))
             {
-                string classSource = ProcessClass(context, attrSymbol, stringSymbol, group.Key, group);
+                string classSource = ProcessClass(context, attrSymbol, group.Key, group);
                 context.AddSource($"{group.Key.Name}_Binding.g.cs", SourceText.From(classSource, Encoding.UTF8));
             }
         }
 
-        private string ProcessClass(GeneratorExecutionContext context, INamedTypeSymbol attrSymbol, INamedTypeSymbol stringSymbol, INamedTypeSymbol classSymbol, IEnumerable<IMethodSymbol> methods)
+        private string ProcessClass(GeneratorExecutionContext context, INamedTypeSymbol attrSymbol, INamedTypeSymbol classSymbol, IEnumerable<IMethodSymbol> methods)
         {
             if (!classSymbol.ContainingSymbol.Equals(classSymbol.ContainingNamespace, SymbolEqualityComparer.Default))
             {
@@ -99,13 +71,13 @@ namespace DX12Demo.Binding
             StringBuilder source = new StringBuilder($@"
 namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 {{
-    unsafe partial class {classSymbol.Name}
+    unsafe partial {(classSymbol.IsReferenceType ? "class" : "struct")} {classSymbol.Name}
     {{
 ");
 
             foreach (IMethodSymbol methodSymbol in methods)
             {
-                ProcessMethod(source, methodSymbol, attrSymbol, stringSymbol);
+                ProcessMethod(source, methodSymbol, attrSymbol);
             }
 
             source.Append("} }");
@@ -120,14 +92,24 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             return symbol.ToDisplayString(NullableFlowState.NotNull, FullyQualifiedFormatIncludeGlobal);
         }
 
-        private void ProcessMethod(StringBuilder source, IMethodSymbol methodSymbol, INamedTypeSymbol attrSymbol, INamedTypeSymbol stringSymbol)
+        private void ProcessMethod(StringBuilder source, IMethodSymbol methodSymbol, INamedTypeSymbol attrSymbol)
         {
             if (!methodSymbol.IsPartialDefinition || !methodSymbol.IsStatic || methodSymbol.IsAsync || methodSymbol.IsGenericMethod)
             {
                 return; // TODO: issue a diagnostic that it must be static
             }
 
-            string fieldName = $"{methodSymbol.Name}_FunctionPointer";
+            string fieldName = $"__{methodSymbol.Name}_FunctionPointer";
+            string entryPointName = methodSymbol.Name;
+
+            AttributeData attrData = methodSymbol.GetAttributes().First(a => a.AttributeClass.Equals(attrSymbol, SymbolEqualityComparer.Default));
+            foreach (KeyValuePair<string, TypedConstant> arg in attrData.NamedArguments)
+            {
+                if (arg.Key == "Name" && !arg.Value.IsNull)
+                {
+                    entryPointName = arg.Value.Value.ToString();
+                }
+            }
 
             source.AppendLine();
             source.AppendLine("        [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]");
@@ -152,31 +134,18 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             source.AppendLine($"            if ({fieldName} == nint.Zero)");
             source.AppendLine($"            {{");
-            source.Append($"                char* ___keyData = stackalloc char[] {{ ");
-            foreach(char c in methodSymbol.Name)
+            source.Append($"                char* __pKey = stackalloc char[] {{ ");
+            foreach(char c in entryPointName)
             {
                 source.Append($"'\\u{(ushort)c:X4}', ");
             }
-            source.AppendLine($"'\\0' }};"); // additional null terminator to be consistent with .NET's string implementation
-            source.AppendLine($"                var ___key = new global::DX12Demo.Binding.FixedString {{ Data = ___keyData, Length = {methodSymbol.Name.Length} }};");
-            source.AppendLine($"                {fieldName} = global::DX12Demo.Binding.NativeFunctionAttribute.LookUpFn(___key);");
+            source.AppendLine("'\\0' };"); // additional null terminator to be consistent with .NET's string implementation
+            source.AppendLine($"                {fieldName} = global::DX12Demo.Binding.NativeFunctionAttribute.LookUpFn(__pKey, {entryPointName.Length});");
             source.AppendLine($"                if ({fieldName} == nint.Zero)");
             source.AppendLine($"                {{");
             source.AppendLine($"                    throw new global::System.EntryPointNotFoundException();");
             source.AppendLine($"                }}");
             source.AppendLine($"            }}");
-
-            foreach (IParameterSymbol parameter in methodSymbol.Parameters)
-            {
-                if (!parameter.Type.Equals(stringSymbol, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                source.AppendLine($"            fixed (char* {parameter.Name}_ptr = {parameter.Name})");
-                source.AppendLine($"            {{");
-                source.AppendLine($"            var {parameter.Name}_fixed = new global::DX12Demo.Binding.FixedString {{ Data = {parameter.Name}_ptr, Length = {parameter.Name}.Length }};");
-            }
 
             source.Append("            ");
 
@@ -191,17 +160,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             foreach (IParameterSymbol parameter in methodSymbol.Parameters)
             {
-                string paramType;
-
-                if (parameter.Type.Equals(stringSymbol, SymbolEqualityComparer.Default))
-                {
-                    paramType = "global::DX12Demo.Binding.FixedString";
-                }
-                else
-                {
-                    paramType = FullQualifiedNameIncludeGlobal(parameter.Type);
-                }
-
+                string paramType = FullQualifiedNameIncludeGlobal(parameter.Type);
                 source.Append($"{paramType}, ");
             }
 
@@ -214,30 +173,10 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                     source.Append(", ");
                 }
 
-                IParameterSymbol parameter = methodSymbol.Parameters[i];
-
-                if (parameter.Type.Equals(stringSymbol, SymbolEqualityComparer.Default))
-                {
-                    source.Append($"{parameter.Name}_fixed");
-                }
-                else
-                {
-                    source.Append(parameter.Name);
-                }
+                source.Append(methodSymbol.Parameters[i].Name);
             }
 
             source.AppendLine(");");
-
-            foreach (IParameterSymbol parameter in methodSymbol.Parameters)
-            {
-                if (!parameter.Type.Equals(stringSymbol, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                source.AppendLine($"            }}");
-            }
-
             source.AppendLine("        }");
         }
 
