@@ -1,13 +1,15 @@
+using Newtonsoft.Json;
+
 namespace DX12Demo.Core
 {
-    public abstract class Component
+    public abstract class Component : EngineObject
     {
-        private bool m_IsEnabled = false;
+        [JsonProperty] private bool m_IsEnabled = false;
         private GameObject? m_MountingObject = null;
 
         protected Component() { }
 
-        internal void Mount(GameObject mountingObject, bool isEnabled)
+        internal void Mount(GameObject mountingObject, bool? isEnabled)
         {
             if (m_MountingObject != null)
             {
@@ -16,7 +18,19 @@ namespace DX12Demo.Core
 
             m_MountingObject = mountingObject;
             OnMount();
-            IsEnabled = isEnabled;
+
+            if (isEnabled != null)
+            {
+                IsEnabled = isEnabled.Value;
+            }
+            else if (m_IsEnabled)
+            {
+                OnEnable();
+            }
+            else
+            {
+                OnDisable();
+            }
         }
 
         internal void Unmount()

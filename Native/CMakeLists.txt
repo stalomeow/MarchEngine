@@ -35,10 +35,13 @@ add_custom_command(TARGET dx12-demo POST_BUILD
 
 # C# 程序集
 add_dependencies(dx12-demo Core)
+add_dependencies(dx12-demo Editor)
 add_custom_command(TARGET dx12-demo POST_BUILD 
                COMMAND ${CMAKE_COMMAND} -E copy_if_different
                "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/DX12Demo.Core.dll" # 会自动 copy pdb
                "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/DX12Demo.Core.runtimeconfig.json"
+               "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/Newtonsoft.Json.dll"
+               "${CMAKE_SOURCE_DIR}/out/build/Managed/Editor/bin/$<CONFIG>/net8.0/DX12Demo.Editor.dll" # 会自动 copy pdb
                $<TARGET_FILE_DIR:dx12-demo>)
 
 target_include_directories(dx12-demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

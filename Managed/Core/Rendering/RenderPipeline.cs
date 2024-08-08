@@ -1,4 +1,4 @@
-using DX12Demo.Binding;
+using DX12Demo.Core.Binding;
 
 namespace DX12Demo.Core.Rendering
 {

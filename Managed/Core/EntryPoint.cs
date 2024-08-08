@@ -7,23 +7,25 @@ namespace DX12Demo.Core
     internal unsafe partial class EntryPoint
     {
         public static event Action? OnTick;
-        private static readonly List<GameObject> s_GameObjects = [];
 
         [UnmanagedCallersOnly]
         private static void OnNativeInitialize()
         {
             try
             {
-                GameObject light = new();
-                Light l = light.AddComponent<Light>();
-                l.Color = Color.Red;
+                //GameObject light = new();
+                //Light l = light.AddComponent<Light>();
+                //l.Color = Color.Red;
 
-                GameObject sphere = new() { Scale = new Vector3(3f) };
-                MeshRenderer mr = sphere.AddComponent<MeshRenderer>();
-                mr.MeshType = MeshType.Sphere;
+                //GameObject sphere = new() { Scale = new Vector3(3f) };
+                //MeshRenderer mr = sphere.AddComponent<MeshRenderer>();
+                //mr.MeshType = MeshType.Sphere;
 
-                s_GameObjects.Add(light);
-                s_GameObjects.Add(sphere);
+                //s_Scene.RootGameObjects.Add(light);
+                //s_Scene.RootGameObjects.Add(sphere);
+
+                // PersistentManager.Save(@"C:\Users\10247\Desktop\scene.json", s_Scene);
+                SceneManager.CurrentScene = PersistentManager.Load<Scene>(@"C:\Users\10247\Desktop\scene.json");
             }
             catch (Exception e)
             {
@@ -40,13 +42,13 @@ namespace DX12Demo.Core
             {
                 OnTick?.Invoke();
 
-                foreach (var gameObject in s_GameObjects)
+                foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
                 {
                     gameObject.Update();
 
                     if (gameObject.TryGetComponent(out Light? light))
                     {
-                        gameObject.Rotation *= Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 180.0f * Time.Delta * RotateSpeed);
+                        gameObject.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI / 180.0f * Time.Delta * RotateSpeed) * gameObject.Rotation;
                     }
                 }
             }

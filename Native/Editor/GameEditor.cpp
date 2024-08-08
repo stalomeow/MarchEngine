@@ -93,24 +93,6 @@ namespace dx12demo
         ImGui::DestroyContext();
     }
 
-    namespace
-    {
-        const float maxLabelWidth = 120.0f;
-
-        void SameLineLabel(const std::string& label)
-        {
-            ImGui::TextUnformatted(label.c_str());
-            ImGui::SameLine(maxLabelWidth);
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-        }
-
-        void DrawVec3(const std::string& label, float* values, float speed = 0.1f)
-        {
-            SameLineLabel(label);
-            ImGui::DragFloat3(("##" + label).c_str(), values, speed);
-        }
-    }
-
     void GameEditor::DrawImGui()
     {
         // Start the Dear ImGui frame
@@ -209,6 +191,7 @@ namespace dx12demo
         // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
             ImGui::Begin("Inspector");
+            m_DotNet.InvokeDrawInspectorFunc();
 
             //if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < Scene::GetCurrent()->GameObjects.size())
             //{
@@ -288,26 +271,6 @@ namespace dx12demo
             //            matBuffer->SetData(0, data);
             //        }
             //    }
-
-            //    ImGui::Spacing();
-
-            //    auto windowWidth = ImGui::GetWindowSize().x;
-            //    auto textWidth = ImGui::CalcTextSize("Add Component").x;
-            //    float padding = 80.0f;
-            //    ImGui::SetCursorPosX((windowWidth - textWidth - padding) * 0.5f);
-            //    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(padding * 0.5f, ImGui::GetStyle().FramePadding.y));
-
-            //    if (ImGui::Button("Add Component", ImVec2(0, 0)))
-            //    {
-            //        // hasTrans = true;
-            //    }
-
-            //    ImGui::PopStyleVar();
-            //}
-            //else
-            //{
-            //    m_SelectedGameObjectIndex = -1;
-            //}
 
             ImGui::End();
         }

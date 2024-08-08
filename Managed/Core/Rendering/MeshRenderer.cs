@@ -1,5 +1,6 @@
+using DX12Demo.Core.Binding;
+using Newtonsoft.Json;
 using System.Numerics;
-using DX12Demo.Binding;
 
 namespace DX12Demo.Core.Rendering
 {
@@ -12,8 +13,9 @@ namespace DX12Demo.Core.Rendering
     public partial class MeshRenderer : Component
     {
         private nint m_RenderObject;
-        private MeshType m_MeshType = MeshType.Cube;
+        private MeshType m_MeshType;
 
+        [JsonProperty]
         public MeshType MeshType
         {
             get => m_MeshType;
@@ -25,6 +27,16 @@ namespace DX12Demo.Core.Rendering
                     UpdateMesh();
                 }
             }
+        }
+
+        public MeshRenderer()
+        {
+            m_RenderObject = RenderObject_New();
+            m_MeshType = MeshType.Cube;
+
+            RenderObject_SetIsActive(m_RenderObject, false);
+            RenderObject_SetMesh(m_RenderObject, SimpleMesh_New());
+            UpdateMesh();
         }
 
         ~MeshRenderer()
@@ -39,7 +51,6 @@ namespace DX12Demo.Core.Rendering
                 return;
             }
 
-            RenderPipeline.RemoveRenderObject(m_RenderObject);
             nint mesh = RenderObject_GetMesh(m_RenderObject);
             SimpleMesh_Delete(mesh);
 
@@ -50,16 +61,12 @@ namespace DX12Demo.Core.Rendering
         protected override void OnMount()
         {
             base.OnMount();
-
-            m_RenderObject = RenderObject_New();
-            RenderObject_SetIsActive(m_RenderObject, false);
-            RenderObject_SetMesh(m_RenderObject, SimpleMesh_New());
-            UpdateMesh();
             RenderPipeline.AddRenderObject(m_RenderObject);
         }
 
         protected override void OnUnmount()
         {
+            RenderPipeline.RemoveRenderObject(m_RenderObject);
             Dispose();
             GC.SuppressFinalize(this);
             base.OnUnmount();

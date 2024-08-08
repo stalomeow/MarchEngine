@@ -1,5 +1,6 @@
+using DX12Demo.Core.Binding;
+using Newtonsoft.Json;
 using System.Numerics;
-using DX12Demo.Binding;
 
 namespace DX12Demo.Core.Rendering
 {
@@ -14,30 +15,35 @@ namespace DX12Demo.Core.Rendering
     {
         private nint m_Light;
 
+        public Light()
+        {
+            m_Light = Light_New();
+        }
+
         ~Light()
         {
             Dispose();
         }
 
-        public LightType Type
+        [JsonProperty] public LightType Type
         {
             get => Light_GetType(m_Light);
             set => Light_SetType(m_Light, value);
         }
 
-        public Color Color
+        [JsonProperty] public Color Color
         {
             get => Light_GetColor(m_Light);
             set => Light_SetColor(m_Light, value);
         }
 
-        public Vector2 FalloffRange
+        [JsonProperty] public Vector2 FalloffRange
         {
             get => Light_GetFalloffRange(m_Light);
             set => Light_SetFalloffRange(m_Light, value);
         }
 
-        public float SpotPower
+        [JsonProperty] public float SpotPower
         {
             get => Light_GetSpotPower(m_Light);
             set => Light_SetSpotPower(m_Light, value);
@@ -50,7 +56,6 @@ namespace DX12Demo.Core.Rendering
                 return;
             }
 
-            RenderPipeline.RemoveLight(m_Light);
             Light_Delete(m_Light);
             m_Light = nint.Zero;
         }
@@ -58,12 +63,12 @@ namespace DX12Demo.Core.Rendering
         protected override void OnMount()
         {
             base.OnMount();
-            m_Light = Light_New();
             RenderPipeline.AddLight(m_Light);
         }
 
         protected override void OnUnmount()
         {
+            RenderPipeline.RemoveLight(m_Light);
             Dispose();
             GC.SuppressFinalize(this);
             base.OnUnmount();

@@ -13,14 +13,15 @@ namespace dx12demo
         void InvokeMainFunc();
         void InvokeTickFunc();
         void InvokeInitFunc();
+        void InvokeDrawInspectorFunc();
 
     private:
         typedef void (*SetLookUpFnDelegate)(void* fn);
-        typedef void (*TickDelegate)(void);
-        typedef void (*InitDelegate)(void);
+        typedef void (*VoidDelegate)(void);
 
         SetLookUpFnDelegate m_SetLookUpFn = nullptr;
-        TickDelegate m_TickFunc = nullptr;
-        InitDelegate m_InitFunc = nullptr;
+        VoidDelegate m_TickFunc = nullptr;
+        VoidDelegate m_InitFunc = nullptr;
+        VoidDelegate m_DrawInspectorFunc = nullptr;
     };
 }

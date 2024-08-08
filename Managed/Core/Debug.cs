@@ -1,7 +1,8 @@
-using DX12Demo.Binding;
+using DX12Demo.Core.Binding;
 using System.Buffers;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace DX12Demo.Core
@@ -31,6 +32,17 @@ namespace DX12Demo.Core
             // TODO: Handle inner exception?
             StackTrace stackTrace = new(exception, fNeedFileInfo: true);
             Log($"{exception.GetType().FullName}: {exception.Message}", LogType.Error, stackTrace);
+        }
+
+        public static void Assert(bool condition, string message, [CallerArgumentExpression(nameof(condition))] string expr = "")
+        {
+            if (condition)
+            {
+                return;
+            }
+
+            StackTrace stackTrace = new(skipFrames: 1, fNeedFileInfo: true); // 需要跳过当前栈帧
+            Log($"Assertion failed ({expr}): {message}", LogType.Error, stackTrace);
         }
 
         [StructLayout(LayoutKind.Sequential)]

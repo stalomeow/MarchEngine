@@ -1,7 +1,6 @@
-using DX12Demo.Binding;
 using System.Runtime.InteropServices;
 
-namespace DX12Demo.Core
+namespace DX12Demo.Core.Binding
 {
     [StructLayout(LayoutKind.Sequential)]
     public unsafe partial struct NativeString : IDisposable

@@ -11,37 +11,10 @@ namespace DX12Demo.BindingSourceGen
     [Generator]
     public class BindingGenerator : ISourceGenerator
     {
-        public const string AttributeText = @"
-using System;
-
-#nullable enable
-
-namespace DX12Demo.Binding
-{
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-    internal sealed class NativeFunctionAttribute : Attribute
-    {
-        public string? Name { get; set; }
-
-        [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
-        public static unsafe delegate* unmanaged[Stdcall]<char*, int, nint> LookUpFn;
-
-        [global::System.Runtime.InteropServices.UnmanagedCallersOnly]
-        [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
-        public static unsafe void SetLookUpFn(nint fn)
-        {
-            LookUpFn = (delegate* unmanaged[Stdcall]<char*, int, nint>)fn;
-        }
-    }
-}
-
-#nullable restore
-
-";
+        private const string NativeFuncAttrName = "DX12Demo.Core.Binding.NativeFunctionAttribute";
 
         public void Initialize(GeneratorInitializationContext context)
         {
-            context.RegisterForPostInitialization(i => i.AddSource("NativeFunctionAttribute.g.cs", SourceText.From(AttributeText, Encoding.UTF8)));
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
         }
 
@@ -52,7 +25,12 @@ namespace DX12Demo.Binding
                 return;
             }
 
-            INamedTypeSymbol attrSymbol = context.Compilation.GetTypeByMetadataName("DX12Demo.Binding.NativeFunctionAttribute");
+            INamedTypeSymbol attrSymbol = context.Compilation.GetTypeByMetadataName(NativeFuncAttrName);
+
+            if (attrSymbol == null)
+            {
+                return;
+            }
 
             foreach (var group in receiver.Methods.GroupBy<IMethodSymbol, INamedTypeSymbol>(f => f.ContainingType, SymbolEqualityComparer.Default))
             {
@@ -140,7 +118,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 source.Append($"'\\u{(ushort)c:X4}', ");
             }
             source.AppendLine("'\\0' };"); // additional null terminator to be consistent with .NET's string implementation
-            source.AppendLine($"                {fieldName} = global::DX12Demo.Binding.NativeFunctionAttribute.LookUpFn(__pKey, {entryPointName.Length});");
+            source.AppendLine($"                {fieldName} = global::{NativeFuncAttrName}.LookUpFn(__pKey, {entryPointName.Length});");
             source.AppendLine($"                if ({fieldName} == nint.Zero)");
             source.AppendLine($"                {{");
             source.AppendLine($"                    throw new global::System.EntryPointNotFoundException();");
@@ -192,7 +170,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 }
 
                 var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclarationSyntax) as IMethodSymbol;
-                if (methodSymbol.GetAttributes().Any(a => a.AttributeClass.ToDisplayString() == "DX12Demo.Binding.NativeFunctionAttribute"))
+                if (methodSymbol.GetAttributes().Any(a => a.AttributeClass.ToDisplayString() == NativeFuncAttrName))
                 {
                     Methods.Add(methodSymbol);
                 }
