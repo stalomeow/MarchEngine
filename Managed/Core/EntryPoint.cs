@@ -1,5 +1,3 @@
-using DX12Demo.Core.Rendering;
-using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace DX12Demo.Core
@@ -33,8 +31,6 @@ namespace DX12Demo.Core
             }
         }
 
-        public static readonly float RotateSpeed = 20.0f;
-
         [UnmanagedCallersOnly]
         private static void OnNativeTick()
         {
@@ -45,11 +41,6 @@ namespace DX12Demo.Core
                 foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
                 {
                     gameObject.Update();
-
-                    if (gameObject.TryGetComponent(out Light? light))
-                    {
-                        gameObject.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI / 180.0f * Time.Delta * RotateSpeed) * gameObject.Rotation;
-                    }
                 }
             }
             catch (Exception e)

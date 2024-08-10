@@ -204,21 +204,6 @@ namespace dx12demo
             //    ImGui::PopItemWidth();
             //    ImGui::SeparatorText("Components");
 
-            //    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-            //    {
-            //        Transform* trans = go->GetTransform();
-            //        DrawVec3("Position", (float*)&trans->Position, 0.1f);
-            //        DrawVec3("Rotation", (float*)&trans->RotationEulerAngles, 0.1f);
-            //        DrawVec3("Scale", (float*)&trans->Scale, 0.1f);
-
-            //        DirectX::XMVECTOR euler = {};
-            //        euler = DirectX::XMVectorSetX(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.x));
-            //        euler = DirectX::XMVectorSetY(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.y));
-            //        euler = DirectX::XMVectorSetZ(euler, DirectX::XMConvertToRadians(trans->RotationEulerAngles.z));
-            //        auto quaternion = DirectX::XMQuaternionRotationRollPitchYawFromVector(euler);
-            //        DirectX::XMStoreFloat4(&trans->Rotation, quaternion);
-            //    }
-
             //    if (go->GetLight() != nullptr && ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
             //    {
             //        Light* light = go->GetLight();
@@ -239,36 +224,6 @@ namespace dx12demo
             //        {
             //            SameLineLabel("Spot Power");
             //            ImGui::DragFloat("##SpotPower", &light->SpotPower, 0.1f, 0.1f, FLT_MAX);
-            //        }
-            //    }
-
-            //    if (go->GetMesh() != nullptr && ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
-            //    {
-            //        MaterialData& data = go->GetMaterialData();
-            //        bool dirty = false;
-
-            //        SameLineLabel("Diffuse Albedo");
-            //        if (ImGui::ColorEdit4("##DiffuseAlbedo", (float*)&data.DiffuseAlbedo))
-            //        {
-            //            dirty = true;
-            //        }
-
-            //        SameLineLabel("Fresnel R0");
-            //        if (ImGui::ColorEdit3("##FresnelR0", (float*)&data.FresnelR0, ImGuiColorEditFlags_Float))
-            //        {
-            //            dirty = true;
-            //        }
-
-            //        SameLineLabel("Roughness");
-            //        if (ImGui::SliderFloat("##Roughness", &data.Roughness, 0.0f, 1.0f))
-            //        {
-            //            dirty = true;
-            //        }
-
-            //        if (dirty)
-            //        {
-            //            ConstantBuffer<MaterialData>* matBuffer = go->GetMaterialBuffer();
-            //            matBuffer->SetData(0, data);
             //        }
             //    }
 

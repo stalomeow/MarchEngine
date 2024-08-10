@@ -88,6 +88,22 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(EditorGUI_BeginDisabled),
             CSHARP_BINDING_ENTRY(EditorGUI_EndDisabled),
             CSHARP_BINDING_ENTRY(EditorGUI_LabelField),
+            CSHARP_BINDING_ENTRY(EditorGUI_PushIDString),
+            CSHARP_BINDING_ENTRY(EditorGUI_PushIDInt),
+            CSHARP_BINDING_ENTRY(EditorGUI_PopID),
+            CSHARP_BINDING_ENTRY(EditorGUI_Foldout),
+            CSHARP_BINDING_ENTRY(EditorGUI_Indent),
+            CSHARP_BINDING_ENTRY(EditorGUI_Unindent),
+            CSHARP_BINDING_ENTRY(EditorGUI_SameLine),
+            CSHARP_BINDING_ENTRY(EditorGUI_GetContentRegionAvail),
+            CSHARP_BINDING_ENTRY(EditorGUI_SetNextItemWidth),
+            CSHARP_BINDING_ENTRY(EditorGUI_Separator),
+            CSHARP_BINDING_ENTRY(EditorGUI_BeginPopup),
+            CSHARP_BINDING_ENTRY(EditorGUI_EndPopup),
+            CSHARP_BINDING_ENTRY(EditorGUI_MenuItem),
+            CSHARP_BINDING_ENTRY(EditorGUI_BeginMenu),
+            CSHARP_BINDING_ENTRY(EditorGUI_EndMenu),
+            CSHARP_BINDING_ENTRY(EditorGUI_OpenPopup),
         };
 
         CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)

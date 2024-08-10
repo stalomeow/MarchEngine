@@ -1,13 +1,54 @@
 using DX12Demo.Core;
 using Newtonsoft.Json.Serialization;
-using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace DX12Demo.Editor
 {
     internal static unsafe class Inspector
     {
+        private static readonly PopupMenu s_ComponentPopup = new("InspectorAddComponentPopup");
+        private static int s_ComponentPopupTypeCacheVersion;
+
+        private static readonly DrawerCache<IComponentDrawer> s_ComponentDrawerCache = new(typeof(IComponentDrawerFor<>));
         private static int s_SelectedGameObjectIndex = -1;
+
+        static Inspector()
+        {
+            RebuildComponentPopup();
+        }
+
+        private static void RebuildComponentPopup()
+        {
+            s_ComponentPopup.Clear();
+            s_ComponentPopup.AddSeparatorText("", "Components");
+
+            foreach (Type type in TypeCache.GetTypesDerivedFrom<Component>())
+            {
+                if (type.IsAbstract || type.IsGenericType)
+                {
+                    continue;
+                }
+
+                string displayName = type.Name;
+                if (type.Namespace != null)
+                {
+                    displayName = $"{type.Namespace}/{type.Name}";
+                }
+
+                Type componentType = type;
+                s_ComponentPopup.AddMenuItem(displayName, callback: () =>
+                {
+                    List<GameObject> gameObjects = SceneManager.CurrentScene.RootGameObjects;
+                    if (s_SelectedGameObjectIndex >= 0 && s_SelectedGameObjectIndex < gameObjects.Count)
+                    {
+                        GameObject go = gameObjects[s_SelectedGameObjectIndex];
+                        go.AddComponent(componentType);
+                    }
+                });
+            }
+
+            s_ComponentPopupTypeCacheVersion = TypeCache.Version;
+        }
 
         [UnmanagedCallersOnly]
         internal static void Draw()
@@ -28,138 +69,90 @@ namespace DX12Demo.Editor
                 return;
             }
 
-            GameObject go = gameObjects[s_SelectedGameObjectIndex];
-            DrawProperties(go, ((JsonObjectContract)PersistentManager.ResolveJsonContract(go.GetType())).Properties);
+            DrawGameObjectInspector(gameObjects[s_SelectedGameObjectIndex]);
+        }
+
+        private static bool DrawGameObjectInspector(GameObject go)
+        {
+            var goContract = (JsonObjectContract)PersistentManager.ResolveJsonContract(typeof(GameObject));
+            var changed = false;
+
+            changed |= EditorGUI.PropertyField("##GameObjectIsActive", go, goContract.Properties["m_IsActive"]);
+            EditorGUI.SameLine();
+            EditorGUI.SetNextItemWidth(EditorGUI.GetContentRegionAvailable().X);
+            changed |= EditorGUI.PropertyField("##GameObjectName", go, goContract.Properties["Name"]);
+
+            EditorGUI.SeparatorText("Transform");
+
+            changed |= EditorGUI.PropertyField(go, goContract.Properties["Position"]);
+            changed |= EditorGUI.PropertyField(go, goContract.Properties["Rotation"]);
+            changed |= EditorGUI.PropertyField(go, goContract.Properties["Scale"]);
 
             EditorGUI.SeparatorText("Components");
 
             for (int i = 0; i < go.m_Components.Count; i++)
             {
                 Component component = go.m_Components[i];
+                Type componentType = component.GetType();
 
-                if (PersistentManager.ResolveJsonContract(component.GetType()) is not JsonObjectContract contract)
+                if (PersistentManager.ResolveJsonContract(componentType) is not JsonObjectContract componentContract)
                 {
-                    Debug.Assert(false, "Failed to resolve json contract.");
+                    Debug.LogError($"Failed to resolve json object contract for {componentType}.");
                     continue;
                 }
 
-                if (!EditorGUI.CollapsingHeader(contract.UnderlyingType.Name, defaultOpen: true))
+                if (!EditorGUI.CollapsingHeader(componentType.Name, defaultOpen: true))
                 {
                     continue;
                 }
 
-                DrawProperties(component, contract.Properties);
+                using (new EditorGUI.IDScope(i))
+                {
+                    if (s_ComponentDrawerCache.TryGet(componentType, out IComponentDrawer? drawer))
+                    {
+                        changed |= drawer.Draw(component, componentContract);
+                    }
+                    else
+                    {
+                        changed |= DefaultDrawComponent(component, componentContract);
+                    }
+                }
+
+                EditorGUI.Space();
             }
 
             EditorGUI.Space();
 
             if (EditorGUI.CenterButton("Add Component", 220.0f))
             {
-                go.AddComponent<DX12Demo.Core.Rendering.MeshRenderer>();
+                s_ComponentPopup.Open();
             }
+
+            if (s_ComponentPopupTypeCacheVersion != TypeCache.Version)
+            {
+                RebuildComponentPopup();
+            }
+
+            s_ComponentPopup.Draw();
+
+            return changed;
         }
 
-        private static void DrawProperties(object target, JsonPropertyCollection properties)
+        private static bool DefaultDrawComponent(Component component, JsonObjectContract contract)
         {
-            foreach (var prop in properties)
+            bool changed = false;
+
+            foreach (var property in contract.Properties)
             {
-                if (prop.Ignored)
+                if (property.Ignored)
                 {
                     continue;
                 }
 
-                if (s_DefaultPropertyDrawers.TryGetValue(prop.PropertyType!, out Action<object, JsonProperty>? drawer))
-                {
-                    drawer(target, prop);
-                    continue;
-                }
-
-                if (prop.PropertyType is { IsEnum: true })
-                {
-                    object value = prop.ValueProvider?.GetValue(target)!;
-                    if (EditorGUI.EnumField(prop.PropertyName!, ref value))
-                    {
-                        prop.ValueProvider!.SetValue(target, value);
-                    }
-                    continue;
-                }
-
-                // fallback
-                using (new EditorGUI.DisabledScope())
-                {
-                    EditorGUI.LabelField(prop.PropertyName!, $"Type {prop.PropertyType?.Name} is not supported");
-                }
+                changed |= EditorGUI.PropertyField(component, property);
             }
-        }
 
-        private static readonly Dictionary<Type, Action<object, JsonProperty>> s_DefaultPropertyDrawers = new()
-        {
-            [typeof(float)] = (target, prop) =>
-            {
-                float value = (float)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.FloatField(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(Vector2)] = (target, prop) =>
-            {
-                Vector2 value = (Vector2)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.Vector2Field(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(Vector3)] = (target, prop) =>
-            {
-                Vector3 value = (Vector3)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.Vector3Field(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(Vector4)] = (target, prop) =>
-            {
-                Vector4 value = (Vector4)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.Vector4Field(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(Color)] = (target, prop) =>
-            {
-                Color value = (Color)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.ColorField(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(Rotator)] = (target, prop) =>
-            {
-                Rotator value = (Rotator)prop.ValueProvider?.GetValue(target)!;
-                Vector3 eulerAngles = value.EulerAngles;
-                if (EditorGUI.Vector3Field(prop.PropertyName!, ref eulerAngles))
-                {
-                    value.EulerAngles = eulerAngles;
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(string)] = (target, prop) =>
-            {
-                string value = (string)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.TextField(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-            [typeof(bool)] = (target, prop) =>
-            {
-                bool value = (bool)prop.ValueProvider?.GetValue(target)!;
-                if (EditorGUI.Checkbox(prop.PropertyName!, ref value))
-                {
-                    prop.ValueProvider!.SetValue(target, value);
-                }
-            },
-        };
+            return changed;
+        }
     }
 }

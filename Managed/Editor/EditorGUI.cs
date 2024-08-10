@@ -1,5 +1,6 @@
 using DX12Demo.Core;
 using DX12Demo.Core.Binding;
+using Newtonsoft.Json.Serialization;
 using System.Numerics;
 
 namespace DX12Demo.Editor
@@ -78,14 +79,9 @@ namespace DX12Demo.Editor
             return EditorGUI_CollapsingHeader(l.Data, defaultOpen);
         }
 
-        public static bool EnumField(string label, ref object value)
+        public static bool EnumField(string label, ref Enum value)
         {
             Type enumType = value.GetType();
-            if (!enumType.IsEnum)
-            {
-                throw new ArgumentException("Type must be an enum", nameof(value));
-            }
-
             string[] names = Enum.GetNames(enumType);
             Array values = Enum.GetValues(enumType);
             int index = Array.IndexOf(values, value);
@@ -95,7 +91,7 @@ namespace DX12Demo.Editor
 
             if (EditorGUI_Combo(l.Data, &index, items.Data))
             {
-                value = values.GetValue(index)!;
+                value = (Enum)values.GetValue(index)!;
                 return true;
             }
 
@@ -158,6 +154,132 @@ namespace DX12Demo.Editor
             }
         }
 
+        public static void LabelField(string label1, string label2)
+        {
+            using NativeString l1 = label1;
+            using NativeString l2 = label2;
+            EditorGUI_LabelField(l1.Data, l2.Data);
+        }
+
+        public static bool Foldout(string label)
+        {
+            using NativeString l = label;
+            return EditorGUI_Foldout(l.Data);
+        }
+
+        internal static bool BeginPopup(string id)
+        {
+            using NativeString i = id;
+            return EditorGUI_BeginPopup(i.Data);
+        }
+
+        internal static bool MenuItem(string label, bool selected = false, bool enabled = true)
+        {
+            using NativeString l = label;
+            return EditorGUI_MenuItem(l.Data, selected, enabled);
+        }
+
+        internal static bool BeginMenu(string label, bool enabled = true)
+        {
+            using NativeString l = label;
+            return EditorGUI_BeginMenu(l.Data, enabled);
+        }
+
+        internal static void OpenPopup(string id)
+        {
+            using NativeString i = id;
+            EditorGUI_OpenPopup(i.Data);
+        }
+
+        #region PropertyField
+
+        private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
+
+        private static bool PropertyFieldImpl(string label, object target, JsonProperty property, int depth)
+        {
+            Type propertyType = property.PropertyType ?? throw new ArgumentException("Property type is null", nameof(property));
+
+            if (s_PropertyDrawerCache.TryGet(propertyType, out IPropertyDrawer? drawer))
+            {
+                return drawer.Draw(label, target, property);
+            }
+
+            if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
+            {
+                // Draw as a nested object
+                object? nestedTarget = property.GetValue<object>(target);
+
+                if (nestedTarget == null)
+                {
+                    try
+                    {
+                        nestedTarget = Activator.CreateInstance(propertyType);
+
+                        if (nestedTarget == null)
+                        {
+                            goto Fallback;
+                        }
+
+                        property.SetValue(target, nestedTarget);
+                    }
+                    catch
+                    {
+                        goto Fallback;
+                    }
+                }
+
+                if (!Foldout(label))
+                {
+                    return false;
+                }
+
+                using (new IDScope(depth))
+                using (new IndentedScope())
+                {
+                    bool changed = false;
+
+                    foreach (var nestedProp in contract.Properties)
+                    {
+                        if (nestedProp.Ignored)
+                        {
+                            continue;
+                        }
+
+                        changed |= PropertyFieldImpl(nestedProp.GetDisplayName(), nestedTarget, nestedProp, depth + 1);
+                    }
+
+                    if (changed && propertyType.IsValueType)
+                    {
+                        // 值类型转成 object 会装箱生成一份拷贝，所以需要重新设置回去，把在拷贝上的修改同步到原对象上
+                        property.SetValue(target, nestedTarget);
+                    }
+
+                    return changed;
+                }
+            }
+
+        Fallback:
+            using (new DisabledScope())
+            {
+                LabelField(label, $"Type {propertyType} is not supported");
+                return false;
+            }
+        }
+
+        public static bool PropertyField(string label, object target, JsonProperty property)
+        {
+            return PropertyFieldImpl(label, target, property, 0);
+        }
+
+        public static bool PropertyField(object target, JsonProperty property)
+        {
+            return PropertyField(property.GetDisplayName(), target, property);
+        }
+
+        #endregion
+
+        #region Scope
+
         public readonly ref struct DisabledScope
         {
             public DisabledScope() : this(true) { }
@@ -173,12 +295,47 @@ namespace DX12Demo.Editor
             }
         }
 
-        public static void LabelField(string label1, string label2)
+        public readonly ref struct IDScope
         {
-            using NativeString l1 = label1;
-            using NativeString l2 = label2;
-            EditorGUI_LabelField(l1.Data, l2.Data);
+            [Obsolete("Use other constructors", error: true)]
+            public IDScope() { }
+
+            public IDScope(string id)
+            {
+                using NativeString i = id;
+                EditorGUI_PushIDString(i.Data);
+            }
+
+            public IDScope(int id)
+            {
+                EditorGUI_PushIDInt(id);
+            }
+
+            public void Dispose()
+            {
+                EditorGUI_PopID();
+            }
         }
+
+        public readonly ref struct IndentedScope
+        {
+            private readonly uint m_IndentCount;
+
+            public IndentedScope() : this(1) { }
+
+            public IndentedScope(uint count)
+            {
+                m_IndentCount = count;
+                EditorGUI_Indent(count);
+            }
+
+            public void Dispose()
+            {
+                EditorGUI_Unindent(m_IndentCount);
+            }
+        }
+
+        #endregion
 
         #region Native
 
@@ -232,6 +389,60 @@ namespace DX12Demo.Editor
 
         [NativeFunction]
         private static partial void EditorGUI_LabelField(nint label1, nint label2);
+
+        [NativeFunction]
+        private static partial void EditorGUI_PushIDString(nint id);
+
+        [NativeFunction]
+        private static partial void EditorGUI_PushIDInt(int id);
+
+        [NativeFunction]
+        private static partial void EditorGUI_PopID();
+
+        [NativeFunction]
+        private static partial bool EditorGUI_Foldout(nint label);
+
+        [NativeFunction]
+        private static partial void EditorGUI_Indent(uint count);
+
+        [NativeFunction]
+        private static partial void EditorGUI_Unindent(uint count);
+
+        [NativeFunction(Name = "EditorGUI_SameLine")]
+        public static partial void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
+
+        [NativeFunction(Name = "EditorGUI_GetContentRegionAvail")]
+        public static partial Vector2 GetContentRegionAvailable();
+
+        [NativeFunction(Name = "EditorGUI_SetNextItemWidth")]
+        public static partial void SetNextItemWidth(float width);
+
+        [NativeFunction(Name = "EditorGUI_Separator")]
+        public static partial void Separator();
+
+        [NativeFunction]
+        private static partial bool EditorGUI_BeginPopup(nint id);
+
+        /// <summary>
+        /// only call EndPopup() if BeginPopupXXX() returns true!
+        /// </summary>
+        [NativeFunction(Name = "EditorGUI_EndPopup")]
+        internal static partial void EndPopup();
+
+        [NativeFunction]
+        private static partial bool EditorGUI_MenuItem(nint label, bool selected, bool enabled);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_BeginMenu(nint label, bool enabled);
+
+        /// <summary>
+        /// only call EndMenu() if BeginMenu() returns true!
+        /// </summary>
+        [NativeFunction(Name = "EditorGUI_EndMenu")]
+        internal static partial void EndMenu();
+
+        [NativeFunction]
+        private static partial void EditorGUI_OpenPopup(nint id);
 
         #endregion
     }

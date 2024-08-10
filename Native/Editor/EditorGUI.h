@@ -3,6 +3,7 @@
 #include "Scripting/ScriptTypes.h"
 #include <string>
 #include <imgui.h>
+#include <DirectXMath.h>
 
 namespace dx12demo
 {
@@ -29,6 +30,24 @@ namespace dx12demo
         static void BeginDisabled(bool disabled = true);
         static void EndDisabled();
         static void LabelField(const std::string& label1, const std::string& label2);
+        static void PushID(const std::string& id);
+        static void PushID(int id);
+        static void PopID();
+        static bool Foldout(const std::string& label);
+        static void Indent(std::uint32_t count = 1);
+        static void Unindent(std::uint32_t count = 1);
+        static void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
+        static DirectX::XMFLOAT2 GetContentRegionAvail();
+        static void SetNextItemWidth(float width);
+        static void Separator();
+        static bool BeginPopup(const std::string& id);
+        // only call EndPopup() if BeginPopupXXX() returns true!
+        static void EndPopup();
+        static bool MenuItem(const std::string& label, bool selected = false, bool enabled = true);
+        static bool BeginMenu(const std::string& label, bool enabled = true);
+        // only call EndMenu() if BeginMenu() returns true!
+        static void EndMenu();
+        static void OpenPopup(const std::string& id);
 
     public:
         static constexpr float MaxLabelWidth = 120.0f;
@@ -136,6 +155,87 @@ namespace dx12demo
         inline CSHARP_API(void) EditorGUI_LabelField(CSharpString label1, CSharpString label2)
         {
             EditorGUI::LabelField(CSharpString_ToUtf8(label1), CSharpString_ToUtf8(label2));
+        }
+
+        inline CSHARP_API(void) EditorGUI_PushIDString(CSharpString id)
+        {
+            EditorGUI::PushID(CSharpString_ToUtf8(id));
+        }
+
+        inline CSHARP_API(void) EditorGUI_PushIDInt(CSharpInt id)
+        {
+            EditorGUI::PushID(static_cast<int>(id));
+        }
+
+        inline CSHARP_API(void) EditorGUI_PopID()
+        {
+            EditorGUI::PopID();
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_Foldout(CSharpString label)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::Foldout(CSharpString_ToUtf8(label)));
+        }
+
+        inline CSHARP_API(void) EditorGUI_Indent(CSharpUInt count)
+        {
+            EditorGUI::Indent(static_cast<std::uint32_t>(count));
+        }
+
+        inline CSHARP_API(void) EditorGUI_Unindent(CSharpUInt count)
+        {
+            EditorGUI::Unindent(static_cast<std::uint32_t>(count));
+        }
+
+        inline CSHARP_API(void) EditorGUI_SameLine(CSharpFloat offsetFromStartX, CSharpFloat spacing)
+        {
+            EditorGUI::SameLine(offsetFromStartX, spacing);
+        }
+
+        inline CSHARP_API(CSharpVector2) EditorGUI_GetContentRegionAvail()
+        {
+            DirectX::XMFLOAT2 avail = EditorGUI::GetContentRegionAvail();
+            return ToCSharpVector2(avail);
+        }
+
+        inline CSHARP_API(void) EditorGUI_SetNextItemWidth(CSharpFloat width)
+        {
+            EditorGUI::SetNextItemWidth(width);
+        }
+
+        inline CSHARP_API(void) EditorGUI_Separator()
+        {
+            EditorGUI::Separator();
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_BeginPopup(CSharpString id)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopup(CSharpString_ToUtf8(id)));
+        }
+
+        inline CSHARP_API(void) EditorGUI_EndPopup()
+        {
+            EditorGUI::EndPopup();
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_MenuItem(CSharpString label, CSharpBool selected, CSharpBool enabled)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::MenuItem(CSharpString_ToUtf8(label), CSHARP_UNMARSHAL_BOOL(selected), CSHARP_UNMARSHAL_BOOL(enabled)));
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_BeginMenu(CSharpString label, CSharpBool enabled)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginMenu(CSharpString_ToUtf8(label), CSHARP_UNMARSHAL_BOOL(enabled)));
+        }
+
+        inline CSHARP_API(void) EditorGUI_EndMenu()
+        {
+            EditorGUI::EndMenu();
+        }
+
+        inline CSHARP_API(void) EditorGUI_OpenPopup(CSharpString id)
+        {
+            EditorGUI::OpenPopup(CSharpString_ToUtf8(id));
         }
     }
 }

@@ -4,6 +4,14 @@
 
 namespace dx12demo
 {
+    namespace
+    {
+        bool IsHiddenLabel(const std::string& label)
+        {
+            return label.size() >= 2 && label[0] == '#' && label[1] == '#';
+        }
+    }
+
     void EditorGUI::PrefixLabel(const std::string& label)
     {
         ImGui::TextUnformatted(label.c_str());
@@ -13,36 +21,66 @@ namespace dx12demo
 
     bool EditorGUI::FloatField(const std::string& label, float v[1], float speed, float min, float max)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::DragFloat(label.c_str(), v, speed, min, max);
+        }
+
         PrefixLabel(label);
         return ImGui::DragFloat(("##" + label).c_str(), v, speed, min, max);
     }
 
     bool EditorGUI::Vector2Field(const std::string& label, float v[2], float speed, float min, float max)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::DragFloat2(label.c_str(), v, speed, min, max);
+        }
+
         PrefixLabel(label);
         return ImGui::DragFloat2(("##" + label).c_str(), v, speed, min, max);
     }
 
     bool EditorGUI::Vector3Field(const std::string& label, float v[3], float speed, float min, float max)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::DragFloat3(label.c_str(), v, speed, min, max);
+        }
+
         PrefixLabel(label);
         return ImGui::DragFloat3(("##" + label).c_str(), v, speed, min, max);
     }
 
     bool EditorGUI::Vector4Field(const std::string& label, float v[4], float speed, float min, float max)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::DragFloat4(label.c_str(), v, speed, min, max);
+        }
+
         PrefixLabel(label);
         return ImGui::DragFloat4(("##" + label).c_str(), v, speed, min, max);
     }
 
     bool EditorGUI::ColorField(const std::string& label, float v[4])
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::ColorEdit4(label.c_str(), v, ImGuiColorEditFlags_Float);
+        }
+
         PrefixLabel(label);
         return ImGui::ColorEdit4(("##" + label).c_str(), v, ImGuiColorEditFlags_Float);
     }
 
     bool EditorGUI::FloatSliderField(const std::string& label, float v[1], float min, float max)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::SliderFloat(label.c_str(), v, min, max);
+        }
+
         PrefixLabel(label);
         return ImGui::SliderFloat(("##" + label).c_str(), v, min, max);
     }
@@ -54,6 +92,11 @@ namespace dx12demo
 
     bool EditorGUI::Combo(const std::string& label, int* currentItem, const std::string& itemsSeparatedByZeros)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::Combo(label.c_str(), currentItem, itemsSeparatedByZeros.c_str());
+        }
+
         PrefixLabel(label);
         return ImGui::Combo(("##" + label).c_str(), currentItem, itemsSeparatedByZeros.c_str());
     }
@@ -84,12 +127,22 @@ namespace dx12demo
 
     bool EditorGUI::TextField(const std::string& label, std::string& text)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::InputText(label.c_str(), &text);
+        }
+
         PrefixLabel(label);
         return ImGui::InputText(("##" + label).c_str(), &text);
     }
 
     bool EditorGUI::Checkbox(const std::string& label, bool& value)
     {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::Checkbox(label.c_str(), &value);
+        }
+
         PrefixLabel(label);
         return ImGui::Checkbox(("##" + label).c_str(), &value);
     }
@@ -106,7 +159,106 @@ namespace dx12demo
 
     void EditorGUI::LabelField(const std::string& label1, const std::string& label2)
     {
+        if (IsHiddenLabel(label1))
+        {
+            ImGui::LabelText(label1.c_str(), "%s", label2.c_str());
+        }
+
         PrefixLabel(label1);
         ImGui::LabelText(("##" + label1).c_str(), "%s", label2.c_str());
+    }
+
+    void EditorGUI::PushID(const std::string& id)
+    {
+        ImGui::PushID(id.c_str());
+    }
+
+    void EditorGUI::PushID(int id)
+    {
+        ImGui::PushID(id);
+    }
+
+    void EditorGUI::PopID()
+    {
+        ImGui::PopID();
+    }
+
+    bool EditorGUI::Foldout(const std::string& label)
+    {
+        // 加上 ImGuiTreeNodeFlags_NoTreePushOnOpen 就不用调用 TreePop() 了
+        return ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen);
+    }
+
+    void EditorGUI::Indent(std::uint32_t count)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        float spacing = ImGui::GetStyle().IndentSpacing;
+        ImGui::Indent(static_cast<float>(count * spacing));
+    }
+
+    void EditorGUI::Unindent(std::uint32_t count)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        float spacing = ImGui::GetStyle().IndentSpacing;
+        ImGui::Unindent(static_cast<float>(count * spacing));
+    }
+
+    void EditorGUI::SameLine(float offsetFromStartX, float spacing)
+    {
+        ImGui::SameLine(offsetFromStartX, spacing);
+    }
+
+    DirectX::XMFLOAT2 EditorGUI::GetContentRegionAvail()
+    {
+        ImVec2 avail = ImGui::GetContentRegionAvail();
+        return { avail.x, avail.y };
+    }
+
+    void EditorGUI::SetNextItemWidth(float width)
+    {
+        ImGui::SetNextItemWidth(width);
+    }
+
+    void EditorGUI::Separator()
+    {
+        ImGui::Separator();
+    }
+
+    bool EditorGUI::BeginPopup(const std::string& id)
+    {
+        return ImGui::BeginPopup(id.c_str());
+    }
+
+    void EditorGUI::EndPopup()
+    {
+        ImGui::EndPopup();
+    }
+
+    bool EditorGUI::MenuItem(const std::string& label, bool selected, bool enabled)
+    {
+        return ImGui::MenuItem(label.c_str(), nullptr, selected, enabled);
+    }
+
+    bool EditorGUI::BeginMenu(const std::string& label, bool enabled)
+    {
+        return ImGui::BeginMenu(label.c_str(), enabled);
+    }
+
+    void EditorGUI::EndMenu()
+    {
+        ImGui::EndMenu();
+    }
+
+    void EditorGUI::OpenPopup(const std::string& id)
+    {
+        ImGui::OpenPopup(id.c_str());
     }
 }

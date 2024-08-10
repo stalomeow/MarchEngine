@@ -37,9 +37,9 @@ namespace dx12demo
         InitDescriptorHeaps();
         InitSwapChain(window, width, height);
 
-#if defined(DEBUG) || defined(_DEBUG)
-        LogAdapters(m_BackBufferFormat);
-#endif
+//#if defined(DEBUG) || defined(_DEBUG)
+//        LogAdapters(m_BackBufferFormat);
+//#endif
     }
 
     void GfxManager::InitDeviceAndFactory()
