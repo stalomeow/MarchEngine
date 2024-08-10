@@ -4,7 +4,7 @@ namespace DX12Demo.Editor.Drawers
 {
     internal class StringDrawer : IPropertyDrawerFor<string>
     {
-        public bool Draw(string label, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, object target, JsonProperty property)
         {
             bool changed = false;
             string? value = property.GetValue<string>(target);
@@ -16,7 +16,7 @@ namespace DX12Demo.Editor.Drawers
                 changed = true;
             }
 
-            if (EditorGUI.TextField(label, ref value))
+            if (EditorGUI.TextField(label, tooltip, ref value))
             {
                 property.SetValue(target, value);
                 changed = true;

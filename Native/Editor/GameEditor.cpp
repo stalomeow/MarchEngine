@@ -188,45 +188,9 @@ namespace dx12demo
         if (m_ShowDemoWindow)
             ImGui::ShowDemoWindow(&m_ShowDemoWindow);
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
         {
             ImGui::Begin("Inspector");
             m_DotNet.InvokeDrawInspectorFunc();
-
-            //if (m_SelectedGameObjectIndex >= 0 && m_SelectedGameObjectIndex < Scene::GetCurrent()->GameObjects.size())
-            //{
-            //    GameObject* go = Scene::GetCurrent()->GameObjects[m_SelectedGameObjectIndex].get();
-
-            //    ImGui::Checkbox("##GameObjectActive", &go->IsActive);
-            //    ImGui::SameLine();
-            //    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
-            //    ImGui::InputText("##GameObjectName", &go->Name);
-            //    ImGui::PopItemWidth();
-            //    ImGui::SeparatorText("Components");
-
-            //    if (go->GetLight() != nullptr && ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
-            //    {
-            //        Light* light = go->GetLight();
-
-            //        SameLineLabel("Type");
-            //        ImGui::Combo("##Type", reinterpret_cast<int*>(&light->Type), "Directional\0Point\0Spot\0\0");
-
-            //        SameLineLabel("Color");
-            //        ImGui::ColorEdit3("##Color", (float*)&light->Color);
-
-            //        if (light->Type != LightType::Directional)
-            //        {
-            //            SameLineLabel("Falloff Range");
-            //            ImGui::DragFloatRange2("##FalloffRange", &light->FalloffRange.x, &light->FalloffRange.y, 0.1f, 0.1f, FLT_MAX);
-            //        }
-
-            //        if (light->Type == LightType::Spot)
-            //        {
-            //            SameLineLabel("Spot Power");
-            //            ImGui::DragFloat("##SpotPower", &light->SpotPower, 0.1f, 0.1f, FLT_MAX);
-            //        }
-            //    }
-
             ImGui::End();
         }
 

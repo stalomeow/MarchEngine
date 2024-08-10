@@ -12,76 +12,82 @@ namespace dx12demo
         }
     }
 
-    void EditorGUI::PrefixLabel(const std::string& label)
+    void EditorGUI::PrefixLabel(const std::string& label, const std::string& tooltip)
     {
         ImGui::TextUnformatted(label.c_str());
+
+        if (!tooltip.empty())
+        {
+            ImGui::SetItemTooltip(tooltip.c_str());
+        }
+
         ImGui::SameLine(MaxLabelWidth);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     }
 
-    bool EditorGUI::FloatField(const std::string& label, float v[1], float speed, float min, float max)
+    bool EditorGUI::FloatField(const std::string& label, const std::string& tooltip, float v[1], float speed, float min, float max)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::DragFloat(label.c_str(), v, speed, min, max);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::DragFloat(("##" + label).c_str(), v, speed, min, max);
     }
 
-    bool EditorGUI::Vector2Field(const std::string& label, float v[2], float speed, float min, float max)
+    bool EditorGUI::Vector2Field(const std::string& label, const std::string& tooltip, float v[2], float speed, float min, float max)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::DragFloat2(label.c_str(), v, speed, min, max);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::DragFloat2(("##" + label).c_str(), v, speed, min, max);
     }
 
-    bool EditorGUI::Vector3Field(const std::string& label, float v[3], float speed, float min, float max)
+    bool EditorGUI::Vector3Field(const std::string& label, const std::string& tooltip, float v[3], float speed, float min, float max)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::DragFloat3(label.c_str(), v, speed, min, max);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::DragFloat3(("##" + label).c_str(), v, speed, min, max);
     }
 
-    bool EditorGUI::Vector4Field(const std::string& label, float v[4], float speed, float min, float max)
+    bool EditorGUI::Vector4Field(const std::string& label, const std::string& tooltip, float v[4], float speed, float min, float max)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::DragFloat4(label.c_str(), v, speed, min, max);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::DragFloat4(("##" + label).c_str(), v, speed, min, max);
     }
 
-    bool EditorGUI::ColorField(const std::string& label, float v[4])
+    bool EditorGUI::ColorField(const std::string& label, const std::string& tooltip, float v[4])
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::ColorEdit4(label.c_str(), v, ImGuiColorEditFlags_Float);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::ColorEdit4(("##" + label).c_str(), v, ImGuiColorEditFlags_Float);
     }
 
-    bool EditorGUI::FloatSliderField(const std::string& label, float v[1], float min, float max)
+    bool EditorGUI::FloatSliderField(const std::string& label, const std::string& tooltip, float v[1], float min, float max)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::SliderFloat(label.c_str(), v, min, max);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::SliderFloat(("##" + label).c_str(), v, min, max);
     }
 
@@ -90,14 +96,14 @@ namespace dx12demo
         return ImGui::CollapsingHeader(label.c_str(), defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
     }
 
-    bool EditorGUI::Combo(const std::string& label, int* currentItem, const std::string& itemsSeparatedByZeros)
+    bool EditorGUI::Combo(const std::string& label, const std::string& tooltip, int* currentItem, const std::string& itemsSeparatedByZeros)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::Combo(label.c_str(), currentItem, itemsSeparatedByZeros.c_str());
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::Combo(("##" + label).c_str(), currentItem, itemsSeparatedByZeros.c_str());
     }
 
@@ -125,25 +131,25 @@ namespace dx12demo
         ImGui::SeparatorText(label.c_str());
     }
 
-    bool EditorGUI::TextField(const std::string& label, std::string& text)
+    bool EditorGUI::TextField(const std::string& label, const std::string& tooltip, std::string& text)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::InputText(label.c_str(), &text);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::InputText(("##" + label).c_str(), &text);
     }
 
-    bool EditorGUI::Checkbox(const std::string& label, bool& value)
+    bool EditorGUI::Checkbox(const std::string& label, const std::string& tooltip, bool& value)
     {
         if (IsHiddenLabel(label))
         {
             return ImGui::Checkbox(label.c_str(), &value);
         }
 
-        PrefixLabel(label);
+        PrefixLabel(label, tooltip);
         return ImGui::Checkbox(("##" + label).c_str(), &value);
     }
 
@@ -157,14 +163,15 @@ namespace dx12demo
         ImGui::EndDisabled();
     }
 
-    void EditorGUI::LabelField(const std::string& label1, const std::string& label2)
+    void EditorGUI::LabelField(const std::string& label1, const std::string& tooltip, const std::string& label2)
     {
         if (IsHiddenLabel(label1))
         {
             ImGui::LabelText(label1.c_str(), "%s", label2.c_str());
+            return;
         }
 
-        PrefixLabel(label1);
+        PrefixLabel(label1, tooltip);
         ImGui::LabelText(("##" + label1).c_str(), "%s", label2.c_str());
     }
 
@@ -260,5 +267,16 @@ namespace dx12demo
     void EditorGUI::OpenPopup(const std::string& id)
     {
         ImGui::OpenPopup(id.c_str());
+    }
+
+    bool EditorGUI::FloatRangeField(const std::string& label, const std::string& tooltip, float& currentMin, float& currentMax, float speed, float min, float max)
+    {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::DragFloatRange2(label.c_str(), &currentMin, &currentMax, speed, min, max);
+        }
+
+        PrefixLabel(label, tooltip);
+        return ImGui::DragFloatRange2(("##" + label).c_str(), &currentMin, &currentMax, speed, min, max);
     }
 }

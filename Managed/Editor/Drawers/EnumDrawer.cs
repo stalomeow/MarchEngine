@@ -4,7 +4,7 @@ namespace DX12Demo.Editor.Drawers
 {
     internal class EnumDrawer : IPropertyDrawerFor<Enum>
     {
-        public bool Draw(string label, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, object target, JsonProperty property)
         {
             bool changed = false;
             Enum? value = property.GetValue<Enum>(target);
@@ -16,7 +16,7 @@ namespace DX12Demo.Editor.Drawers
                 changed = true;
             }
 
-            if (EditorGUI.EnumField(label, ref value))
+            if (EditorGUI.EnumField(label, tooltip, ref value))
             {
                 property.SetValue(target, value);
                 changed = true;

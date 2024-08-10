@@ -104,6 +104,7 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(EditorGUI_BeginMenu),
             CSHARP_BINDING_ENTRY(EditorGUI_EndMenu),
             CSHARP_BINDING_ENTRY(EditorGUI_OpenPopup),
+            CSHARP_BINDING_ENTRY(EditorGUI_FloatRangeField),
         };
 
         CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)

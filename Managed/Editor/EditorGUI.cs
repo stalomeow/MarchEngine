@@ -7,69 +7,76 @@ namespace DX12Demo.Editor
 {
     public static unsafe partial class EditorGUI
     {
-        public static void PrefixLabel(string label)
+        public static void PrefixLabel(string label, string tooltip)
         {
             using NativeString l = label;
-            EditorGUI_PrefixLabel(l.Data);
+            using NativeString t = tooltip;
+            EditorGUI_PrefixLabel(l.Data, t.Data);
         }
 
-        public static bool FloatField(string label, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool FloatField(string label, string tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (float* v = &value)
             {
-                return EditorGUI_FloatField(l.Data, v, speed, minValue, maxValue);
+                return EditorGUI_FloatField(l.Data, t.Data, v, speed, minValue, maxValue);
             }
         }
 
-        public static bool Vector2Field(string label, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector2Field(string label, string tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (Vector2* v = &value)
             {
-                return EditorGUI_Vector2Field(l.Data, v, speed, minValue, maxValue);
+                return EditorGUI_Vector2Field(l.Data, t.Data, v, speed, minValue, maxValue);
             }
         }
 
-        public static bool Vector3Field(string label, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector3Field(string label, string tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (Vector3* v = &value)
             {
-                return EditorGUI_Vector3Field(l.Data, v, speed, minValue, maxValue);
+                return EditorGUI_Vector3Field(l.Data, t.Data, v, speed, minValue, maxValue);
             }
         }
 
-        public static bool Vector4Field(string label, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector4Field(string label, string tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (Vector4* v = &value)
             {
-                return EditorGUI_Vector4Field(l.Data, v, speed, minValue, maxValue);
+                return EditorGUI_Vector4Field(l.Data, t.Data, v, speed, minValue, maxValue);
             }
         }
 
-        public static bool ColorField(string label, ref Color value)
+        public static bool ColorField(string label, string tooltip, ref Color value)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (Color* v = &value)
             {
-                return EditorGUI_ColorField(l.Data, v);
+                return EditorGUI_ColorField(l.Data, t.Data, v);
             }
         }
 
-        public static bool FloatSliderField(string label, ref float value, float minValue, float maxValue)
+        public static bool FloatSliderField(string label, string tooltip, ref float value, float minValue, float maxValue)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (float* v = &value)
             {
-                return EditorGUI_FloatSliderField(l.Data, v, minValue, maxValue);
+                return EditorGUI_FloatSliderField(l.Data, t.Data, v, minValue, maxValue);
             }
         }
 
@@ -79,7 +86,7 @@ namespace DX12Demo.Editor
             return EditorGUI_CollapsingHeader(l.Data, defaultOpen);
         }
 
-        public static bool EnumField(string label, ref Enum value)
+        public static bool EnumField(string label, string tooltip, ref Enum value)
         {
             Type enumType = value.GetType();
             string[] names = Enum.GetNames(enumType);
@@ -87,9 +94,10 @@ namespace DX12Demo.Editor
             int index = Array.IndexOf(values, value);
 
             using NativeString l = label;
+            using NativeString t = tooltip;
             using NativeString items = string.Join('\0', names) + "\0\0";
 
-            if (EditorGUI_Combo(l.Data, &index, items.Data))
+            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data))
             {
                 value = (Enum)values.GetValue(index)!;
                 return true;
@@ -98,16 +106,17 @@ namespace DX12Demo.Editor
             return false;
         }
 
-        public static bool EnumField<T>(string label, ref T value) where T : struct, Enum
+        public static bool EnumField<T>(string label, string tooltip, ref T value) where T : struct, Enum
         {
             string[] names = Enum.GetNames<T>();
             T[] values = Enum.GetValues<T>();
             int index = Array.IndexOf(values, value);
 
             using NativeString l = label;
+            using NativeString t = tooltip;
             using NativeString items = string.Join('\0', names) + "\0\0";
 
-            if (EditorGUI_Combo(l.Data, &index, items.Data))
+            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data))
             {
                 value = values[index];
                 return true;
@@ -128,13 +137,14 @@ namespace DX12Demo.Editor
             EditorGUI_SeparatorText(l.Data);
         }
 
-        public static bool TextField(string label, ref string text)
+        public static bool TextField(string label, string tooltip, ref string text)
         {
             using NativeString l = label;
-            using NativeString t = text;
+            using NativeString tp = tooltip;
+            using NativeString te = text;
             nint newText = nint.Zero;
 
-            if (EditorGUI_TextField(l.Data, t.Data, &newText))
+            if (EditorGUI_TextField(l.Data, tp.Data, te.Data, &newText))
             {
                 text = NativeString.Get(newText);
                 NativeString.Free(newText);
@@ -144,21 +154,23 @@ namespace DX12Demo.Editor
             return false;
         }
 
-        public static bool Checkbox(string label, ref bool value)
+        public static bool Checkbox(string label, string tooltip, ref bool value)
         {
             using NativeString l = label;
+            using NativeString t = tooltip;
 
             fixed (bool* v = &value)
             {
-                return EditorGUI_Checkbox(l.Data, v);
+                return EditorGUI_Checkbox(l.Data, t.Data, v);
             }
         }
 
-        public static void LabelField(string label1, string label2)
+        public static void LabelField(string label1, string tooltip, string label2)
         {
             using NativeString l1 = label1;
             using NativeString l2 = label2;
-            EditorGUI_LabelField(l1.Data, l2.Data);
+            using NativeString t = tooltip;
+            EditorGUI_LabelField(l1.Data, t.Data, l2.Data);
         }
 
         public static bool Foldout(string label)
@@ -191,17 +203,29 @@ namespace DX12Demo.Editor
             EditorGUI_OpenPopup(i.Data);
         }
 
+        public static bool FloatRangeField(string label, string tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        {
+            using NativeString l = label;
+            using NativeString t = tooltip;
+
+            fixed (float* min = &currentMin)
+            fixed (float* max = &currentMax)
+            {
+                return EditorGUI_FloatRangeField(l.Data, t.Data, min, max, speed, minValue, maxValue);
+            }
+        }
+
         #region PropertyField
 
         private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
 
-        private static bool PropertyFieldImpl(string label, object target, JsonProperty property, int depth)
+        private static bool PropertyFieldImpl(string label, string tooltip, object target, JsonProperty property, int depth)
         {
             Type propertyType = property.PropertyType ?? throw new ArgumentException("Property type is null", nameof(property));
 
             if (s_PropertyDrawerCache.TryGet(propertyType, out IPropertyDrawer? drawer))
             {
-                return drawer.Draw(label, target, property);
+                return drawer.Draw(label, tooltip, target, property);
             }
 
             if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
@@ -245,7 +269,9 @@ namespace DX12Demo.Editor
                             continue;
                         }
 
-                        changed |= PropertyFieldImpl(nestedProp.GetDisplayName(), nestedTarget, nestedProp, depth + 1);
+                        string nestedLabel = nestedProp.GetDisplayName();
+                        string nestedTooltip = nestedProp.GetTooltip();
+                        changed |= PropertyFieldImpl(nestedLabel, nestedTooltip, nestedTarget, nestedProp, depth + 1);
                     }
 
                     if (changed && propertyType.IsValueType)
@@ -261,14 +287,19 @@ namespace DX12Demo.Editor
         Fallback:
             using (new DisabledScope())
             {
-                LabelField(label, $"Type {propertyType} is not supported");
+                LabelField(label, string.Empty, $"Type {propertyType} is not supported");
                 return false;
             }
         }
 
+        public static bool PropertyField(string label, string tooltip, object target, JsonProperty property)
+        {
+            return PropertyFieldImpl(label, tooltip, target, property, 0);
+        }
+
         public static bool PropertyField(string label, object target, JsonProperty property)
         {
-            return PropertyFieldImpl(label, target, property, 0);
+            return PropertyField(label, property.GetTooltip(), target, property);
         }
 
         public static bool PropertyField(object target, JsonProperty property)
@@ -340,31 +371,31 @@ namespace DX12Demo.Editor
         #region Native
 
         [NativeFunction]
-        private static partial void EditorGUI_PrefixLabel(nint label);
+        private static partial void EditorGUI_PrefixLabel(nint label, nint tooltip);
 
         [NativeFunction]
-        private static partial bool EditorGUI_FloatField(nint label, float* v, float speed, float minValue, float maxValue);
+        private static partial bool EditorGUI_FloatField(nint label, nint tooltip, float* v, float speed, float minValue, float maxValue);
 
         [NativeFunction]
-        private static partial bool EditorGUI_Vector2Field(nint label, Vector2* v, float speed, float minValue, float maxValue);
+        private static partial bool EditorGUI_Vector2Field(nint label, nint tooltip, Vector2* v, float speed, float minValue, float maxValue);
 
         [NativeFunction]
-        private static partial bool EditorGUI_Vector3Field(nint label, Vector3* v, float speed, float minValue, float maxValue);
+        private static partial bool EditorGUI_Vector3Field(nint label, nint tooltip, Vector3* v, float speed, float minValue, float maxValue);
 
         [NativeFunction]
-        private static partial bool EditorGUI_Vector4Field(nint label, Vector4* v, float speed, float minValue, float maxValue);
+        private static partial bool EditorGUI_Vector4Field(nint label, nint tooltip, Vector4* v, float speed, float minValue, float maxValue);
 
         [NativeFunction]
-        private static partial bool EditorGUI_ColorField(nint label, Color* v);
+        private static partial bool EditorGUI_ColorField(nint label, nint tooltip, Color* v);
 
         [NativeFunction]
-        private static partial bool EditorGUI_FloatSliderField(nint label, float* v, float minValue, float maxValue);
+        private static partial bool EditorGUI_FloatSliderField(nint label, nint tooltip, float* v, float minValue, float maxValue);
 
         [NativeFunction]
         private static partial bool EditorGUI_CollapsingHeader(nint label, bool defaultOpen);
 
         [NativeFunction]
-        private static partial bool EditorGUI_Combo(nint label, int* currentItem, nint itemsSeparatedByZeros);
+        private static partial bool EditorGUI_Combo(nint label, nint tooltip, int* currentItem, nint itemsSeparatedByZeros);
 
         [NativeFunction]
         private static partial bool EditorGUI_CenterButton(nint label, float width);
@@ -376,10 +407,10 @@ namespace DX12Demo.Editor
         private static partial void EditorGUI_SeparatorText(nint label);
 
         [NativeFunction]
-        private static partial bool EditorGUI_TextField(nint label, nint text, nint* outNewText);
+        private static partial bool EditorGUI_TextField(nint label, nint tooltip, nint text, nint* outNewText);
 
         [NativeFunction]
-        private static partial bool EditorGUI_Checkbox(nint label, bool* v);
+        private static partial bool EditorGUI_Checkbox(nint label, nint tooltip, bool* v);
 
         [NativeFunction]
         private static partial void EditorGUI_BeginDisabled(bool disabled);
@@ -388,7 +419,7 @@ namespace DX12Demo.Editor
         private static partial void EditorGUI_EndDisabled();
 
         [NativeFunction]
-        private static partial void EditorGUI_LabelField(nint label1, nint label2);
+        private static partial void EditorGUI_LabelField(nint label1, nint tooltip, nint label2);
 
         [NativeFunction]
         private static partial void EditorGUI_PushIDString(nint id);
@@ -443,6 +474,9 @@ namespace DX12Demo.Editor
 
         [NativeFunction]
         private static partial void EditorGUI_OpenPopup(nint id);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_FloatRangeField(nint label, nint tooltip, float* currentMin, float* currentMax, float speed, float minValue, float maxValue);
 
         #endregion
     }

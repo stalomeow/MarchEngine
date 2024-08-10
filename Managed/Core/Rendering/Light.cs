@@ -1,4 +1,5 @@
 using DX12Demo.Core.Binding;
+using DX12Demo.Core.Serialization;
 using Newtonsoft.Json;
 using System.Numerics;
 
@@ -25,25 +26,33 @@ namespace DX12Demo.Core.Rendering
             Dispose();
         }
 
-        [JsonProperty] public LightType Type
+        [JsonProperty]
+        [Tooltip("The type of light.")]
+        public LightType Type
         {
             get => Light_GetType(m_Light);
             set => Light_SetType(m_Light, value);
         }
 
-        [JsonProperty] public Color Color
+        [JsonProperty]
+        public Color Color
         {
             get => Light_GetColor(m_Light);
             set => Light_SetColor(m_Light, value);
         }
 
-        [JsonProperty] public Vector2 FalloffRange
+        [JsonProperty]
+        [Tooltip("The range of the light's falloff.")]
+        [Vector2Drawer(XNotGreaterThanY = true, Min = 0.1f)]
+        public Vector2 FalloffRange
         {
             get => Light_GetFalloffRange(m_Light);
             set => Light_SetFalloffRange(m_Light, value);
         }
 
-        [JsonProperty] public float SpotPower
+        [JsonProperty]
+        [FloatDrawer(Min = 0.1f)]
+        public float SpotPower
         {
             get => Light_GetSpotPower(m_Light);
             set => Light_SetSpotPower(m_Light, value);

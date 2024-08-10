@@ -20,7 +20,7 @@ namespace DX12Demo.Editor
         private static void RebuildComponentPopup()
         {
             s_ComponentPopup.Clear();
-            s_ComponentPopup.AddSeparatorText("", "Components");
+            s_ComponentPopup.AddSeparatorText("", "Add Component Menu");
 
             foreach (Type type in TypeCache.GetTypesDerivedFrom<Component>())
             {
@@ -77,10 +77,10 @@ namespace DX12Demo.Editor
             var goContract = (JsonObjectContract)PersistentManager.ResolveJsonContract(typeof(GameObject));
             var changed = false;
 
-            changed |= EditorGUI.PropertyField("##GameObjectIsActive", go, goContract.Properties["m_IsActive"]);
+            changed |= EditorGUI.PropertyField("##GameObjectIsActive", string.Empty, go, goContract.Properties["m_IsActive"]);
             EditorGUI.SameLine();
             EditorGUI.SetNextItemWidth(EditorGUI.GetContentRegionAvailable().X);
-            changed |= EditorGUI.PropertyField("##GameObjectName", go, goContract.Properties["Name"]);
+            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, go, goContract.Properties["Name"]);
 
             EditorGUI.SeparatorText("Transform");
 
