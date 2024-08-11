@@ -4,30 +4,45 @@ namespace DX12Demo.Editor
 {
     internal class ProjectFileTree
     {
-        private static readonly char[] s_PathSeparators = { '/', '\\' };
-
-        private sealed class Node
+        private sealed class FolderNode(string folderPath)
         {
-            public SortedDictionary<string, Node> Folders { get; } = new();
+            public string FolderPath { get; } = folderPath;
 
-            public SortedSet<string> Files { get; } = new();
+            public SortedDictionary<string, FolderNode> Folders { get; } = new();
+
+            public SortedDictionary<string, string> Files { get; } = new();
 
             public void Draw()
             {
                 // 没必要加 IDScope，因为每个结点名字都不一样
 
-                foreach ((string name, Node node) in Folders)
+                foreach ((string name, FolderNode node) in Folders)
                 {
-                    if (EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, spanWidth: true))
+                    bool open = EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
+
+                    if (EditorGUI.IsItemClicked())
+                    {
+                        Selection.Active = AssetDatabase.GetAssetImporterAtPath(node.FolderPath);
+                    }
+
+                    if (open)
                     {
                         node.Draw();
                         EditorGUI.EndTreeNode();
                     }
                 }
 
-                foreach(string name in Files)
+                foreach((string name, string path) in Files)
                 {
-                    if (EditorGUI.BeginTreeNode(name, isLeaf: true, spanWidth: true))
+                    bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == path);
+                    bool open = EditorGUI.BeginTreeNode(name, isLeaf: true, selected: selected, spanWidth: true);
+
+                    if (EditorGUI.IsItemClicked())
+                    {
+                        Selection.Active = AssetDatabase.GetAssetImporterAtPath(path);
+                    }
+
+                    if (open)
                     {
                         EditorGUI.EndTreeNode();
                     }
@@ -41,7 +56,7 @@ namespace DX12Demo.Editor
             }
         }
 
-        private readonly Node m_Root = new();
+        private readonly FolderNode m_Root = new("Root");
 
         public void AddFile(string path) => Add(path, false);
 
@@ -49,22 +64,27 @@ namespace DX12Demo.Editor
 
         public void Add(string path, bool isFolder)
         {
-            if (FindParentNode(path, out string[] segments, out Node? node))
+            if (path.EndsWith(AssetDatabase.ImporterPathSuffix))
+            {
+                return;
+            }
+
+            if (FindParentNode(ref path, true, out string[] segments, out FolderNode? node))
             {
                 if (isFolder)
                 {
-                    node.Folders.Add(segments[^1], new Node());
+                    node.Folders.Add(segments[^1], new FolderNode(path));
                 }
                 else
                 {
-                    node.Files.Add(segments[^1]);
+                    node.Files.Add(segments[^1], path);
                 }
             }
         }
 
         public void Remove(string path)
         {
-            if (FindParentNode(path, out string[] segments, out Node? node))
+            if (FindParentNode(ref path, false, out string[] segments, out FolderNode? node))
             {
                 string key = segments[^1];
 
@@ -75,9 +95,10 @@ namespace DX12Demo.Editor
             }
         }
 
-        private bool FindParentNode(string path, out string[] segments, [NotNullWhen(true)] out Node? node)
+        private bool FindParentNode(ref string path, bool createIfNotExists, out string[] segments, [NotNullWhen(true)] out FolderNode? node)
         {
-            segments = path.Split(s_PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+            path = path.Replace('\\', '/');
+            segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
             if (segments.Length == 0)
             {
@@ -91,9 +112,14 @@ namespace DX12Demo.Editor
             {
                 string seg = segments[i];
 
-                if (!node.Folders.TryGetValue(seg, out Node? n))
+                if (!node.Folders.TryGetValue(seg, out FolderNode? n))
                 {
-                    n = new Node();
+                    if (!createIfNotExists)
+                    {
+                        return false;
+                    }
+
+                    n = new FolderNode(path);
                     node.Folders.Add(seg, n);
                 }
 

@@ -172,7 +172,10 @@ namespace dx12demo
         }
 
         PrefixLabel(label1, tooltip);
-        ImGui::LabelText(("##" + label1).c_str(), "%s", label2.c_str());
+
+        ImGui::PushID(label1.c_str());
+        ImGui::TextUnformatted(label2.c_str());
+        ImGui::PopID();
     }
 
     void EditorGUI::PushID(const std::string& id)

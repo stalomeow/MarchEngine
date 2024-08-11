@@ -1,7 +1,5 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace DX12Demo.Core
@@ -17,109 +15,46 @@ namespace DX12Demo.Core
             Formatting = Formatting.Indented,
         });
 
-        private static readonly Dictionary<string, WeakReference<EngineObject>> s_LoadedObjects = new();
-        private static readonly ConditionalWeakTable<EngineObject, string> s_ObjectFullPath = new();
-        private static readonly HashSet<EngineObject> s_DirtyObjects = new();
-
         public static JsonContract ResolveJsonContract(Type type)
         {
             return s_JsonSerializer.ContractResolver.ResolveContract(type);
         }
 
-        public static EngineObject Load(string path)
+        public static EngineObject Load(TextReader textReader)
         {
-            return Load<EngineObject>(path);
+            return Load<EngineObject>(textReader);
         }
 
-        public static T Load<T>(string path) where T : EngineObject
+        public static T Load<T>(TextReader textReader) where T : EngineObject
         {
-            if (s_LoadedObjects.TryGetValue(path, out WeakReference<EngineObject>? weakRef))
-            {
-                if (weakRef.TryGetTarget(out EngineObject? loadedObj))
-                {
-                    return (loadedObj is T t) ? t : throw new ArgumentException("Load EngineObject with wrong type");
-                }
+            using var jsonReader = new JsonTextReader(textReader);
+            return s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException("Failed to Load EngineObject");
+        }
 
-                // Remove the weak reference if the target is collected
-                s_LoadedObjects.Remove(path);
-            }
+        public static EngineObject Load(string fullPath)
+        {
+            return Load<EngineObject>(fullPath);
+        }
 
-            string fullPath = Path.Combine(Application.DataPath, path);
+        public static T Load<T>(string fullPath) where T : EngineObject
+        {
             using var streamReader = new StreamReader(fullPath, Encoding.UTF8);
-            using var jsonReader = new JsonTextReader(streamReader);
-
-            T obj = s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException("Failed to Load EngineObject");
-            s_LoadedObjects.Add(path, new WeakReference<EngineObject>(obj));
-            s_ObjectFullPath.Add(obj, fullPath);
-            return obj;
+            return Load<T>(streamReader);
         }
 
-        public static void MakePersistent(EngineObject obj, string path)
+        public static void Save(EngineObject obj, TextWriter textWriter)
         {
-            if (s_LoadedObjects.ContainsKey(path))
-            {
-                throw new InvalidOperationException($"Object with the same path ({path}) is already loaded");
-            }
-
-            s_LoadedObjects.Add(path, new WeakReference<EngineObject>(obj));
-            s_ObjectFullPath.AddOrUpdate(obj, Path.Combine(Application.DataPath, path));
-        }
-
-        public static bool IsPersistent(EngineObject obj)
-        {
-            return IsPersistent(obj, out _);
-        }
-
-        private static bool IsPersistent(EngineObject obj, [NotNullWhen(true)] out string? fullPath)
-        {
-            return s_ObjectFullPath.TryGetValue(obj, out fullPath);
-        }
-
-        public static void Save(EngineObject obj)
-        {
-            if (!IsPersistent(obj, out string? fullPath))
-            {
-                throw new ArgumentException("Can not save non-persistent EngineObject directly");
-            }
-
-            SaveImpl(obj, fullPath);
-        }
-
-        public static void Save(EngineObject obj, string path)
-        {
-            SaveImpl(obj, Path.Combine(Application.DataPath, path));
-        }
-
-        private static void SaveImpl(EngineObject obj, string fullPath)
-        {
-            using var streamWriter = new StreamWriter(fullPath, append: false, Encoding.UTF8);
-            using var jsonWriter = new JsonTextWriter(streamWriter);
+            using var jsonWriter = new JsonTextWriter(textWriter);
             s_JsonSerializer.Serialize(jsonWriter, obj, typeof(EngineObject));
         }
 
-        public static void MarkDirty(EngineObject obj)
+        public static void Save(EngineObject obj, string fullPath)
         {
-            s_DirtyObjects.Add(obj);
+            using var streamWriter = new StreamWriter(fullPath, append: false, Encoding.UTF8);
+            Save(obj, streamWriter);
         }
 
-        public static void SaveAllDirtyObjects()
-        {
-            foreach (var obj in s_DirtyObjects)
-            {
-                try
-                {
-                    Save(obj);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError("Failed to save dirty object: " + e.Message);
-                }
-            }
-
-            s_DirtyObjects.Clear();
-        }
-
-        private class ContractResolver : DefaultContractResolver
+        private sealed class ContractResolver : DefaultContractResolver
         {
             protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
             {

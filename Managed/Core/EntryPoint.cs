@@ -22,7 +22,8 @@ namespace DX12Demo.Core
                 //s_Scene.RootGameObjects.Add(light);
                 //s_Scene.RootGameObjects.Add(sphere);
 
-                SceneManager.CurrentScene = PersistentManager.Load<Scene>(@"Assets/scene.json");
+                string scenePath = Path.Combine(Application.DataPath, @"Assets/TestScene.scene");
+                SceneManager.CurrentScene = PersistentManager.Load<Scene>(scenePath);
             }
             catch (Exception e)
             {

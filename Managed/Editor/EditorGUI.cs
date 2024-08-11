@@ -221,6 +221,37 @@ namespace DX12Demo.Editor
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
+        public static bool ObjectPropertyFields(object target, JsonObjectContract contract)
+        {
+            bool changed = false;
+
+            foreach (var property in contract.Properties)
+            {
+                if (property.Ignored)
+                {
+                    continue;
+                }
+
+                changed |= PropertyField(target, property);
+            }
+
+            return changed;
+        }
+
+        public static bool ObjectPropertyFields(object target)
+        {
+            Type type = target.GetType();
+
+            if (PersistentManager.ResolveJsonContract(type) is not JsonObjectContract contract)
+            {
+                LabelField($"##{nameof(ObjectPropertyFields)}Error", string.Empty,
+                    $"Failed to resolve json object contract for {type}.");
+                return false;
+            }
+
+            return ObjectPropertyFields(target, contract);
+        }
+
         #region PropertyField
 
         private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
