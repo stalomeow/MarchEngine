@@ -215,6 +215,12 @@ namespace DX12Demo.Editor
             }
         }
 
+        public static bool BeginTreeNode(string label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        {
+            using NativeString l = label;
+            return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+        }
+
         #region PropertyField
 
         private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
@@ -477,6 +483,24 @@ namespace DX12Demo.Editor
 
         [NativeFunction]
         private static partial bool EditorGUI_FloatRangeField(nint label, nint tooltip, float* currentMin, float* currentMax, float speed, float minValue, float maxValue);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_BeginTreeNode(nint label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
+
+        /// <summary>
+        /// only call EndTreeNode() if BeginTreeNode() returns true!
+        /// </summary>
+        [NativeFunction(Name = "EditorGUI_EndTreeNode")]
+        public static partial void EndTreeNode();
+
+        [NativeFunction(Name = "EditorGUI_IsItemClicked")]
+        public static partial bool IsItemClicked();
+
+        [NativeFunction(Name = "EditorGUI_BeginPopupContextWindow")]
+        internal static partial bool BeginPopupContextWindow();
+
+        [NativeFunction(Name = "EditorGUI_BeginPopupContextItem")]
+        internal static partial bool BeginPopupContextItem();
 
         #endregion
     }

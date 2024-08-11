@@ -54,6 +54,7 @@ namespace dx12demo
         HINSTANCE GetHINSTANCE() const { return m_InstanceHandle; }
         HWND GetHWND() const { return m_WindowHandle; }
         IEngine* GetEngine() const { return m_Engine; }
+        const std::string& GetDataPath() const { return m_DataPath; }
 
     private:
         bool InitWindow(int nCmdShow, int clientWidth, int clientHeight);
@@ -65,6 +66,8 @@ namespace dx12demo
         GameTimer m_Timer{};
         HINSTANCE m_InstanceHandle = nullptr;
         HWND m_WindowHandle = nullptr;
+
+        const std::string m_DataPath = u8"C:\\Users\\10247\\Desktop\\TestProj";
     };
 
     WinApplication& GetApp();
@@ -84,6 +87,11 @@ namespace dx12demo
         inline CSHARP_API(IEngine*) Application_GetEngine()
         {
             return GetApp().GetEngine();
+        }
+
+        inline CSHARP_API(CSharpString) Application_GetDataPath()
+        {
+            return CSharpString_FromUtf8(GetApp().GetDataPath());
         }
     }
 }

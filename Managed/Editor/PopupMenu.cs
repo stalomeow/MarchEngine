@@ -134,6 +134,24 @@ namespace DX12Demo.Editor
             }
         }
 
+        public void DoWindowContext()
+        {
+            if (EditorGUI.BeginPopupContextWindow())
+            {
+                m_MenuTree.DrawMenuEntries();
+                EditorGUI.EndPopup();
+            }
+        }
+
+        public void DoItemContext()
+        {
+            if (EditorGUI.BeginPopupContextItem())
+            {
+                m_MenuTree.DrawMenuEntries();
+                EditorGUI.EndPopup();
+            }
+        }
+
         private sealed class MenuItemEntry : IMenuEntry
         {
             public required string Label { get; init; }

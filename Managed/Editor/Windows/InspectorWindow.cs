@@ -2,17 +2,16 @@ using DX12Demo.Core;
 using Newtonsoft.Json.Serialization;
 using System.Runtime.InteropServices;
 
-namespace DX12Demo.Editor
+namespace DX12Demo.Editor.Windows
 {
-    internal static unsafe class Inspector
+    internal static class InspectorWindow
     {
         private static readonly PopupMenu s_ComponentPopup = new("InspectorAddComponentPopup");
         private static int s_ComponentPopupTypeCacheVersion;
 
         private static readonly DrawerCache<IComponentDrawer> s_ComponentDrawerCache = new(typeof(IComponentDrawerFor<>));
-        private static int s_SelectedGameObjectIndex = -1;
 
-        static Inspector()
+        static InspectorWindow()
         {
             RebuildComponentPopup();
         }
@@ -38,13 +37,11 @@ namespace DX12Demo.Editor
                 Type componentType = type;
                 s_ComponentPopup.AddMenuItem(displayName, callback: () =>
                 {
-                    List<GameObject> gameObjects = SceneManager.CurrentScene.RootGameObjects;
-                    if (s_SelectedGameObjectIndex >= 0 && s_SelectedGameObjectIndex < gameObjects.Count)
+                    if (Selection.Active is GameObject go)
                     {
-                        GameObject go = gameObjects[s_SelectedGameObjectIndex];
                         go.AddComponent(componentType);
                     }
-                });
+                }, enabled: () => Selection.Active is GameObject);
             }
 
             s_ComponentPopupTypeCacheVersion = TypeCache.Version;
@@ -53,23 +50,12 @@ namespace DX12Demo.Editor
         [UnmanagedCallersOnly]
         internal static void Draw()
         {
-            // No selection
-            //if (s_SelectedGameObjectIndex < 0)
-            //{
-            //    return;
-            //}
-
-            s_SelectedGameObjectIndex = 0;
-
-            List<GameObject> gameObjects = SceneManager.CurrentScene.RootGameObjects;
-
-            if (s_SelectedGameObjectIndex >= gameObjects.Count)
+            switch (Selection.Active)
             {
-                s_SelectedGameObjectIndex = -1;
-                return;
+                case GameObject go:
+                    DrawGameObjectInspector(go);
+                    break;
             }
-
-            DrawGameObjectInspector(gameObjects[s_SelectedGameObjectIndex]);
         }
 
         private static bool DrawGameObjectInspector(GameObject go)

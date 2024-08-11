@@ -195,6 +195,7 @@ namespace dx12demo
             ImGui::End();
 
             ImGui::Begin("Project");
+            m_DotNet.InvokeDrawProjectWindowFunc();
             ImGui::End();
         }
 
@@ -244,65 +245,7 @@ namespace dx12demo
         if (m_ShowHierarchyWindow)
         {
             ImGui::Begin("Hierarchy", &m_ShowHierarchyWindow);
-
-            if (ImGui::BeginPopupContextWindow())
-            {
-                /*if (ImGui::MenuItem("Create Cube"))
-                {
-                    Scene::GetCurrent()->GameObjects.push_back(std::make_unique<GameObject>());
-                    Scene::GetCurrent()->GameObjects.back()->Name = "Cube";
-                    Scene::GetCurrent()->GameObjects.back()->AddMesh();
-                    Scene::GetCurrent()->GameObjects.back()->GetMesh()->AddSubMeshCube();
-                    m_SelectedGameObjectIndex = Scene::GetCurrent()->GameObjects.size() - 1;
-                }
-
-                if (ImGui::MenuItem("Create Sphere"))
-                {
-                    Scene::GetCurrent()->GameObjects.push_back(std::make_unique<GameObject>());
-                    Scene::GetCurrent()->GameObjects.back()->Name = "Sphere";
-                    Scene::GetCurrent()->GameObjects.back()->AddMesh();
-                    Scene::GetCurrent()->GameObjects.back()->GetMesh()->AddSubMeshSphere(0.5f, 40, 40);
-                    m_SelectedGameObjectIndex = Scene::GetCurrent()->GameObjects.size() - 1;
-                }
-
-                if (ImGui::MenuItem("Create Light"))
-                {
-                    Scene::GetCurrent()->GameObjects.push_back(std::make_unique<GameObject>());
-                    Scene::GetCurrent()->GameObjects.back()->Name = "Light";
-                    Scene::GetCurrent()->GameObjects.back()->AddLight();
-                    m_SelectedGameObjectIndex = Scene::GetCurrent()->GameObjects.size() - 1;
-                }*/
-
-                ImGui::EndPopup();
-            }
-
-           /* if (ImGui::CollapsingHeader(Scene::GetCurrent()->Name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                for (int i = 0; i < Scene::GetCurrent()->GameObjects.size(); i++)
-                {
-                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-
-                    if (i == m_SelectedGameObjectIndex)
-                    {
-                        flags |= ImGuiTreeNodeFlags_Selected;
-                    }
-
-                    ImGui::PushID("##GameObject");
-                    bool nodeOpen = ImGui::TreeNodeEx(Scene::GetCurrent()->GameObjects[i]->Name.c_str(), flags);
-                    ImGui::PopID();
-
-                    if (nodeOpen)
-                    {
-                        if (ImGui::IsItemClicked())
-                        {
-                            m_SelectedGameObjectIndex = i;
-                        }
-
-                        ImGui::TreePop();
-                    }
-                }
-            }*/
-
+            m_DotNet.InvokeDrawHierarchyWindowFunc();
             ImGui::End();
         }
 

@@ -50,6 +50,13 @@ namespace dx12demo
         static void OpenPopup(const std::string& id);
         static bool FloatRangeField(const std::string& label, const std::string& tooltip, float& currentMin, float& currentMax, float speed = 0.1f, float min = 0.0f, float max = 0.0f);
 
+        static bool BeginTreeNode(const std::string& label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
+        // only call EndTreeNode() if BeginTreeNode() returns true!
+        static void EndTreeNode();
+        static bool IsItemClicked();
+        static bool BeginPopupContextWindow();
+        static bool BeginPopupContextItem();
+
     public:
         static constexpr float MaxLabelWidth = 100.0f;
     };
@@ -242,6 +249,33 @@ namespace dx12demo
         inline CSHARP_API(CSharpBool) EditorGUI_FloatRangeField(CSharpString label, CSharpString tooltip, CSharpFloat* currentMin, CSharpFloat* currentMax, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
         {
             return CSHARP_MARSHAL_BOOL(EditorGUI::FloatRangeField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), *currentMin, *currentMax, speed, minValue, maxValue));
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_BeginTreeNode(CSharpString label, CSharpBool isLeaf, CSharpBool openOnArrow, CSharpBool openOnDoubleClick, CSharpBool selected, CSharpBool showBackground, CSharpBool defaultOpen, CSharpBool spanWidth)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginTreeNode(CSharpString_ToUtf8(label),
+                CSHARP_UNMARSHAL_BOOL(isLeaf), CSHARP_UNMARSHAL_BOOL(openOnArrow), CSHARP_UNMARSHAL_BOOL(openOnDoubleClick), CSHARP_UNMARSHAL_BOOL(selected),
+                CSHARP_UNMARSHAL_BOOL(showBackground), CSHARP_UNMARSHAL_BOOL(defaultOpen), CSHARP_UNMARSHAL_BOOL(spanWidth)));
+        }
+
+        inline CSHARP_API(void) EditorGUI_EndTreeNode()
+        {
+            EditorGUI::EndTreeNode();
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_IsItemClicked()
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::IsItemClicked());
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_BeginPopupContextWindow()
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextWindow());
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_BeginPopupContextItem()
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextItem());
         }
     }
 }

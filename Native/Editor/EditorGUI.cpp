@@ -279,4 +279,39 @@ namespace dx12demo
         PrefixLabel(label, tooltip);
         return ImGui::DragFloatRange2(("##" + label).c_str(), &currentMin, &currentMax, speed, min, max);
     }
+
+    bool EditorGUI::BeginTreeNode(const std::string& label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
+    {
+        ImGuiTreeNodeFlags flags = 0;
+
+        if (isLeaf)             flags |= ImGuiTreeNodeFlags_Leaf;
+        if (openOnArrow)        flags |= ImGuiTreeNodeFlags_OpenOnArrow;
+        if (openOnDoubleClick)  flags |= ImGuiTreeNodeFlags_OpenOnDoubleClick;
+        if (selected)           flags |= ImGuiTreeNodeFlags_Selected;
+        if (showBackground)     flags |= ImGuiTreeNodeFlags_Framed;
+        if (defaultOpen)        flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        if (spanWidth)          flags |= ImGuiTreeNodeFlags_SpanFullWidth; // ImGuiTreeNodeFlags_SpanAvailWidth;
+
+        return ImGui::TreeNodeEx(label.c_str(), flags);
+    }
+
+    void EditorGUI::EndTreeNode()
+    {
+        ImGui::TreePop();
+    }
+
+    bool EditorGUI::IsItemClicked()
+    {
+        return ImGui::IsItemClicked();
+    }
+
+    bool EditorGUI::BeginPopupContextWindow()
+    {
+        return ImGui::BeginPopupContextWindow();
+    }
+
+    bool EditorGUI::BeginPopupContextItem()
+    {
+        return ImGui::BeginPopupContextItem();
+    }
 }

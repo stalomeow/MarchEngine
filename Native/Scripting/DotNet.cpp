@@ -35,6 +35,7 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(Application_GetDeltaTime),
             CSHARP_BINDING_ENTRY(Application_GetElapsedTime),
             CSHARP_BINDING_ENTRY(Application_GetEngine),
+            CSHARP_BINDING_ENTRY(Application_GetDataPath),
 
             CSHARP_BINDING_ENTRY(RenderObject_New),
             CSHARP_BINDING_ENTRY(RenderObject_Delete),
@@ -105,6 +106,11 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(EditorGUI_EndMenu),
             CSHARP_BINDING_ENTRY(EditorGUI_OpenPopup),
             CSHARP_BINDING_ENTRY(EditorGUI_FloatRangeField),
+            CSHARP_BINDING_ENTRY(EditorGUI_BeginTreeNode),
+            CSHARP_BINDING_ENTRY(EditorGUI_EndTreeNode),
+            CSHARP_BINDING_ENTRY(EditorGUI_IsItemClicked),
+            CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextWindow),
+            CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextItem),
         };
 
         CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)
@@ -208,12 +214,30 @@ namespace dx12demo
         assert(rc == 0);
 
         rc = get_function_pointer(
-            L"DX12Demo.Editor.Inspector,DX12Demo.Editor",
+            L"DX12Demo.Editor.Windows.InspectorWindow,DX12Demo.Editor",
             L"Draw",
             UNMANAGEDCALLERSONLY_METHOD,
             nullptr,
             nullptr,
             reinterpret_cast<void**>(&m_DrawInspectorFunc));
+        assert(rc == 0);
+
+        rc = get_function_pointer(
+            L"DX12Demo.Editor.Windows.ProjectWindow,DX12Demo.Editor",
+            L"Draw",
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr,
+            nullptr,
+            reinterpret_cast<void**>(&m_DrawProjectWindowFunc));
+        assert(rc == 0);
+
+        rc = get_function_pointer(
+            L"DX12Demo.Editor.Windows.HierarchyWindow,DX12Demo.Editor",
+            L"Draw",
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr,
+            nullptr,
+            reinterpret_cast<void**>(&m_DrawHierarchyWindowFunc));
         assert(rc == 0);
     }
 
@@ -235,5 +259,15 @@ namespace dx12demo
     void DotNetEnv::InvokeDrawInspectorFunc()
     {
         m_DrawInspectorFunc();
+    }
+
+    void DotNetEnv::InvokeDrawProjectWindowFunc()
+    {
+        m_DrawProjectWindowFunc();
+    }
+
+    void DotNetEnv::InvokeDrawHierarchyWindowFunc()
+    {
+        m_DrawHierarchyWindowFunc();
     }
 }
