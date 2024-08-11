@@ -90,7 +90,7 @@ namespace dx12demo
         D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView();
 
     private:
-        bool m_EnableMSAA = false;
+        bool m_EnableMSAA = true;
         UINT m_MSAAQuality;
 
         std::unique_ptr<DescriptorHeap> m_RtvHeap;

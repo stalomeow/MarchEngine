@@ -158,6 +158,21 @@ namespace dx12demo
 
     UINT64 GfxManager::SignalNextFenceValue()
     {
+        UINT64 completed = GetCompletedFenceValue();
+
+        while (!m_ReleaseQueue.empty() && m_ReleaseQueue.front().second <= completed)
+        {
+            ID3D12Resource* res = m_ReleaseQueue.front().first;
+            m_ReleaseQueue.pop();
+
+            wchar_t name[256];
+            UINT size = sizeof(name);
+            THROW_IF_FAILED(res->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name));
+
+            DEBUG_LOG_INFO(L"Release %s", name);
+            res->Release();
+        }
+
         m_FenceCurrentValue++;
         THROW_IF_FAILED(m_CommandQueue->Signal(m_Fence.Get(), m_FenceCurrentValue));
         return m_FenceCurrentValue;
@@ -232,6 +247,11 @@ namespace dx12demo
             adapter->Release();
             ++i;
         }
+    }
+
+    void GfxManager::SafeReleaseResource(ID3D12Resource* res)
+    {
+        m_ReleaseQueue.push(std::make_pair(res, GetNextFenceValue()));
     }
 
     void GfxManager::LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format)

@@ -51,7 +51,7 @@ namespace dx12demo
         static bool FloatRangeField(const std::string& label, const std::string& tooltip, float& currentMin, float& currentMax, float speed = 0.1f, float min = 0.0f, float max = 0.0f);
 
     public:
-        static constexpr float MaxLabelWidth = 120.0f;
+        static constexpr float MaxLabelWidth = 100.0f;
     };
 
     namespace binding

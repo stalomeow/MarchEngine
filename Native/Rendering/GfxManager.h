@@ -27,6 +27,8 @@ namespace dx12demo
         void Present();
         void LogAdapters(DXGI_FORMAT format);
 
+        void SafeReleaseResource(ID3D12Resource* res);
+
         IDXGIFactory4* GetFactory() const { return m_Factory.Get(); }
         ID3D12Device* GetDevice() const { return m_Device.Get(); }
         ID3D12CommandQueue* GetCommandQueue(D3D12_COMMAND_LIST_TYPE type) const
@@ -83,6 +85,8 @@ namespace dx12demo
         Microsoft::WRL::ComPtr<ID3D12Resource> m_SwapChainBuffers[s_SwapChainBufferCount];
         int m_CurrentBackBufferIndex = 0;
         HANDLE m_FrameLatencyWaitEventHandle;
+
+        std::queue<std::pair<ID3D12Resource*, UINT64>> m_ReleaseQueue{};
 
         const DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;

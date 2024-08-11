@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Rendering/GfxManager.h"
 #include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <wrl.h>
@@ -9,12 +10,19 @@ namespace dx12demo
     class GpuResource
     {
     public:
-        virtual ~GpuResource() = default;
+        virtual ~GpuResource()
+        {
+            if (m_Resource != nullptr)
+            {
+                GetGfxManager().SafeReleaseResource(m_Resource);
+                m_Resource = nullptr;
+            }
+        }
 
         GpuResource(const GpuResource&) = delete;
         GpuResource& operator=(const GpuResource&) = delete;
 
-        ID3D12Resource* GetResource() const { return m_Resource.Get(); }
+        ID3D12Resource* GetResource() const { return m_Resource; }
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress() const { return m_Resource->GetGPUVirtualAddress(); }
 
@@ -38,7 +46,7 @@ namespace dx12demo
     protected:
         GpuResource() = default;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource = nullptr;
+        ID3D12Resource* m_Resource = nullptr;
         D3D12_RESOURCE_STATES m_State = D3D12_RESOURCE_STATE_COMMON;
     };
 }

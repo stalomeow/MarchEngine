@@ -8,6 +8,7 @@
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
 #include <imgui_stdlib.h>
+#include <imgui_internal.h>
 #include <tuple>
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -192,6 +193,9 @@ namespace dx12demo
             ImGui::Begin("Inspector");
             m_DotNet.InvokeDrawInspectorFunc();
             ImGui::End();
+
+            ImGui::Begin("Project");
+            ImGui::End();
         }
 
         // 3. Show another simple window.
@@ -201,21 +205,23 @@ namespace dx12demo
 
             if (ImGui::BeginMenuBar())
             {
-                if (ImGui::BeginMenu("Options"))
+                if (ImGui::Button("Play"))
                 {
-                    bool msaa = m_RenderPipeline->GetEnableMSAA();
-                    if (ImGui::MenuItem("MSAA", nullptr, &msaa))
-                    {
-                        m_RenderPipeline->SetEnableMSAA(msaa);
-                    }
 
-                    bool wireframe = m_RenderPipeline->GetIsWireframe();
-                    if (ImGui::MenuItem("Wireframe", nullptr, &wireframe))
-                    {
-                        m_RenderPipeline->SetIsWireframe(wireframe);
-                    }
+                }
 
-                    ImGui::EndMenu();
+                ImGui::Spacing();
+
+                if (ImGui::RadioButton("MSAA", m_RenderPipeline->GetEnableMSAA()))
+                {
+                    m_RenderPipeline->SetEnableMSAA(!m_RenderPipeline->GetEnableMSAA());
+                }
+
+                ImGui::Spacing();
+
+                if (ImGui::RadioButton("Wireframe", m_RenderPipeline->GetIsWireframe()))
+                {
+                    m_RenderPipeline->SetIsWireframe(!m_RenderPipeline->GetIsWireframe());
                 }
 
                 ImGui::EndMenuBar();
