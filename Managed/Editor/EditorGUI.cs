@@ -1,5 +1,6 @@
 using DX12Demo.Core;
 using DX12Demo.Core.Binding;
+using DX12Demo.Core.Serialization;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
 
@@ -227,7 +228,7 @@ namespace DX12Demo.Editor
 
             foreach (var property in contract.Properties)
             {
-                if (property.Ignored)
+                if (property.IsHidden())
                 {
                     continue;
                 }
@@ -301,7 +302,7 @@ namespace DX12Demo.Editor
 
                     foreach (var nestedProp in contract.Properties)
                     {
-                        if (nestedProp.Ignored)
+                        if (nestedProp.IsHidden())
                         {
                             continue;
                         }

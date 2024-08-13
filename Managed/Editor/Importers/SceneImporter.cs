@@ -1,4 +1,5 @@
 using DX12Demo.Core;
+using DX12Demo.Core.Serialization;
 
 namespace DX12Demo.Editor.Importers
 {
@@ -7,10 +8,13 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Scene Asset";
 
-        public override EngineObject Import(string path)
+        protected override int Version => 1;
+
+        protected override bool UseCache => false;
+
+        protected override EngineObject CreateAsset()
         {
-            string fullPath = Path.Combine(Application.DataPath, path);
-            return PersistentManager.Load<Scene>(fullPath);
+            return PersistentManager.Load<SceneAsset>(AssetFullPath);
         }
     }
 }

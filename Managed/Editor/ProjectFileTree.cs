@@ -18,14 +18,7 @@ namespace DX12Demo.Editor
 
                 foreach ((string name, FolderNode node) in Folders)
                 {
-                    bool open = EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
-
-                    if (EditorGUI.IsItemClicked())
-                    {
-                        Selection.Active = AssetDatabase.GetAssetImporterAtPath(node.FolderPath);
-                    }
-
-                    if (open)
+                    if (EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, spanWidth: true))
                     {
                         node.Draw();
                         EditorGUI.EndTreeNode();
@@ -39,7 +32,7 @@ namespace DX12Demo.Editor
 
                     if (EditorGUI.IsItemClicked())
                     {
-                        Selection.Active = AssetDatabase.GetAssetImporterAtPath(path);
+                        Selection.Active = AssetDatabase.GetAssetImporter(path);
                     }
 
                     if (open)
@@ -64,7 +57,7 @@ namespace DX12Demo.Editor
 
         public void Add(string path, bool isFolder)
         {
-            if (path.EndsWith(AssetDatabase.ImporterPathSuffix))
+            if (AssetDatabase.IsImporterFilePath(path))
             {
                 return;
             }

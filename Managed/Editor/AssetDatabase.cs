@@ -1,78 +1,65 @@
 using DX12Demo.Core;
-using DX12Demo.Editor.Importers;
+using DX12Demo.Core.Serialization;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace DX12Demo.Editor
 {
     public static class AssetDatabase
     {
+        private const string ImporterPathSuffix = ".meta";
+
         private static readonly Dictionary<string, Type> s_AssetImporterTypeMap = new();
         private static int? s_AssetImporterTypeCacheVersion;
 
-        private static readonly Dictionary<string, WeakReference<EngineObject>> s_LoadedObjects = new();
-        private static readonly Dictionary<string, WeakReference<AssetImporter>> s_LoadedImporters = new(); // key 为原 asset 的路径
-        private static readonly ConditionalWeakTable<EngineObject, string> s_ObjectFullPath = new();
-        private static readonly HashSet<EngineObject> s_DirtyObjects = new();
+        private static readonly Dictionary<string, AssetImporter> s_Importers = new();
 
-        public static EngineObject LoadAtPath(string path)
+        public static AssetHandle<EngineObject> Load(string path)
         {
-            return LoadAtPath<EngineObject>(path);
+            return Load<EngineObject>(path);
         }
 
-        public static T LoadAtPath<T>(string path) where T : EngineObject
+        public static AssetHandle<T> Load<T>(string path) where T : EngineObject
         {
-            if (s_LoadedObjects.TryGetValue(path, out WeakReference<EngineObject>? weakRef))
+            if (IsImporterFilePath(path))
             {
-                if (weakRef.TryGetTarget(out EngineObject? loadedObj))
-                {
-                    return CastAndReturn(loadedObj);
-                }
-
-                // Remove the weak reference if the target is collected
-                s_LoadedObjects.Remove(path);
+                throw new FileNotFoundException("Can not find asset", path);
             }
 
-            AssetImporter importer = GetAssetImporterAtPath(path) ??
-                throw new NotSupportedException("Unsupported asset: " + path);
-
-            string fullPath = Path.Combine(Application.DataPath, path);
-            EngineObject obj = importer.Import(fullPath);
-
-            s_LoadedObjects.Add(path, new WeakReference<EngineObject>(obj));
-            s_ObjectFullPath.Add(obj, fullPath);
-
-            return CastAndReturn(obj);
-
-            static T CastAndReturn(EngineObject loadedObject)
-            {
-                return (loadedObject is T t) ? t : throw new ArgumentException("Load EngineObject with wrong type");
-            }
+            AssetImporter? importer = GetAssetImporter(path);
+            importer?.IncreaseAssetRef();
+            return new AssetHandle<T>(importer);
         }
 
-        internal static string ImporterPathSuffix => ".meta";
-
-        private static string GetImporterPath(string path)
+        public static void Unload<T>(AssetHandle<T> handle) where T : EngineObject
         {
-            return path + ImporterPathSuffix;
-        }
-
-        public static AssetImporter? GetAssetImporterAtPath(string path)
-        {
-            AssetImporter? importer = null;
-
-            if (s_LoadedImporters.TryGetValue(path, out WeakReference<AssetImporter>? importerRef))
+            if (handle.GetProvider() is not AssetImporter importer)
             {
-                if (!importerRef.TryGetTarget(out importer))
-                {
-                    s_LoadedImporters.Remove(path);
-                }
+                throw new ArgumentException($"Invalid {nameof(AssetHandle<T>)}", nameof(handle));
             }
 
-            if (importer == null)
+            importer.DecreaseAssetRef();
+        }
+
+        public static void Save<T>(AssetHandle<T> handle) where T : EngineObject
+        {
+            if (handle.GetProvider() is not AssetImporter importer)
             {
-                string importerFullPath = Path.Combine(Application.DataPath, GetImporterPath(path));
+                throw new ArgumentException($"Invalid {nameof(AssetHandle<T>)}", nameof(handle));
+            }
+
+            importer.SaveAsset();
+        }
+
+        internal static bool IsImporterFilePath(string path) => path.EndsWith(ImporterPathSuffix);
+
+        public static AssetImporter? GetAssetImporter(string path)
+        {
+            path = path.ValidatePath();
+
+            if (!s_Importers.TryGetValue(path, out AssetImporter? importer))
+            {
+                string importerFullPath = Path.Combine(Application.DataPath, path + ImporterPathSuffix);
 
                 if (File.Exists(importerFullPath))
                 {
@@ -84,89 +71,40 @@ namespace DX12Demo.Editor
                     {
                         return null;
                     }
-
-                    PersistentManager.Save(importer, importerFullPath);
                 }
 
-                importer.AssetPath = path.Replace('\\', '/');
-                s_LoadedImporters.Add(path, new WeakReference<AssetImporter>(importer));
+                importer.Initialize(
+                    assetPath: path.ValidatePath(),
+                    assetFullPath: Path.Combine(Application.DataPath, path).ValidatePath(),
+                    assetCacheFullPath: GetCacheFullPath(path).ValidatePath(),
+                    importerFullPath: importerFullPath.ValidatePath());
+                s_Importers.Add(path, importer);
             }
 
             return importer;
-        }
 
-        public static void MakePersistent(EngineObject obj, string path)
-        {
-            if (s_LoadedObjects.ContainsKey(path))
+            static string GetCacheFullPath(string assetPath)
             {
-                throw new InvalidOperationException($"Object with the same path ({path}) is already loaded");
+                string path = Path.GetRelativePath("Assets", assetPath);
+                return Path.Combine(Application.DataPath, "Library/AssetCache", path);
             }
-
-            s_LoadedObjects.Add(path, new WeakReference<EngineObject>(obj));
-            s_ObjectFullPath.AddOrUpdate(obj, Path.Combine(Application.DataPath, path));
-        }
-
-        public static bool IsPersistent(EngineObject obj)
-        {
-            return IsPersistent(obj, out _);
-        }
-
-        private static bool IsPersistent(EngineObject obj, [NotNullWhen(true)] out string? fullPath)
-        {
-            return s_ObjectFullPath.TryGetValue(obj, out fullPath);
-        }
-
-        public static void Save(EngineObject obj)
-        {
-            if (!IsPersistent(obj, out string? fullPath))
-            {
-                throw new ArgumentException("Can not save non-persistent EngineObject directly");
-            }
-
-            PersistentManager.Save(obj, fullPath);
-        }
-
-        public static void Save(EngineObject obj, string path)
-        {
-            string fullPath = Path.Combine(Application.DataPath, path);
-            PersistentManager.Save(obj, fullPath);
-        }
-
-        public static void MarkDirty(EngineObject obj)
-        {
-            s_DirtyObjects.Add(obj);
-        }
-
-        public static void SaveAllDirtyObjects()
-        {
-            foreach (var obj in s_DirtyObjects)
-            {
-                try
-                {
-                    Save(obj);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError("Failed to save dirty object: " + e.Message);
-                }
-            }
-
-            s_DirtyObjects.Clear();
         }
 
         private static bool TryCreateAssetImporter(string path, [NotNullWhen(true)] out AssetImporter? importer)
         {
-            if (s_AssetImporterTypeCacheVersion != TypeCache.Version)
-            {
-                RebuildAssetImporterTypeMap();
-            }
+            RebuildAssetImporterTypeMapIfNeeded();
 
             string fullPath = Path.Combine(Application.DataPath, path);
 
+            // 文件夹需要特殊处理
             if (Directory.Exists(fullPath))
             {
-                importer = new FolderImporter();
-                return true;
+                //importer = new FolderImporter();
+                //return true;
+
+                // TODO: 感觉 FolderAsset 没什么用，暂时返回 null
+                importer = null;
+                return false;
             }
 
             string extension = Path.GetExtension(path);
@@ -189,8 +127,13 @@ namespace DX12Demo.Editor
             }
         }
 
-        private static void RebuildAssetImporterTypeMap()
+        private static void RebuildAssetImporterTypeMapIfNeeded()
         {
+            if (s_AssetImporterTypeCacheVersion == TypeCache.Version)
+            {
+                return;
+            }
+
             s_AssetImporterTypeMap.Clear();
 
             foreach (Type type in TypeCache.GetTypesDerivedFrom<AssetImporter>())
@@ -210,5 +153,7 @@ namespace DX12Demo.Editor
 
             s_AssetImporterTypeCacheVersion = TypeCache.Version;
         }
+
+        public static string ValidatePath(this string path) => path.Replace('\\', '/');
     }
 }

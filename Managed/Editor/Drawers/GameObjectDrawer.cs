@@ -1,4 +1,5 @@
 using DX12Demo.Core;
+using DX12Demo.Core.Serialization;
 using Newtonsoft.Json.Serialization;
 
 namespace DX12Demo.Editor.Drawers

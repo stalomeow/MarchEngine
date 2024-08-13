@@ -9,7 +9,11 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Folder Asset";
 
-        public override EngineObject Import(string path)
+        protected override int Version => 1;
+
+        protected override bool UseCache => false;
+
+        protected override EngineObject CreateAsset()
         {
             return new FolderAsset();
         }

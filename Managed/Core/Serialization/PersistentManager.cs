@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Text;
 
-namespace DX12Demo.Core
+namespace DX12Demo.Core.Serialization
 {
     public class LoadPersistentObjectException(string message) : Exception(message) { }
 
@@ -42,6 +42,22 @@ namespace DX12Demo.Core
             return Load<T>(streamReader);
         }
 
+        public static string LoadAsString(string fullPath)
+        {
+            return File.ReadAllText(fullPath, Encoding.UTF8);
+        }
+
+        public static EngineObject LoadFromString(string text)
+        {
+            return LoadFromString<EngineObject>(text);
+        }
+
+        public static T LoadFromString<T>(string text) where T : EngineObject
+        {
+            using var stringReader = new StringReader(text);
+            return Load<T>(stringReader);
+        }
+
         public static void Save(EngineObject obj, TextWriter textWriter)
         {
             using var jsonWriter = new JsonTextWriter(textWriter);
@@ -52,6 +68,13 @@ namespace DX12Demo.Core
         {
             using var streamWriter = new StreamWriter(fullPath, append: false, Encoding.UTF8);
             Save(obj, streamWriter);
+        }
+
+        public static string SaveAsString(EngineObject obj)
+        {
+            using var stringWriter = new StringWriter();
+            Save(obj, stringWriter);
+            return stringWriter.ToString();
         }
 
         private sealed class ContractResolver : DefaultContractResolver

@@ -1,4 +1,5 @@
 using DX12Demo.Core;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 
 namespace DX12Demo.Editor.Windows
@@ -7,6 +8,7 @@ namespace DX12Demo.Editor.Windows
     {
         private static readonly ProjectFileTree s_FileTree = new();
         private static readonly FileSystemWatcher s_FileWatcher;
+        private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileEvents = new();
 
         static ProjectWindow()
         {
@@ -18,31 +20,33 @@ namespace DX12Demo.Editor.Windows
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
             };
-            s_FileWatcher.Changed += OnFileChanged;
-            s_FileWatcher.Created += OnFileCreated;
-            s_FileWatcher.Deleted += OnFileDeleted;
-            s_FileWatcher.Renamed += OnFileRenamed;
+
+            // 也可以用 s_FileWatcher.SynchronizingObject
+            s_FileWatcher.Changed += (_, e) => s_FileEvents.Enqueue(e);
+            s_FileWatcher.Created += (_, e) => s_FileEvents.Enqueue(e);
+            s_FileWatcher.Deleted += (_, e) => s_FileEvents.Enqueue(e);
+            s_FileWatcher.Renamed += (_, e) => s_FileEvents.Enqueue(e);
         }
 
-        private static void OnFileChanged(object sender, FileSystemEventArgs e)
+        private static void OnFileChanged(FileSystemEventArgs e)
         {
             Debug.LogWarning($"File changed: {e.FullPath}, {e.ChangeType}");
         }
 
-        private static void OnFileCreated(object sender, FileSystemEventArgs e)
+        private static void OnFileCreated(FileSystemEventArgs e)
         {
             string path = GetRootRelativePath(e.FullPath);
             bool isFolder = File.GetAttributes(e.FullPath).HasFlag(FileAttributes.Directory);
             s_FileTree.Add(path, isFolder);
         }
 
-        private static void OnFileDeleted(object sender, FileSystemEventArgs e)
+        private static void OnFileDeleted(FileSystemEventArgs e)
         {
             string path = GetRootRelativePath(e.FullPath);
             s_FileTree.Remove(path);
         }
 
-        private static void OnFileRenamed(object sender, RenamedEventArgs e)
+        private static void OnFileRenamed(RenamedEventArgs e)
         {
             s_FileTree.Remove(GetRootRelativePath(e.OldFullPath));
 
@@ -80,6 +84,33 @@ namespace DX12Demo.Editor.Windows
         [UnmanagedCallersOnly]
         internal static void Draw()
         {
+            while (s_FileEvents.TryDequeue(out FileSystemEventArgs? e))
+            {
+                if (AssetDatabase.IsImporterFilePath(e.FullPath))
+                {
+                    continue;
+                }
+
+                switch (e.ChangeType)
+                {
+                    case WatcherChangeTypes.Changed:
+                        OnFileChanged(e);
+                        break;
+
+                    case WatcherChangeTypes.Created:
+                        OnFileCreated( e);
+                        break;
+
+                    case WatcherChangeTypes.Deleted:
+                        OnFileDeleted(e);
+                        break;
+
+                    case WatcherChangeTypes.Renamed:
+                        OnFileRenamed((RenamedEventArgs)e);
+                        break;
+                }
+            }
+
             s_FileTree.Draw();
         }
     }

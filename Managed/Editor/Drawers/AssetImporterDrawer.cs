@@ -8,7 +8,7 @@ namespace DX12Demo.Editor.Drawers
 
             if (EditorGUI.ObjectPropertyFields(target))
             {
-                // TODO: reimport asset?
+                target.SaveAndReimport();
             }
         }
 

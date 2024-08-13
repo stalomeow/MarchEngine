@@ -98,7 +98,7 @@ namespace DX12Demo.Core
         }
 
         [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
+        private void InitializeAfterDeserialized(StreamingContext context)
         {
             foreach (var component in m_Components)
             {

@@ -52,5 +52,10 @@ namespace DX12Demo.Editor
             var attr = property.GetAttribute<TooltipAttribute>();
             return attr?.Tooltip ?? string.Empty;
         }
+
+        public static bool IsHidden(this JsonProperty property)
+        {
+            return property.Ignored || property.GetAttribute<HideInInspectorAttribute>() != null;
+        }
     }
 }
