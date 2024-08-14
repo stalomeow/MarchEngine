@@ -5,11 +5,73 @@
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
+#include <array>
+#include <fstream>
 
 using Microsoft::WRL::ComPtr;
 
 namespace dx12demo
 {
+    namespace
+    {
+        std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers()
+        {
+            // Applications usually only need a handful of samplers.  So just define them all up front
+            // and keep them available as part of the root signature.
+
+            const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
+                0, // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+            const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
+                1, // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+            const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+                2, // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+            const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
+                3, // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+            const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
+                4, // shaderRegister
+                D3D12_FILTER_ANISOTROPIC, // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressW
+                0.0f,                             // mipLODBias
+                8);                               // maxAnisotropy
+
+            const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
+                5, // shaderRegister
+                D3D12_FILTER_ANISOTROPIC, // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressW
+                0.0f,                              // mipLODBias
+                8);                                // maxAnisotropy
+
+            return {
+                pointWrap, pointClamp,
+                linearWrap, linearClamp,
+                anisotropicWrap, anisotropicClamp };
+        }
+    }
+
     RenderPipeline::RenderPipeline(int width, int height)
     {
         CheckMSAAQuailty();
@@ -17,6 +79,15 @@ namespace dx12demo
         CreateRootSignature();
         CreateShaderAndPSO();
         Resize(width, height);
+
+        std::ifstream input(L"C:\\Users\\10247\\Desktop\\TestProj\\Assets\\Textures\\WoodCrate01.dds", std::ios::binary | std::ios::ate);
+        auto size = input.tellg();
+        std::vector<char> bytes(size);
+        input.seekg(0);
+        input.read(bytes.data(), size);
+        m_Tex = std::make_unique<Texture>();
+        m_Tex->SetDDSData(L"WoodCrate01.dds", bytes.data(), size);
+        m_Tex->SetFilterAndWrapMode(FilterMode::Bilinear, WrapMode::Clamp);
     }
 
     void RenderPipeline::CheckMSAAQuailty()
@@ -37,20 +108,32 @@ namespace dx12demo
     {
         m_RtvHeap = std::make_unique<DescriptorHeap>(L"Rtv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 0, 1, false);
         m_DsvHeap = std::make_unique<DescriptorHeap>(L"Dsv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 0, 1, false);
+        m_SrvHeap = std::make_unique<DescriptorHeap>(L"Srv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        m_SamplerHeap = std::make_unique<DescriptorHeap>(L"Sampler Heap", D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 20);
     }
 
     void RenderPipeline::CreateRootSignature()
     {
-        // Root parameter can be a table, root descriptor or root constants.
-        CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+        CD3DX12_DESCRIPTOR_RANGE texTable;
+        texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-        // Create root CBVs.
-        slotRootParameter[0].InitAsConstantBufferView(0);
-        slotRootParameter[1].InitAsConstantBufferView(1);
-        slotRootParameter[2].InitAsConstantBufferView(2);
+        CD3DX12_DESCRIPTOR_RANGE samplerTable;
+        samplerTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 6);
+
+        // Root parameter can be a table, root descriptor or root constants.
+        CD3DX12_ROOT_PARAMETER slotRootParameter[5] = {};
+
+        // Perfomance TIP: Order from most frequent to least frequent.
+        slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+        slotRootParameter[1].InitAsDescriptorTable(1, &samplerTable, D3D12_SHADER_VISIBILITY_PIXEL);
+        slotRootParameter[2].InitAsConstantBufferView(0);
+        slotRootParameter[3].InitAsConstantBufferView(1);
+        slotRootParameter[4].InitAsConstantBufferView(2);
+
+        auto staticSamplers = GetStaticSamplers();
 
         // A root signature is an array of root parameters.
-        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter, 0, nullptr,
+        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter, (UINT)staticSamplers.size(), staticSamplers.data(),
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
         // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
@@ -315,8 +398,12 @@ namespace dx12demo
         // Specify the buffers we are going to render to.
         cmd->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
+        // ??? 不是 PSO 里已经有了吗
         cmd->GetList()->SetGraphicsRootSignature(m_RootSignature.Get());
-        cmd->GetList()->SetGraphicsRootConstantBufferView(2, cbPass.GetGpuVirtualAddress());
+        cmd->GetList()->SetGraphicsRootConstantBufferView(4, cbPass.GetGpuVirtualAddress());
+
+        ID3D12DescriptorHeap* descriptorHeaps[] = { m_SrvHeap->GetHeapPointer(), m_SamplerHeap->GetHeapPointer() };
+        cmd->GetList()->SetDescriptorHeaps(2, descriptorHeaps);
 
         for (int i = 0; i < m_RenderObjects.size(); i++)
         {
@@ -325,8 +412,16 @@ namespace dx12demo
                 continue;
             }
 
-            cmd->GetList()->SetGraphicsRootConstantBufferView(0, cbPerObj.GetGpuVirtualAddress(i));
-            cmd->GetList()->SetGraphicsRootConstantBufferView(1, m_RenderObjects[i]->GetMaterialBuffer()->GetGpuVirtualAddress());
+            m_SrvHeap->Clear();
+            m_SrvHeap->Append(m_Tex->GetTextureCpuDescriptorHandle());
+
+            m_SamplerHeap->Clear();
+            m_SamplerHeap->Append(m_Tex->GetSamplerCpuDescriptorHandle());
+
+            cmd->GetList()->SetGraphicsRootDescriptorTable(0, m_SrvHeap->GetGpuHandleForDynamicDescriptor(0));
+            cmd->GetList()->SetGraphicsRootDescriptorTable(1, m_SamplerHeap->GetGpuHandleForDynamicDescriptor(0));
+            cmd->GetList()->SetGraphicsRootConstantBufferView(2, cbPerObj.GetGpuVirtualAddress(i));
+            cmd->GetList()->SetGraphicsRootConstantBufferView(3, m_RenderObjects[i]->GetMaterialBuffer()->GetGpuVirtualAddress());
             m_RenderObjects[i]->Mesh->Draw(cmd);
         }
 

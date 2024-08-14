@@ -4,12 +4,30 @@ namespace DX12Demo.Editor
 {
     internal sealed class DrawerCache<T>(Type genericTypeDefinition) where T : class, IDrawer
     {
-        private readonly Dictionary<Type, T> m_Drawers = [];
+        private readonly Dictionary<Type, T> m_DrawerInstances = [];
+        private readonly Dictionary<Type, Type> m_DrawerTypes = [];
         private readonly Dictionary<Type, int> m_NotFound = [];
 
-        public bool TryGet(Type type, [NotNullWhen(true)] out T? drawer)
+        public bool TryGetSharedInstance(Type type, [NotNullWhen(true)] out T? drawer)
         {
-            if (m_Drawers.TryGetValue(type, out drawer))
+            if (m_DrawerInstances.TryGetValue(type, out drawer))
+            {
+                return true;
+            }
+
+            if (TryGetType(type, out Type? drawerType))
+            {
+                drawer = (T)Activator.CreateInstance(drawerType)!;
+                m_DrawerInstances.Add(type, drawer);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool TryGetType(Type type, [NotNullWhen(true)] out Type? drawerType)
+        {
+            if (m_DrawerTypes.TryGetValue(type, out drawerType))
             {
                 return true;
             }
@@ -29,40 +47,26 @@ namespace DX12Demo.Editor
 
             while (t != null)
             {
-                Type searchType;
-
                 try
                 {
-                    searchType = genericTypeDefinition.MakeGenericType(t);
-                }
-                catch (ArgumentException)
-                {
-                    // Any element of typeArguments does not satisfy the constraints specified for
-                    // the corresponding type parameter of the current generic type.
-                    goto NextTurn;
-                }
+                    Type searchType = genericTypeDefinition.MakeGenericType(t);
 
-                foreach (var drawerType in TypeCache.GetTypesDerivedFrom(searchType))
-                {
-                    try
+                    foreach (var derivedType in TypeCache.GetTypesDerivedFrom(searchType))
                     {
-                        drawer = Activator.CreateInstance(drawerType) as T;
-
-                        if (drawer == null)
+                        if (derivedType.IsAbstract || derivedType.IsGenericTypeDefinition || derivedType.IsValueType)
                         {
                             continue;
                         }
 
-                        m_Drawers.Add(type, drawer);
+                        drawerType = derivedType;
                         return true;
                     }
-                    catch
-                    {
-                        continue;
-                    }
+                }
+                catch
+                {
+                    // 大概率是类型参数不满足约束条件，忽略
                 }
 
-            NextTurn:
                 t = t.BaseType;
             }
 

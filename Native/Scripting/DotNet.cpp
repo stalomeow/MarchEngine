@@ -3,6 +3,7 @@
 #include "Core/Debug.h"
 #include "App/WinApplication.h"
 #include "Rendering/RenderObject.h"
+#include "Rendering/Resource/Texture.h"
 #include "Rendering/Mesh.hpp"
 #include "Rendering/RenderPipeline.h"
 #include "Editor/EditorGUI.h"
@@ -111,6 +112,16 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(EditorGUI_IsItemClicked),
             CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextWindow),
             CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextItem),
+            CSHARP_BINDING_ENTRY(EditorGUI_DrawTexture),
+            CSHARP_BINDING_ENTRY(EditorGUI_Button),
+
+            CSHARP_BINDING_ENTRY(Texture_New),
+            CSHARP_BINDING_ENTRY(Texture_Delete),
+            CSHARP_BINDING_ENTRY(Texture_SetDDSData),
+            CSHARP_BINDING_ENTRY(Texture_SetFilterMode),
+            CSHARP_BINDING_ENTRY(Texture_SetWrapMode),
+            CSHARP_BINDING_ENTRY(Texture_GetFilterMode),
+            CSHARP_BINDING_ENTRY(Texture_GetWrapMode),
         };
 
         CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)

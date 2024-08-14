@@ -40,6 +40,11 @@ namespace dx12demo
         return StringUtility::Utf16ToUtf8(&self->FirstChar, self->Length);
     }
 
+    inline std::wstring CSharpString_ToUtf16(const CSharpString self)
+    {
+        return std::wstring(&self->FirstChar, self->Length);
+    }
+
     inline std::string CSharpString_ToAnsi(const CSharpString& self)
     {
         return StringUtility::Utf16ToAnsi(&self->FirstChar, self->Length);

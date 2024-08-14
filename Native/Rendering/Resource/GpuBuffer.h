@@ -12,6 +12,7 @@ namespace dx12demo
     {
     public:
         GpuBuffer(const std::wstring& name, UINT stride, UINT count, D3D12_HEAP_TYPE heapType);
+        ~GpuBuffer() = default;
 
         UINT GetStride() const { return m_Stride; }
 
@@ -98,6 +99,8 @@ namespace dx12demo
 
         }
 
+        ~VertexBuffer() = default;
+
         D3D12_VERTEX_BUFFER_VIEW GetView() const
         {
             D3D12_VERTEX_BUFFER_VIEW view = {};
@@ -119,6 +122,8 @@ namespace dx12demo
         {
 
         }
+
+        ~IndexBuffer() = default;
 
         D3D12_INDEX_BUFFER_VIEW GetView() const
         {

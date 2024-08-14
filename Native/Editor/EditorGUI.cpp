@@ -4,6 +4,8 @@
 
 namespace dx12demo
 {
+    DescriptorHeap* EditorGUI::SrvHeap = nullptr;
+
     namespace
     {
         bool IsHiddenLabel(const std::string& label)
@@ -316,5 +318,20 @@ namespace dx12demo
     bool EditorGUI::BeginPopupContextItem()
     {
         return ImGui::BeginPopupContextItem();
+    }
+
+    void EditorGUI::DrawTexture(Texture* texture)
+    {
+        UINT index = SrvHeap->Append(texture->GetTextureCpuDescriptorHandle());
+        auto id = (ImTextureID)SrvHeap->GetGpuHandleForDynamicDescriptor(index).ptr;
+        const auto& metaData = texture->GetMetaData();
+        ImVec2 region = ImGui::GetContentRegionAvail();
+        ImVec2 size = { region.x, static_cast<float>(metaData.height) / metaData.width * region.x };
+        ImGui::Image(id, size);
+    }
+
+    bool EditorGUI::Button(const std::string& label)
+    {
+        return ImGui::Button(label.c_str());
     }
 }

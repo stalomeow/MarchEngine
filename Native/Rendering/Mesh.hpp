@@ -206,11 +206,20 @@ namespace dx12demo
     {
         DirectX::XMFLOAT3 Position;
         DirectX::XMFLOAT3 Normal;
+        DirectX::XMFLOAT3 Tangent;
+        DirectX::XMFLOAT2 UV;
 
         static constexpr D3D12_INPUT_ELEMENT_DESC InputDesc[] = {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
             { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
+
+        SimpleMeshVertex() = default;
+
+        SimpleMeshVertex(float x, float y, float z, float nx, float ny, float nz, float tx, float ty, float tz, float u, float v)
+            : Position(x, y, z), Normal(nx, ny, nz), Tangent(tx, ty, tz), UV(u, v) {}
     };
 
     class SimpleMesh : public MeshImpl<SimpleMeshVertex, std::uint16_t>
@@ -221,49 +230,76 @@ namespace dx12demo
         SimpleMesh& operator=(const SimpleMesh& rhs) = delete;
         ~SimpleMesh() override = default;
 
-        void AddSubMeshCube()
+        void AddSubMeshCube(float width = 1, float height = 1, float depth = 1)
         {
-            std::vector<SimpleMeshVertex> vertices =
-            {
-                { DirectX::XMFLOAT3(-0.5f, -0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(-0.5f, +0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(+0.5f, +0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(+0.5f, -0.5f, -0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(-0.5f, -0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(-0.5f, +0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(+0.5f, +0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } },
-                { DirectX::XMFLOAT3(+0.5f, -0.5f, +0.5f), { 0.0f, 0.0f, 0.0f } }
-            };
+            std::vector<SimpleMeshVertex> vertices;
+            std::vector<std::uint16_t> i(36);
 
-            std::vector<std::uint16_t> indices =
-            {
-                // front face
-                0, 1, 2,
-                0, 2, 3,
+            float w2 = 0.5f * width;
+            float h2 = 0.5f * height;
+            float d2 = 0.5f * depth;
 
-                // back face
-                4, 6, 5,
-                4, 7, 6,
+            // Fill in the front face vertex data.
+            vertices.emplace_back(-w2, -h2, -d2, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+            vertices.emplace_back(-w2, +h2, -d2, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            vertices.emplace_back(+w2, +h2, -d2, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+            vertices.emplace_back(+w2, -h2, -d2, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
 
-                // left face
-                4, 5, 1,
-                4, 1, 0,
+            // Fill in the back face vertex data.
+            vertices.emplace_back(-w2, -h2, +d2, 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+            vertices.emplace_back(+w2, -h2, +d2, 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+            vertices.emplace_back(+w2, +h2, +d2, 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            vertices.emplace_back(-w2, +h2, +d2, 0.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
-                // right face
-                3, 2, 6,
-                3, 6, 7,
+            // Fill in the top face vertex data.
+            vertices.emplace_back(-w2, +h2, -d2, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+            vertices.emplace_back(-w2, +h2, +d2, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            vertices.emplace_back(+w2, +h2, +d2, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+            vertices.emplace_back(+w2, +h2, -d2, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
 
-                // top face
-                1, 5, 6,
-                1, 6, 2,
+            // Fill in the bottom face vertex data.
+            vertices.emplace_back(-w2, -h2, -d2, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+            vertices.emplace_back(+w2, -h2, -d2, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+            vertices.emplace_back(+w2, -h2, +d2, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            vertices.emplace_back(-w2, -h2, +d2, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
-                // bottom face
-                4, 0, 3,
-                4, 3, 7
-            };
+            // Fill in the left face vertex data.
+            vertices.emplace_back(-w2, -h2, +d2, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f);
+            vertices.emplace_back(-w2, +h2, +d2, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f);
+            vertices.emplace_back(-w2, +h2, -d2, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f);
+            vertices.emplace_back(-w2, -h2, -d2, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f);
 
-            AddSubMesh(vertices, indices);
-            RecalculateNormals();
+            // Fill in the right face vertex data.
+            vertices.emplace_back(+w2, -h2, -d2, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f);
+            vertices.emplace_back(+w2, +h2, -d2, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+            vertices.emplace_back(+w2, +h2, +d2, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f);
+            vertices.emplace_back(+w2, -h2, +d2, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+
+            // Fill in the front face index data
+            i[0] = 0; i[1] = 1; i[2] = 2;
+            i[3] = 0; i[4] = 2; i[5] = 3;
+
+            // Fill in the back face index data
+            i[6] = 4; i[7] = 5; i[8] = 6;
+            i[9] = 4; i[10] = 6; i[11] = 7;
+
+            // Fill in the top face index data
+            i[12] = 8; i[13] = 9; i[14] = 10;
+            i[15] = 8; i[16] = 10; i[17] = 11;
+
+            // Fill in the bottom face index data
+            i[18] = 12; i[19] = 13; i[20] = 14;
+            i[21] = 12; i[22] = 14; i[23] = 15;
+
+            // Fill in the left face index data
+            i[24] = 16; i[25] = 17; i[26] = 18;
+            i[27] = 16; i[28] = 18; i[29] = 19;
+
+            // Fill in the right face index data
+            i[30] = 20; i[31] = 21; i[32] = 22;
+            i[33] = 20; i[34] = 22; i[35] = 23;
+
+            AddSubMesh(vertices, i);
         }
 
         void AddSubMeshSphere(float radius, UINT sliceCount, UINT stackCount)
@@ -272,7 +308,7 @@ namespace dx12demo
             std::vector<std::uint16_t> indices;
 
             // top
-            vertices.push_back({ DirectX::XMFLOAT3(0.0f, radius, 0.0f), { 0.0f, 0.0f, 0.0f } });
+            vertices.emplace_back(0.0f, radius, 0.0f, 0, 0, 0, 0, 0, 0, 0, 0);
 
             float phiStep = DirectX::XM_PI / stackCount;
             float thetaStep = 2.0f * DirectX::XM_PI / sliceCount;
@@ -299,7 +335,7 @@ namespace dx12demo
             }
 
             // bottom
-            vertices.push_back({ DirectX::XMFLOAT3(0.0f, -radius, 0.0f), { 0.0f, 0.0f, 0.0f } });
+            vertices.emplace_back(0.0f, -radius, 0.0f, 0, 0, 0, 0, 0, 0, 0, 0);
 
             //
             // Compute indices for top stack.  The top stack was written first to the vertex buffer

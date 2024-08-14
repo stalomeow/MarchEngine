@@ -149,7 +149,9 @@ namespace DX12Demo.Editor
 
             if (UseCache)
             {
+                OnWillSave(asset);
                 PersistentManager.Save(asset, AssetCacheFullPath);
+                OnDidSave(asset);
             }
         }
 
@@ -235,6 +237,10 @@ namespace DX12Demo.Editor
         /// </summary>
         /// <returns></returns>
         protected abstract EngineObject CreateAsset();
+
+        protected virtual void OnWillSave(EngineObject asset) { }
+
+        protected virtual void OnDidSave(EngineObject asset) { }
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

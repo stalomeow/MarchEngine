@@ -14,7 +14,7 @@ namespace DX12Demo.Editor.Windows
         {
             RebuildFileTree();
 
-            s_FileWatcher = new FileSystemWatcher(Application.DataPath)
+            s_FileWatcher = new FileSystemWatcher(Path.Combine(Application.DataPath, "Assets"))
             {
                 EnableRaisingEvents = true, // 必须设置为 true，否则事件不会触发
                 IncludeSubdirectories = true,
@@ -62,7 +62,7 @@ namespace DX12Demo.Editor.Windows
         {
             s_FileTree.Clear();
 
-            var root = new DirectoryInfo(Application.DataPath);
+            var root = new DirectoryInfo(Path.Combine(Application.DataPath, "Assets"));
 
             foreach (FileSystemInfo info in root.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
             {

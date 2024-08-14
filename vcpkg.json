@@ -3,12 +3,18 @@
     "directx-dxc",
     "directx-headers",
     {
+      "name": "directxtex",
+      "features": [
+        "dx12"
+      ]
+    },
+    {
       "name": "imgui",
       "features": [
         "docking-experimental",
         "dx12-binding",
-        "win32-binding",
-        "freetype"
+        "freetype",
+        "win32-binding"
       ]
     }
   ]

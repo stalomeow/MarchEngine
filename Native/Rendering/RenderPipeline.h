@@ -6,6 +6,7 @@
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/Light.h"
 #include "Rendering/RenderObject.h"
+#include "Rendering/Resource/Texture.h"
 #include "Scripting/ScriptTypes.h"
 #include <d3d12.h>
 #include <dxgi.h>
@@ -109,6 +110,10 @@ namespace dx12demo
         Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilTarget;
         D3D12_RESOURCE_STATES m_LastColorTargetState;
         D3D12_RESOURCE_STATES m_LastResolvedColorTargetState;
+
+        std::unique_ptr<Texture> m_Tex;
+        std::unique_ptr<DescriptorHeap> m_SrvHeap;
+        std::unique_ptr<DescriptorHeap> m_SamplerHeap;
 
         int m_RenderTargetWidth;
         int m_RenderTargetHeight;

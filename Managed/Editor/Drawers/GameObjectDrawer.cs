@@ -4,48 +4,48 @@ using Newtonsoft.Json.Serialization;
 
 namespace DX12Demo.Editor.Drawers
 {
-    internal class GameObjectDrawer : IInspectorDrawerFor<GameObject>
+    internal class GameObjectDrawer : InspectorDrawerFor<GameObject>
     {
-        private readonly DrawerCache<IComponentDrawer> m_ComponentDrawerCache = new(typeof(IComponentDrawerFor<>));
-        private readonly PopupMenu m_AddComponentPopup = new("GameObjectInspectorAddComponentPopup");
-        private int? m_AddComponentPopupTypeCacheVersion;
+        private static readonly DrawerCache<IComponentDrawer> s_ComponentDrawerCache = new(typeof(IComponentDrawerFor<>));
+        private static readonly PopupMenu s_AddComponentPopup = new("GameObjectInspectorAddComponentPopup");
+        private static int? s_AddComponentPopupTypeCacheVersion;
 
-        public void Draw(GameObject target)
+        public override void Draw()
         {
             var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(typeof(GameObject));
             var changed = false;
 
-            changed |= EditorGUI.PropertyField("##GameObjectIsActive", string.Empty, target, contract.Properties["m_IsActive"]);
+            changed |= EditorGUI.PropertyField("##GameObjectIsActive", string.Empty, Target, contract.Properties["m_IsActive"]);
             EditorGUI.SameLine();
             EditorGUI.SetNextItemWidth(EditorGUI.GetContentRegionAvailable().X);
-            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, target, contract.Properties["Name"]);
+            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, Target, contract.Properties["Name"]);
 
             EditorGUI.SeparatorText("Transform");
 
-            changed |= EditorGUI.PropertyField(target, contract.Properties["Position"]);
-            changed |= EditorGUI.PropertyField(target, contract.Properties["Rotation"]);
-            changed |= EditorGUI.PropertyField(target, contract.Properties["Scale"]);
+            changed |= EditorGUI.PropertyField(Target, contract.Properties["Position"]);
+            changed |= EditorGUI.PropertyField(Target, contract.Properties["Rotation"]);
+            changed |= EditorGUI.PropertyField(Target, contract.Properties["Scale"]);
 
             EditorGUI.SeparatorText("Components");
 
-            for (int i = 0; i < target.m_Components.Count; i++)
+            for (int i = 0; i < Target.m_Components.Count; i++)
             {
-                changed |= DrawComponent(i, target.m_Components[i]);
+                changed |= DrawComponent(i, Target.m_Components[i]);
             }
 
             EditorGUI.Space();
 
             if (EditorGUI.CenterButton("Add Component", 220.0f))
             {
-                m_AddComponentPopup.Open();
+                s_AddComponentPopup.Open();
             }
 
-            if (m_AddComponentPopupTypeCacheVersion != TypeCache.Version)
+            if (s_AddComponentPopupTypeCacheVersion != TypeCache.Version)
             {
                 RebuildAddComponentPopup();
             }
 
-            m_AddComponentPopup.Draw();
+            s_AddComponentPopup.Draw();
 
             if (changed)
             {
@@ -53,7 +53,7 @@ namespace DX12Demo.Editor.Drawers
             }
         }
 
-        private bool DrawComponent(int index, Component component)
+        private static bool DrawComponent(int index, Component component)
         {
             Type componentType = component.GetType();
 
@@ -72,7 +72,7 @@ namespace DX12Demo.Editor.Drawers
 
             using (new EditorGUI.IDScope(index))
             {
-                if (m_ComponentDrawerCache.TryGet(componentType, out IComponentDrawer? drawer))
+                if (s_ComponentDrawerCache.TryGetSharedInstance(componentType, out IComponentDrawer? drawer))
                 {
                     changed |= drawer.Draw(component, componentContract);
                 }
@@ -86,10 +86,10 @@ namespace DX12Demo.Editor.Drawers
             return changed;
         }
 
-        private void RebuildAddComponentPopup()
+        private static void RebuildAddComponentPopup()
         {
-            m_AddComponentPopup.Clear();
-            m_AddComponentPopup.AddSeparatorText("", "Add Component Menu");
+            s_AddComponentPopup.Clear();
+            s_AddComponentPopup.AddSeparatorText("", "Add Component Menu");
 
             foreach (Type type in TypeCache.GetTypesDerivedFrom<Component>())
             {
@@ -105,7 +105,7 @@ namespace DX12Demo.Editor.Drawers
                 }
 
                 Type componentType = type;
-                m_AddComponentPopup.AddMenuItem(displayName, callback: () =>
+                s_AddComponentPopup.AddMenuItem(displayName, callback: () =>
                 {
                     if (Selection.Active is GameObject go)
                     {
@@ -114,7 +114,7 @@ namespace DX12Demo.Editor.Drawers
                 }, enabled: () => Selection.Active is GameObject);
             }
 
-            m_AddComponentPopupTypeCacheVersion = TypeCache.Version;
+            s_AddComponentPopupTypeCacheVersion = TypeCache.Version;
         }
     }
 }

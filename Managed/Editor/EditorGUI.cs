@@ -1,5 +1,6 @@
 using DX12Demo.Core;
 using DX12Demo.Core.Binding;
+using DX12Demo.Core.Rendering;
 using DX12Demo.Core.Serialization;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
@@ -222,9 +223,10 @@ namespace DX12Demo.Editor
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool ObjectPropertyFields(object target, JsonObjectContract contract)
+        public static bool ObjectPropertyFields(object target, JsonObjectContract contract, out int propertyCount)
         {
             bool changed = false;
+            propertyCount = 0;
 
             foreach (var property in contract.Properties)
             {
@@ -234,12 +236,18 @@ namespace DX12Demo.Editor
                 }
 
                 changed |= PropertyField(target, property);
+                propertyCount++;
             }
 
             return changed;
         }
 
-        public static bool ObjectPropertyFields(object target)
+        public static bool ObjectPropertyFields(object target, JsonObjectContract contract)
+        {
+            return ObjectPropertyFields(target, contract, out _);
+        }
+
+        public static bool ObjectPropertyFields(object target, out int propertyCount)
         {
             Type type = target.GetType();
 
@@ -247,10 +255,27 @@ namespace DX12Demo.Editor
             {
                 LabelField($"##{nameof(ObjectPropertyFields)}Error", string.Empty,
                     $"Failed to resolve json object contract for {type}.");
+                propertyCount = 0;
                 return false;
             }
 
-            return ObjectPropertyFields(target, contract);
+            return ObjectPropertyFields(target, contract, out propertyCount);
+        }
+
+        public static bool ObjectPropertyFields(object target)
+        {
+            return ObjectPropertyFields(target, out _);
+        }
+
+        public static void DrawTexture(Texture texture)
+        {
+            EditorGUI_DrawTexture(texture.GetNativePointer());
+        }
+
+        public static bool Button(string label)
+        {
+            using NativeString l = label;
+            return EditorGUI_Button(l.Data);
         }
 
         #region PropertyField
@@ -261,7 +286,7 @@ namespace DX12Demo.Editor
         {
             Type propertyType = property.PropertyType ?? throw new ArgumentException("Property type is null", nameof(property));
 
-            if (s_PropertyDrawerCache.TryGet(propertyType, out IPropertyDrawer? drawer))
+            if (s_PropertyDrawerCache.TryGetSharedInstance(propertyType, out IPropertyDrawer? drawer))
             {
                 return drawer.Draw(label, tooltip, target, property);
             }
@@ -533,6 +558,12 @@ namespace DX12Demo.Editor
 
         [NativeFunction(Name = "EditorGUI_BeginPopupContextItem")]
         internal static partial bool BeginPopupContextItem();
+
+        [NativeFunction]
+        private static partial void EditorGUI_DrawTexture(nint texture);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_Button(nint label);
 
         #endregion
     }

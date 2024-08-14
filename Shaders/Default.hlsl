@@ -1,5 +1,8 @@
 #include "Lighting.hlsl"
 
+Texture2D _DiffuseMap : register(t0);
+SamplerState sampler_DiffuseMap : register(s6);
+
 cbuffer cbObject : register(b0)
 {
     float4x4 _MatrixWorld;
@@ -31,13 +34,15 @@ struct Attributes
 {
     float3 positionOS : POSITION;
     float3 normalOS : NORMAL;
+    float2 uv : TEXCOORD0;
 };
 
 struct Varyings
 {
     float4 positionCS : SV_Position;
     float3 normalWS : NORMAL;
-    float3 positionWS : TEXCOORD0;
+    float2 uv : TEXCOORD0;
+    float3 positionWS : TEXCOORD1;
 };
 
 Varyings vert(Attributes input)
@@ -47,6 +52,7 @@ Varyings vert(Attributes input)
     Varyings output;
     output.positionCS = mul(_MatrixViewProjection, positionWS);
     output.normalWS = mul(_MatrixWorld, float4(input.normalOS, 0.0)).xyz; // assume uniform scale
+    output.uv = input.uv;
     output.positionWS = positionWS.xyz;
     return output;
 }
@@ -56,14 +62,16 @@ float4 frag(Varyings input) : SV_Target
     Light lights[MAX_LIGHT_COUNT];
     GetLights(input.positionWS, _LightData, _LightCount, lights);
 
-    float3 color = 0;
+    float4 diffuseAlbedo = _DiffuseMap.Sample(sampler_DiffuseMap, input.uv) * _DiffuseAlbedo;
+
+    float3 color = 0.2 * diffuseAlbedo.rgb;
     float3 viewDirWS = normalize(_CameraPositionWS.xyz - input.positionWS);
     float shininess = 1 - _Roughness;
 
     for (int i = 0; i < _LightCount; i++)
     {
-        color += BlinnPhong(lights[i], normalize(input.normalWS), viewDirWS, _DiffuseAlbedo.rgb, _FresnelR0, shininess);
+        color += BlinnPhong(lights[i], normalize(input.normalWS), viewDirWS, diffuseAlbedo.rgb, _FresnelR0, shininess);
     }
 
-    return float4(color, _DiffuseAlbedo.a);
+    return float4(color, diffuseAlbedo.a);
 }

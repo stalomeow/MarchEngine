@@ -120,7 +120,7 @@ namespace DX12Demo.Editor
                         return false;
                     }
 
-                    n = new FolderNode(path);
+                    n = new FolderNode(string.Join('/', segments[..(i + 1)]));
                     node.Folders.Add(seg, n);
                 }
 

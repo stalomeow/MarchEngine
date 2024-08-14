@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Scripting/ScriptTypes.h"
+#include "Rendering/Resource/Texture.h"
+#include "Rendering/DescriptorHeap.h"
 #include <string>
 #include <imgui.h>
 #include <DirectXMath.h>
+#include <memory>
 
 namespace dx12demo
 {
@@ -57,7 +60,16 @@ namespace dx12demo
         static bool BeginPopupContextWindow();
         static bool BeginPopupContextItem();
 
+        static void DrawTexture(Texture* texture);
+        static bool Button(const std::string& label);
+
+        inline static void SetSrvHeap(DescriptorHeap* heap)
+        {
+            SrvHeap = heap;
+        }
+
     public:
+        static DescriptorHeap* SrvHeap;
         static constexpr float MaxLabelWidth = 100.0f;
     };
 
@@ -276,6 +288,16 @@ namespace dx12demo
         inline CSHARP_API(CSharpBool) EditorGUI_BeginPopupContextItem()
         {
             return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextItem());
+        }
+
+        inline CSHARP_API(void) EditorGUI_DrawTexture(Texture* texture)
+        {
+            EditorGUI::DrawTexture(texture);
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_Button(CSharpString label)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::Button(CSharpString_ToUtf8(label)));
         }
     }
 }

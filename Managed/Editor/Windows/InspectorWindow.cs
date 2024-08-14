@@ -5,24 +5,34 @@ namespace DX12Demo.Editor.Windows
 {
     internal static class InspectorWindow
     {
-        private static readonly DrawerCache<IInspectorDrawer> s_DrawerCache = new(typeof(IInspectorDrawerFor<>));
+        private static readonly DrawerCache<InspectorDrawer> s_DrawerCache = new(typeof(InspectorDrawerFor<>));
+        private static EngineObject? s_LastTarget;
+        private static InspectorDrawer? s_LastDrawer;
 
         [UnmanagedCallersOnly]
         internal static void Draw()
         {
-            if (Selection.Active == null)
+            EngineObject? target = Selection.Active;
+
+            if (target != s_LastTarget)
             {
-                return;
+                s_LastDrawer?.OnDestroy();
+
+                if (target != null && s_DrawerCache.TryGetType(target.GetType(), out Type? drawerType))
+                {
+                    s_LastDrawer = (InspectorDrawer)Activator.CreateInstance(drawerType)!;
+                    s_LastDrawer.Target = target;
+                    s_LastDrawer.OnCreate();
+                }
+                else
+                {
+                    s_LastDrawer = null;
+                }
+
+                s_LastTarget = target;
             }
 
-            EngineObject target = Selection.Active;
-
-            if (!s_DrawerCache.TryGet(target.GetType(), out IInspectorDrawer? drawer))
-            {
-                return;
-            }
-
-            drawer.Draw(target);
+            s_LastDrawer?.Draw();
         }
     }
 }

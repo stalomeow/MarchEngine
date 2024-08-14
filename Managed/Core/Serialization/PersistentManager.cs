@@ -13,6 +13,7 @@ namespace DX12Demo.Core.Serialization
             ContractResolver = new ContractResolver(),
             TypeNameHandling = TypeNameHandling.Auto,
             Formatting = Formatting.Indented,
+            ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
         });
 
         public static JsonContract ResolveJsonContract(Type type)
@@ -42,7 +43,7 @@ namespace DX12Demo.Core.Serialization
             return Load<T>(streamReader);
         }
 
-        public static string LoadAsString(string fullPath)
+        public static string LoadString(string fullPath)
         {
             return File.ReadAllText(fullPath, Encoding.UTF8);
         }
@@ -58,6 +59,24 @@ namespace DX12Demo.Core.Serialization
             return Load<T>(stringReader);
         }
 
+        public static void Overwrite(string fullPath, EngineObject target)
+        {
+            using var streamReader = new StreamReader(fullPath, Encoding.UTF8);
+            Overwrite(streamReader, target);
+        }
+
+        public static void Overwrite(TextReader textReader, EngineObject target)
+        {
+            using var jsonReader = new JsonTextReader(textReader);
+            s_JsonSerializer.Populate(jsonReader, target);
+        }
+
+        public static void OverwriteFromString(string text, EngineObject target)
+        {
+            using var stringReader = new StringReader(text);
+            Overwrite(stringReader, target);
+        }
+
         public static void Save(EngineObject obj, TextWriter textWriter)
         {
             using var jsonWriter = new JsonTextWriter(textWriter);
@@ -66,6 +85,13 @@ namespace DX12Demo.Core.Serialization
 
         public static void Save(EngineObject obj, string fullPath)
         {
+            string? directory = Path.GetDirectoryName(fullPath);
+
+            if (directory != null && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             using var streamWriter = new StreamWriter(fullPath, append: false, Encoding.UTF8);
             Save(obj, streamWriter);
         }

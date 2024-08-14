@@ -2,6 +2,7 @@
 #include "App/WinApplication.h"
 #include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
+#include "Editor/EditorGUI.h"
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/Resource/GpuBuffer.h"
 #include "Core/Debug.h"
@@ -49,7 +50,8 @@ namespace dx12demo
 
     void GameEditor::CreateDescriptorHeaps()
     {
-        m_SrvHeap = std::make_unique<DescriptorHeap>(L"EditorSrvHeap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 0, 2);
+        m_SrvHeap = std::make_unique<DescriptorHeap>(L"EditorSrvHeap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 4096, 2);
+        EditorGUI::SetSrvHeap(m_SrvHeap.get());
 
         auto device = GetGfxManager().GetDevice();
         auto srvHandle = m_SrvHeap->GetCpuHandleForFixedDescriptor(1);
@@ -417,6 +419,7 @@ namespace dx12demo
         GetGfxManager().WaitForFameLatency();
         CalculateFrameStats();
 
+        m_SrvHeap->Clear();
         m_DotNet.InvokeTickFunc();
         DrawImGui();
 

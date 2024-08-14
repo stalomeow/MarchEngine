@@ -32,20 +32,20 @@ namespace dx12demo
 #endif
     }
 
-    void DescriptorHeap::Append(D3D12_CPU_DESCRIPTOR_HANDLE descriptor, UINT64 completedFenceValue)
+    UINT DescriptorHeap::Append(D3D12_CPU_DESCRIPTOR_HANDLE descriptor)
     {
         if (m_DynamicBufCapacity == 0)
         {
             throw std::out_of_range("The capacity of dynamic descriptor heap is zero");
         }
 
+        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
+
         // 清理已经使用完成的空间
         while (!m_DynamicBufUsed.empty() && m_DynamicBufUsed.front().first <= completedFenceValue)
         {
             m_DynamicBufEnd = m_DynamicBufUsed.front().second;
             m_DynamicBufUsed.pop();
-
-            DEBUG_LOG_INFO("Clear dynamic descriptor heap, completed-fence=%d", completedFenceValue);
         }
 
         if ((m_DynamicBufNext + 1) % m_DynamicBufCapacity == m_DynamicBufEnd)
@@ -53,21 +53,25 @@ namespace dx12demo
             throw std::out_of_range("Dynamic descriptor heap is full");
         }
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_Heap->GetCPUDescriptorHandleForHeapStart());
-        handle.Offset(m_DynamicBufNext, m_DescriptorSize);
+        UINT index = m_DynamicBufNext;
         m_DynamicBufNext = (m_DynamicBufNext + 1) % m_DynamicBufCapacity;
+
+        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_Heap->GetCPUDescriptorHandleForHeapStart());
+        handle.Offset(index, m_DescriptorSize);
 
         auto device = GetGfxManager().GetDevice();
         device->CopyDescriptorsSimple(1, handle, descriptor, m_Heap->GetDesc().Type);
+        return index - m_DynamicBufBase;
     }
 
-    void DescriptorHeap::Clear(UINT64 fenceValue)
+    void DescriptorHeap::Clear()
     {
+        UINT64 fenceValue = GetGfxManager().GetNextFenceValue();
         m_DynamicBufUsed.push(std::make_pair(fenceValue, m_DynamicBufNext));
         m_DynamicBufBase = m_DynamicBufNext; // 更新起点
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandleForDynamicHeapStart() const
+    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandleForDynamicDescriptor(UINT index) const
     {
         if (GetDynamicCount() == 0)
         {
@@ -75,10 +79,10 @@ namespace dx12demo
         }
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_Heap->GetCPUDescriptorHandleForHeapStart());
-        return handle.Offset(m_DynamicBufBase, m_DescriptorSize);
+        return handle.Offset((m_DynamicBufBase + index) % m_DynamicBufCapacity, m_DescriptorSize);
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGpuHandleForDynamicHeapStart() const
+    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGpuHandleForDynamicDescriptor(UINT index) const
     {
         if (GetDynamicCount() == 0)
         {
@@ -86,7 +90,7 @@ namespace dx12demo
         }
 
         CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_Heap->GetGPUDescriptorHandleForHeapStart());
-        return handle.Offset(m_DynamicBufBase, m_DescriptorSize);
+        return handle.Offset((m_DynamicBufBase + index) % m_DynamicBufCapacity, m_DescriptorSize);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandleForFixedDescriptor(UINT index) const
@@ -109,5 +113,79 @@ namespace dx12demo
 
         CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_Heap->GetGPUDescriptorHandleForHeapStart());
         return handle.Offset(m_DynamicBufCapacity + index, m_DescriptorSize);
+    }
+
+    LinkedDescriptorHeap::LinkedDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT descriptorCountPerPage)
+        : m_HeapType(heapType), m_DescriptorCountPerPage(descriptorCountPerPage)
+    {
+
+    }
+
+    LinkedDescriptorSlot LinkedDescriptorHeap::Allocate()
+    {
+        if (!m_FreeList.empty() && m_FreeList.front().first <= GetGfxManager().GetCompletedFenceValue())
+        {
+            LinkedDescriptorSlot result = m_FreeList.front().second;
+            m_FreeList.pop();
+            return result;
+        }
+
+        if (m_HeapPages.empty() || m_NextDescriptorIndex >= m_DescriptorCountPerPage)
+        {
+            m_HeapPages.push_back(std::make_unique<DescriptorHeap>(L"LinkedDescriptorHeapPage" + std::to_wstring(m_HeapPages.size()),
+                m_HeapType, 0, m_DescriptorCountPerPage, false));
+            m_NextDescriptorIndex = 0;
+        }
+
+        return std::make_pair(m_HeapPages.size() - 1, m_NextDescriptorIndex++);
+    }
+
+    void LinkedDescriptorHeap::Free(const LinkedDescriptorSlot& slot)
+    {
+        m_FreeList.emplace(GetGfxManager().GetNextFenceValue(), slot);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE LinkedDescriptorHeap::GetCpuHandle(const LinkedDescriptorSlot& slot) const
+    {
+        return m_HeapPages[slot.first]->GetCpuHandleForFixedDescriptor(slot.second);
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE LinkedDescriptorHeap::GetGpuHandle(const LinkedDescriptorSlot& slot) const
+    {
+        return m_HeapPages[slot.first]->GetGpuHandleForFixedDescriptor(slot.second);
+    }
+
+    std::unordered_map<D3D12_DESCRIPTOR_HEAP_TYPE, std::unique_ptr<LinkedDescriptorHeap>> DescriptorManager::s_Heaps{};
+
+    DescriptorHandle DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE heapType)
+    {
+        EnsureHeap(heapType);
+        return std::make_pair(heapType, s_Heaps[heapType]->Allocate());
+    }
+
+    void DescriptorManager::Free(const DescriptorHandle& handle)
+    {
+        EnsureHeap(handle.first);
+        s_Heaps[handle.first]->Free(handle.second);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorManager::GetCpuHandle(const DescriptorHandle& handle)
+    {
+        EnsureHeap(handle.first);
+        return s_Heaps[handle.first]->GetCpuHandle(handle.second);
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorManager::GetGpuHandle(const DescriptorHandle& handle)
+    {
+        EnsureHeap(handle.first);
+        return s_Heaps[handle.first]->GetGpuHandle(handle.second);
+    }
+
+    void DescriptorManager::EnsureHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType)
+    {
+        if (s_Heaps.find(heapType) == s_Heaps.end())
+        {
+            s_Heaps.emplace(heapType, std::make_unique<LinkedDescriptorHeap>(heapType));
+        }
     }
 }

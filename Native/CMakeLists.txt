@@ -8,6 +8,8 @@ add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
 
 find_package(directx-headers CONFIG REQUIRED)
 find_package(directx-dxc CONFIG REQUIRED)
+find_package(directxtex CONFIG REQUIRED)
+# find_package(directxtk12 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
 add_definitions(-DUNICODE -D_UNICODE)
@@ -22,6 +24,8 @@ target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXShaderCompiler)
 target_link_libraries(dx12-demo PRIVATE "d3dcompiler.lib" "D3D12.lib" "dxgi.lib")
 target_link_libraries(dx12-demo PRIVATE imgui::imgui)
 target_link_libraries(dx12-demo PRIVATE "C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Host.win-x64/8.0.7/runtimes/win-x64/native/nethost.lib")
+# target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXTK12)
+target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXTex)
 
 # Works correctly for both single and multi-config generators
 target_compile_definitions(dx12-demo PRIVATE
