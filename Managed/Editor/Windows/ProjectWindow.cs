@@ -31,6 +31,9 @@ namespace DX12Demo.Editor.Windows
         private static void OnFileChanged(FileSystemEventArgs e)
         {
             Debug.LogWarning($"File changed: {e.FullPath}, {e.ChangeType}");
+
+            string path = GetRootRelativePath(e.FullPath).ValidatePath();
+            AssetDatabase.GetAssetImporter(path)?.SaveAndReimport();
         }
 
         private static void OnFileCreated(FileSystemEventArgs e)
@@ -65,14 +68,16 @@ namespace DX12Demo.Editor.Windows
             {
                 switch (info)
                 {
-                    case DirectoryInfo directory:
-                        s_FileTree.AddFolder(GetRootRelativePath(directory.FullName));
+                    case DirectoryInfo:
+                        s_FileTree.AddFolder(GetRootRelativePath(info.FullName));
                         break;
 
-                    case FileInfo file:
-                        s_FileTree.AddFile(GetRootRelativePath(file.FullName));
+                    case FileInfo:
+                        s_FileTree.AddFile(GetRootRelativePath(info.FullName));
                         break;
                 }
+
+                AssetDatabase.GetAssetImporter(GetRootRelativePath(info.FullName).ValidatePath());
             }
         }
 

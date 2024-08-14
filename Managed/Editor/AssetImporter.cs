@@ -235,11 +235,6 @@ namespace DX12Demo.Editor
         /// </summary>
         /// <returns></returns>
         protected abstract EngineObject CreateAsset();
-
-        internal virtual void SaveAsset()
-        {
-            throw new NotSupportedException();
-        }
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

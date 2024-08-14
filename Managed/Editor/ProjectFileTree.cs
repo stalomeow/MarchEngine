@@ -18,7 +18,15 @@ namespace DX12Demo.Editor
 
                 foreach ((string name, FolderNode node) in Folders)
                 {
-                    if (EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, spanWidth: true))
+                    bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == node.FolderPath);
+                    bool open = EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, selected: selected, spanWidth: true);
+
+                    if (EditorGUI.IsItemClicked())
+                    {
+                        Selection.Active = AssetDatabase.GetAssetImporter(node.FolderPath);
+                    }
+
+                    if (open)
                     {
                         node.Draw();
                         EditorGUI.EndTreeNode();

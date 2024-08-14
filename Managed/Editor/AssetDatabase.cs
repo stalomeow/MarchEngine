@@ -1,5 +1,6 @@
 using DX12Demo.Core;
 using DX12Demo.Core.Serialization;
+using DX12Demo.Editor.Importers;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -41,14 +42,10 @@ namespace DX12Demo.Editor
             importer.DecreaseAssetRef();
         }
 
-        public static void Save<T>(AssetHandle<T> handle) where T : EngineObject
+        public static void Save(EngineObject obj, string path)
         {
-            if (handle.GetProvider() is not AssetImporter importer)
-            {
-                throw new ArgumentException($"Invalid {nameof(AssetHandle<T>)}", nameof(handle));
-            }
-
-            importer.SaveAsset();
+            string fullPath = Path.Combine(Application.DataPath, path);
+            PersistentManager.Save(obj, fullPath);
         }
 
         internal static bool IsImporterFilePath(string path) => path.EndsWith(ImporterPathSuffix);
@@ -86,7 +83,7 @@ namespace DX12Demo.Editor
             static string GetCacheFullPath(string assetPath)
             {
                 string path = Path.GetRelativePath("Assets", assetPath);
-                return Path.Combine(Application.DataPath, "Library/AssetCache", path);
+                return Path.Combine(Application.DataPath, "Library/AssetCache", path + ".cache");
             }
         }
 
@@ -99,12 +96,8 @@ namespace DX12Demo.Editor
             // 文件夹需要特殊处理
             if (Directory.Exists(fullPath))
             {
-                //importer = new FolderImporter();
-                //return true;
-
-                // TODO: 感觉 FolderAsset 没什么用，暂时返回 null
-                importer = null;
-                return false;
+                importer = new FolderImporter();
+                return true;
             }
 
             string extension = Path.GetExtension(path);

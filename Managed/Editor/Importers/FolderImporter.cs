@@ -15,7 +15,9 @@ namespace DX12Demo.Editor.Importers
 
         protected override EngineObject CreateAsset()
         {
-            return new FolderAsset();
+            return s_SharedAsset;
         }
+
+        private static readonly FolderAsset s_SharedAsset = new();
     }
 }
