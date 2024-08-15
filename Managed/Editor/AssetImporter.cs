@@ -91,7 +91,7 @@ namespace DX12Demo.Editor
                     }
                     else
                     {
-                        asset = CreateAsset();
+                        asset = CreateAsset(false);
                         SetAssetReference(asset);
                     }
                 }
@@ -144,14 +144,14 @@ namespace DX12Demo.Editor
             m_AssetLastWriteTimeUtc = GetAssetLastWriteTimeUtc();
             PersistentManager.Save(this, ImporterFullPath);
 
-            asset = CreateAsset();
+            bool willSaveAsset = UseCache;
+            asset = CreateAsset(willSaveAsset);
             SetAssetReference(asset);
 
-            if (UseCache)
+            if (willSaveAsset)
             {
-                OnWillSave(asset);
                 PersistentManager.Save(asset, AssetCacheFullPath);
-                OnDidSave(asset);
+                OnDidSaveAsset(asset);
             }
         }
 
@@ -235,12 +235,18 @@ namespace DX12Demo.Editor
         /// <summary>
         /// 创建 Asset 实例
         /// </summary>
+        /// <param name="willSaveToFile">
+        /// 是否会将 Asset 保存为文件。如果为 <c>true</c>，则可以在此方法中设置序列化使用的临时数据，
+        /// 在 Asset 被保存后会调用 <see cref="OnDidSaveAsset(EngineObject)"/> 清除临时数据
+        /// </param>
         /// <returns></returns>
-        protected abstract EngineObject CreateAsset();
+        protected abstract EngineObject CreateAsset(bool willSaveToFile);
 
-        protected virtual void OnWillSave(EngineObject asset) { }
-
-        protected virtual void OnDidSave(EngineObject asset) { }
+        /// <summary>
+        /// 当 Asset 被保存后调用，可以在此方法中清除序列化使用的临时数据
+        /// </summary>
+        /// <param name="asset"></param>
+        protected virtual void OnDidSaveAsset(EngineObject asset) { }
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

@@ -13,7 +13,7 @@ namespace DX12Demo.Editor.Importers
 
         protected override bool UseCache => false;
 
-        protected override EngineObject CreateAsset()
+        protected override EngineObject CreateAsset(bool willSaveToFile)
         {
             return s_SharedAsset;
         }

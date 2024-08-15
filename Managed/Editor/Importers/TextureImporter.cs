@@ -19,7 +19,7 @@ namespace DX12Demo.Editor.Importers
         [JsonProperty("Wrap Mode")]
         public WrapMode Wrap { get; set; }
 
-        protected override EngineObject CreateAsset()
+        protected override EngineObject CreateAsset(bool willSaveToFile)
         {
             Texture texture = new()
             {
@@ -31,26 +31,21 @@ namespace DX12Demo.Editor.Importers
             byte[] ddsData = File.ReadAllBytes(AssetFullPath);
 
             texture.SetDDSData(name, ddsData);
+
+            if (willSaveToFile)
+            {
+                texture.SetSerializationData(name, ddsData);
+            }
+
             return texture;
         }
 
-        protected override void OnWillSave(EngineObject asset)
-        {
-            base.OnWillSave(asset);
-
-            string name = Path.GetFileNameWithoutExtension(AssetPath);
-            byte[] ddsData = File.ReadAllBytes(AssetFullPath);
-
-            Texture texture = (Texture)asset;
-            texture.SetSerializationData(name, ddsData);
-        }
-
-        protected override void OnDidSave(EngineObject asset)
+        protected override void OnDidSaveAsset(EngineObject asset)
         {
             Texture texture = (Texture)asset;
             texture.SetSerializationData(string.Empty, []);
 
-            base.OnDidSave(asset);
+            base.OnDidSaveAsset(asset);
         }
     }
 }
