@@ -200,6 +200,17 @@ namespace DX12Demo.Editor
             return EditorGUI_Foldout(l.Data, t.Data);
         }
 
+        public static bool FoldoutClosable(string label, string tooltip, ref bool visible)
+        {
+            using NativeString l = label;
+            using NativeString t = tooltip;
+
+            fixed (bool* v = &visible)
+            {
+                return EditorGUI_FoldoutClosable(l.Data, t.Data, v);
+            }
+        }
+
         internal static bool BeginPopup(string id)
         {
             using NativeString i = id;
@@ -245,6 +256,123 @@ namespace DX12Demo.Editor
         public static bool IsItemClicked(MouseButton button = MouseButton.Left, bool ignorePopup = false)
         {
             return EditorGUI_IsItemClicked((int)button, ignorePopup);
+        }
+
+        internal static bool BeginPopupContextItem(string id = "")
+        {
+            using NativeString i = id;
+            return EditorGUI_BeginPopupContextItem(i.Data);
+        }
+
+        public static void DrawTexture(Texture texture)
+        {
+            EditorGUI_DrawTexture(texture.GetNativePointer());
+        }
+
+        public static bool Button(string label)
+        {
+            using NativeString l = label;
+            return EditorGUI_Button(l.Data);
+        }
+
+        public static bool ButtonRight(string label)
+        {
+            using NativeString l = label;
+
+            // https://github.com/ocornut/imgui/issues/4157
+
+            float width = EditorGUI_CalcButtonWidth(l.Data);
+            EditorGUI_SetCursorPosX(EditorGUI_GetCursorPosX() + EditorGUI_GetContentRegionAvail().X - width);
+            return EditorGUI_Button(l.Data);
+        }
+
+        public static float CalcButtonWidth(string label)
+        {
+            using NativeString l = label;
+            return EditorGUI_CalcButtonWidth(l.Data);
+        }
+
+        public static Vector2 ContentRegionAvailable => EditorGUI_GetContentRegionAvail();
+
+        public static Vector2 ItemSpacing => EditorGUI_GetItemSpacing();
+
+        public static float CursorPosX
+        {
+            get => EditorGUI_GetCursorPosX();
+            set => EditorGUI_SetCursorPosX(value);
+        }
+
+        #region PropertyField
+
+        private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="label">以 <c>##</c> 开头可以隐藏标签</param>
+        /// <param name="tooltip"></param>
+        /// <param name="property"></param>
+        /// <returns></returns>
+        public static bool PropertyField(string label, string tooltip, in EditorProperty property)
+        {
+            using (new GroupScope())
+            {
+                Type propertyType = property.PropertyType;
+
+                if (s_PropertyDrawerCache.TryGetSharedInstance(propertyType, out IPropertyDrawer? drawer))
+                {
+                    return drawer.Draw(label, tooltip, in property);
+                }
+
+                if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
+                {
+                    bool isLabelHidden = IsLabelHidden(label);
+
+                    if (!isLabelHidden && !Foldout(label, tooltip))
+                    {
+                        return false;
+                    }
+
+                    using (new IDScope(label))
+                    using (new IndentedScope(isLabelHidden ? 0u : 1u))
+                    {
+                        // Draw as a nested object
+                        object nestedTarget = property.GetValue<object>();
+                        bool changed = ObjectPropertyFields(nestedTarget, contract);
+
+                        if (changed && propertyType.IsValueType)
+                        {
+                            // 值类型转成 object 会装箱生成一份拷贝，所以需要重新设置回去，把在拷贝上的修改同步到原对象上
+                            property.SetValue(nestedTarget);
+                        }
+
+                        return changed;
+                    }
+                }
+
+                // Fallback
+                using (new DisabledScope())
+                {
+                    LabelField(label, string.Empty, $"Type {propertyType} is not supported");
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="label">以 <c>##</c> 开头可以隐藏标签</param>
+        /// <param name="property"></param>
+        /// <returns></returns>
+        public static bool PropertyField(string label, in EditorProperty property)
+        {
+            return PropertyField(label, property.Tooltip, in property);
+        }
+
+        public static bool PropertyField(in EditorProperty property)
+        {
+            return PropertyField(property.DisplayName, in property);
         }
 
         public static bool ObjectPropertyFields(object target, JsonObjectContract contract, out int propertyCount)
@@ -296,121 +424,9 @@ namespace DX12Demo.Editor
             return ObjectPropertyFields(target, out _);
         }
 
-        internal static bool BeginPopupContextItem(string id = "")
+        private static bool IsLabelHidden(string label)
         {
-            using NativeString i = id;
-            return EditorGUI_BeginPopupContextItem(i.Data);
-        }
-
-        public static void DrawTexture(Texture texture)
-        {
-            EditorGUI_DrawTexture(texture.GetNativePointer());
-        }
-
-        public static bool Button(string label)
-        {
-            using NativeString l = label;
-            return EditorGUI_Button(l.Data);
-        }
-
-        public static bool ButtonRight(string label)
-        {
-            using NativeString l = label;
-
-            // https://github.com/ocornut/imgui/issues/4157
-
-            float width = EditorGUI_CalcButtonWidth(l.Data);
-            EditorGUI_SetCursorPosX(EditorGUI_GetCursorPosX() + EditorGUI_GetContentRegionAvail().X - width);
-            return EditorGUI_Button(l.Data);
-        }
-
-        public static float CalcButtonWidth(string label)
-        {
-            using NativeString l = label;
-            return EditorGUI_CalcButtonWidth(l.Data);
-        }
-
-        public static Vector2 ContentRegionAvailable => EditorGUI_GetContentRegionAvail();
-
-        public static Vector2 ItemSpacing => EditorGUI_GetItemSpacing();
-
-        public static float CursorPosX
-        {
-            get => EditorGUI_GetCursorPosX();
-            set => EditorGUI_SetCursorPosX(value);
-        }
-
-        #region PropertyField
-
-        private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
-
-        public static bool PropertyField(string label, string tooltip, in EditorProperty property)
-        {
-            using (new GroupScope())
-            {
-                Type propertyType = property.PropertyType;
-
-                if (s_PropertyDrawerCache.TryGetSharedInstance(propertyType, out IPropertyDrawer? drawer))
-                {
-                    return drawer.Draw(label, tooltip, in property);
-                }
-
-                if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
-                {
-                    if (!Foldout(label, tooltip))
-                    {
-                        return false;
-                    }
-
-                    using (new IDScope(label))
-                    using (new IndentedScope())
-                    {
-                        // Draw as a nested object
-                        object nestedTarget = property.GetValue<object>();
-                        bool changed = false;
-
-                        for (int i = 0; i < contract.Properties.Count; i++)
-                        {
-                            EditorProperty nestedProp = contract.GetEditorProperty(nestedTarget, i);
-
-                            if (nestedProp.IsHidden)
-                            {
-                                continue;
-                            }
-
-                            using (new IDScope(i))
-                            {
-                                changed |= PropertyField(nestedProp.DisplayName, nestedProp.Tooltip, in nestedProp);
-                            }
-                        }
-
-                        if (changed && propertyType.IsValueType)
-                        {
-                            // 值类型转成 object 会装箱生成一份拷贝，所以需要重新设置回去，把在拷贝上的修改同步到原对象上
-                            property.SetValue(nestedTarget);
-                        }
-
-                        return changed;
-                    }
-                }
-
-                // Fallback
-                using (new DisabledScope())
-                {
-                    LabelField(label, string.Empty, $"Type {propertyType} is not supported");
-                    return false;
-                }
-            }
-        }
-
-        public static bool PropertyField(string label, in EditorProperty property)
-        {
-            return PropertyField(label, property.Tooltip, in property);
-        }
-
-        public static bool PropertyField(in EditorProperty property)
-        {
-            return PropertyField(property.DisplayName, in property);
+            return label.StartsWith("##");
         }
 
         #endregion
@@ -554,6 +570,9 @@ namespace DX12Demo.Editor
 
         [NativeFunction]
         private static partial bool EditorGUI_Foldout(nint label, nint tooltip);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_FoldoutClosable(nint label, nint tooltip, bool* pVisible);
 
         [NativeFunction]
         private static partial void EditorGUI_Indent(uint count);

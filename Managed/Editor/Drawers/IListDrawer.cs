@@ -1,30 +1,9 @@
 using System.Collections;
-using System.Diagnostics;
 
 namespace DX12Demo.Editor.Drawers
 {
     internal class IListDrawer : IPropertyDrawerFor<IList>
     {
-        private record struct MenuArg
-        {
-            public required IList List { get; set; }
-
-            public required int Index { get; set; }
-
-            public bool IsChanged { get; set; }
-        }
-
-        private readonly PopupMenu<MenuArg> s_ItemContextMenu = new("IListDrawerItemContextMenu");
-
-        public IListDrawer()
-        {
-            s_ItemContextMenu.AddMenuItem("Remove", (ref MenuArg arg) =>
-            {
-                arg.List.RemoveAt(arg.Index);
-                arg.IsChanged = true;
-            });
-        }
-
         public bool Draw(string label, string tooltip, in EditorProperty property)
         {
             var list = property.GetValue<IList>();
@@ -40,22 +19,31 @@ namespace DX12Demo.Editor.Drawers
             {
                 for (int i = 0; i < list.Count; i++)
                 {
-                    using (new EditorGUI.IDScope(i))
+                    bool isOpen;
+
+                    if (list.IsFixedSize)
                     {
-                        changed |= EditorGUI.PropertyField($"Element{i}", string.Empty, property.GetListItemProperty(i));
+                        isOpen = EditorGUI.Foldout($"Element{i}", string.Empty);
+                    }
+                    else
+                    {
+                        bool isVisible = true;
+                        isOpen = EditorGUI.FoldoutClosable($"Element{i}", string.Empty, ref isVisible);
 
-                        if (!list.IsFixedSize)
+                        if (!isVisible)
                         {
-                            MenuArg result = s_ItemContextMenu.DoItemContext($"{label}{i}", new MenuArg { List = list, Index = i });
+                            list.RemoveAt(i);
+                            i--;
+                            changed = true;
+                            continue;
+                        }
+                    }
 
-                            if (result.IsChanged)
-                            {
-                                DX12Demo.Core.Debug.LogInfo(result.List);
-
-                                changed = true;
-                                i--;
-                                continue;
-                            }
+                    if (isOpen)
+                    {
+                        using (new EditorGUI.IndentedScope())
+                        {
+                            changed |= EditorGUI.PropertyField($"##Element{i}", string.Empty, property.GetListItemProperty(i));
                         }
                     }
                 }
@@ -64,14 +52,23 @@ namespace DX12Demo.Editor.Drawers
                 {
                     if (EditorGUI.ButtonRight("Add"))
                     {
-                        Type elementType = GetElementType(list);
-                        list.Add(Activator.CreateInstance(elementType, nonPublic: true));
+                        list.Add(CreateInstance(GetElementType(list)));
                         changed = true;
                     }
                 }
             }
 
             return changed;
+        }
+
+        private static object CreateInstance(Type type)
+        {
+            if (type == typeof(string))
+            {
+                return string.Empty;
+            }
+
+            return Activator.CreateInstance(type, nonPublic: true)!;
         }
 
         private static Type GetElementType(IList list)

@@ -95,6 +95,7 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(EditorGUI_PushIDInt),
             CSHARP_BINDING_ENTRY(EditorGUI_PopID),
             CSHARP_BINDING_ENTRY(EditorGUI_Foldout),
+            CSHARP_BINDING_ENTRY(EditorGUI_FoldoutClosable),
             CSHARP_BINDING_ENTRY(EditorGUI_Indent),
             CSHARP_BINDING_ENTRY(EditorGUI_Unindent),
             CSHARP_BINDING_ENTRY(EditorGUI_SameLine),

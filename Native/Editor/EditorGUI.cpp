@@ -1,6 +1,7 @@
 #include "Editor/EditorGUI.h"
 #include <utility>
 #include <imgui_stdlib.h>
+#include <imgui_internal.h>
 
 namespace dx12demo
 {
@@ -39,6 +40,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::DragInt(label.c_str(), v, speed, min, max);
         }
 
@@ -50,6 +52,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::DragFloat(label.c_str(), v, speed, min, max);
         }
 
@@ -61,6 +64,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::DragFloat2(label.c_str(), v, speed, min, max);
         }
 
@@ -72,6 +76,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::DragFloat3(label.c_str(), v, speed, min, max);
         }
 
@@ -83,6 +88,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::DragFloat4(label.c_str(), v, speed, min, max);
         }
 
@@ -94,6 +100,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::ColorEdit4(label.c_str(), v, ImGuiColorEditFlags_Float);
         }
 
@@ -105,6 +112,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::SliderFloat(label.c_str(), v, min, max);
         }
 
@@ -121,6 +129,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::Combo(label.c_str(), currentItem, itemsSeparatedByZeros.c_str());
         }
 
@@ -156,6 +165,8 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            // https://github.com/ocornut/imgui/issues/623
+            ImGui::SetNextItemWidth(-1);
             return ImGui::InputText(label.c_str(), &text);
         }
 
@@ -167,6 +178,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::Checkbox(label.c_str(), &value);
         }
 
@@ -188,6 +200,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label1))
         {
+            ImGui::SetNextItemWidth(-1);
             ImGui::LabelText(label1.c_str(), "%s", label2.c_str());
             return;
         }
@@ -221,7 +234,7 @@ namespace dx12demo
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, framePadding.y });
 
         // 加上 ImGuiTreeNodeFlags_NoTreePushOnOpen 就不用调用 TreePop() 了
-        bool result = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen);
+        bool result = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
         ImGui::PopStyleVar();
 
         if (!tooltip.empty())
@@ -230,6 +243,53 @@ namespace dx12demo
         }
 
         return result;
+    }
+
+    bool EditorGUI::FoldoutClosable(const std::string& label, const std::string& tooltip, bool* pVisible)
+    {
+        // 修改自 bool ImGui::CollapsingHeader(const char* label, bool* p_visible, ImGuiTreeNodeFlags flags)
+
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window->SkipItems)
+            return false;
+
+        if (pVisible && !*pVisible)
+            return false;
+
+        // 缩短箭头两边的空白
+        ImVec2 framePadding = ImGui::GetStyle().FramePadding;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, framePadding.y });
+
+        ImGuiID id = window->GetID(label.c_str());
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_CollapsingHeader & ~ImGuiTreeNodeFlags_Framed; // 不要背景
+        flags |= ImGuiTreeNodeFlags_SpanAvailWidth; // 撑满宽度
+        if (pVisible)
+            flags |= ImGuiTreeNodeFlags_AllowOverlap | (ImGuiTreeNodeFlags)ImGuiTreeNodeFlags_ClipLabelForTrailingButton;
+        bool is_open = ImGui::TreeNodeBehavior(id, flags, label.c_str());
+        if (pVisible != NULL)
+        {
+            // Create a small overlapping close button
+            // FIXME: We can evolve this into user accessible helpers to add extra buttons on title bars, headers, etc.
+            // FIXME: CloseButton can overlap into text, need find a way to clip the text somehow.
+            ImGuiContext& g = *GImGui;
+            ImGuiLastItemData last_item_backup = g.LastItemData;
+            float button_size = g.FontSize;
+            float button_x = ImMax(g.LastItemData.Rect.Min.x, g.LastItemData.Rect.Max.x /* - g.Style.FramePadding.x */ - button_size);
+            float button_y = g.LastItemData.Rect.Min.y; // + g.Style.FramePadding.y;
+            ImGuiID close_button_id = ImGui::GetIDWithSeed("#CLOSE", NULL, id);
+            if (ImGui::CloseButton(close_button_id, ImVec2(button_x, button_y)))
+                *pVisible = false;
+            g.LastItemData = last_item_backup;
+        }
+
+        ImGui::PopStyleVar();
+
+        if (!tooltip.empty())
+        {
+            ImGui::SetItemTooltip(tooltip.c_str());
+        }
+
+        return is_open;
     }
 
     void EditorGUI::Indent(std::uint32_t count)
@@ -309,6 +369,7 @@ namespace dx12demo
     {
         if (IsHiddenLabel(label))
         {
+            ImGui::SetNextItemWidth(-1);
             return ImGui::DragFloatRange2(label.c_str(), &currentMin, &currentMax, speed, min, max);
         }
 

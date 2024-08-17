@@ -38,6 +38,7 @@ namespace dx12demo
         static void PushID(int id);
         static void PopID();
         static bool Foldout(const std::string& label, const std::string& tooltip);
+        static bool FoldoutClosable(const std::string& label, const std::string& tooltip, bool* pVisible);
         static void Indent(std::uint32_t count = 1);
         static void Unindent(std::uint32_t count = 1);
         static void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
@@ -209,6 +210,14 @@ namespace dx12demo
         inline CSHARP_API(CSharpBool) EditorGUI_Foldout(CSharpString label, CSharpString tooltip)
         {
             return CSHARP_MARSHAL_BOOL(EditorGUI::Foldout(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip)));
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_FoldoutClosable(CSharpString label, CSharpString tooltip, CSharpBool* pVisible)
+        {
+            bool visible = CSHARP_UNMARSHAL_BOOL(*pVisible);
+            bool open = EditorGUI::FoldoutClosable(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), &visible);
+            *pVisible = CSHARP_MARSHAL_BOOL(visible);
+            return CSHARP_MARSHAL_BOOL(open);
         }
 
         inline CSHARP_API(void) EditorGUI_Indent(CSharpUInt count)
