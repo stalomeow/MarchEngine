@@ -14,6 +14,7 @@ namespace DX12Demo.Core.Serialization
             TypeNameHandling = TypeNameHandling.Auto,
             Formatting = Formatting.Indented,
             ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
+            ObjectCreationHandling = ObjectCreationHandling.Replace, // 保证不会重新添加集合元素
         });
 
         public static JsonContract ResolveJsonContract(Type type)

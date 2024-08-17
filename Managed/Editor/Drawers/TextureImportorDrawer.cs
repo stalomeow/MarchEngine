@@ -13,7 +13,7 @@ namespace DX12Demo.Editor.Drawers
             EditorGUI.Separator();
             EditorGUI.Space();
 
-            if (EditorGUI.Foldout("Preview"))
+            if (EditorGUI.Foldout("Preview", string.Empty))
             {
                 EditorGUI.DrawTexture((Texture)Target.Asset);
             }

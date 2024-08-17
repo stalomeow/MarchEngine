@@ -9,17 +9,17 @@ namespace DX12Demo.Editor.Drawers
         {
             bool changed = false;
 
-            changed |= EditorGUI.PropertyField(light, contract.Properties["Type"]);
-            changed |= EditorGUI.PropertyField(light, contract.Properties["Color"]);
+            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "Type"));
+            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "Color"));
 
             if (light.Type != LightType.Directional)
             {
-                changed |= EditorGUI.PropertyField("Falloff Range", light, contract.Properties["FalloffRange"]);
+                changed |= EditorGUI.PropertyField("Falloff Range", contract.GetEditorProperty(light, "FalloffRange"));
             }
 
             if (light.Type == LightType.Spot)
             {
-                changed |= EditorGUI.PropertyField("Spot Power", light, contract.Properties["SpotPower"]);
+                changed |= EditorGUI.PropertyField("Spot Power", contract.GetEditorProperty(light, "SpotPower"));
             }
 
             return changed;

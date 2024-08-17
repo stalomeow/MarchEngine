@@ -50,6 +50,10 @@ namespace DX12Demo.Editor
 
         internal static bool IsImporterFilePath(string path) => path.EndsWith(ImporterPathSuffix);
 
+        public static bool IsFolder(string path) => IsFolder(GetAssetImporter(path));
+
+        public static bool IsFolder([NotNullWhen(true)] AssetImporter? importer) => importer is FolderImporter;
+
         public static AssetImporter? GetAssetImporter(string path)
         {
             path = path.ValidatePath();

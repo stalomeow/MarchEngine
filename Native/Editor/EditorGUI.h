@@ -15,6 +15,7 @@ namespace dx12demo
     public:
         static void PrefixLabel(const std::string& label, const std::string& tooltip);
 
+        static bool IntField(const std::string& label, const std::string& tooltip, int v[1], float speed = 1.0f, int min = 0, int max = 0);
         static bool FloatField(const std::string& label, const std::string& tooltip, float v[1], float speed = 0.1f, float min = 0.0f, float max = 0.0f);
         static bool Vector2Field(const std::string& label, const std::string& tooltip, float v[2], float speed = 0.1f, float min = 0.0f, float max = 0.0f);
         static bool Vector3Field(const std::string& label, const std::string& tooltip, float v[3], float speed = 0.1f, float min = 0.0f, float max = 0.0f);
@@ -36,7 +37,7 @@ namespace dx12demo
         static void PushID(const std::string& id);
         static void PushID(int id);
         static void PopID();
-        static bool Foldout(const std::string& label);
+        static bool Foldout(const std::string& label, const std::string& tooltip);
         static void Indent(std::uint32_t count = 1);
         static void Unindent(std::uint32_t count = 1);
         static void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
@@ -56,12 +57,19 @@ namespace dx12demo
         static bool BeginTreeNode(const std::string& label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
         // only call EndTreeNode() if BeginTreeNode() returns true!
         static void EndTreeNode();
-        static bool IsItemClicked();
+        static bool IsItemClicked(ImGuiMouseButton button = ImGuiMouseButton_Left, bool ignorePopup = false);
         static bool BeginPopupContextWindow();
-        static bool BeginPopupContextItem();
+        static bool BeginPopupContextItem(const std::string& id = "");
 
         static void DrawTexture(Texture* texture);
         static bool Button(const std::string& label);
+
+        static void BeginGroup();
+        static void EndGroup();
+        static float CalcButtonWidth(const std::string& label);
+        static DirectX::XMFLOAT2 GetItemSpacing();
+        static float GetCursorPosX();
+        static void SetCursorPosX(float localX);
 
         inline static void SetSrvHeap(DescriptorHeap* heap)
         {
@@ -70,7 +78,8 @@ namespace dx12demo
 
     public:
         static DescriptorHeap* SrvHeap;
-        static constexpr float MaxLabelWidth = 100.0f;
+        static constexpr float MinLabelWidth = 140.0f;
+        static constexpr float MaxFieldWidth = 320.0f;
     };
 
     namespace binding
@@ -78,6 +87,11 @@ namespace dx12demo
         inline CSHARP_API(void) EditorGUI_PrefixLabel(CSharpString label, CSharpString tooltip)
         {
             EditorGUI::PrefixLabel(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip));
+        }
+
+        inline CSHARP_API(CSharpBool) EditorGUI_IntField(CSharpString label, CSharpString tooltip, CSharpInt* v, CSharpFloat speed, CSharpInt minValue, CSharpInt maxValue)
+        {
+            return CSHARP_MARSHAL_BOOL(EditorGUI::IntField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), v, speed, minValue, maxValue));
         }
 
         inline CSHARP_API(CSharpBool) EditorGUI_FloatField(CSharpString label, CSharpString tooltip, CSharpFloat* v, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
@@ -192,9 +206,9 @@ namespace dx12demo
             EditorGUI::PopID();
         }
 
-        inline CSHARP_API(CSharpBool) EditorGUI_Foldout(CSharpString label)
+        inline CSHARP_API(CSharpBool) EditorGUI_Foldout(CSharpString label, CSharpString tooltip)
         {
-            return CSHARP_MARSHAL_BOOL(EditorGUI::Foldout(CSharpString_ToUtf8(label)));
+            return CSHARP_MARSHAL_BOOL(EditorGUI::Foldout(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip)));
         }
 
         inline CSHARP_API(void) EditorGUI_Indent(CSharpUInt count)
@@ -275,9 +289,9 @@ namespace dx12demo
             EditorGUI::EndTreeNode();
         }
 
-        inline CSHARP_API(CSharpBool) EditorGUI_IsItemClicked()
+        inline CSHARP_API(CSharpBool) EditorGUI_IsItemClicked(CSharpInt buttton, CSharpBool ignorePopup)
         {
-            return CSHARP_MARSHAL_BOOL(EditorGUI::IsItemClicked());
+            return CSHARP_MARSHAL_BOOL(EditorGUI::IsItemClicked(static_cast<ImGuiMouseButton>(buttton), CSHARP_UNMARSHAL_BOOL(ignorePopup)));
         }
 
         inline CSHARP_API(CSharpBool) EditorGUI_BeginPopupContextWindow()
@@ -285,9 +299,9 @@ namespace dx12demo
             return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextWindow());
         }
 
-        inline CSHARP_API(CSharpBool) EditorGUI_BeginPopupContextItem()
+        inline CSHARP_API(CSharpBool) EditorGUI_BeginPopupContextItem(CSharpString id)
         {
-            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextItem());
+            return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextItem(CSharpString_ToUtf8(id)));
         }
 
         inline CSHARP_API(void) EditorGUI_DrawTexture(Texture* texture)
@@ -298,6 +312,37 @@ namespace dx12demo
         inline CSHARP_API(CSharpBool) EditorGUI_Button(CSharpString label)
         {
             return CSHARP_MARSHAL_BOOL(EditorGUI::Button(CSharpString_ToUtf8(label)));
+        }
+
+        inline CSHARP_API(void) EditorGUI_BeginGroup()
+        {
+            EditorGUI::BeginGroup();
+        }
+
+        inline CSHARP_API(void) EditorGUI_EndGroup()
+        {
+            EditorGUI::EndGroup();
+        }
+
+        inline CSHARP_API(CSharpFloat) EditorGUI_CalcButtonWidth(CSharpString label)
+        {
+            return EditorGUI::CalcButtonWidth(CSharpString_ToUtf8(label));
+        }
+
+        inline CSHARP_API(CSharpVector2) EditorGUI_GetItemSpacing()
+        {
+            DirectX::XMFLOAT2 spacing = EditorGUI::GetItemSpacing();
+            return ToCSharpVector2(spacing);
+        }
+
+        inline CSHARP_API(CSharpFloat) EditorGUI_GetCursorPosX()
+        {
+            return EditorGUI::GetCursorPosX();
+        }
+
+        inline CSHARP_API(void) EditorGUI_SetCursorPosX(CSharpFloat localX)
+        {
+            EditorGUI::SetCursorPosX(localX);
         }
     }
 }

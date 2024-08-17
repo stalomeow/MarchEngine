@@ -1,16 +1,14 @@
-using Newtonsoft.Json.Serialization;
-
 namespace DX12Demo.Editor.Drawers
 {
     internal class BoolDrawer : IPropertyDrawerFor<bool>
     {
-        public bool Draw(string label, string tooltip, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, in EditorProperty property)
         {
-            var value = property.GetValue<bool>(target);
+            var value = property.GetValue<bool>();
 
             if (EditorGUI.Checkbox(label, tooltip, ref value))
             {
-                property.SetValue(target, value);
+                property.SetValue(value);
                 return true;
             }
 

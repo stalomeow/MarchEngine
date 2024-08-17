@@ -16,15 +16,34 @@ namespace dx12demo
 
     void EditorGUI::PrefixLabel(const std::string& label, const std::string& tooltip)
     {
+        float width = ImGui::GetContentRegionMax().x;
+        float fieldWidth = min(max(width - MinLabelWidth, 0), MaxFieldWidth);
+        float labelWidth = max(width - fieldWidth, 0);
+
+        ImVec2 pos = ImGui::GetCursorPos();
+
+        ImGui::PushTextWrapPos(labelWidth - ImGui::GetStyle().FramePadding.x);
         ImGui::TextUnformatted(label.c_str());
+        ImGui::PopTextWrapPos();
 
         if (!tooltip.empty())
         {
             ImGui::SetItemTooltip(tooltip.c_str());
         }
 
-        ImGui::SameLine(MaxLabelWidth);
-        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        ImGui::SetCursorPos({ labelWidth, pos.y });
+        ImGui::SetNextItemWidth(fieldWidth);
+    }
+
+    bool EditorGUI::IntField(const std::string& label, const std::string& tooltip, int v[1], float speed, int min, int max)
+    {
+        if (IsHiddenLabel(label))
+        {
+            return ImGui::DragInt(label.c_str(), v, speed, min, max);
+        }
+
+        PrefixLabel(label, tooltip);
+        return ImGui::DragInt(("##" + label).c_str(), v, speed, min, max);
     }
 
     bool EditorGUI::FloatField(const std::string& label, const std::string& tooltip, float v[1], float speed, float min, float max)
@@ -195,10 +214,22 @@ namespace dx12demo
         ImGui::PopID();
     }
 
-    bool EditorGUI::Foldout(const std::string& label)
+    bool EditorGUI::Foldout(const std::string& label, const std::string& tooltip)
     {
+        // 缩短箭头两边的空白
+        ImVec2 framePadding = ImGui::GetStyle().FramePadding;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, framePadding.y });
+
         // 加上 ImGuiTreeNodeFlags_NoTreePushOnOpen 就不用调用 TreePop() 了
-        return ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen);
+        bool result = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen);
+        ImGui::PopStyleVar();
+
+        if (!tooltip.empty())
+        {
+            ImGui::SetItemTooltip(tooltip.c_str());
+        }
+
+        return result;
     }
 
     void EditorGUI::Indent(std::uint32_t count)
@@ -287,7 +318,7 @@ namespace dx12demo
 
     bool EditorGUI::BeginTreeNode(const std::string& label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
     {
-        ImGuiTreeNodeFlags flags = 0;
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
 
         if (isLeaf)             flags |= ImGuiTreeNodeFlags_Leaf;
         if (openOnArrow)        flags |= ImGuiTreeNodeFlags_OpenOnArrow;
@@ -305,9 +336,13 @@ namespace dx12demo
         ImGui::TreePop();
     }
 
-    bool EditorGUI::IsItemClicked()
+    bool EditorGUI::IsItemClicked(ImGuiMouseButton button, bool ignorePopup)
     {
-        return ImGui::IsItemClicked();
+        // return ImGui::IsItemClicked(button);
+
+        ImGuiHoveredFlags hoveredFlags = ImGuiHoveredFlags_None;
+        if (ignorePopup) hoveredFlags |= ImGuiHoveredFlags_AllowWhenBlockedByPopup;
+        return ImGui::IsMouseClicked(button) && ImGui::IsItemHovered(hoveredFlags);
     }
 
     bool EditorGUI::BeginPopupContextWindow()
@@ -315,9 +350,10 @@ namespace dx12demo
         return ImGui::BeginPopupContextWindow();
     }
 
-    bool EditorGUI::BeginPopupContextItem()
+    bool EditorGUI::BeginPopupContextItem(const std::string& id)
     {
-        return ImGui::BeginPopupContextItem();
+        const char* idStr = id.empty() ? nullptr : id.c_str();
+        return ImGui::BeginPopupContextItem(idStr);
     }
 
     void EditorGUI::DrawTexture(Texture* texture)
@@ -333,5 +369,36 @@ namespace dx12demo
     bool EditorGUI::Button(const std::string& label)
     {
         return ImGui::Button(label.c_str());
+    }
+
+    void EditorGUI::BeginGroup()
+    {
+        ImGui::BeginGroup();
+    }
+
+    void EditorGUI::EndGroup()
+    {
+        ImGui::EndGroup();
+    }
+
+    float EditorGUI::CalcButtonWidth(const std::string& label)
+    {
+        return ImGui::CalcTextSize(label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    }
+
+    DirectX::XMFLOAT2 EditorGUI::GetItemSpacing()
+    {
+        ImVec2 spacing = ImGui::GetStyle().ItemSpacing;
+        return { spacing.x, spacing.y };
+    }
+
+    float EditorGUI::GetCursorPosX()
+    {
+        return ImGui::GetCursorPosX();
+    }
+
+    void EditorGUI::SetCursorPosX(float localX)
+    {
+        ImGui::SetCursorPosX(localX);
     }
 }

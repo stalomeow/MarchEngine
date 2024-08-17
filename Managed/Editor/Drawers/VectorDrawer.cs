@@ -1,14 +1,13 @@
 using DX12Demo.Core.Serialization;
-using Newtonsoft.Json.Serialization;
 using System.Numerics;
 
 namespace DX12Demo.Editor.Drawers
 {
     internal class Vector2Drawer : IPropertyDrawerFor<Vector2>
     {
-        public bool Draw(string label, string tooltip, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, in EditorProperty property)
         {
-            var value = property.GetValue<Vector2>(target);
+            var value = property.GetValue<Vector2>();
             var attr = property.GetAttribute<Vector2DrawerAttribute>();
             bool changed;
 
@@ -27,7 +26,7 @@ namespace DX12Demo.Editor.Drawers
 
             if (changed)
             {
-                property.SetValue(target, value);
+                property.SetValue(value);
                 return true;
             }
 
@@ -37,13 +36,13 @@ namespace DX12Demo.Editor.Drawers
 
     internal class Vector3Drawer : IPropertyDrawerFor<Vector3>
     {
-        public bool Draw(string label, string tooltip, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, in EditorProperty property)
         {
-            var value = property.GetValue<Vector3>(target);
+            var value = property.GetValue<Vector3>();
 
             if (EditorGUI.Vector3Field(label, tooltip, ref value))
             {
-                property.SetValue(target, value);
+                property.SetValue(value);
                 return true;
             }
 
@@ -53,13 +52,13 @@ namespace DX12Demo.Editor.Drawers
 
     internal class Vector4Drawer : IPropertyDrawerFor<Vector4>
     {
-        public bool Draw(string label, string tooltip, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, in EditorProperty property)
         {
-            var value = property.GetValue<Vector4>(target);
+            var value = property.GetValue<Vector4>();
 
             if (EditorGUI.Vector4Field(label, tooltip, ref value))
             {
-                property.SetValue(target, value);
+                property.SetValue(value);
                 return true;
             }
 

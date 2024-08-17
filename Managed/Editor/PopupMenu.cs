@@ -2,11 +2,17 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace DX12Demo.Editor
 {
-    public class PopupMenu(string popupId)
+    public class PopupMenu<T>(string popupId)
     {
+        public delegate void MenuAction(ref T? arg);
+
+        public delegate void MenuAction<TArg1>(ref T? arg, TArg1 arg1);
+
+        public delegate TReturn MenuFunc<TReturn>(ref T? arg);
+
         private interface IMenuEntry
         {
-            void Draw();
+            void Draw(ref T? arg);
         }
 
         private sealed class TrieNode
@@ -35,13 +41,13 @@ namespace DX12Demo.Editor
                 return child;
             }
 
-            public void DrawMenuEntries()
+            public void DrawMenuEntries(ref T? arg)
             {
                 for (int i = 0; i < MenuEntries.Count; i++)
                 {
                     using (new EditorGUI.IDScope(i))
                     {
-                        MenuEntries[i].Draw();
+                        MenuEntries[i].Draw(ref arg);
                     }
                 }
             }
@@ -79,7 +85,7 @@ namespace DX12Demo.Editor
             return true;
         }
 
-        public void AddMenuItem(string path, Action? callback = null, Func<bool>? selected = null, Func<bool>? enabled = null)
+        public void AddMenuItem(string path, MenuAction? callback = null, MenuFunc<bool>? selected = null, MenuFunc<bool>? enabled = null)
         {
             if (FindEntryList(path, out string? label, out List<IMenuEntry>? entries))
             {
@@ -93,7 +99,7 @@ namespace DX12Demo.Editor
             }
         }
 
-        public void AddCustomItem(string path, Action<string> itemGUI)
+        public void AddCustomItem(string path, MenuAction<string> itemGUI)
         {
             if (FindEntryList(path, out string? label, out List<IMenuEntry>? entries))
             {
@@ -107,12 +113,12 @@ namespace DX12Demo.Editor
 
         public void AddSeparator(string path)
         {
-            AddCustomItem($"{path}/---", _ => EditorGUI.Separator());
+            AddCustomItem($"{path}/---", (ref T? arg, string _) => EditorGUI.Separator());
         }
 
         public void AddSeparatorText(string path, string text)
         {
-            AddCustomItem($"{path}/{text}", EditorGUI.SeparatorText);
+            AddCustomItem($"{path}/{text}", (ref T? arg, string label) => EditorGUI.SeparatorText(label));
         }
 
         public void Clear()
@@ -125,51 +131,68 @@ namespace DX12Demo.Editor
             EditorGUI.OpenPopup(popupId);
         }
 
-        public void Draw()
+        public T? Draw(T? arg = default)
         {
             if (EditorGUI.BeginPopup(popupId))
             {
-                m_MenuTree.DrawMenuEntries();
+                m_MenuTree.DrawMenuEntries(ref arg);
                 EditorGUI.EndPopup();
             }
+
+            return arg;
         }
 
-        public void DoWindowContext()
+        public T? DoWindowContext(T? arg = default)
         {
             if (EditorGUI.BeginPopupContextWindow())
             {
-                m_MenuTree.DrawMenuEntries();
+                m_MenuTree.DrawMenuEntries(ref arg);
                 EditorGUI.EndPopup();
             }
+
+            return arg;
         }
 
-        public void DoItemContext()
+        public T? DoItemContext(T? arg = default)
         {
             if (EditorGUI.BeginPopupContextItem())
             {
-                m_MenuTree.DrawMenuEntries();
+                m_MenuTree.DrawMenuEntries(ref arg);
                 EditorGUI.EndPopup();
             }
+
+            return arg;
+        }
+
+        public T? DoItemContext(string customIdAppend, T? arg = default)
+        {
+            if (EditorGUI.BeginPopupContextItem(popupId + customIdAppend))
+            {
+                m_MenuTree.DrawMenuEntries(ref arg);
+                EditorGUI.EndPopup();
+            }
+
+            return arg;
         }
 
         private sealed class MenuItemEntry : IMenuEntry
         {
             public required string Label { get; init; }
 
-            public required Action? Callback { get; init; }
+            public required MenuAction? Callback { get; init; }
 
-            public required Func<bool>? Selected { get; init; }
+            public required MenuFunc<bool>? Selected { get; init; }
 
-            public required Func<bool>? Enabled { get; init; }
+            public required MenuFunc<bool>? Enabled { get; init; }
 
-            public void Draw()
+            public void Draw(ref T? arg)
             {
-                bool isSelected = Selected?.Invoke() ?? false;
-                bool isEnabled = (Enabled?.Invoke() ?? true) && (Callback != null);
+                bool isSelected = Selected?.Invoke(ref arg) ?? false;
+                bool isEnabled = (Enabled?.Invoke(ref arg) ?? true) && (Callback != null);
 
                 if (EditorGUI.MenuItem(Label, isSelected, isEnabled))
                 {
-                    Callback?.Invoke();
+                    Callback?.Invoke(ref arg);
                 }
             }
         }
@@ -180,16 +203,11 @@ namespace DX12Demo.Editor
 
             public required TrieNode Node { get; init; }
 
-            public void Draw()
+            public void Draw(ref T? arg)
             {
-                if (Node.MenuEntries.Count <= 0)
+                if (Node.MenuEntries.Count > 0 && EditorGUI.BeginMenu(Label))
                 {
-                    return;
-                }
-
-                if (EditorGUI.BeginMenu(Label))
-                {
-                    Node.DrawMenuEntries();
+                    Node.DrawMenuEntries(ref arg);
                     EditorGUI.EndMenu();
                 }
             }
@@ -199,12 +217,14 @@ namespace DX12Demo.Editor
         {
             public required string Label { get; init; }
 
-            public required Action<string> ItemGUI { get; init; }
+            public required MenuAction<string> ItemGUI { get; init; }
 
-            public void Draw()
+            public void Draw(ref T? arg)
             {
-                ItemGUI(Label);
+                ItemGUI(ref arg, Label);
             }
         }
     }
+
+    public class PopupMenu(string popupId) : PopupMenu<object>(popupId) { }
 }

@@ -1,13 +1,12 @@
 using DX12Demo.Core.Serialization;
-using Newtonsoft.Json.Serialization;
 
 namespace DX12Demo.Editor.Drawers
 {
     internal class FloatDrawer : IPropertyDrawerFor<float>
     {
-        public bool Draw(string label, string tooltip, object target, JsonProperty property)
+        public bool Draw(string label, string tooltip, in EditorProperty property)
         {
-            var value = property.GetValue<float>(target);
+            var value = property.GetValue<float>();
             var attr = property.GetAttribute<FloatDrawerAttribute>();
             bool changed;
 
@@ -22,7 +21,7 @@ namespace DX12Demo.Editor.Drawers
 
             if (changed)
             {
-                property.SetValue(target, value);
+                property.SetValue(value);
                 return true;
             }
 

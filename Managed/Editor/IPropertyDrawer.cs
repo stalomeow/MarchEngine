@@ -1,5 +1,3 @@
-using Newtonsoft.Json.Serialization;
-
 namespace DX12Demo.Editor
 {
     public interface IPropertyDrawer : IDrawer
@@ -9,10 +7,9 @@ namespace DX12Demo.Editor
         /// </summary>
         /// <param name="label"></param>
         /// <param name="tooltip"></param>
-        /// <param name="target">拥有该 <paramref name="property"/> 的对象</param>
         /// <param name="property"></param>
         /// <returns>如果修改了 <paramref name="property"/> 的值，返回 <c>true</c>，否则返回 <c>false</c></returns>
-        bool Draw(string label, string tooltip, object target, JsonProperty property);
+        bool Draw(string label, string tooltip, in EditorProperty property);
     }
 
     public interface IPropertyDrawerFor<T> : IPropertyDrawer { }

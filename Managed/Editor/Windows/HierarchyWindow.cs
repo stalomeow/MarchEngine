@@ -10,7 +10,7 @@ namespace DX12Demo.Editor.Windows
 
         static HierarchyWindow()
         {
-            s_ContextMenu.AddMenuItem("Create/Primitive/Cube", () =>
+            s_ContextMenu.AddMenuItem("Create/Primitive/Cube", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Cube" };
                 var mr = go.AddComponent<MeshRenderer>();
@@ -20,7 +20,7 @@ namespace DX12Demo.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Create/Primitive/Sphere", () =>
+            s_ContextMenu.AddMenuItem("Create/Primitive/Sphere", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Sphere" };
                 var mr = go.AddComponent<MeshRenderer>();
@@ -30,7 +30,7 @@ namespace DX12Demo.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Create/Light", () =>
+            s_ContextMenu.AddMenuItem("Create/Light", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Directional Light" };
                 go.AddComponent<Light>();
@@ -39,7 +39,7 @@ namespace DX12Demo.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Create/Empty", () =>
+            s_ContextMenu.AddMenuItem("Create/Empty", (ref object? arg) =>
             {
                 var go = new GameObject();
                 SceneManager.CurrentScene.RootGameObjects.Add(go);

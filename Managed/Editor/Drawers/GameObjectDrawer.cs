@@ -15,16 +15,16 @@ namespace DX12Demo.Editor.Drawers
             var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(typeof(GameObject));
             var changed = false;
 
-            changed |= EditorGUI.PropertyField("##GameObjectIsActive", string.Empty, Target, contract.Properties["m_IsActive"]);
+            changed |= EditorGUI.PropertyField("##GameObjectIsActive", string.Empty, contract.GetEditorProperty(Target, "m_IsActive"));
             EditorGUI.SameLine();
-            EditorGUI.SetNextItemWidth(EditorGUI.GetContentRegionAvailable().X);
-            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, Target, contract.Properties["Name"]);
+            EditorGUI.SetNextItemWidth(EditorGUI.ContentRegionAvailable.X);
+            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, contract.GetEditorProperty(Target, "Name"));
 
             EditorGUI.SeparatorText("Transform");
 
-            changed |= EditorGUI.PropertyField(Target, contract.Properties["Position"]);
-            changed |= EditorGUI.PropertyField(Target, contract.Properties["Rotation"]);
-            changed |= EditorGUI.PropertyField(Target, contract.Properties["Scale"]);
+            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(Target, "Position"));
+            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(Target, "Rotation"));
+            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(Target, "Scale"));
 
             EditorGUI.SeparatorText("Components");
 
@@ -105,13 +105,13 @@ namespace DX12Demo.Editor.Drawers
                 }
 
                 Type componentType = type;
-                s_AddComponentPopup.AddMenuItem(displayName, callback: () =>
+                s_AddComponentPopup.AddMenuItem(displayName, callback: (ref object? arg) =>
                 {
                     if (Selection.Active is GameObject go)
                     {
                         go.AddComponent(componentType);
                     }
-                }, enabled: () => Selection.Active is GameObject);
+                }, enabled: (ref object? arg) => Selection.Active is GameObject);
             }
 
             s_AddComponentPopupTypeCacheVersion = TypeCache.Version;

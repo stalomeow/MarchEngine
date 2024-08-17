@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
+using DX12Demo.Core;
 
 namespace DX12Demo.Editor
 {
@@ -21,7 +23,8 @@ namespace DX12Demo.Editor
                     bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == node.FolderPath);
                     bool open = EditorGUI.BeginTreeNode(name, openOnArrow: true, openOnDoubleClick: true, selected: selected, spanWidth: true);
 
-                    if (EditorGUI.IsItemClicked())
+                    if (EditorGUI.IsItemClicked(EditorGUI.MouseButton.Left) ||
+                        EditorGUI.IsItemClicked(EditorGUI.MouseButton.Right, ignorePopup: true)) // context menu 打开时，选中
                     {
                         Selection.Active = AssetDatabase.GetAssetImporter(node.FolderPath);
                     }
@@ -38,7 +41,8 @@ namespace DX12Demo.Editor
                     bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == path);
                     bool open = EditorGUI.BeginTreeNode(name, isLeaf: true, selected: selected, spanWidth: true);
 
-                    if (EditorGUI.IsItemClicked())
+                    if (EditorGUI.IsItemClicked(EditorGUI.MouseButton.Left) ||
+                        EditorGUI.IsItemClicked(EditorGUI.MouseButton.Right, ignorePopup: true)) // context menu 打开时，选中
                     {
                         Selection.Active = AssetDatabase.GetAssetImporter(path);
                     }
@@ -58,6 +62,32 @@ namespace DX12Demo.Editor
         }
 
         private readonly FolderNode m_Root = new("Root");
+
+        private static readonly PopupMenu s_ContextMenu = new("ProjectFileTreeContextMenu");
+
+        static ProjectFileTree()
+        {
+            s_ContextMenu.AddMenuItem("Create/Shader", (ref object? arg) =>
+            {
+                var importer = Selection.Active as AssetImporter;
+                string folder;
+
+                if (AssetDatabase.IsFolder(importer))
+                {
+                    folder = importer.AssetFullPath;
+                }
+                else if (importer == null)
+                {
+                    folder = Path.Combine(Application.DataPath, "Assets");
+                }
+                else
+                {
+                    folder = Path.GetDirectoryName(importer.AssetFullPath)!;
+                }
+
+                File.WriteAllText(Path.Combine(folder, "NewShader.shader"), string.Empty);
+            }, enabled: (ref object? arg) => Selection.Active is (AssetImporter or null));
+        }
 
         public void AddFile(string path) => Add(path, false);
 
@@ -138,6 +168,7 @@ namespace DX12Demo.Editor
         public void Draw()
         {
             m_Root.Draw();
+            s_ContextMenu.DoWindowContext();
         }
     }
 }

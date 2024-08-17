@@ -9,11 +9,29 @@ namespace DX12Demo.Editor
 {
     public static unsafe partial class EditorGUI
     {
+        public enum MouseButton
+        {
+            Left = 0,
+            Right = 1,
+            Middle = 2,
+        }
+
         public static void PrefixLabel(string label, string tooltip)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
             EditorGUI_PrefixLabel(l.Data, t.Data);
+        }
+
+        public static bool IntField(string label, string tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0)
+        {
+            using NativeString l = label;
+            using NativeString t = tooltip;
+
+            fixed (int* v = &value)
+            {
+                return EditorGUI_IntField(l.Data, t.Data, v, (float)speed, minValue, maxValue);
+            }
         }
 
         public static bool FloatField(string label, string tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
@@ -175,10 +193,11 @@ namespace DX12Demo.Editor
             EditorGUI_LabelField(l1.Data, t.Data, l2.Data);
         }
 
-        public static bool Foldout(string label)
+        public static bool Foldout(string label, string tooltip)
         {
             using NativeString l = label;
-            return EditorGUI_Foldout(l.Data);
+            using NativeString t = tooltip;
+            return EditorGUI_Foldout(l.Data, t.Data);
         }
 
         internal static bool BeginPopup(string id)
@@ -223,20 +242,30 @@ namespace DX12Demo.Editor
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
+        public static bool IsItemClicked(MouseButton button = MouseButton.Left, bool ignorePopup = false)
+        {
+            return EditorGUI_IsItemClicked((int)button, ignorePopup);
+        }
+
         public static bool ObjectPropertyFields(object target, JsonObjectContract contract, out int propertyCount)
         {
             bool changed = false;
             propertyCount = 0;
 
-            foreach (var property in contract.Properties)
+            for (int i = 0; i < contract.Properties.Count; i++)
             {
-                if (property.IsHidden())
+                EditorProperty property = contract.GetEditorProperty(target, i);
+
+                if (property.IsHidden)
                 {
                     continue;
                 }
 
-                changed |= PropertyField(target, property);
-                propertyCount++;
+                using (new IDScope(i))
+                {
+                    changed |= PropertyField(in property);
+                    propertyCount++;
+                }
             }
 
             return changed;
@@ -267,6 +296,12 @@ namespace DX12Demo.Editor
             return ObjectPropertyFields(target, out _);
         }
 
+        internal static bool BeginPopupContextItem(string id = "")
+        {
+            using NativeString i = id;
+            return EditorGUI_BeginPopupContextItem(i.Data);
+        }
+
         public static void DrawTexture(Texture texture)
         {
             EditorGUI_DrawTexture(texture.GetNativePointer());
@@ -278,96 +313,104 @@ namespace DX12Demo.Editor
             return EditorGUI_Button(l.Data);
         }
 
+        public static bool ButtonRight(string label)
+        {
+            using NativeString l = label;
+
+            // https://github.com/ocornut/imgui/issues/4157
+
+            float width = EditorGUI_CalcButtonWidth(l.Data);
+            EditorGUI_SetCursorPosX(EditorGUI_GetCursorPosX() + EditorGUI_GetContentRegionAvail().X - width);
+            return EditorGUI_Button(l.Data);
+        }
+
+        public static float CalcButtonWidth(string label)
+        {
+            using NativeString l = label;
+            return EditorGUI_CalcButtonWidth(l.Data);
+        }
+
+        public static Vector2 ContentRegionAvailable => EditorGUI_GetContentRegionAvail();
+
+        public static Vector2 ItemSpacing => EditorGUI_GetItemSpacing();
+
+        public static float CursorPosX
+        {
+            get => EditorGUI_GetCursorPosX();
+            set => EditorGUI_SetCursorPosX(value);
+        }
+
         #region PropertyField
 
         private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
 
-        private static bool PropertyFieldImpl(string label, string tooltip, object target, JsonProperty property, int depth)
+        public static bool PropertyField(string label, string tooltip, in EditorProperty property)
         {
-            Type propertyType = property.PropertyType ?? throw new ArgumentException("Property type is null", nameof(property));
-
-            if (s_PropertyDrawerCache.TryGetSharedInstance(propertyType, out IPropertyDrawer? drawer))
+            using (new GroupScope())
             {
-                return drawer.Draw(label, tooltip, target, property);
-            }
+                Type propertyType = property.PropertyType;
 
-            if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
-            {
-                // Draw as a nested object
-                object? nestedTarget = property.GetValue<object>(target);
-
-                if (nestedTarget == null)
+                if (s_PropertyDrawerCache.TryGetSharedInstance(propertyType, out IPropertyDrawer? drawer))
                 {
-                    try
-                    {
-                        nestedTarget = Activator.CreateInstance(propertyType);
+                    return drawer.Draw(label, tooltip, in property);
+                }
 
-                        if (nestedTarget == null)
+                if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
+                {
+                    if (!Foldout(label, tooltip))
+                    {
+                        return false;
+                    }
+
+                    using (new IDScope(label))
+                    using (new IndentedScope())
+                    {
+                        // Draw as a nested object
+                        object nestedTarget = property.GetValue<object>();
+                        bool changed = false;
+
+                        for (int i = 0; i < contract.Properties.Count; i++)
                         {
-                            goto Fallback;
+                            EditorProperty nestedProp = contract.GetEditorProperty(nestedTarget, i);
+
+                            if (nestedProp.IsHidden)
+                            {
+                                continue;
+                            }
+
+                            using (new IDScope(i))
+                            {
+                                changed |= PropertyField(nestedProp.DisplayName, nestedProp.Tooltip, in nestedProp);
+                            }
                         }
 
-                        property.SetValue(target, nestedTarget);
-                    }
-                    catch
-                    {
-                        goto Fallback;
+                        if (changed && propertyType.IsValueType)
+                        {
+                            // 值类型转成 object 会装箱生成一份拷贝，所以需要重新设置回去，把在拷贝上的修改同步到原对象上
+                            property.SetValue(nestedTarget);
+                        }
+
+                        return changed;
                     }
                 }
 
-                if (!Foldout(label))
+                // Fallback
+                using (new DisabledScope())
                 {
+                    LabelField(label, string.Empty, $"Type {propertyType} is not supported");
                     return false;
                 }
-
-                using (new IDScope(depth))
-                using (new IndentedScope())
-                {
-                    bool changed = false;
-
-                    foreach (var nestedProp in contract.Properties)
-                    {
-                        if (nestedProp.IsHidden())
-                        {
-                            continue;
-                        }
-
-                        string nestedLabel = nestedProp.GetDisplayName();
-                        string nestedTooltip = nestedProp.GetTooltip();
-                        changed |= PropertyFieldImpl(nestedLabel, nestedTooltip, nestedTarget, nestedProp, depth + 1);
-                    }
-
-                    if (changed && propertyType.IsValueType)
-                    {
-                        // 值类型转成 object 会装箱生成一份拷贝，所以需要重新设置回去，把在拷贝上的修改同步到原对象上
-                        property.SetValue(target, nestedTarget);
-                    }
-
-                    return changed;
-                }
-            }
-
-        Fallback:
-            using (new DisabledScope())
-            {
-                LabelField(label, string.Empty, $"Type {propertyType} is not supported");
-                return false;
             }
         }
 
-        public static bool PropertyField(string label, string tooltip, object target, JsonProperty property)
+        public static bool PropertyField(string label, in EditorProperty property)
         {
-            return PropertyFieldImpl(label, tooltip, target, property, 0);
+            return PropertyField(label, property.Tooltip, in property);
         }
 
-        public static bool PropertyField(string label, object target, JsonProperty property)
+        public static bool PropertyField(in EditorProperty property)
         {
-            return PropertyField(label, property.GetTooltip(), target, property);
-        }
-
-        public static bool PropertyField(object target, JsonProperty property)
-        {
-            return PropertyField(property.GetDisplayName(), target, property);
+            return PropertyField(property.DisplayName, in property);
         }
 
         #endregion
@@ -429,12 +472,28 @@ namespace DX12Demo.Editor
             }
         }
 
+        public readonly ref struct GroupScope
+        {
+            public GroupScope()
+            {
+                EditorGUI_BeginGroup();
+            }
+
+            public void Dispose()
+            {
+                EditorGUI_EndGroup();
+            }
+        }
+
         #endregion
 
         #region Native
 
         [NativeFunction]
         private static partial void EditorGUI_PrefixLabel(nint label, nint tooltip);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_IntField(nint label, nint tooltip, int* v, float speed, int minValue, int maxValue);
 
         [NativeFunction]
         private static partial bool EditorGUI_FloatField(nint label, nint tooltip, float* v, float speed, float minValue, float maxValue);
@@ -494,7 +553,7 @@ namespace DX12Demo.Editor
         private static partial void EditorGUI_PopID();
 
         [NativeFunction]
-        private static partial bool EditorGUI_Foldout(nint label);
+        private static partial bool EditorGUI_Foldout(nint label, nint tooltip);
 
         [NativeFunction]
         private static partial void EditorGUI_Indent(uint count);
@@ -505,8 +564,8 @@ namespace DX12Demo.Editor
         [NativeFunction(Name = "EditorGUI_SameLine")]
         public static partial void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
 
-        [NativeFunction(Name = "EditorGUI_GetContentRegionAvail")]
-        public static partial Vector2 GetContentRegionAvailable();
+        [NativeFunction]
+        private static partial Vector2 EditorGUI_GetContentRegionAvail();
 
         [NativeFunction(Name = "EditorGUI_SetNextItemWidth")]
         public static partial void SetNextItemWidth(float width);
@@ -550,20 +609,38 @@ namespace DX12Demo.Editor
         [NativeFunction(Name = "EditorGUI_EndTreeNode")]
         public static partial void EndTreeNode();
 
-        [NativeFunction(Name = "EditorGUI_IsItemClicked")]
-        public static partial bool IsItemClicked();
+        [NativeFunction]
+        private static partial bool EditorGUI_IsItemClicked(int button, bool ignorePopup);
 
         [NativeFunction(Name = "EditorGUI_BeginPopupContextWindow")]
         internal static partial bool BeginPopupContextWindow();
 
-        [NativeFunction(Name = "EditorGUI_BeginPopupContextItem")]
-        internal static partial bool BeginPopupContextItem();
+        [NativeFunction]
+        private static partial bool EditorGUI_BeginPopupContextItem(nint id);
 
         [NativeFunction]
         private static partial void EditorGUI_DrawTexture(nint texture);
 
         [NativeFunction]
         private static partial bool EditorGUI_Button(nint label);
+
+        [NativeFunction]
+        private static partial void EditorGUI_BeginGroup();
+
+        [NativeFunction]
+        private static partial void EditorGUI_EndGroup();
+
+        [NativeFunction]
+        private static partial float EditorGUI_CalcButtonWidth(nint label);
+
+        [NativeFunction]
+        private static partial Vector2 EditorGUI_GetItemSpacing();
+
+        [NativeFunction]
+        private static partial float EditorGUI_GetCursorPosX();
+
+        [NativeFunction]
+        private static partial void EditorGUI_SetCursorPosX(float localX);
 
         #endregion
     }

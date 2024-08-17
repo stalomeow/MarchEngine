@@ -74,6 +74,7 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(Light_SetSpotPower),
 
             CSHARP_BINDING_ENTRY(EditorGUI_PrefixLabel),
+            CSHARP_BINDING_ENTRY(EditorGUI_IntField),
             CSHARP_BINDING_ENTRY(EditorGUI_FloatField),
             CSHARP_BINDING_ENTRY(EditorGUI_Vector2Field),
             CSHARP_BINDING_ENTRY(EditorGUI_Vector3Field),
@@ -114,6 +115,12 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextItem),
             CSHARP_BINDING_ENTRY(EditorGUI_DrawTexture),
             CSHARP_BINDING_ENTRY(EditorGUI_Button),
+            CSHARP_BINDING_ENTRY(EditorGUI_BeginGroup),
+            CSHARP_BINDING_ENTRY(EditorGUI_EndGroup),
+            CSHARP_BINDING_ENTRY(EditorGUI_CalcButtonWidth),
+            CSHARP_BINDING_ENTRY(EditorGUI_GetItemSpacing),
+            CSHARP_BINDING_ENTRY(EditorGUI_GetCursorPosX),
+            CSHARP_BINDING_ENTRY(EditorGUI_SetCursorPosX),
 
             CSHARP_BINDING_ENTRY(Texture_New),
             CSHARP_BINDING_ENTRY(Texture_Delete),

@@ -38,6 +38,11 @@ namespace DX12Demo.Editor.Drawers
             {
                 EditorGUI.Space();
 
+                float applyButtonWidth = EditorGUI.CalcButtonWidth("Apply");
+                float revertButtonWidth = EditorGUI.CalcButtonWidth("Revert");
+                float totalWidth = applyButtonWidth + EditorGUI.ItemSpacing.X + revertButtonWidth;
+                EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
+
                 using (new EditorGUI.DisabledScope(!m_IsChanged))
                 {
                     if (EditorGUI.Button("Apply"))

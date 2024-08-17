@@ -47,30 +47,55 @@ namespace DX12Demo.Editor
 
             while (t != null)
             {
-                try
+                if (TryGetDerivedType(genericTypeDefinition, t, out drawerType))
                 {
-                    Type searchType = genericTypeDefinition.MakeGenericType(t);
-
-                    foreach (var derivedType in TypeCache.GetTypesDerivedFrom(searchType))
-                    {
-                        if (derivedType.IsAbstract || derivedType.IsGenericTypeDefinition || derivedType.IsValueType)
-                        {
-                            continue;
-                        }
-
-                        drawerType = derivedType;
-                        return true;
-                    }
-                }
-                catch
-                {
-                    // 大概率是类型参数不满足约束条件，忽略
+                    m_DrawerTypes.Add(type, drawerType);
+                    return true;
                 }
 
                 t = t.BaseType;
             }
 
+            foreach (Type i in type.GetInterfaces())
+            {
+                if (TryGetDerivedType(genericTypeDefinition, i, out drawerType))
+                {
+                    m_DrawerTypes.Add(type, drawerType);
+                    return true;
+                }
+            }
+
             m_NotFound.Add(type, TypeCache.Version);
+            return false;
+        }
+
+        private static bool TryGetDerivedType(Type genericTypeDefinition, Type typeArgument, [NotNullWhen(true)] out Type? type)
+        {
+            Type searchType;
+
+            try
+            {
+                searchType = genericTypeDefinition.MakeGenericType(typeArgument);
+            }
+            catch (ArgumentException)
+            {
+                // 类型参数不满足约束条件
+                type = null;
+                return false;
+            }
+
+            foreach (var derivedType in TypeCache.GetTypesDerivedFrom(searchType))
+            {
+                if (derivedType.IsAbstract || derivedType.IsGenericTypeDefinition || derivedType.IsValueType)
+                {
+                    continue;
+                }
+
+                type = derivedType;
+                return true;
+            }
+
+            type = null;
             return false;
         }
     }
