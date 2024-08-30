@@ -1,8 +1,6 @@
 #include "Rendering/Shader.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
-#include <wrl.h>
-#include <dxcapi.h>         // Be sure to link with dxcompiler.lib.
 #include <d3d12shader.h>    // Shader reflection.
 
 using namespace Microsoft::WRL;

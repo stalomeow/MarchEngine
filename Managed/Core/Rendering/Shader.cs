@@ -220,20 +220,6 @@ namespace DX12Demo.Core.Rendering
         public ShaderPassStencilAction BackFace;
     }
 
-    internal class ShaderPass
-    {
-        public string Name = string.Empty;
-        public byte[] VertexShader = [];
-        public byte[] PixelShader = [];
-        public ShaderPassConstantBuffer[] ConstantBuffers = [];
-        public ShaderPassMaterialProperty[] MaterialProperties = [];
-        public ShaderPassTextureProperty[] TextureProperties = [];
-        public ShaderPassCullMode Cull = ShaderPassCullMode.Back;
-        public ShaderPassBlendState[] Blends = [];
-        public ShaderPassDepthState DepthState = new();
-        public ShaderPassStencilState StencilState = new();
-    }
-
     public class Shader : EngineObject
     {
         [JsonProperty]
@@ -242,8 +228,60 @@ namespace DX12Demo.Core.Rendering
         [JsonProperty]
         internal ShaderProperty[] Properties { get; set; } = [];
 
-        [JsonProperty]
-        internal ShaderPass[] Passes { get; set; } = [];
+        internal int GetShaderPassCount()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal string GetShaderPassName(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal byte[] GetShaderPassVertexShader(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal byte[] GetShaderPassPixelShader(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassConstantBuffer[] GetShaderPassConstantBuffers(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassMaterialProperty[] GetShaderPassMaterialProperties(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassTextureProperty[] GetShaderPassTextureProperties(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassCullMode GetShaderPassCullMode(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassBlendState[] GetShaderPassBlendStates(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassDepthState GetShaderPassDepthState(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal ShaderPassStencilState GetShaderPassStencilState(int index)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     internal sealed class ShaderPassColorWriteMaskJsonConverter : JsonConverter<ShaderPassColorWriteMask>
@@ -325,6 +363,54 @@ namespace DX12Demo.Core.Rendering
             }
 
             return char.ToLower(name[0]) + name[1..];
+        }
+    }
+
+    internal sealed class ShaderJsonConverter : JsonConverter<Shader>
+    {
+        public override Shader? ReadJson(JsonReader reader, Type objectType, Shader? existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void WriteJson(JsonWriter writer, Shader? value, JsonSerializer serializer)
+        {
+            if (value == null)
+            {
+                writer.WriteNull();
+                return;
+            }
+
+            writer.WriteStartObject();
+
+            writer.WritePropertyName(nameof(Shader.Name));
+            writer.WriteValue(value.Name);
+
+            writer.WritePropertyName(nameof(Shader.Properties));
+            serializer.Serialize(writer, value.Properties);
+
+            writer.WritePropertyName("Passes");
+            writer.WriteStartArray();
+            for (int i = 0; i < value.GetShaderPassCount(); i++)
+            {
+                writer.WriteStartObject();
+
+                writer.WritePropertyName("Name");
+                writer.WriteValue(value.GetShaderPassName(i));
+
+                writer.WritePropertyName("VertexShader");
+                writer.WriteValue(value.GetShaderPassVertexShader(i));
+
+                writer.WritePropertyName("PixelShader");
+                writer.WriteValue(value.GetShaderPassPixelShader(i));
+
+                // TODO ...
+
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+
+            writer.WriteEndObject();
         }
     }
 }
