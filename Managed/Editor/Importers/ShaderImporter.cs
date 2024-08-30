@@ -1,25 +1,36 @@
 using DX12Demo.Core;
 using DX12Demo.Core.Rendering;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace DX12Demo.Editor.Importers
 {
-    internal class ShaderIncludeImportData(string target)
+    [JsonObject(NamingStrategyType = typeof(ShaderJsonNamingStrategy))]
+    internal class ShaderCodeRawData
     {
-        public string Filename = "Include.hlsl";
-        public string Target = target;
-
-        public ShaderIncludeImportData() : this("vs_5_0") { }
+        public string Filename = string.Empty;
+        public string Entrypoint = string.Empty;
     }
 
-    internal class ShaderPassImportData
+    [JsonObject(NamingStrategyType = typeof(ShaderJsonNamingStrategy))]
+    internal class ShaderPassRawData
     {
-        public string Name = "PassName";
-        public ShaderIncludeImportData VertexShader = new("vs_5_0");
-        public ShaderIncludeImportData PixelShader = new("ps_5_0");
+        public string Name = "<Unnamed Pass>";
+        public string ShaderModel = "6.0";
+        public ShaderCodeRawData Vs = new();
+        public ShaderCodeRawData Ps = new();
         public ShaderPassCullMode Cull = ShaderPassCullMode.Back;
         public List<ShaderPassBlendState> Blends = [new ShaderPassBlendState()];
-        public ShaderPassDepthStencilState DepthStencilState = new();
+        public ShaderPassDepthState Depth = new();
+        public ShaderPassStencilState Stencil = new();
+    }
+
+    [JsonObject(NamingStrategyType = typeof(ShaderJsonNamingStrategy))]
+    internal class ShaderRawData
+    {
+        public string Name = string.Empty;
+        public List<ShaderProperty> Properties = [];
+        public List<ShaderPassRawData> Passes = [];
     }
 
     [CustomAssetImporter(".shader")]
@@ -27,29 +38,21 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => 2;
+        protected override int Version => 4;
 
         protected override bool UseCache => true;
 
-        [JsonProperty]
-        private string m_ShaderName = "New Shader";
-
-        [JsonProperty]
-        private List<ShaderProperty> m_ShaderProperties = new();
-
-        [JsonProperty]
-        private List<ShaderPassImportData> m_ShaderPasses = new();
-
         protected override EngineObject CreateAsset(bool willSaveToFile)
         {
-            var shader = new Shader();
+            string json = File.ReadAllText(AssetFullPath, Encoding.UTF8);
+            var rawData = JsonConvert.DeserializeObject<ShaderRawData>(json, s_JsonSettings);
 
-            foreach (ShaderProperty prop in m_ShaderProperties)
-            {
-                shader.Properties.Add(prop with { });
-            }
 
-            return shader;
         }
+
+        private static readonly JsonSerializerSettings s_JsonSettings = new()
+        {
+            ObjectCreationHandling = ObjectCreationHandling.Replace, // 保证不会重新添加集合元素
+        };
     }
 }

@@ -5,22 +5,15 @@
 
 namespace dx12demo
 {
-    struct ShaderProperty
+    struct ShaderCompileResult
     {
 
-    };
-
-    struct ShaderPass
-    {
-        std::string Name;
     };
 
     class Shader
     {
+    public:
+        static void Compile(const std::string& filename, const std::string& entrypoint, const std::string& targetProfile);
 
-    private:
-        std::string m_Name;
-        std::vector<ShaderProperty> m_Properties;
-        std::vector<ShaderPass> m_Passes;
     };
 }

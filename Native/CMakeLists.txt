@@ -23,7 +23,7 @@ target_link_libraries(dx12-demo PRIVATE Microsoft::DirectX-Headers Microsoft::Di
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXShaderCompiler)
 target_link_libraries(dx12-demo PRIVATE "d3dcompiler.lib" "D3D12.lib" "dxgi.lib")
 target_link_libraries(dx12-demo PRIVATE imgui::imgui)
-target_link_libraries(dx12-demo PRIVATE "C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Host.win-x64/8.0.7/runtimes/win-x64/native/nethost.lib")
+target_link_libraries(dx12-demo PRIVATE "C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Host.win-x64/8.0.8/runtimes/win-x64/native/nethost.lib")
 # target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXTK12)
 target_link_libraries(dx12-demo PRIVATE Microsoft::DirectXTex)
 
@@ -34,7 +34,7 @@ target_compile_definitions(dx12-demo PRIVATE
 
 add_custom_command(TARGET dx12-demo POST_BUILD 
                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-               "C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Host.win-x64/8.0.7/runtimes/win-x64/native/nethost.dll"
+               "C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Host.win-x64/8.0.8/runtimes/win-x64/native/nethost.dll"
                $<TARGET_FILE_DIR:dx12-demo>)
 
 # C# 程序集

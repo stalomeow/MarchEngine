@@ -23,6 +23,6 @@ namespace dx12demo
         bool IsLoaded() const { return m_Api != nullptr; }
 
     private:
-        RENDERDOC_API_1_6_0* m_Api = nullptr;
+        RENDERDOC_API_1_5_0* m_Api = nullptr;
     };
 }
