@@ -6,6 +6,7 @@
 #include "Rendering/Resource/Texture.h"
 #include "Rendering/Mesh.hpp"
 #include "Rendering/RenderPipeline.h"
+#include "Rendering/Shader.h"
 #include "Editor/EditorGUI.h"
 #include "Core/IEngine.h"
 #include <Windows.h>
@@ -130,6 +131,12 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(Texture_SetWrapMode),
             CSHARP_BINDING_ENTRY(Texture_GetFilterMode),
             CSHARP_BINDING_ENTRY(Texture_GetWrapMode),
+
+            CSHARP_BINDING_ENTRY(Shader_New),
+            CSHARP_BINDING_ENTRY(Shader_Delete),
+            CSHARP_BINDING_ENTRY(Shader_GetPassCount),
+            CSHARP_BINDING_ENTRY(Shader_GetPasses),
+            CSHARP_BINDING_ENTRY(Shader_SetPasses),
         };
 
         CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)

@@ -1,13 +1,50 @@
 #include "Rendering/Shader.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
+#include "Rendering/DxException.h"
+#include "Rendering/GfxManager.h"
+#include "Rendering/Mesh.hpp"
 #include <d3d12shader.h>    // Shader reflection.
+#include <algorithm>
 
 using namespace Microsoft::WRL;
 
 namespace dx12demo
 {
-    void Shader::Compile(const std::string& filename, const std::string& entrypoint, const std::string& targetProfile)
+    namespace
+    {
+        std::string GetTargetProfile(const std::string& shaderModel, ShaderProgramType programType)
+        {
+            std::string model = shaderModel;
+            std::replace(model.begin(), model.end(), '.', '_');
+
+            std::string program;
+
+            switch (programType)
+            {
+            case dx12demo::ShaderProgramType::Vertex:
+                program = "vs";
+                break;
+
+            case dx12demo::ShaderProgramType::Pixel:
+                program = "ps";
+                break;
+
+            default:
+                program = "unknown";
+                break;
+            }
+
+            return program + "_" + model;
+        }
+    }
+
+    void Shader::Compile(
+        const std::string& filename,
+        const std::string& entrypoint,
+        const std::string& shaderModel,
+        ShaderProgramType programType,
+        ShaderPass& targetPass)
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
@@ -27,7 +64,7 @@ namespace dx12demo
 
         std::wstring wFilename = StringUtility::Utf8ToUtf16(filename);
         std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(entrypoint);
-        std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(targetProfile);
+        std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(GetTargetProfile(shaderModel, programType));
 
         LPCWSTR pszArgs[] =
         {
@@ -89,17 +126,25 @@ namespace dx12demo
         //
         // Save shader binary.
         //
-        ComPtr<IDxcBlob> pShader = nullptr;
-        ComPtr<IDxcBlobUtf16> pShaderName = nullptr;
-        pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&pShader), &pShaderName);
-        if (pShader != nullptr)
-        {
-            FILE* fp = NULL;
+        ComPtr<IDxcBlob>* pShader = nullptr;
 
-            _wfopen_s(&fp, pShaderName->GetStringPointer(), L"wb");
-            fwrite(pShader->GetBufferPointer(), pShader->GetBufferSize(), 1, fp);
-            fclose(fp);
+        switch (programType)
+        {
+        case dx12demo::ShaderProgramType::Vertex:
+            pShader = &targetPass.VertexShader;
+            break;
+
+        case dx12demo::ShaderProgramType::Pixel:
+            pShader = &targetPass.PixelShader;
+            break;
+
+        default:
+            DEBUG_LOG_ERROR("Unknown ShaderProgramType: %d", (int)programType);
+            return;
         }
+
+        ComPtr<IDxcBlobUtf16> pShaderName = nullptr;
+        pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(pShader->ReleaseAndGetAddressOf()), &pShaderName);
 
         //
         // Save pdb.
@@ -120,41 +165,41 @@ namespace dx12demo
         //
         // Print hash.
         //
-        ComPtr<IDxcBlob> pHash = nullptr;
-        pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&pHash), nullptr);
-        if (pHash != nullptr)
-        {
-            wprintf(L"Hash: ");
-            DxcShaderHash* pHashBuf = (DxcShaderHash*)pHash->GetBufferPointer();
-            for (int i = 0; i < _countof(pHashBuf->HashDigest); i++)
-                wprintf(L"%.2x", pHashBuf->HashDigest[i]);
-            wprintf(L"\n");
-        }
+        //ComPtr<IDxcBlob> pHash = nullptr;
+        //pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&pHash), nullptr);
+        //if (pHash != nullptr)
+        //{
+        //    wprintf(L"Hash: ");
+        //    DxcShaderHash* pHashBuf = (DxcShaderHash*)pHash->GetBufferPointer();
+        //    for (int i = 0; i < _countof(pHashBuf->HashDigest); i++)
+        //        wprintf(L"%.2x", pHashBuf->HashDigest[i]);
+        //    wprintf(L"\n");
+        //}
 
         //
         // Demonstrate getting the hash from the PDB blob using the IDxcUtils::GetPDBContents API
         //
-        ComPtr<IDxcBlob> pHashDigestBlob = nullptr;
-        ComPtr<IDxcBlob> pDebugDxilContainer = nullptr;
-        if (SUCCEEDED(pUtils->GetPDBContents(pPDB.Get(), &pHashDigestBlob, &pDebugDxilContainer)))
-        {
-            // This API returns the raw hash digest, rather than a DxcShaderHash structure.
-            // This will be the same as the DxcShaderHash::HashDigest returned from
-            // IDxcResult::GetOutput(DXC_OUT_SHADER_HASH, ...).
-            wprintf(L"Hash from PDB: ");
-            const BYTE* pHashDigest = (const BYTE*)pHashDigestBlob->GetBufferPointer();
-            assert(pHashDigestBlob->GetBufferSize() == 16); // hash digest is always 16 bytes.
-            for (int i = 0; i < pHashDigestBlob->GetBufferSize(); i++)
-                wprintf(L"%.2x", pHashDigest[i]);
-            wprintf(L"\n");
+        //ComPtr<IDxcBlob> pHashDigestBlob = nullptr;
+        //ComPtr<IDxcBlob> pDebugDxilContainer = nullptr;
+        //if (SUCCEEDED(pUtils->GetPDBContents(pPDB.Get(), &pHashDigestBlob, &pDebugDxilContainer)))
+        //{
+        //    // This API returns the raw hash digest, rather than a DxcShaderHash structure.
+        //    // This will be the same as the DxcShaderHash::HashDigest returned from
+        //    // IDxcResult::GetOutput(DXC_OUT_SHADER_HASH, ...).
+        //    wprintf(L"Hash from PDB: ");
+        //    const BYTE* pHashDigest = (const BYTE*)pHashDigestBlob->GetBufferPointer();
+        //    assert(pHashDigestBlob->GetBufferSize() == 16); // hash digest is always 16 bytes.
+        //    for (int i = 0; i < pHashDigestBlob->GetBufferSize(); i++)
+        //        wprintf(L"%.2x", pHashDigest[i]);
+        //    wprintf(L"\n");
 
-            // The pDebugDxilContainer blob will contain a DxilContainer formatted
-            // binary, but with different parts than the pShader blob retrieved
-            // earlier.
-            // The parts in this container will vary depending on debug options and
-            // the compiler version.
-            // This blob is not meant to be directly interpreted by an application.
-        }
+        //    // The pDebugDxilContainer blob will contain a DxilContainer formatted
+        //    // binary, but with different parts than the pShader blob retrieved
+        //    // earlier.
+        //    // The parts in this container will vary depending on debug options and
+        //    // the compiler version.
+        //    // This blob is not meant to be directly interpreted by an application.
+        //}
 
         //
         // Get separate reflection.
@@ -175,6 +220,285 @@ namespace dx12demo
             pUtils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection));
 
             // Use reflection interface here.
+
+            D3D12_SHADER_DESC shaderDesc = {};
+            THROW_IF_FAILED(pReflection->GetDesc(&shaderDesc));
+
+            for (UINT i = 0; i < shaderDesc.BoundResources; i++)
+            {
+                D3D12_SHADER_INPUT_BIND_DESC bindDesc = {};
+                THROW_IF_FAILED(pReflection->GetResourceBindingDesc(i, &bindDesc));
+
+                switch (bindDesc.Type)
+                {
+                case D3D_SIT_CBUFFER:
+                {
+                    ShaderPassConstantBuffer& cb = targetPass.ConstantBuffers[bindDesc.Name];
+                    cb.ShaderRegister = bindDesc.BindPoint;
+                    cb.RegisterSpace = bindDesc.Space;
+                    break;
+                }
+
+                case D3D_SIT_TEXTURE:
+                {
+                    auto it = std::find_if(targetPass.TextureProperties.begin(), targetPass.TextureProperties.end(),
+                        [&](const ShaderPassTextureProperty& prop) { return prop.Name == bindDesc.Name; });
+                    ShaderPassTextureProperty& tex = (it != targetPass.TextureProperties.end()) ? *it
+                        : targetPass.TextureProperties.emplace_back();
+
+                    tex.Name = bindDesc.Name;
+                    tex.ShaderRegisterTexture = bindDesc.BindPoint;
+                    tex.RegisterSpaceTexture = bindDesc.Space;
+
+                    std::string samplerName = "sampler" + tex.Name;
+                    D3D12_SHADER_INPUT_BIND_DESC samplerDesc = {};
+                    HRESULT hr = pReflection->GetResourceBindingDescByName(samplerName.c_str(), &samplerDesc);
+
+                    if (SUCCEEDED(hr))
+                    {
+                        tex.HasSampler = true;
+                        tex.ShaderRegisterSampler = samplerDesc.BindPoint;
+                        tex.RegisterSpaceSampler = samplerDesc.Space;
+                    }
+                    else
+                    {
+                        tex.HasSampler = false;
+                    }
+                    break;
+                }
+
+                case D3D_SIT_SAMPLER:
+                {
+                    ShaderPassSampler& sampler = targetPass.Samplers[bindDesc.Name];
+                    sampler.ShaderRegister = bindDesc.BindPoint;
+                    sampler.RegisterSpace = bindDesc.Space;
+                    break;
+                }
+                }
+            }
+
+            ID3D12ShaderReflectionConstantBuffer* cbMat = pReflection->GetConstantBufferByName(ShaderPass::MaterialCbName);
+            D3D12_SHADER_BUFFER_DESC cbMatDesc = {};
+            HRESULT hr = cbMat->GetDesc(&cbMatDesc);
+
+            if (SUCCEEDED(hr))
+            {
+                for (UINT i = 0; i < cbMatDesc.Variables; i++)
+                {
+                    ID3D12ShaderReflectionVariable* var = cbMat->GetVariableByIndex(i);
+                    D3D12_SHADER_VARIABLE_DESC varDesc = {};
+                    THROW_IF_FAILED(var->GetDesc(&varDesc));
+
+                    ShaderPassMaterialProperty& prop = targetPass.MaterialProperties[varDesc.Name];
+                    prop.Offset = varDesc.StartOffset;
+                    prop.Size = varDesc.Size;
+                }
+            }
         }
+    }
+
+    std::vector<CD3DX12_STATIC_SAMPLER_DESC> ShaderPass::CreateStaticSamplers()
+    {
+        std::vector<CD3DX12_STATIC_SAMPLER_DESC> results;
+        decltype(Samplers.end()) it;
+
+        if ((it = Samplers.find("sampler_PointWrap")) != Samplers.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
+                it->second.ShaderRegister,        // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_POINT,   // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+        }
+
+        if ((it = Samplers.find("sampler_PointClamp")) != Samplers.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
+                it->second.ShaderRegister,         // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_POINT,    // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+        }
+
+        if ((it = Samplers.find("sampler_LinearWrap")) != Samplers.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
+                it->second.ShaderRegister,        // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+        }
+
+        if ((it = Samplers.find("sampler_LinearClamp")) != Samplers.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
+                it->second.ShaderRegister,         // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_LINEAR,   // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+        }
+
+        if ((it = Samplers.find("sampler_AnisotropicWrap")) != Samplers.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
+                it->second.ShaderRegister,        // shaderRegister
+                D3D12_FILTER_ANISOTROPIC,         // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+        }
+
+        if ((it = Samplers.find("sampler_AnisotropicClamp")) != Samplers.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
+                it->second.ShaderRegister,         // shaderRegister
+                D3D12_FILTER_ANISOTROPIC,          // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+        }
+
+        return results;
+    }
+
+    void ShaderPass::CreateRootSignature()
+    {
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> textureRanges;
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
+
+        for (const ShaderPassTextureProperty& texProp : TextureProperties)
+        {
+            textureRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
+                texProp.ShaderRegisterTexture, texProp.RegisterSpaceTexture,
+                D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+
+            if (texProp.HasSampler)
+            {
+                samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
+                    texProp.ShaderRegisterSampler, texProp.RegisterSpaceSampler,
+                    D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+            }
+        }
+
+        std::vector<CD3DX12_ROOT_PARAMETER> params;
+
+        // Perfomance TIP: Order from most frequent to least frequent.
+        params.emplace_back().InitAsDescriptorTable(textureRanges.size(), textureRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
+        params.emplace_back().InitAsDescriptorTable(samplerRanges.size(), samplerRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
+
+        for (const std::pair<std::string, ShaderPassConstantBuffer>& kv : ConstantBuffers)
+        {
+            params.emplace_back().InitAsConstantBufferView(kv.second.ShaderRegister, kv.second.RegisterSpace);
+            m_CbRootParamIndexMap[kv.first] = static_cast<UINT>(params.size() - 1);
+        }
+
+        auto staticSamplers = CreateStaticSamplers();
+
+        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(static_cast<UINT>(params.size()), params.data(),
+            static_cast<UINT>(staticSamplers.size()), staticSamplers.data(),
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+        ComPtr<ID3DBlob> serializedRootSig = nullptr;
+        ComPtr<ID3DBlob> errorBlob = nullptr;
+        HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+            serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+
+        if (errorBlob != nullptr)
+        {
+            DEBUG_LOG_ERROR(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+        }
+        THROW_IF_FAILED(hr);
+
+        THROW_IF_FAILED(GetGfxManager().GetDevice()->CreateRootSignature(0,
+            serializedRootSig->GetBufferPointer(), serializedRootSig->GetBufferSize(),
+            IID_PPV_ARGS(&m_RootSignature)));
+    }
+
+    void ShaderPass::CreatePso()
+    {
+        CreateRootSignature();
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+        psoDesc.InputLayout = SimpleMesh::VertexInputLayout();
+        psoDesc.pRootSignature = m_RootSignature.Get();
+        psoDesc.VS =
+        {
+            VertexShader->GetBufferPointer(),
+            VertexShader->GetBufferSize()
+        };
+        psoDesc.PS =
+        {
+            PixelShader->GetBufferPointer(),
+            PixelShader->GetBufferSize()
+        };
+
+        psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(Cull) + 1);
+
+        psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+        psoDesc.BlendState.IndependentBlendEnable = TRUE;
+
+        for (int i = 0; i < Blends.size(); i++)
+        {
+            const ShaderPassBlendState& b = Blends[i];
+            D3D12_RENDER_TARGET_BLEND_DESC& blendDesc = psoDesc.BlendState.RenderTarget[i];
+            blendDesc.BlendEnable = b.Enable;
+            blendDesc.LogicOpEnable = FALSE;
+            blendDesc.SrcBlend = static_cast<D3D12_BLEND>(static_cast<int>(b.Rgb.Src) + 1);
+            blendDesc.DestBlend = static_cast<D3D12_BLEND>(static_cast<int>(b.Rgb.Dest) + 1);
+            blendDesc.BlendOp = static_cast<D3D12_BLEND_OP>(static_cast<int>(b.Rgb.Op) + 1);
+            blendDesc.SrcBlendAlpha = static_cast<D3D12_BLEND>(static_cast<int>(b.Alpha.Src) + 1);
+            blendDesc.DestBlendAlpha = static_cast<D3D12_BLEND>(static_cast<int>(b.Alpha.Dest) + 1);
+            blendDesc.BlendOpAlpha = static_cast<D3D12_BLEND_OP>(static_cast<int>(b.Alpha.Op) + 1);
+            blendDesc.RenderTargetWriteMask = static_cast<D3D12_COLOR_WRITE_ENABLE>(b.WriteMask);
+        }
+
+        psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        psoDesc.DepthStencilState.DepthEnable = DepthState.Enable;
+        psoDesc.DepthStencilState.DepthWriteMask = DepthState.Write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+        psoDesc.DepthStencilState.DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(DepthState.Compare) + 1);
+        psoDesc.DepthStencilState.StencilEnable = StencilState.Enable;
+        psoDesc.DepthStencilState.StencilReadMask = static_cast<UINT8>(StencilState.ReadMask);
+        psoDesc.DepthStencilState.StencilWriteMask = static_cast<UINT8>(StencilState.WriteMask);
+        psoDesc.DepthStencilState.FrontFace.StencilFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(StencilState.FrontFace.FailOp) + 1);
+        psoDesc.DepthStencilState.FrontFace.StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(StencilState.FrontFace.DepthFailOp) + 1);
+        psoDesc.DepthStencilState.FrontFace.StencilPassOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(StencilState.FrontFace.PassOp) + 1);
+        psoDesc.DepthStencilState.FrontFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(StencilState.FrontFace.Compare) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(StencilState.BackFace.FailOp) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(StencilState.BackFace.DepthFailOp) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilPassOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(StencilState.BackFace.PassOp) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(StencilState.BackFace.Compare) + 1);
+
+        psoDesc.SampleMask = UINT_MAX;
+        psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        psoDesc.NumRenderTargets = 1;
+        psoDesc.RTVFormats[0] = GetGfxManager().GetBackBufferFormat();
+        psoDesc.SampleDesc.Count = 1;
+        psoDesc.SampleDesc.Quality = 0;
+        //psoDesc.DSVFormat = m_DepthStencilFormat;
+
+        //auto device = GetGfxManager().GetDevice();
+        //THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PsoNormal)));
+
+        //psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+        //THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PsoWireframe)));
+
+        //psoDesc.SampleDesc.Count = m_MSAASampleCount;
+        //psoDesc.SampleDesc.Quality = m_MSAAQuality;
+        //psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+        //THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PsoNormalMSAA)));
+
+        //psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+        //THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PsoWireframeMSAA)));
     }
 }
