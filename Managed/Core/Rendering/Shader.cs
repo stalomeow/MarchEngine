@@ -34,12 +34,79 @@ namespace DX12Demo.Core.Rendering
 
         public float DefaultFloat;
         public int DefaultInt;
-        public Color DefaultColor;
-        public Vector4 DefaultVector;
+        public List<float> DefaultColor = [0, 0, 0, 1];
+        public List<float> DefaultVector = [0, 0, 0, 0];
         public ShaderDefaultTexture DefaultTexture;
+
+        public Color GetDefaultColor()
+        {
+            List<float> l = DefaultColor;
+
+            if (l.Count < 4)
+            {
+                l.AddRange(Enumerable.Repeat(0.0f, 4 - l.Count));
+            }
+
+            return new Color(l[0], l[1], l[2], l[3]);
+        }
+
+        public Vector4 GetDefaultVector()
+        {
+            List<float> l = DefaultVector;
+
+            if (l.Count < 4)
+            {
+                l.AddRange(Enumerable.Repeat(0.0f, 4 - l.Count));
+            }
+
+            return new Vector4(l[0], l[1], l[2], l[3]);
+        }
     }
 
-    internal class ShaderPassConstantBuffer
+    internal class ShaderPassConstantBuffer : INativeMarshal<ShaderPassConstantBuffer, ShaderPassConstantBuffer.Native>
+    {
+        public string Name = string.Empty;
+        public uint ShaderRegister;
+        public uint RegisterSpace;
+        public uint Size;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public uint ShaderRegister;
+            public uint RegisterSpace;
+            public uint Size;
+        }
+
+        public static ShaderPassConstantBuffer FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            ShaderRegister = native.ShaderRegister,
+            RegisterSpace = native.RegisterSpace,
+            Size = native.Size,
+        };
+
+        public static void ToNative(ShaderPassConstantBuffer value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.ShaderRegister = value.ShaderRegister;
+            native.RegisterSpace = value.RegisterSpace;
+            native.Size = value.Size;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+        }
+
+        public static unsafe int SizeOfNative()
+        {
+            return sizeof(Native);
+        }
+    }
+
+    internal class ShaderPassSampler : INativeMarshal<ShaderPassSampler, ShaderPassSampler.Native>
     {
         public string Name = string.Empty;
         public uint ShaderRegister;
@@ -53,61 +120,32 @@ namespace DX12Demo.Core.Rendering
             public uint RegisterSpace;
         }
 
-        internal static ShaderPassConstantBuffer GetAndFree(ref Native native) => new()
+        public static ShaderPassSampler FromNative(ref Native native) => new()
         {
-            Name = NativeString.GetAndFree(native.Name),
+            Name = NativeString.Get(native.Name),
             ShaderRegister = native.ShaderRegister,
             RegisterSpace = native.RegisterSpace,
         };
 
-        internal static void ToNative(ShaderPassConstantBuffer value, out Native native)
+        public static void ToNative(ShaderPassSampler value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
             native.ShaderRegister = value.ShaderRegister;
             native.RegisterSpace = value.RegisterSpace;
         }
 
-        internal static void FreeNative(ref Native native)
+        public static void FreeNative(ref Native native)
         {
             NativeString.Free(native.Name);
         }
-    }
 
-    internal class ShaderPassSampler
-    {
-        public string Name = string.Empty;
-        public uint ShaderRegister;
-        public uint RegisterSpace;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Native
+        public static unsafe int SizeOfNative()
         {
-            public nint Name;
-            public uint ShaderRegister;
-            public uint RegisterSpace;
-        }
-
-        internal static ShaderPassSampler GetAndFree(ref Native native) => new()
-        {
-            Name = NativeString.GetAndFree(native.Name),
-            ShaderRegister = native.ShaderRegister,
-            RegisterSpace = native.RegisterSpace,
-        };
-
-        internal static void ToNative(ShaderPassSampler value, out Native native)
-        {
-            native.Name = NativeString.New(value.Name);
-            native.ShaderRegister = value.ShaderRegister;
-            native.RegisterSpace = value.RegisterSpace;
-        }
-
-        internal static void FreeNative(ref Native native)
-        {
-            NativeString.Free(native.Name);
+            return sizeof(Native);
         }
     }
 
-    internal class ShaderPassMaterialProperty
+    internal class ShaderPassMaterialProperty : INativeMarshal<ShaderPassMaterialProperty, ShaderPassMaterialProperty.Native>
     {
         public string Name = string.Empty;
         public uint Offset;
@@ -121,27 +159,32 @@ namespace DX12Demo.Core.Rendering
             public uint Size;
         }
 
-        internal static ShaderPassMaterialProperty GetAndFree(ref Native native) => new()
+        public static ShaderPassMaterialProperty FromNative(ref Native native) => new()
         {
-            Name = NativeString.GetAndFree(native.Name),
+            Name = NativeString.Get(native.Name),
             Offset = native.Offset,
             Size = native.Size,
         };
 
-        internal static void ToNative(ShaderPassMaterialProperty value, out Native native)
+        public static void ToNative(ShaderPassMaterialProperty value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
             native.Offset = value.Offset;
             native.Size = value.Size;
         }
 
-        internal static void FreeNative(ref Native native)
+        public static void FreeNative(ref Native native)
         {
             NativeString.Free(native.Name);
         }
+
+        public static unsafe int SizeOfNative()
+        {
+            return sizeof(Native);
+        }
     }
 
-    internal class ShaderPassTextureProperty
+    internal class ShaderPassTextureProperty : INativeMarshal<ShaderPassTextureProperty, ShaderPassTextureProperty.Native>
     {
         public string Name = string.Empty;
         public uint ShaderRegisterTexture;
@@ -161,9 +204,9 @@ namespace DX12Demo.Core.Rendering
             public uint RegisterSpaceSampler;
         }
 
-        internal static ShaderPassTextureProperty GetAndFree(ref Native native) => new()
+        public static ShaderPassTextureProperty FromNative(ref Native native) => new()
         {
-            Name = NativeString.GetAndFree(native.Name),
+            Name = NativeString.Get(native.Name),
             ShaderRegisterTexture = native.ShaderRegisterTexture,
             RegisterSpaceTexture = native.RegisterSpaceTexture,
             HasSampler = native.HasSampler,
@@ -171,7 +214,7 @@ namespace DX12Demo.Core.Rendering
             RegisterSpaceSampler = native.RegisterSpaceSampler,
         };
 
-        internal static void ToNative(ShaderPassTextureProperty value, out Native native)
+        public static void ToNative(ShaderPassTextureProperty value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
             native.ShaderRegisterTexture = value.ShaderRegisterTexture;
@@ -181,9 +224,14 @@ namespace DX12Demo.Core.Rendering
             native.RegisterSpaceSampler = value.RegisterSpaceSampler;
         }
 
-        internal static void FreeNative(ref Native native)
+        public static void FreeNative(ref Native native)
         {
             NativeString.Free(native.Name);
+        }
+
+        public static unsafe int SizeOfNative()
+        {
+            return sizeof(Native);
         }
     }
 
@@ -305,7 +353,7 @@ namespace DX12Demo.Core.Rendering
         public ShaderPassStencilAction BackFace;
     }
 
-    internal class ShaderPass
+    internal class ShaderPass : INativeMarshal<ShaderPass, ShaderPass.Native>
     {
         public string Name = string.Empty;
 
@@ -327,173 +375,84 @@ namespace DX12Demo.Core.Rendering
         {
             public nint Name;
 
-            public byte* VertexShader;
-            public uint VertexShaderSize;
-            public byte* PixelShader;
-            public uint PixelShaderSize;
+            public NativeArray<byte> VertexShader;
+            public NativeArray<byte> PixelShader;
 
-            public ShaderPassConstantBuffer.Native* ConstantBuffers;
-            public uint ConstantBuffersSize;
-            public ShaderPassSampler.Native* Samplers;
-            public uint SamplersSize;
-            public ShaderPassMaterialProperty.Native* MaterialProperties;
-            public uint MaterialPropertiesSize;
-            public ShaderPassTextureProperty.Native* TextureProperties;
-            public uint TexturePropertiesSize;
+            public NativeArrayMarshal<ShaderPassConstantBuffer> ConstantBuffers;
+            public NativeArrayMarshal<ShaderPassSampler> Samplers;
+            public NativeArrayMarshal<ShaderPassMaterialProperty> MaterialProperties;
+            public NativeArrayMarshal<ShaderPassTextureProperty> TextureProperties;
 
             public ShaderPassCullMode Cull;
-            public ShaderPassBlendState* Blends;
-            public uint BlendsSize;
+            public NativeArray<ShaderPassBlendState> Blends;
             public ShaderPassDepthState DepthState;
             public ShaderPassStencilState StencilState;
         }
 
-        internal static unsafe ShaderPass GetAndFree(ref Native native)
+        public static unsafe ShaderPass FromNative(ref Native native) => new()
         {
-            var pass = new ShaderPass
-            {
-                Name = NativeString.GetAndFree(native.Name),
-                Cull = native.Cull,
-                DepthState = native.DepthState,
-                StencilState = native.StencilState,
-            };
+            Name = NativeString.Get(native.Name),
+            Cull = native.Cull,
+            DepthState = native.DepthState,
+            StencilState = native.StencilState,
+            VertexShader = native.VertexShader.Value,
+            PixelShader = native.PixelShader.Value,
 
-            pass.VertexShader = new byte[native.VertexShaderSize];
-            Marshal.Copy((nint)native.VertexShader, pass.VertexShader, 0, pass.VertexShader.Length);
+            ConstantBuffers = native.ConstantBuffers.Value,
+            Samplers = native.Samplers.Value,
+            MaterialProperties = native.MaterialProperties.Value,
+            TextureProperties = native.TextureProperties.Value,
 
-            pass.PixelShader = new byte[native.PixelShaderSize];
-            Marshal.Copy((nint)native.PixelShader, pass.PixelShader, 0, pass.PixelShader.Length);
+            Blends = native.Blends.Value
+        };
 
-            pass.ConstantBuffers = new ShaderPassConstantBuffer[native.ConstantBuffersSize];
-            for (int i = 0; i < native.ConstantBuffersSize; i++)
-            {
-                pass.ConstantBuffers[i] = ShaderPassConstantBuffer.GetAndFree(ref native.ConstantBuffers[i]);
-            }
-
-            pass.Samplers = new ShaderPassSampler[native.SamplersSize];
-            for (int i = 0; i < native.SamplersSize; i++)
-            {
-                pass.Samplers[i] = ShaderPassSampler.GetAndFree(ref native.Samplers[i]);
-            }
-
-            pass.MaterialProperties = new ShaderPassMaterialProperty[native.MaterialPropertiesSize];
-            for (int i = 0; i < native.MaterialPropertiesSize; i++)
-            {
-                pass.MaterialProperties[i] = ShaderPassMaterialProperty.GetAndFree(ref native.MaterialProperties[i]);
-            }
-
-            pass.TextureProperties = new ShaderPassTextureProperty[native.TexturePropertiesSize];
-            for (int i = 0; i < native.TexturePropertiesSize; i++)
-            {
-                pass.TextureProperties[i] = ShaderPassTextureProperty.GetAndFree(ref native.TextureProperties[i]);
-            }
-
-            pass.Blends = new ShaderPassBlendState[native.BlendsSize];
-            for (int i = 0; i < native.BlendsSize; i++)
-            {
-                pass.Blends[i] = native.Blends[i];
-            }
-
-            return pass;
-        }
-
-        internal static unsafe void ToNative(ShaderPass value, out Native native)
+        public static unsafe void ToNative(ShaderPass value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
 
-            native.VertexShader = (byte*)Marshal.AllocHGlobal(value.VertexShader.Length);
-            Marshal.Copy(value.VertexShader, 0, (nint)native.VertexShader, value.VertexShader.Length);
-            native.VertexShaderSize = (uint)value.VertexShader.Length;
+            native.VertexShader = value.VertexShader;
+            native.PixelShader = value.PixelShader;
 
-            native.PixelShader = (byte*)Marshal.AllocHGlobal(value.PixelShader.Length);
-            Marshal.Copy(value.PixelShader, 0, (nint)native.PixelShader, value.PixelShader.Length);
-            native.PixelShaderSize = (uint)value.PixelShader.Length;
-
-            native.ConstantBuffers = (ShaderPassConstantBuffer.Native*)Marshal.AllocHGlobal(
-                sizeof(ShaderPassConstantBuffer.Native) * value.ConstantBuffers.Length);
-            native.ConstantBuffersSize = (uint)value.ConstantBuffers.Length;
-            for (int i = 0; i < value.ConstantBuffers.Length; i++)
-            {
-                ShaderPassConstantBuffer.ToNative(value.ConstantBuffers[i], out native.ConstantBuffers[i]);
-            }
-
-            native.Samplers = (ShaderPassSampler.Native*)Marshal.AllocHGlobal(
-                sizeof(ShaderPassSampler.Native) * value.Samplers.Length);
-            native.SamplersSize = (uint)value.Samplers.Length;
-            for (int i = 0; i < value.Samplers.Length; i++)
-            {
-                ShaderPassSampler.ToNative(value.Samplers[i], out native.Samplers[i]);
-            }
-
-            native.MaterialProperties = (ShaderPassMaterialProperty.Native*)Marshal.AllocHGlobal(
-                sizeof(ShaderPassMaterialProperty.Native) * value.MaterialProperties.Length);
-            native.MaterialPropertiesSize = (uint)value.MaterialProperties.Length;
-            for (int i = 0; i < value.MaterialProperties.Length; i++)
-            {
-                ShaderPassMaterialProperty.ToNative(value.MaterialProperties[i], out native.MaterialProperties[i]);
-            }
-
-            native.TextureProperties = (ShaderPassTextureProperty.Native*)Marshal.AllocHGlobal(
-                sizeof(ShaderPassTextureProperty.Native) * value.TextureProperties.Length);
-            native.TexturePropertiesSize = (uint)value.TextureProperties.Length;
-            for (int i = 0; i < value.TextureProperties.Length; i++)
-            {
-                ShaderPassTextureProperty.ToNative(value.TextureProperties[i], out native.TextureProperties[i]);
-            }
+            native.ConstantBuffers = value.ConstantBuffers;
+            native.Samplers = value.Samplers;
+            native.MaterialProperties = value.MaterialProperties;
+            native.TextureProperties = value.TextureProperties;
 
             native.Cull = value.Cull;
-
-            native.Blends = (ShaderPassBlendState*)Marshal.AllocHGlobal(
-                sizeof(ShaderPassBlendState) * value.Blends.Length);
-            native.BlendsSize = (uint)value.Blends.Length;
-            for (int i = 0; i < value.Blends.Length; i++)
-            {
-                native.Blends[i] = value.Blends[i];
-            }
-
+            native.Blends = value.Blends;
             native.DepthState = value.DepthState;
             native.StencilState = value.StencilState;
         }
 
-        internal static unsafe void FreeNative(ref Native native)
+        public static unsafe void FreeNative(ref Native native)
         {
             NativeString.Free(native.Name);
 
-            Marshal.FreeHGlobal((nint)native.VertexShader);
-            Marshal.FreeHGlobal((nint)native.PixelShader);
+            native.VertexShader.Dispose();
+            native.PixelShader.Dispose();
 
-            for (int i = 0; i < native.ConstantBuffersSize; i++)
-            {
-                ShaderPassConstantBuffer.FreeNative(ref native.ConstantBuffers[i]);
-            }
-            Marshal.FreeHGlobal((nint)native.ConstantBuffers);
+            native.ConstantBuffers.Dispose();
+            native.Samplers.Dispose();
+            native.MaterialProperties.Dispose();
+            native.TextureProperties.Dispose();
 
-            for (int i = 0; i < native.SamplersSize; i++)
-            {
-                ShaderPassSampler.FreeNative(ref native.Samplers[i]);
-            }
-            Marshal.FreeHGlobal((nint)native.Samplers);
+            native.Blends.Dispose();
+        }
 
-            for (int i = 0; i < native.MaterialPropertiesSize; i++)
-            {
-                ShaderPassMaterialProperty.FreeNative(ref native.MaterialProperties[i]);
-            }
-            Marshal.FreeHGlobal((nint)native.MaterialProperties);
-
-            for (int i = 0; i < native.TexturePropertiesSize; i++)
-            {
-                ShaderPassTextureProperty.FreeNative(ref native.TextureProperties[i]);
-            }
-            Marshal.FreeHGlobal((nint)native.TextureProperties);
-
-            Marshal.FreeHGlobal((nint)native.Blends);
+        public static unsafe int SizeOfNative()
+        {
+            return sizeof(Native);
         }
     }
 
-    public unsafe partial class Shader : EngineObject
+    enum ShaderProgramType : int
     {
-        private nint m_Shader;
+        Vertex = 0,
+        Pixel = 1,
+    };
 
+    public unsafe partial class Shader : NativeEngineObject
+    {
         [JsonProperty]
         internal string Name { get; set; } = string.Empty;
 
@@ -505,40 +464,36 @@ namespace DX12Demo.Core.Rendering
         {
             get
             {
-                int count = Shader_GetPassCount(m_Shader);
-                ShaderPass.Native* pPasses = (ShaderPass.Native*)Marshal.AllocHGlobal(sizeof(ShaderPass.Native) * count);
-                Shader_GetPasses(m_Shader, pPasses);
-
-                var passes = new ShaderPass[count];
-                for (int i = 0; i < count; i++)
-                {
-                    passes[i] = ShaderPass.GetAndFree(ref pPasses[i]);
-                }
-
-                Marshal.FreeHGlobal((nint)pPasses);
-                return passes;
+                int count = Shader_GetPassCount(NativePtr);
+                using var buffer = new NativeArrayMarshal<ShaderPass>(count);
+                Shader_GetPasses(NativePtr, buffer);
+                return buffer.Value;
             }
 
             set
             {
-                ShaderPass.Native* pPasses = (ShaderPass.Native*)Marshal.AllocHGlobal(
-                    sizeof(ShaderPass.Native) * value.Length);
-
-                for (int i = 0; i < value.Length; i++)
-                {
-                    ShaderPass.ToNative(value[i], out pPasses[i]);
-                }
-
-                Shader_SetPasses(m_Shader, pPasses, value.Length);
-
-                for (int i = 0; i < value.Length; i++)
-                {
-                    ShaderPass.FreeNative(ref pPasses[i]);
-                }
-
-                Marshal.FreeHGlobal((nint)pPasses);
+                using NativeArrayMarshal<ShaderPass> passes = value;
+                Shader_SetPasses(NativePtr, passes);
             }
         }
+
+        public Shader() : base(Shader_New()) { }
+
+        protected override void Dispose(bool disposing)
+        {
+            Shader_Delete(NativePtr);
+        }
+
+        internal void CompilePass(int passIndex, string filename, string entrypoint, string shaderModel, ShaderProgramType programType)
+        {
+            using NativeString f = filename;
+            using NativeString e = entrypoint;
+            using NativeString s = shaderModel;
+
+            Shader_CompilePass(NativePtr, passIndex, f.Data, e.Data, s.Data, programType);
+        }
+
+        #region Native
 
         [NativeFunction]
         private static partial nint Shader_New();
@@ -550,10 +505,16 @@ namespace DX12Demo.Core.Rendering
         private static partial int Shader_GetPassCount(nint pShader);
 
         [NativeFunction]
-        private static partial void Shader_GetPasses(nint pShader, ShaderPass.Native* pPasses);
+        private static partial void Shader_GetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
 
         [NativeFunction]
-        private static partial void Shader_SetPasses(nint pShader, ShaderPass.Native* pPasses, int passCount);
+        private static partial void Shader_SetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
+
+        [NativeFunction]
+        private static partial void Shader_CompilePass(nint pShader, int passIndex,
+            nint filename, nint entrypoint, nint shaderModel, ShaderProgramType programType);
+
+        #endregion
     }
 
     internal sealed class ShaderPassColorWriteMaskJsonConverter : JsonConverter<ShaderPassColorWriteMask>
@@ -561,7 +522,7 @@ namespace DX12Demo.Core.Rendering
         public override ShaderPassColorWriteMask ReadJson(JsonReader reader, Type objectType, ShaderPassColorWriteMask existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
             var mask = ShaderPassColorWriteMask.None;
-            string? value = reader.ReadAsString();
+            string? value = reader.Value?.ToString();
 
             if (!string.IsNullOrEmpty(value))
             {

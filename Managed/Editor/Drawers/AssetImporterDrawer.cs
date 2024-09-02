@@ -2,7 +2,7 @@ using DX12Demo.Core.Serialization;
 
 namespace DX12Demo.Editor.Drawers
 {
-    public class AssetImporterDrawer<T> : InspectorDrawerFor<T> where T : AssetImporter
+    public abstract class AssetImporterDrawerFor<T> : InspectorDrawerFor<T> where T : AssetImporter
     {
         private bool m_IsChanged;
 
@@ -32,9 +32,9 @@ namespace DX12Demo.Editor.Drawers
                 EditorGUI.LabelField("Path", string.Empty, Target.AssetPath);
             }
 
-            m_IsChanged |= DrawProperties(out bool hasProperty);
+            m_IsChanged |= DrawProperties(out bool showApplyRevertButtons);
 
-            if (hasProperty)
+            if (showApplyRevertButtons)
             {
                 EditorGUI.Space();
 
@@ -48,6 +48,7 @@ namespace DX12Demo.Editor.Drawers
                     if (EditorGUI.Button("Apply"))
                     {
                         ApplyChanges();
+                        m_IsChanged = false;
                     }
 
                     EditorGUI.SameLine();
@@ -55,6 +56,7 @@ namespace DX12Demo.Editor.Drawers
                     if (EditorGUI.Button("Revert"))
                     {
                         RevertChanges();
+                        m_IsChanged = false;
                     }
                 }
             }
@@ -62,27 +64,61 @@ namespace DX12Demo.Editor.Drawers
             DrawAdditional();
         }
 
-        private void ApplyChanges()
-        {
-            Target.SaveAndReimport();
-            m_IsChanged = false;
-        }
+        /// <summary>
+        /// 绘制属性面板
+        /// </summary>
+        /// <param name="showApplyRevertButtons"></param>
+        /// <returns>是否有属性发生变化</returns>
+        protected abstract bool DrawProperties(out bool showApplyRevertButtons);
 
-        private void RevertChanges()
-        {
-            PersistentManager.Overwrite(Target.ImporterFullPath, Target);
-            m_IsChanged = false;
-        }
+        protected virtual void DrawAdditional() { }
 
-        protected virtual bool DrawProperties(out bool hasProperty)
+        protected abstract void ApplyChanges();
+
+        protected abstract void RevertChanges();
+    }
+
+    internal abstract class DirectAssetImporterDrawerFor<T> : AssetImporterDrawerFor<T> where T : DirectAssetImporter
+    {
+        protected override bool DrawProperties(out bool showApplyRevertButtons)
         {
-            bool isChanged = EditorGUI.ObjectPropertyFields(Target, out int propertyCount);
-            hasProperty = propertyCount > 0;
+            bool isChanged = EditorGUI.ObjectPropertyFields(Target.Asset, out int propertyCount);
+            showApplyRevertButtons = propertyCount > 0;
             return isChanged;
         }
 
-        protected virtual void DrawAdditional() { }
+        protected override void ApplyChanges()
+        {
+            PersistentManager.Save(Target.Asset, Target.AssetFullPath);
+        }
+
+        protected override void RevertChanges()
+        {
+            Target.SaveImporterAndReimportAsset();
+        }
     }
 
-    internal sealed class DefaultAssetImporterDrawer : AssetImporterDrawer<AssetImporter> { }
+    internal sealed class DefaultDirectAssetImporterDrawer : DirectAssetImporterDrawerFor<DirectAssetImporter> { }
+
+    internal abstract class ExternalAssetImporterDrawerFor<T> : AssetImporterDrawerFor<T> where T : ExternalAssetImporter
+    {
+        protected override bool DrawProperties(out bool showApplyRevertButtons)
+        {
+            bool isChanged = EditorGUI.ObjectPropertyFields(Target, out int propertyCount);
+            showApplyRevertButtons = propertyCount > 0;
+            return isChanged;
+        }
+
+        protected override void ApplyChanges()
+        {
+            Target.SaveImporterAndReimportAsset();
+        }
+
+        protected override void RevertChanges()
+        {
+            PersistentManager.Overwrite(Target.ImporterFullPath, Target);
+        }
+    }
+
+    internal sealed class DefaultExternalAssetImporterDrawer : ExternalAssetImporterDrawerFor<ExternalAssetImporter> { }
 }

@@ -33,7 +33,7 @@ namespace DX12Demo.Editor.Windows
             Debug.LogWarning($"File changed: {e.FullPath}, {e.ChangeType}");
 
             string path = GetRootRelativePath(e.FullPath).ValidatePath();
-            AssetDatabase.GetAssetImporter(path)?.SaveAndReimport();
+            AssetDatabase.GetAssetImporter(path)?.SaveImporterAndReimportAsset();
         }
 
         private static void OnFileCreated(FileSystemEventArgs e)

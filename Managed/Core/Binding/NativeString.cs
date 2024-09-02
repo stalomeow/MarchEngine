@@ -7,13 +7,13 @@ namespace DX12Demo.Core.Binding
     {
         public nint Data;
 
-        public readonly string Value => Get(Data);
-
         public void Dispose()
         {
             Free(Data);
             Data = nint.Zero;
         }
+
+        public readonly string Value => Get(Data);
 
         public static implicit operator NativeString(string value) => new() { Data = New(value) };
 

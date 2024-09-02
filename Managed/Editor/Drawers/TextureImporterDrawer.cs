@@ -3,7 +3,7 @@ using DX12Demo.Editor.Importers;
 
 namespace DX12Demo.Editor.Drawers
 {
-    internal class TextureImportorDrawer : AssetImporterDrawer<TextureImporter>
+    internal class TextureImporterDrawer : ExternalAssetImporterDrawerFor<TextureImporter>
     {
         protected override void DrawAdditional()
         {

@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace DX12Demo.Editor
 {
-    public abstract class AssetImporter : EngineObject, IAssetProvider
+    public abstract class AssetImporter : EngineObject
     {
         /// <summary>
         /// 资产的路径，相对于 <see cref="Application.DataPath"/>
@@ -51,18 +51,6 @@ namespace DX12Demo.Editor
         [JsonIgnore]
         private WeakReference<EngineObject>? m_AssetWeakRef;
 
-        /// <summary>
-        /// 资产的强引用，只有 <see cref="m_AssetRefCount"/> 大于 0 时不为 <c>null</c>
-        /// </summary>
-        [JsonIgnore]
-        private EngineObject? m_AssetStrongRef;
-
-        /// <summary>
-        /// 资产的引用计数
-        /// </summary>
-        [JsonIgnore]
-        private int m_AssetRefCount = 0;
-
         protected AssetImporter()
         {
             m_SerializedVersion = Version;
@@ -76,43 +64,22 @@ namespace DX12Demo.Editor
         {
             get
             {
-                EngineObject? asset = GetAssetReference();
+                EngineObject asset = GetAssetReference(out bool isEmptyObject);
 
-                if (asset == null)
+                if (isEmptyObject)
                 {
-                    if (NeedReimport())
+                    if (NeedReimportAsset())
                     {
-                        SaveAndReimport(out asset);
-                    }
-                    else if (UseCache)
-                    {
-                        asset = PersistentManager.Load(AssetCacheFullPath);
-                        SetAssetReference(asset);
+                        SaveImporterAndReimportAsset();
                     }
                     else
                     {
-                        asset = CreateAsset(false);
-                        SetAssetReference(asset);
+                        ImportAsset(asset);
                     }
                 }
 
                 return asset;
             }
-        }
-
-        private bool NeedReimport()
-        {
-            if (m_SerializedVersion != Version || m_AssetLastWriteTimeUtc != GetAssetLastWriteTimeUtc())
-            {
-                return true;
-            }
-
-            if (UseCache && !File.Exists(AssetCacheFullPath))
-            {
-                return true;
-            }
-
-            return false;
         }
 
         internal void Initialize(string assetPath, string assetFullPath, string assetCacheFullPath, string importerFullPath)
@@ -122,77 +89,47 @@ namespace DX12Demo.Editor
             AssetCacheFullPath = assetCacheFullPath;
             ImporterFullPath = importerFullPath;
 
-            if (NeedReimport())
+            if (NeedReimportAsset())
             {
-                SaveAndReimport();
+                SaveImporterAndReimportAsset();
             }
+        }
+
+        protected virtual bool NeedReimportAsset()
+        {
+            if (m_SerializedVersion != Version || m_AssetLastWriteTimeUtc != GetAssetLastWriteTimeUtc())
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
         /// 保存 <see cref="AssetImporter"/> 并重新导入资产
         /// </summary>
-        [MemberNotNull(nameof(m_SerializedVersion), nameof(m_AssetLastWriteTimeUtc), nameof(m_AssetWeakRef))]
-        public void SaveAndReimport()
-        {
-            SaveAndReimport(out _);
-        }
-
-        [MemberNotNull(nameof(m_SerializedVersion), nameof(m_AssetLastWriteTimeUtc), nameof(m_AssetWeakRef))]
-        private void SaveAndReimport(out EngineObject asset)
+        [MemberNotNull(nameof(m_SerializedVersion), nameof(m_AssetLastWriteTimeUtc))]
+        public void SaveImporterAndReimportAsset()
         {
             m_SerializedVersion = Version;
             m_AssetLastWriteTimeUtc = GetAssetLastWriteTimeUtc();
             PersistentManager.Save(this, ImporterFullPath);
 
-            bool willSaveAsset = UseCache;
-            asset = CreateAsset(willSaveAsset);
-            SetAssetReference(asset);
-
-            if (willSaveAsset)
-            {
-                PersistentManager.Save(asset, AssetCacheFullPath);
-                OnDidSaveAsset(asset);
-            }
+            EngineObject asset = GetAssetReference(out _);
+            ReimportAsset(asset);
         }
 
-        internal void IncreaseAssetRef()
+        private EngineObject GetAssetReference(out bool isEmptyObject)
         {
-            ++m_AssetRefCount;
-
-            if (m_AssetRefCount > 0)
+            if (m_AssetWeakRef != null && m_AssetWeakRef.TryGetTarget(out EngineObject? target))
             {
-                m_AssetStrongRef ??= Asset;
-            }
-        }
-
-        internal void DecreaseAssetRef()
-        {
-            --m_AssetRefCount;
-
-            if (m_AssetRefCount <= 0)
-            {
-                m_AssetStrongRef = null;
-            }
-        }
-
-        private EngineObject? GetAssetReference()
-        {
-            if (m_AssetStrongRef != null)
-            {
-                return m_AssetStrongRef;
+                isEmptyObject = false;
+                return target;
             }
 
-            if (m_AssetWeakRef == null)
-            {
-                return null;
-            }
+            EngineObject asset = CreateAsset();
+            isEmptyObject = true;
 
-            return m_AssetWeakRef.TryGetTarget(out EngineObject? target) ? target : null;
-        }
-
-        [MemberNotNull(nameof(m_AssetWeakRef))]
-        private void SetAssetReference(EngineObject asset)
-        {
             if (m_AssetWeakRef == null)
             {
                 m_AssetWeakRef = new WeakReference<EngineObject>(asset);
@@ -202,14 +139,7 @@ namespace DX12Demo.Editor
                 m_AssetWeakRef.SetTarget(asset);
             }
 
-            if (m_AssetRefCount > 0)
-            {
-                m_AssetStrongRef = asset;
-            }
-            else
-            {
-                m_AssetStrongRef = null;
-            }
+            return asset;
         }
 
         private DateTime GetAssetLastWriteTimeUtc() => File.GetLastWriteTimeUtc(AssetFullPath);
@@ -227,20 +157,89 @@ namespace DX12Demo.Editor
         protected abstract int Version { get; }
 
         /// <summary>
-        /// 是否缓存 <see cref="CreateAsset"/> 的结果，必须返回一个常量
+        /// 创建 Asset 实例，只创建实例，不填充数据
+        /// </summary>
+        /// <returns></returns>
+        protected abstract EngineObject CreateAsset();
+
+        /// <summary>
+        /// 导入资产，使用之前的缓存
+        /// </summary>
+        /// <param name="asset">覆写到该实例中</param>
+        protected abstract void ImportAsset(EngineObject asset);
+
+        /// <summary>
+        /// 重新导入资产，不要使用之前的缓存
+        /// </summary>
+        /// <param name="asset">覆写到该实例中</param>
+        protected abstract void ReimportAsset(EngineObject asset);
+    }
+
+    public abstract class DirectAssetImporter : AssetImporter
+    {
+        protected sealed override void ImportAsset(EngineObject asset)
+        {
+            PersistentManager.Overwrite(AssetFullPath, asset);
+        }
+
+        protected sealed override void ReimportAsset(EngineObject asset)
+        {
+            PersistentManager.Overwrite(AssetFullPath, asset);
+        }
+    }
+
+    public abstract class ExternalAssetImporter : AssetImporter
+    {
+        protected sealed override bool NeedReimportAsset()
+        {
+            if (UseCache && !File.Exists(AssetCacheFullPath))
+            {
+                return true;
+            }
+
+            return base.NeedReimportAsset();
+        }
+
+        protected sealed override void ImportAsset(EngineObject asset)
+        {
+            if (UseCache)
+            {
+                PersistentManager.Overwrite(AssetCacheFullPath, asset);
+            }
+            else
+            {
+                PopulateAsset(asset, false);
+            }
+        }
+
+        protected sealed override void ReimportAsset(EngineObject asset)
+        {
+            bool willSaveAsset = UseCache;
+            PopulateAsset(asset, willSaveAsset);
+
+            if (willSaveAsset)
+            {
+                PersistentManager.Save(asset, AssetCacheFullPath);
+                OnDidSaveAsset(asset);
+            }
+        }
+
+        /// <summary>
+        /// 是否缓存导入结果，必须返回一个常量
         /// </summary>
         [JsonIgnore]
         protected abstract bool UseCache { get; }
 
         /// <summary>
-        /// 创建 Asset 实例
+        /// 填充 Asset 实例
         /// </summary>
+        /// <param name="asset">已存在的资产实例</param>
         /// <param name="willSaveToFile">
         /// 是否会将 Asset 保存为文件。如果为 <c>true</c>，则可以在此方法中设置序列化使用的临时数据，
         /// 在 Asset 被保存后会调用 <see cref="OnDidSaveAsset(EngineObject)"/> 清除临时数据
         /// </param>
         /// <returns></returns>
-        protected abstract EngineObject CreateAsset(bool willSaveToFile);
+        protected abstract void PopulateAsset(EngineObject asset, bool willSaveToFile);
 
         /// <summary>
         /// 当 Asset 被保存后调用，可以在此方法中清除序列化使用的临时数据

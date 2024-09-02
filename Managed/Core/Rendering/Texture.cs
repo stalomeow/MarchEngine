@@ -18,7 +18,7 @@ namespace DX12Demo.Core.Rendering
         Mirror = 2,
     }
 
-    public partial class Texture : EngineObject, IDisposable
+    public partial class Texture : NativeEngineObject
     {
         [JsonProperty]
         private string m_SerializedName = "Texture";
@@ -26,43 +26,25 @@ namespace DX12Demo.Core.Rendering
         [JsonProperty]
         private byte[] m_SerializedDDSData = [];
 
-        [JsonIgnore]
-        private nint m_Texture;
-
         [JsonProperty]
         public FilterMode Filter
         {
-            get => Texture_GetFilterMode(m_Texture);
-            set => Texture_SetFilterMode(m_Texture, value);
+            get => Texture_GetFilterMode(NativePtr);
+            set => Texture_SetFilterMode(NativePtr, value);
         }
 
         [JsonProperty]
         public WrapMode Wrap
         {
-            get => Texture_GetWrapMode(m_Texture);
-            set => Texture_SetWrapMode(m_Texture, value);
+            get => Texture_GetWrapMode(NativePtr);
+            set => Texture_SetWrapMode(NativePtr, value);
         }
 
-        public Texture()
-        {
-            m_Texture = Texture_New();
-        }
+        public Texture() : base(Texture_New()) { }
 
-        ~Texture() => DisposeImpl();
-
-        protected virtual void DisposeImpl()
+        protected override void Dispose(bool disposing)
         {
-            if (m_Texture != nint.Zero)
-            {
-                Texture_Delete(m_Texture);
-                m_Texture = nint.Zero;
-            }
-        }
-
-        public void Dispose()
-        {
-            DisposeImpl();
-            GC.SuppressFinalize(this);
+            Texture_Delete(NativePtr);
         }
 
         public unsafe void SetDDSData(string name, byte[] ddsData)
@@ -71,7 +53,7 @@ namespace DX12Demo.Core.Rendering
 
             fixed (byte* p = ddsData)
             {
-                Texture_SetDDSData(m_Texture, n.Data, (nint)p, ddsData.Length);
+                Texture_SetDDSData(NativePtr, n.Data, (nint)p, ddsData.Length);
             }
         }
 
@@ -81,14 +63,14 @@ namespace DX12Demo.Core.Rendering
             m_SerializedDDSData = ddsData;
         }
 
-        internal nint GetNativePointer() => m_Texture;
-
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
             SetDDSData(m_SerializedName, m_SerializedDDSData);
             SetSerializationData(string.Empty, []);
         }
+
+        #region Native
 
         [NativeFunction]
         private static partial nint Texture_New();
@@ -110,5 +92,7 @@ namespace DX12Demo.Core.Rendering
 
         [NativeFunction]
         private static partial WrapMode Texture_GetWrapMode(nint pTexture);
+
+        #endregion
     }
 }

@@ -1,7 +1,6 @@
 #include "Rendering/Shader.h"
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
-#include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
 #include "Rendering/Mesh.hpp"
 #include <d3d12shader.h>    // Shader reflection.
@@ -39,22 +38,17 @@ namespace dx12demo
         }
     }
 
-    void Shader::Compile(
+    void Shader::CompilePass(int passIndex,
         const std::string& filename,
         const std::string& entrypoint,
         const std::string& shaderModel,
-        ShaderProgramType programType,
-        ShaderPass& targetPass)
+        ShaderProgramType programType)
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
-        // 
-        // Create compiler and utils.
-        //
-        ComPtr<IDxcUtils> pUtils;
-        ComPtr<IDxcCompiler3> pCompiler;
-        DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&pUtils));
-        DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&pCompiler));
+        ShaderPass& targetPass = Passes[passIndex];
+        IDxcUtils* pUtils = GetDxcUtils();
+        IDxcCompiler3* pCompiler = GetDxcCompiler();
 
         //
         // Create default include handler. (You can create your own...)
@@ -153,13 +147,13 @@ namespace dx12demo
         ComPtr<IDxcBlobUtf16> pPDBName = nullptr;
         pResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pPDB), &pPDBName);
         {
-            FILE* fp = NULL;
+            //FILE* fp = NULL;
 
             // Note that if you don't specify -Fd, a pdb name will be automatically generated.
             // Use this file name to save the pdb so that PIX can find it quickly.
-            _wfopen_s(&fp, pPDBName->GetStringPointer(), L"wb");
-            fwrite(pPDB->GetBufferPointer(), pPDB->GetBufferSize(), 1, fp);
-            fclose(fp);
+            //_wfopen_s(&fp, pPDBName->GetStringPointer(), L"wb");
+            //fwrite(pPDB->GetBufferPointer(), pPDB->GetBufferSize(), 1, fp);
+            //fclose(fp);
         }
 
         //
@@ -233,9 +227,14 @@ namespace dx12demo
                 {
                 case D3D_SIT_CBUFFER:
                 {
+                    ID3D12ShaderReflectionConstantBuffer* cbMat = pReflection->GetConstantBufferByName(bindDesc.Name);
+                    D3D12_SHADER_BUFFER_DESC cbDesc = {};
+                    THROW_IF_FAILED(cbMat->GetDesc(&cbDesc));
+
                     ShaderPassConstantBuffer& cb = targetPass.ConstantBuffers[bindDesc.Name];
                     cb.ShaderRegister = bindDesc.BindPoint;
                     cb.RegisterSpace = bindDesc.Space;
+                    cb.Size = cbDesc.Size;
                     break;
                 }
 

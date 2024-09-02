@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 namespace DX12Demo.Editor.Importers
 {
     [CustomAssetImporter(".dds")]
-    internal class TextureImporter : AssetImporter
+    internal class TextureImporter : ExternalAssetImporter
     {
         public override string DisplayName => "Texture Asset";
 
@@ -19,13 +19,16 @@ namespace DX12Demo.Editor.Importers
         [JsonProperty("Wrap Mode")]
         public WrapMode Wrap { get; set; }
 
-        protected override EngineObject CreateAsset(bool willSaveToFile)
+        protected override EngineObject CreateAsset()
         {
-            Texture texture = new()
-            {
-                Filter = Filter,
-                Wrap = Wrap,
-            };
+            return new Texture();
+        }
+
+        protected override void PopulateAsset(EngineObject asset, bool willSaveToFile)
+        {
+            Texture texture = (Texture)asset;
+            texture.Filter = Filter;
+            texture.Wrap = Wrap;
 
             string name = Path.GetFileNameWithoutExtension(AssetPath);
             byte[] ddsData = File.ReadAllBytes(AssetFullPath);
@@ -36,8 +39,6 @@ namespace DX12Demo.Editor.Importers
             {
                 texture.SetSerializationData(name, ddsData);
             }
-
-            return texture;
         }
 
         protected override void OnDidSaveAsset(EngineObject asset)

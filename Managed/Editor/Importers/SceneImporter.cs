@@ -4,7 +4,7 @@ using DX12Demo.Core.Serialization;
 namespace DX12Demo.Editor.Importers
 {
     [CustomAssetImporter(".scene")]
-    internal class SceneImporter : AssetImporter
+    internal class SceneImporter : ExternalAssetImporter
     {
         public override string DisplayName => "Scene Asset";
 
@@ -12,9 +12,14 @@ namespace DX12Demo.Editor.Importers
 
         protected override bool UseCache => false;
 
-        protected override EngineObject CreateAsset(bool willSaveToFile)
+        protected override EngineObject CreateAsset()
         {
-            return PersistentManager.Load<SceneAsset>(AssetFullPath);
+            return new SceneAsset();
+        }
+
+        protected override void PopulateAsset(EngineObject asset, bool willSaveToFile)
+        {
+            PersistentManager.Overwrite(AssetFullPath, asset);
         }
     }
 }

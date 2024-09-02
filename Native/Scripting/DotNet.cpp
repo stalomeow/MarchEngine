@@ -7,6 +7,7 @@
 #include "Rendering/Mesh.hpp"
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/Shader.h"
+#include "Rendering/Material.h"
 #include "Editor/EditorGUI.h"
 #include "Core/IEngine.h"
 #include <Windows.h>
@@ -27,6 +28,10 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(MarshalString),
             CSHARP_BINDING_ENTRY(UnmarshalString),
             CSHARP_BINDING_ENTRY(FreeString),
+            CSHARP_BINDING_ENTRY(NewArray),
+            CSHARP_BINDING_ENTRY(MarshalArray),
+            CSHARP_BINDING_ENTRY(UnmarshalArray),
+            CSHARP_BINDING_ENTRY(FreeArray),
 
             CSHARP_BINDING_ENTRY(Debug_Info),
             CSHARP_BINDING_ENTRY(Debug_Warn),
@@ -137,6 +142,15 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(Shader_GetPassCount),
             CSHARP_BINDING_ENTRY(Shader_GetPasses),
             CSHARP_BINDING_ENTRY(Shader_SetPasses),
+            CSHARP_BINDING_ENTRY(Shader_CompilePass),
+
+            CSHARP_BINDING_ENTRY(Material_New),
+            CSHARP_BINDING_ENTRY(Material_Delete),
+            CSHARP_BINDING_ENTRY(Material_SetShader),
+            CSHARP_BINDING_ENTRY(Material_SetInt),
+            CSHARP_BINDING_ENTRY(Material_SetFloat),
+            CSHARP_BINDING_ENTRY(Material_SetVector),
+            CSHARP_BINDING_ENTRY(Material_SetTexture),
         };
 
         CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)

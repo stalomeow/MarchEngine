@@ -49,9 +49,24 @@ namespace DX12Demo.BindingSourceGen
             StringBuilder source = new StringBuilder($@"
 namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 {{
-    unsafe partial {(classSymbol.IsReferenceType ? "class" : "struct")} {classSymbol.Name}
-    {{
-");
+    unsafe partial {(classSymbol.IsReferenceType ? "class" : "struct")} {classSymbol.Name}");
+
+            if (classSymbol.TypeParameters.Length > 0)
+            {
+                source.Append("<");
+                for (int i = 0; i < classSymbol.TypeParameters.Length; i++)
+                {
+                    if (i > 0)
+                    {
+                        source.Append(", ");
+                    }
+
+                    source.Append(classSymbol.TypeParameters[i].Name);
+                }
+                source.Append(">");
+            }
+
+            source.AppendLine("\n    {");
 
             foreach (IMethodSymbol methodSymbol in methods)
             {

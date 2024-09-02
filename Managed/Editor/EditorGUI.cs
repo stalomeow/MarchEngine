@@ -266,7 +266,7 @@ namespace DX12Demo.Editor
 
         public static void DrawTexture(Texture texture)
         {
-            EditorGUI_DrawTexture(texture.GetNativePointer());
+            EditorGUI_DrawTexture(texture.NativePtr);
         }
 
         public static bool Button(string label)

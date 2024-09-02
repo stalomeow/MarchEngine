@@ -89,6 +89,51 @@ namespace dx12demo
 
     extern "C" typedef struct
     {
+        CSharpInt Length;     // 字节数量
+        CSharpByte FirstByte; // 变长数组
+    } *CSharpArray;
+
+    template<typename T = CSharpByte>
+    inline CSharpArray CSharpArray_New(CSharpInt size)
+    {
+        size_t byteCount = size * sizeof(T);
+        CSharpArray result = (CSharpArray)malloc(sizeof(CSharpInt) + byteCount);
+
+        if (result != nullptr)
+        {
+            result->Length = byteCount;
+        }
+
+        return result;
+    }
+
+    template<typename T = CSharpByte>
+    inline T& CSharpArray_Get(CSharpArray self, CSharpInt index)
+    {
+        return reinterpret_cast<T*>(&self->FirstByte)[index];
+    }
+
+    inline void CSharpArray_Free(CSharpArray self)
+    {
+        if (self != nullptr)
+        {
+            free(self);
+        }
+    }
+
+    inline void CSharpArray_CopyFrom(CSharpArray self, const void* src)
+    {
+        memcpy(&self->FirstByte, src, self->Length);
+    }
+
+    template<typename T = CSharpByte>
+    inline size_t CSharpArray_GetLength(CSharpArray self)
+    {
+        return self->Length / sizeof(T);
+    }
+
+    extern "C" typedef struct
+    {
         CSharpFloat X, Y;
     } CSharpVector2;
 
@@ -184,6 +229,37 @@ namespace dx12demo
         inline CSHARP_API(void) FreeString(CSharpString s)
         {
             CSharpString_Free(s);
+        }
+
+        inline CSHARP_API(CSharpArray) NewArray(CSharpInt byteCount)
+        {
+            return CSharpArray_New<CSharpByte>(byteCount);
+        }
+
+        inline CSHARP_API(CSharpArray) MarshalArray(CSharpByte* p, CSharpInt byteCount)
+        {
+            CSharpArray array = CSharpArray_New<CSharpByte>(byteCount);
+            CSharpArray_CopyFrom(array, p);
+            return array;
+        }
+
+        inline CSHARP_API(void) UnmarshalArray(CSharpArray array, CSharpByte** ppOutData, CSharpInt* pOutByteCount)
+        {
+            if (array == nullptr)
+            {
+                *ppOutData = nullptr;
+                *pOutByteCount = 0;
+            }
+            else
+            {
+                *ppOutData = &array->FirstByte;
+                *pOutByteCount = array->Length;
+            }
+        }
+
+        inline CSHARP_API(void) FreeArray(CSharpArray array)
+        {
+            CSharpArray_Free(array);
         }
     }
 }

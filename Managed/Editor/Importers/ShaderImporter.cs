@@ -33,21 +33,48 @@ namespace DX12Demo.Editor.Importers
         public List<ShaderPassRawData> Passes = [];
     }
 
-    [CustomAssetImporter(".shader")]
-    internal class ShaderImporter : AssetImporter
+    [CustomAssetImporter(".jsonshader")]
+    internal class ShaderImporter : ExternalAssetImporter
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => 4;
+        protected override int Version => 5;
 
         protected override bool UseCache => true;
 
-        protected override EngineObject CreateAsset(bool willSaveToFile)
+        protected override EngineObject CreateAsset()
+        {
+            return new Shader();
+        }
+
+        protected override void PopulateAsset(EngineObject asset, bool willSaveToFile)
         {
             string json = File.ReadAllText(AssetFullPath, Encoding.UTF8);
-            var rawData = JsonConvert.DeserializeObject<ShaderRawData>(json, s_JsonSettings);
+            ShaderRawData? rawData = JsonConvert.DeserializeObject<ShaderRawData>(json, s_JsonSettings);
 
+            if (rawData == null)
+            {
+                throw new InvalidOperationException("Failed to deserialize shader asset.");
+            }
 
+            Shader shader = (Shader)asset;
+            shader.Name = rawData.Name;
+            shader.Properties = rawData.Properties.ToArray();
+            shader.Passes = rawData.Passes.Select(pass => new ShaderPass()
+            {
+                Name = pass.Name,
+                Cull = pass.Cull,
+                Blends = pass.Blends.ToArray(),
+                DepthState = pass.Depth,
+                StencilState = pass.Stencil
+            }).ToArray();
+
+            for (int i = 0; i < rawData.Passes.Count; i++)
+            {
+                ShaderPassRawData pass = rawData.Passes[i];
+                shader.CompilePass(i, pass.Vs.Filename, pass.Vs.Entrypoint, pass.ShaderModel, ShaderProgramType.Vertex);
+                shader.CompilePass(i, pass.Ps.Filename, pass.Ps.Entrypoint, pass.ShaderModel, ShaderProgramType.Pixel);
+            }
         }
 
         private static readonly JsonSerializerSettings s_JsonSettings = new()

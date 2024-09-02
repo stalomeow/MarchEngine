@@ -15,12 +15,17 @@ namespace DX12Demo.Editor
 
         private static readonly Dictionary<string, AssetImporter> s_Importers = new();
 
-        public static AssetHandle<EngineObject> Load(string path)
+        static AssetDatabase()
+        {
+            AssetManager.Impl = new EditorAssetManagerImpl();
+        }
+
+        public static EngineObject Load(string path)
         {
             return Load<EngineObject>(path);
         }
 
-        public static AssetHandle<T> Load<T>(string path) where T : EngineObject
+        public static T Load<T>(string path) where T : EngineObject
         {
             if (IsImporterFilePath(path))
             {
@@ -28,18 +33,7 @@ namespace DX12Demo.Editor
             }
 
             AssetImporter? importer = GetAssetImporter(path);
-            importer?.IncreaseAssetRef();
-            return new AssetHandle<T>(importer);
-        }
-
-        public static void Unload<T>(AssetHandle<T> handle) where T : EngineObject
-        {
-            if (handle.GetProvider() is not AssetImporter importer)
-            {
-                throw new ArgumentException($"Invalid {nameof(AssetHandle<T>)}", nameof(handle));
-            }
-
-            importer.DecreaseAssetRef();
+            return importer == null ? throw new NotSupportedException("Unsupported asset type") : (T)importer.Asset;
         }
 
         public static void Save(EngineObject obj, string path)
@@ -152,5 +146,13 @@ namespace DX12Demo.Editor
         }
 
         public static string ValidatePath(this string path) => path.Replace('\\', '/');
+    }
+
+    file class EditorAssetManagerImpl : IAssetManagerImpl
+    {
+        public T Load<T>(string path) where T : EngineObject
+        {
+            return AssetDatabase.Load<T>(path);
+        }
     }
 }
