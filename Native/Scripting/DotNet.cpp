@@ -139,10 +139,13 @@ namespace dx12demo
 
             CSHARP_BINDING_ENTRY(Shader_New),
             CSHARP_BINDING_ENTRY(Shader_Delete),
+            CSHARP_BINDING_ENTRY(Shader_ClearProperties),
+            CSHARP_BINDING_ENTRY(Shader_SetProperty),
             CSHARP_BINDING_ENTRY(Shader_GetPassCount),
             CSHARP_BINDING_ENTRY(Shader_GetPasses),
             CSHARP_BINDING_ENTRY(Shader_SetPasses),
             CSHARP_BINDING_ENTRY(Shader_CompilePass),
+            CSHARP_BINDING_ENTRY(Shader_CreatePassRootSignature),
 
             CSHARP_BINDING_ENTRY(Material_New),
             CSHARP_BINDING_ENTRY(Material_Delete),

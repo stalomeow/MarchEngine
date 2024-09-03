@@ -23,7 +23,7 @@ namespace dx12demo
 
         DirectX::XMFLOAT4X4 GetWorldMatrix() const;
         MaterialData& GetMaterialData() const;
-        ConstantBuffer<MaterialData>* GetMaterialBuffer() const { return m_MaterialBuffer.get(); }
+        ConstantBuffer* GetMaterialBuffer() const { return nullptr; }
 
         DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -32,7 +32,7 @@ namespace dx12demo
         bool IsActive = false;
 
     private:
-        std::unique_ptr<ConstantBuffer<MaterialData>> m_MaterialBuffer;
+        //std::unique_ptr<ConstantBuffer<MaterialData>> m_MaterialBuffer;
     };
 
     namespace binding

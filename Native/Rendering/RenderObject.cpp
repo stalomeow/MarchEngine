@@ -4,8 +4,8 @@ namespace dx12demo
 {
     RenderObject::RenderObject()
     {
-        m_MaterialBuffer = std::make_unique<ConstantBuffer<MaterialData>>(L"RenderObject Material", 1, true);
-        m_MaterialBuffer->SetData(0, MaterialData());
+        //m_MaterialBuffer = std::make_unique<ConstantBuffer<MaterialData>>(L"RenderObject Material", 1, true);
+        // m_MaterialBuffer->SetData(0, MaterialData());
     }
 
     DirectX::XMFLOAT4X4 RenderObject::GetWorldMatrix() const
@@ -23,6 +23,7 @@ namespace dx12demo
 
     MaterialData& RenderObject::GetMaterialData() const
     {
-        return *(m_MaterialBuffer->GetPointer(0));
+        // TODO
+        return *reinterpret_cast<MaterialData*>(0);//*(m_MaterialBuffer->GetPointer(0));
     }
 }

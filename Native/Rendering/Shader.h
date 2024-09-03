@@ -4,6 +4,7 @@
 #include "Rendering/DxException.h"
 #include <directx/d3dx12.h>
 #include <d3d12.h>
+#include <DirectXMath.h>
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -13,6 +14,32 @@
 
 namespace dx12demo
 {
+    enum class ShaderPropertyType
+    {
+        Float = 0,
+        Int = 1,
+        Color = 2,
+        Vector = 3,
+        Texture = 4,
+    };
+
+    enum class ShaderDefaultTexture
+    {
+        Black = 0,
+        White = 1
+    };
+
+    struct ShaderProperty
+    {
+        ShaderPropertyType Type;
+
+        float DefaultFloat;
+        int DefaultInt;
+        DirectX::XMFLOAT4 DefaultColor;
+        DirectX::XMFLOAT4 DefaultVector;
+        ShaderDefaultTexture DefaultTexture;
+    };
+
     struct ShaderPassConstantBuffer
     {
         UINT ShaderRegister;
@@ -172,8 +199,6 @@ namespace dx12demo
         ShaderPassDepthState DepthState;
         ShaderPassStencilState StencilState;
 
-        void CreatePso();
-
         UINT GetRootSrvDescriptorTableIndex() const { return m_RootSrvDescriptorTableIndex; }
         UINT GetRootSamplerDescriptorTableIndex() const { return m_RootSamplerDescriptorTableIndex; }
 
@@ -190,20 +215,16 @@ namespace dx12demo
             return true;
         }
 
-    protected:
-        std::vector<CD3DX12_STATIC_SAMPLER_DESC> CreateStaticSamplers();
+        ID3D12RootSignature* GetRootSignature() const { return m_RootSignature.Get(); }
+
         void CreateRootSignature();
 
     private:
+        std::vector<CD3DX12_STATIC_SAMPLER_DESC> CreateStaticSamplers();
+
         std::unordered_map<std::string, UINT> m_CbRootParamIndexMap;
-
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PsoNormal;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PsoWireframe;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PsoNormalMSAA;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PsoWireframeMSAA;
 
-    private:
         const UINT m_RootSrvDescriptorTableIndex = 0;
         const UINT m_RootSamplerDescriptorTableIndex = 1;
 
@@ -220,6 +241,7 @@ namespace dx12demo
             const std::string& shaderModel,
             ShaderProgramType programType);
 
+        std::unordered_map<std::string, ShaderProperty> Properties;
         std::vector<ShaderPass> Passes;
 
         inline static IDxcUtils* GetDxcUtils()
@@ -249,6 +271,18 @@ namespace dx12demo
 
     namespace binding
     {
+        struct CSharpShaderProperty
+        {
+            CSharpString Name;
+            CSharpInt Type;
+
+            CSharpFloat DefaultFloat;
+            CSharpInt DefaultInt;
+            CSharpColor DefaultColor;
+            CSharpVector4 DefaultVector;
+            CSharpInt DefaultTexture;
+        };
+
         struct CSharpShaderPassConstantBuffer
         {
             CSharpString Name;
@@ -346,6 +380,24 @@ namespace dx12demo
         inline CSHARP_API(void) Shader_Delete(Shader* pShader)
         {
             delete pShader;
+        }
+
+        inline CSHARP_API(void) Shader_ClearProperties(Shader* pShader)
+        {
+            pShader->Properties.clear();
+        }
+
+        inline CSHARP_API(void) Shader_SetProperty(Shader* pShader, CSharpShaderProperty* prop)
+        {
+            pShader->Properties[CSharpString_ToUtf8(prop->Name)] =
+            {
+                static_cast<ShaderPropertyType>(prop->Type),
+                prop->DefaultFloat,
+                prop->DefaultInt,
+                ToXMFLOAT4(prop->DefaultColor),
+                ToXMFLOAT4(prop->DefaultVector),
+                static_cast<ShaderDefaultTexture>(prop->DefaultTexture)
+            };
         }
 
         inline CSHARP_API(CSharpInt) Shader_GetPassCount(Shader* pShader)
@@ -542,6 +594,11 @@ namespace dx12demo
                 CSharpString_ToUtf8(shaderModel),
                 static_cast<ShaderProgramType>(programType)
             );
+        }
+
+        inline CSHARP_API(void) Shader_CreatePassRootSignature(Shader* pShader, CSharpInt passIndex)
+        {
+            pShader->Passes[passIndex].CreateRootSignature();
         }
     }
 }

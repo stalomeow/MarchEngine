@@ -69,6 +69,14 @@ namespace dx12demo
 
         DescriptorHandle m_TextureDescriptorHandle;
         DescriptorHandle m_SamplerDescriptorHandle;
+
+    public:
+        static Texture* GetDefaultBlack();
+        static Texture* GetDefaultWhite();
+
+    private:
+        static Texture* s_pBlackTexture;
+        static Texture* s_pWhiteTexture;
     };
 
     namespace binding

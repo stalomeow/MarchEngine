@@ -52,12 +52,11 @@ namespace dx12demo
 
     const UINT ConstantBufferAlignment = 256;
 
-    template<typename T>
     class ConstantBuffer : public GpuBuffer
     {
     public:
-        ConstantBuffer(const std::wstring& name, UINT count, bool readable)
-            : GpuBuffer(name, MathHelper::AlignUp(sizeof(T), ConstantBufferAlignment), count, D3D12_HEAP_TYPE_UPLOAD)
+        ConstantBuffer(const std::wstring& name, UINT elementSize, UINT count, bool readable)
+            : GpuBuffer(name, MathHelper::AlignUp(elementSize, ConstantBufferAlignment), count, D3D12_HEAP_TYPE_UPLOAD)
         {
             CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
             THROW_IF_FAILED(m_Resource->Map(0, (readable ? nullptr : &readRange), reinterpret_cast<void**>(&m_MappedData)));
@@ -69,20 +68,9 @@ namespace dx12demo
             m_MappedData = nullptr;
         }
 
-        void SetData(UINT index, const T& data)
+        BYTE* GetPointer(UINT index) const
         {
-            memcpy(&m_MappedData[index * m_Stride], &data, sizeof(T));
-        }
-
-        T* GetPointer(UINT index) const
-        {
-            return reinterpret_cast<T*>(&m_MappedData[index * m_Stride]);
-        }
-
-        static UINT CalculateStride()
-        {
-            // 必须是 256 的整数倍，先加 255，再去掉小于 256 的部分
-            return (sizeof(T) + 255) & ~255;
+            return &m_MappedData[index * m_Stride];
         }
 
     protected:

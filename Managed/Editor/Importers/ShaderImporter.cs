@@ -38,7 +38,7 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => 5;
+        protected override int Version => 6;
 
         protected override bool UseCache => true;
 
@@ -69,11 +69,14 @@ namespace DX12Demo.Editor.Importers
                 StencilState = pass.Stencil
             }).ToArray();
 
+            shader.UploadPropertyDataToNative();
+
             for (int i = 0; i < rawData.Passes.Count; i++)
             {
                 ShaderPassRawData pass = rawData.Passes[i];
                 shader.CompilePass(i, pass.Vs.Filename, pass.Vs.Entrypoint, pass.ShaderModel, ShaderProgramType.Vertex);
                 shader.CompilePass(i, pass.Ps.Filename, pass.Ps.Entrypoint, pass.ShaderModel, ShaderProgramType.Pixel);
+                shader.CreatePassRootSignature(i);
             }
         }
 

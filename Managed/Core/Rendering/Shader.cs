@@ -4,6 +4,7 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 
 namespace DX12Demo.Core.Rendering
 {
@@ -60,6 +61,35 @@ namespace DX12Demo.Core.Rendering
             }
 
             return new Vector4(l[0], l[1], l[2], l[3]);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public ShaderPropertyType Type;
+
+            public float DefaultFloat;
+            public int DefaultInt;
+            public Color DefaultColor;
+            public Vector4 DefaultVector;
+            public ShaderDefaultTexture DefaultTexture;
+        }
+
+        public static void ToNative(ShaderProperty value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.Type = value.Type;
+            native.DefaultFloat = value.DefaultFloat;
+            native.DefaultInt = value.DefaultInt;
+            native.DefaultColor = value.GetDefaultColor();
+            native.DefaultVector = value.GetDefaultVector();
+            native.DefaultTexture = value.DefaultTexture;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
         }
     }
 
@@ -484,6 +514,30 @@ namespace DX12Demo.Core.Rendering
             Shader_Delete(NativePtr);
         }
 
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            UploadPropertyDataToNative();
+
+            for (int i = 0; i < GetPassCount(); i++)
+            {
+                CreatePassRootSignature(i);
+            }
+        }
+
+        internal void UploadPropertyDataToNative()
+        {
+            Shader_ClearProperties(NativePtr);
+
+            foreach (ShaderProperty prop in Properties)
+            {
+                ShaderProperty.ToNative(prop, out ShaderProperty.Native native);
+                Shader_SetProperty(NativePtr, &native);
+            }
+        }
+
+        internal int GetPassCount() => Shader_GetPassCount(NativePtr);
+
         internal void CompilePass(int passIndex, string filename, string entrypoint, string shaderModel, ShaderProgramType programType)
         {
             using NativeString f = filename;
@@ -493,6 +547,11 @@ namespace DX12Demo.Core.Rendering
             Shader_CompilePass(NativePtr, passIndex, f.Data, e.Data, s.Data, programType);
         }
 
+        internal void CreatePassRootSignature(int passIndex)
+        {
+            Shader_CreatePassRootSignature(NativePtr, passIndex);
+        }
+
         #region Native
 
         [NativeFunction]
@@ -500,6 +559,12 @@ namespace DX12Demo.Core.Rendering
 
         [NativeFunction]
         private static partial void Shader_Delete(nint pShader);
+
+        [NativeFunction]
+        private static partial void Shader_ClearProperties(nint pShader);
+
+        [NativeFunction]
+        private static partial void Shader_SetProperty(nint pShader, ShaderProperty.Native* prop);
 
         [NativeFunction]
         private static partial int Shader_GetPassCount(nint pShader);
@@ -513,6 +578,9 @@ namespace DX12Demo.Core.Rendering
         [NativeFunction]
         private static partial void Shader_CompilePass(nint pShader, int passIndex,
             nint filename, nint entrypoint, nint shaderModel, ShaderProgramType programType);
+
+        [NativeFunction]
+        private static partial void Shader_CreatePassRootSignature(nint pShader, int passIndex);
 
         #endregion
     }
