@@ -83,8 +83,6 @@ namespace dx12demo
     private:
         void CheckMSAAQuailty();
         void CreateDescriptorHeaps();
-        void CreateRootSignature();
-        void CreateShaderAndPSO();
         void CreateColorAndDepthStencilTarget(int width, int height);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView();
@@ -97,21 +95,12 @@ namespace dx12demo
         std::unique_ptr<DescriptorHeap> m_RtvHeap;
         std::unique_ptr<DescriptorHeap> m_DsvHeap;
 
-        Microsoft::WRL::ComPtr<ID3DBlob> m_VSByteCode;
-        Microsoft::WRL::ComPtr<ID3DBlob> m_PSByteCode;
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PSONormal;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PSOWireframe;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PSONormalMSAA;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PSOWireframeMSAA;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ColorTarget;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ResolvedColorTarget;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilTarget;
         D3D12_RESOURCE_STATES m_LastColorTargetState;
         D3D12_RESOURCE_STATES m_LastResolvedColorTargetState;
 
-        std::unique_ptr<Texture> m_Tex;
         std::unique_ptr<DescriptorHeap> m_SrvHeap;
         std::unique_ptr<DescriptorHeap> m_SamplerHeap;
 

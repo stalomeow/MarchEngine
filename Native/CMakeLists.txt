@@ -35,6 +35,7 @@ target_compile_definitions(dx12-demo PRIVATE
 add_custom_command(TARGET dx12-demo POST_BUILD 
                COMMAND ${CMAKE_COMMAND} -E copy_if_different
                "C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Host.win-x64/8.0.8/runtimes/win-x64/native/nethost.dll"
+               "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/dxil.dll"
                $<TARGET_FILE_DIR:dx12-demo>)
 
 # C# 程序集

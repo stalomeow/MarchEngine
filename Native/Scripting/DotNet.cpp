@@ -53,6 +53,7 @@ namespace dx12demo
             CSHARP_BINDING_ENTRY(RenderObject_SetMesh),
             CSHARP_BINDING_ENTRY(RenderObject_GetIsActive),
             CSHARP_BINDING_ENTRY(RenderObject_SetIsActive),
+            CSHARP_BINDING_ENTRY(RenderObject_SetMaterial),
 
             CSHARP_BINDING_ENTRY(SimpleMesh_New),
             CSHARP_BINDING_ENTRY(SimpleMesh_Delete),

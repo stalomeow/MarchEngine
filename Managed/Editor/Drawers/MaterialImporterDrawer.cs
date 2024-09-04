@@ -18,77 +18,68 @@ namespace DX12Demo.Editor.Drawers
             EditorProperty shaderPath = contract.GetEditorProperty(material, "m_ShaderPath");
             isChanged |= EditorGUI.PropertyField(in shaderPath);
 
-            try
-            {
-                string shaderAssetPath = shaderPath.GetValue<string>();
-                Shader s = AssetManager.Load<Shader>(shaderAssetPath);
-                material.SetShader(shaderAssetPath, s);
-            }
-            catch
-            {
-                // Invalid shader
-                goto Ret;
-            }
+            string shaderAssetPath = shaderPath.GetValue<string>();
+            Shader? shader = AssetManager.Load<Shader>(shaderAssetPath);
 
-            Shader shader = material.Shader;
-
-            foreach (ShaderProperty shaderProp in shader.Properties)
+            if (shader != null)
             {
-                switch (shaderProp.Type)
+                if (material.Shader != shader)
                 {
-                    case ShaderPropertyType.Float:
-                        {
-                            float value = material.GetFloat(shaderProp.Name, shaderProp.DefaultFloat);
-                            isChanged |= EditorGUI.FloatField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                            material.SetFloat(shaderProp.Name, value);
-                            break;
-                        }
+                    material.SetShader(shaderAssetPath, shader);
+                }
 
-                    case ShaderPropertyType.Int:
-                        {
-                            int value = material.GetInt(shaderProp.Name, shaderProp.DefaultInt);
-                            isChanged |= EditorGUI.IntField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                            material.SetInt(shaderProp.Name, value);
-                            break;
-                        }
-
-                    case ShaderPropertyType.Color:
-                        {
-                            Color value = material.GetColor(shaderProp.Name, shaderProp.GetDefaultColor());
-                            isChanged |= EditorGUI.ColorField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                            material.SetColor(shaderProp.Name, value);
-                            break;
-                        }
-
-                    case ShaderPropertyType.Vector:
-                        {
-                            Vector4 value = material.GetVector(shaderProp.Name, shaderProp.GetDefaultVector());
-                            isChanged |= EditorGUI.Vector4Field(shaderProp.Label, shaderProp.Tooltip, ref value);
-                            material.SetVector(shaderProp.Name, value);
-                            break;
-                        }
-
-                    case ShaderPropertyType.Texture:
-                        {
-                            string textureAssetPath = material.GetTextureAssetPath(shaderProp.Name);
-                            isChanged |= EditorGUI.TextField(shaderProp.Label, shaderProp.Tooltip, ref textureAssetPath);
-
-                            try
+                foreach (ShaderProperty shaderProp in shader.Properties)
+                {
+                    switch (shaderProp.Type)
+                    {
+                        case ShaderPropertyType.Float:
                             {
-                                Texture texture = AssetManager.Load<Texture>(textureAssetPath);
-                                material.SetTexture(shaderProp.Name, textureAssetPath, texture);
-                            }
-                            catch
-                            {
-                                // ignore
+                                float value = material.GetFloat(shaderProp.Name, shaderProp.DefaultFloat);
+                                isChanged |= EditorGUI.FloatField(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                material.SetFloat(shaderProp.Name, value);
+                                break;
                             }
 
-                            break;
-                        }
+                        case ShaderPropertyType.Int:
+                            {
+                                int value = material.GetInt(shaderProp.Name, shaderProp.DefaultInt);
+                                isChanged |= EditorGUI.IntField(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                material.SetInt(shaderProp.Name, value);
+                                break;
+                            }
+
+                        case ShaderPropertyType.Color:
+                            {
+                                Color value = material.GetColor(shaderProp.Name, shaderProp.GetDefaultColor());
+                                isChanged |= EditorGUI.ColorField(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                material.SetColor(shaderProp.Name, value);
+                                break;
+                            }
+
+                        case ShaderPropertyType.Vector:
+                            {
+                                Vector4 value = material.GetVector(shaderProp.Name, shaderProp.GetDefaultVector());
+                                isChanged |= EditorGUI.Vector4Field(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                material.SetVector(shaderProp.Name, value);
+                                break;
+                            }
+
+                        case ShaderPropertyType.Texture:
+                            {
+                                string textureAssetPath = material.GetTextureAssetPath(shaderProp.Name);
+                                isChanged |= EditorGUI.TextField(shaderProp.Label, shaderProp.Tooltip, ref textureAssetPath);
+
+                                Texture? texture = AssetManager.Load<Texture>(textureAssetPath);
+                                if (texture != null)
+                                {
+                                    material.SetTexture(shaderProp.Name, textureAssetPath, texture);
+                                }
+                                break;
+                            }
+                    }
                 }
             }
 
-        Ret:
             showApplyRevertButtons = true;
             return isChanged;
         }

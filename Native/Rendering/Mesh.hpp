@@ -35,6 +35,14 @@ namespace dx12demo
 
         // subMeshIndex = -1 means draw all sub-meshes
         virtual void Draw(CommandBuffer* cmd, int subMeshIndex = -1) = 0;
+
+        virtual int SubMeshCount() const = 0;
+
+        virtual D3D12_PRIMITIVE_TOPOLOGY Topology() const = 0;
+
+        virtual D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType() const = 0;
+
+        virtual D3D12_INPUT_LAYOUT_DESC VertexInputLayout() const = 0;
     };
 
     template<typename TVertex, typename TIndex>
@@ -43,7 +51,7 @@ namespace dx12demo
         static_assert(sizeof(TIndex) == 2 || sizeof(TIndex) == 4, "TIndex must be 2 or 4 bytes in size.");
 
     public:
-        MeshImpl(D3D12_PRIMITIVE_TOPOLOGY topology);
+        MeshImpl(D3D12_PRIMITIVE_TOPOLOGY topology, D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType);
         MeshImpl(const MeshImpl& rhs) = delete;
         MeshImpl& operator=(const MeshImpl& rhs) = delete;
         ~MeshImpl() override = default;
@@ -54,7 +62,13 @@ namespace dx12demo
 
         void Draw(CommandBuffer* cmd, int subMeshIndex = -1) override;
 
-        static D3D12_INPUT_LAYOUT_DESC VertexInputLayout()
+        int SubMeshCount() const override { return m_SubMeshes.size(); }
+
+        D3D12_PRIMITIVE_TOPOLOGY Topology() const override { return m_Topology; }
+
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE TopologyType() const override { return m_TopologyType; }
+
+        D3D12_INPUT_LAYOUT_DESC VertexInputLayout() const override
         {
             D3D12_INPUT_LAYOUT_DESC desc = {};
             desc.pInputElementDescs = TVertex::InputDesc;
@@ -62,12 +76,9 @@ namespace dx12demo
             return desc;
         }
 
-        int SubMeshCount() const { return m_SubMeshes.size(); }
-
-        D3D12_PRIMITIVE_TOPOLOGY Topology() const { return m_Topology; }
-
     private:
         D3D12_PRIMITIVE_TOPOLOGY m_Topology;
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE m_TopologyType;
 
         std::vector<SubMesh> m_SubMeshes{};
         std::vector<TVertex> m_Vertices{};
@@ -79,8 +90,8 @@ namespace dx12demo
     };
 
     template<typename TVertex, typename TIndex>
-    MeshImpl<TVertex, TIndex>::MeshImpl(D3D12_PRIMITIVE_TOPOLOGY topology)
-        : m_Topology(topology)
+    MeshImpl<TVertex, TIndex>::MeshImpl(D3D12_PRIMITIVE_TOPOLOGY topology, D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType)
+        : m_Topology(topology), m_TopologyType(topologyType)
     {
     }
 
@@ -225,7 +236,7 @@ namespace dx12demo
     class SimpleMesh : public MeshImpl<SimpleMeshVertex, std::uint16_t>
     {
     public:
-        SimpleMesh() : MeshImpl<SimpleMeshVertex, std::uint16_t>(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) {}
+        SimpleMesh() : MeshImpl<SimpleMeshVertex, std::uint16_t>(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE) {}
         SimpleMesh(const SimpleMesh& rhs) = delete;
         SimpleMesh& operator=(const SimpleMesh& rhs) = delete;
         ~SimpleMesh() override = default;

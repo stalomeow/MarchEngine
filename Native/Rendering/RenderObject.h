@@ -2,19 +2,14 @@
 
 #include "Rendering/Mesh.hpp"
 #include "Rendering/Resource/GpuBuffer.h"
+#include "Rendering/Material.h"
+#include "Rendering/PipelineState.h"
 #include "Scripting/ScriptTypes.h"
 #include <DirectXMath.h>
 #include <memory>
 
 namespace dx12demo
 {
-    struct MaterialData
-    {
-        DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
-        float Roughness = 0.25f;
-    };
-
     class RenderObject
     {
     public:
@@ -22,17 +17,15 @@ namespace dx12demo
         ~RenderObject() = default;
 
         DirectX::XMFLOAT4X4 GetWorldMatrix() const;
-        MaterialData& GetMaterialData() const;
-        ConstantBuffer* GetMaterialBuffer() const { return nullptr; }
 
         DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
         Mesh* Mesh = nullptr;
-        bool IsActive = false;
+        Material* Mat = nullptr;
+        MeshRendererDesc Desc = {};
 
-    private:
-        //std::unique_ptr<ConstantBuffer<MaterialData>> m_MaterialBuffer;
+        bool IsActive = false;
     };
 
     namespace binding
@@ -70,6 +63,8 @@ namespace dx12demo
         inline CSHARP_API(void) RenderObject_SetMesh(RenderObject* pObject, Mesh* pMesh)
         {
             pObject->Mesh = pMesh;
+            pObject->Desc.InputLayout = pMesh->VertexInputLayout();
+            pObject->Desc.PrimitiveTopologyType = pMesh->TopologyType();
         }
 
         inline CSHARP_API(CSharpBool) RenderObject_GetIsActive(RenderObject* pObject)
@@ -80,6 +75,11 @@ namespace dx12demo
         inline CSHARP_API(void) RenderObject_SetIsActive(RenderObject* pObject, CSharpBool value)
         {
             pObject->IsActive = CSHARP_UNMARSHAL_BOOL(value);
+        }
+
+        inline CSHARP_API(void) RenderObject_SetMaterial(RenderObject* pObject, Material* pMaterial)
+        {
+            pObject->Mat = pMaterial;
         }
     }
 }

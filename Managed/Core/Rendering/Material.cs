@@ -38,14 +38,11 @@ namespace DX12Demo.Core.Rendering
         [OnDeserialized]
         private void OnDeserializedCallback(StreamingContext context)
         {
-            try
+            m_Shader = AssetManager.Load<Shader>(m_ShaderPath);
+
+            if (m_Shader != null)
             {
-                m_Shader = AssetManager.Load<Shader>(m_ShaderPath);
                 Material_SetShader(NativePtr, m_Shader.NativePtr);
-            }
-            catch
-            {
-                // TODO
             }
 
             foreach (KeyValuePair<string, int> kvp in m_Ints)
@@ -76,11 +73,15 @@ namespace DX12Demo.Core.Rendering
 
             foreach (KeyValuePair<string, string> kvp in m_Textures)
             {
-                Texture texture = AssetManager.Load<Texture>(kvp.Value);
-                AddTextureRef(kvp.Value, texture);
+                Texture? texture = AssetManager.Load<Texture>(kvp.Value);
 
-                using NativeString n = kvp.Key;
-                MaterialSetTexture(NativePtr, n.Data, texture.NativePtr);
+                if (texture != null)
+                {
+                    AddTextureRef(kvp.Value, texture);
+
+                    using NativeString n = kvp.Key;
+                    Material_SetTexture(NativePtr, n.Data, texture.NativePtr);
+                }
             }
         }
 
@@ -165,7 +166,7 @@ namespace DX12Demo.Core.Rendering
             AddTextureRef(textureAssetPath, value);
 
             using NativeString n = name;
-            MaterialSetTexture(NativePtr, n.Data, value.NativePtr);
+            Material_SetTexture(NativePtr, n.Data, value.NativePtr);
         }
 
         public int GetInt(string name, int defaultValue = default)
@@ -214,7 +215,7 @@ namespace DX12Demo.Core.Rendering
         private static partial void Material_SetVector(nint pMaterial, nint name, Vector4 value);
 
         [NativeFunction]
-        private static partial void MaterialSetTexture(nint pMaterial, nint name, nint pTexture);
+        private static partial void Material_SetTexture(nint pMaterial, nint name, nint pTexture);
 
         #endregion
     }

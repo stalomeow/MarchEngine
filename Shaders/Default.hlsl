@@ -1,7 +1,9 @@
 #include "Lighting.hlsl"
 
-Texture2D _DiffuseMap : register(t0);
-SamplerState sampler_DiffuseMap : register(s6);
+#define TEXTURE_SAMPLER(texture) SamplerState sampler##texture
+
+Texture2D _DiffuseMap; // : register(t0);
+TEXTURE_SAMPLER(_DiffuseMap);
 
 cbuffer cbObject : register(b0)
 {

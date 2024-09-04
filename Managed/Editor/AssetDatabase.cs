@@ -20,12 +20,12 @@ namespace DX12Demo.Editor
             AssetManager.Impl = new EditorAssetManagerImpl();
         }
 
-        public static EngineObject Load(string path)
+        public static EngineObject? Load(string path)
         {
             return Load<EngineObject>(path);
         }
 
-        public static T Load<T>(string path) where T : EngineObject
+        public static T? Load<T>(string path) where T : EngineObject
         {
             if (IsImporterFilePath(path))
             {
@@ -33,7 +33,7 @@ namespace DX12Demo.Editor
             }
 
             AssetImporter? importer = GetAssetImporter(path);
-            return importer == null ? throw new NotSupportedException("Unsupported asset type") : (T)importer.Asset;
+            return importer?.Asset as T;
         }
 
         public static void Save(EngineObject obj, string path)
@@ -50,10 +50,22 @@ namespace DX12Demo.Editor
 
         public static AssetImporter? GetAssetImporter(string path)
         {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
             path = path.ValidatePath();
 
             if (!s_Importers.TryGetValue(path, out AssetImporter? importer))
             {
+                string assetFullPath = Path.Combine(Application.DataPath, path);
+
+                if (!File.Exists(assetFullPath))
+                {
+                    return null;
+                }
+
                 string importerFullPath = Path.Combine(Application.DataPath, path + ImporterPathSuffix);
 
                 if (File.Exists(importerFullPath))
@@ -145,12 +157,17 @@ namespace DX12Demo.Editor
             s_AssetImporterTypeCacheVersion = TypeCache.Version;
         }
 
-        public static string ValidatePath(this string path) => path.Replace('\\', '/');
+        public static string ValidatePath(this string path)
+        {
+            path = path.Replace('\\', '/');
+            path = path.TrimEnd('/');
+            return path;
+        }
     }
 
     file class EditorAssetManagerImpl : IAssetManagerImpl
     {
-        public T Load<T>(string path) where T : EngineObject
+        public T? Load<T>(string path) where T : EngineObject
         {
             return AssetDatabase.Load<T>(path);
         }

@@ -2,6 +2,7 @@
 
 #include "Scripting/ScriptTypes.h"
 #include "Rendering/DxException.h"
+#include "Rendering/Resource/Texture.h"
 #include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
@@ -34,10 +35,25 @@ namespace dx12demo
         ShaderPropertyType Type;
 
         float DefaultFloat;
-        int DefaultInt;
+        int32_t DefaultInt;
         DirectX::XMFLOAT4 DefaultColor;
         DirectX::XMFLOAT4 DefaultVector;
         ShaderDefaultTexture DefaultTexture;
+
+        Texture* GetDefaultTexture() const
+        {
+            switch (DefaultTexture)
+            {
+            case dx12demo::ShaderDefaultTexture::Black:
+                return Texture::GetDefaultBlack();
+
+            case dx12demo::ShaderDefaultTexture::White:
+                return Texture::GetDefaultWhite();
+
+            default:
+                return nullptr;
+            }
+        }
     };
 
     struct ShaderPassConstantBuffer
