@@ -70,10 +70,7 @@ namespace DX12Demo.Editor.Drawers
                                 isChanged |= EditorGUI.TextField(shaderProp.Label, shaderProp.Tooltip, ref textureAssetPath);
 
                                 Texture? texture = AssetManager.Load<Texture>(textureAssetPath);
-                                if (texture != null)
-                                {
-                                    material.SetTexture(shaderProp.Name, textureAssetPath, texture);
-                                }
+                                material.SetTexture(shaderProp.Name, textureAssetPath, texture);
                                 break;
                             }
                     }

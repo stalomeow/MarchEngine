@@ -23,7 +23,14 @@ namespace dx12demo
 
     void Material::SetTexture(const std::string& name, Texture* texture)
     {
-        m_Textures[name] = texture;
+        if (texture == nullptr)
+        {
+            m_Textures.erase(name);
+        }
+        else
+        {
+            m_Textures[name] = texture;
+        }
     }
 
     bool Material::GetInt(const std::string& name, int32_t* outValue) const

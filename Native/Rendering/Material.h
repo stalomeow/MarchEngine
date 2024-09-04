@@ -21,7 +21,7 @@ namespace dx12demo
         void SetInt(const std::string& name, int32_t value);
         void SetFloat(const std::string& name, float value);
         void SetVector(const std::string& name, DirectX::XMFLOAT4 value);
-        void SetTexture(const std::string& name, Texture* texture);
+        void SetTexture(const std::string& name, Texture* texture); // nullptr to remove
 
         bool GetInt(const std::string& name, int32_t* outValue) const;
         bool GetFloat(const std::string& name, float* outValue) const;

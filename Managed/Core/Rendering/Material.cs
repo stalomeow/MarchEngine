@@ -155,18 +155,31 @@ namespace DX12Demo.Core.Rendering
             Material_SetVector(NativePtr, n.Data, new Vector4(value.R, value.G, value.B, value.A));
         }
 
-        public void SetTexture(string name, string textureAssetPath, Texture value)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="textureAssetPath"></param>
+        /// <param name="value">如果为 <c>null</c> 则删除</param>
+        public void SetTexture(string name, string textureAssetPath, Texture? value)
         {
             if (m_Textures.TryGetValue(name, out string? prevTextureAssetPath))
             {
                 RemoveTextureRef(prevTextureAssetPath);
             }
 
-            m_Textures[name] = textureAssetPath;
-            AddTextureRef(textureAssetPath, value);
+            if (value == null)
+            {
+                m_Textures.Remove(name);
+            }
+            else
+            {
+                m_Textures[name] = textureAssetPath;
+                AddTextureRef(textureAssetPath, value);
+            }
 
             using NativeString n = name;
-            Material_SetTexture(NativePtr, n.Data, value.NativePtr);
+            Material_SetTexture(NativePtr, n.Data, value?.NativePtr ?? nint.Zero);
         }
 
         public int GetInt(string name, int defaultValue = default)
