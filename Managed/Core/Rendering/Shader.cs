@@ -1,6 +1,5 @@
 using DX12Demo.Core.Binding;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -8,7 +7,6 @@ using System.Runtime.Serialization;
 
 namespace DX12Demo.Core.Rendering
 {
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderPropertyType : int
     {
         Float = 0,
@@ -18,14 +16,12 @@ namespace DX12Demo.Core.Rendering
         Texture = 4,
     }
 
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderDefaultTexture : int
     {
         Black = 0,
         White = 1
     }
 
-    [JsonObject(NamingStrategyType = typeof(ShaderJsonNamingStrategy))]
     internal class ShaderProperty
     {
         public string Name = string.Empty;
@@ -35,33 +31,9 @@ namespace DX12Demo.Core.Rendering
 
         public float DefaultFloat;
         public int DefaultInt;
-        public List<float> DefaultColor = [0, 0, 0, 1];
-        public List<float> DefaultVector = [0, 0, 0, 0];
+        public Color DefaultColor;
+        public Vector4 DefaultVector;
         public ShaderDefaultTexture DefaultTexture;
-
-        public Color GetDefaultColor()
-        {
-            List<float> l = DefaultColor;
-
-            if (l.Count < 4)
-            {
-                l.AddRange(Enumerable.Repeat(0.0f, 4 - l.Count));
-            }
-
-            return new Color(l[0], l[1], l[2], l[3]);
-        }
-
-        public Vector4 GetDefaultVector()
-        {
-            List<float> l = DefaultVector;
-
-            if (l.Count < 4)
-            {
-                l.AddRange(Enumerable.Repeat(0.0f, 4 - l.Count));
-            }
-
-            return new Vector4(l[0], l[1], l[2], l[3]);
-        }
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
@@ -82,8 +54,8 @@ namespace DX12Demo.Core.Rendering
             native.Type = value.Type;
             native.DefaultFloat = value.DefaultFloat;
             native.DefaultInt = value.DefaultInt;
-            native.DefaultColor = value.GetDefaultColor();
-            native.DefaultVector = value.GetDefaultVector();
+            native.DefaultColor = value.DefaultColor;
+            native.DefaultVector = value.DefaultVector;
             native.DefaultTexture = value.DefaultTexture;
         }
 
@@ -265,7 +237,6 @@ namespace DX12Demo.Core.Rendering
         }
     }
 
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderPassCullMode : int
     {
         Off = 0,
@@ -273,7 +244,6 @@ namespace DX12Demo.Core.Rendering
         Back = 2,
     }
 
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderPassBlend : int
     {
         Zero = 0,
@@ -289,7 +259,6 @@ namespace DX12Demo.Core.Rendering
         SrcAlphaSat = 10,
     }
 
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderPassBlendOp : int
     {
         Add = 0,
@@ -300,7 +269,6 @@ namespace DX12Demo.Core.Rendering
     }
 
     [Flags]
-    [JsonConverter(typeof(ShaderPassColorWriteMaskJsonConverter))]
     internal enum ShaderPassColorWriteMask : int
     {
         None = 0,
@@ -312,25 +280,37 @@ namespace DX12Demo.Core.Rendering
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    [JsonObject(NamingStrategyType = typeof(ShaderJsonNamingStrategy))]
     internal struct ShaderPassBlendFormula
     {
         public ShaderPassBlend Src;
         public ShaderPassBlend Dest;
         public ShaderPassBlendOp Op;
+
+        public static readonly ShaderPassBlendFormula Default = new()
+        {
+            Src = ShaderPassBlend.One,
+            Dest = ShaderPassBlend.Zero,
+            Op = ShaderPassBlendOp.Add
+        };
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    [JsonObject(NamingStrategyType = typeof(ShaderJsonNamingStrategy))]
     internal struct ShaderPassBlendState
     {
         public bool Enable;
         public ShaderPassColorWriteMask WriteMask;
         public ShaderPassBlendFormula Rgb;
         public ShaderPassBlendFormula Alpha;
+
+        public static readonly ShaderPassBlendState Default = new()
+        {
+            Enable = false,
+            WriteMask = ShaderPassColorWriteMask.All,
+            Rgb = ShaderPassBlendFormula.Default,
+            Alpha = ShaderPassBlendFormula.Default
+        };
     }
 
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderPassCompareFunc : int
     {
         Never = 0,
@@ -351,7 +331,6 @@ namespace DX12Demo.Core.Rendering
         public ShaderPassCompareFunc Compare;
     }
 
-    [JsonConverter(typeof(StringEnumConverter), typeof(ShaderJsonNamingStrategy))]
     internal enum ShaderPassStencilOp : int
     {
         Keep = 0,
@@ -538,13 +517,14 @@ namespace DX12Demo.Core.Rendering
 
         internal int GetPassCount() => Shader_GetPassCount(NativePtr);
 
-        internal void CompilePass(int passIndex, string filename, string entrypoint, string shaderModel, ShaderProgramType programType)
+        internal void CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel, ShaderProgramType programType)
         {
             using NativeString f = filename;
+            using NativeString p = program;
             using NativeString e = entrypoint;
             using NativeString s = shaderModel;
 
-            Shader_CompilePass(NativePtr, passIndex, f.Data, e.Data, s.Data, programType);
+            Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType);
         }
 
         internal void CreatePassRootSignature(int passIndex)
@@ -577,93 +557,11 @@ namespace DX12Demo.Core.Rendering
 
         [NativeFunction]
         private static partial void Shader_CompilePass(nint pShader, int passIndex,
-            nint filename, nint entrypoint, nint shaderModel, ShaderProgramType programType);
+            nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType);
 
         [NativeFunction]
         private static partial void Shader_CreatePassRootSignature(nint pShader, int passIndex);
 
         #endregion
-    }
-
-    internal sealed class ShaderPassColorWriteMaskJsonConverter : JsonConverter<ShaderPassColorWriteMask>
-    {
-        public override ShaderPassColorWriteMask ReadJson(JsonReader reader, Type objectType, ShaderPassColorWriteMask existingValue, bool hasExistingValue, JsonSerializer serializer)
-        {
-            var mask = ShaderPassColorWriteMask.None;
-            string? value = reader.Value?.ToString();
-
-            if (!string.IsNullOrEmpty(value))
-            {
-                if (value.Contains('r', StringComparison.OrdinalIgnoreCase))
-                {
-                    mask |= ShaderPassColorWriteMask.Red;
-                }
-
-                if (value.Contains('g', StringComparison.OrdinalIgnoreCase))
-                {
-                    mask |= ShaderPassColorWriteMask.Green;
-                }
-
-                if (value.Contains('b', StringComparison.OrdinalIgnoreCase))
-                {
-                    mask |= ShaderPassColorWriteMask.Blue;
-                }
-
-                if (value.Contains('a', StringComparison.OrdinalIgnoreCase))
-                {
-                    mask |= ShaderPassColorWriteMask.Alpha;
-                }
-            }
-
-            return mask;
-        }
-
-        public override void WriteJson(JsonWriter writer, ShaderPassColorWriteMask value, JsonSerializer serializer)
-        {
-            Span<char> buffer = stackalloc char[4];
-            int len = 0;
-
-            if ((value & ShaderPassColorWriteMask.Red) == ShaderPassColorWriteMask.Red)
-            {
-                buffer[len++] = 'r';
-            }
-
-            if ((value & ShaderPassColorWriteMask.Green) == ShaderPassColorWriteMask.Green)
-            {
-                buffer[len++] = 'g';
-            }
-
-            if ((value & ShaderPassColorWriteMask.Blue) == ShaderPassColorWriteMask.Blue)
-            {
-                buffer[len++] = 'b';
-            }
-
-            if ((value & ShaderPassColorWriteMask.Alpha) == ShaderPassColorWriteMask.Alpha)
-            {
-                buffer[len++] = 'a';
-            }
-
-            if (len == 0)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(new string(buffer[..len]));
-            }
-        }
-    }
-
-    internal sealed class ShaderJsonNamingStrategy : NamingStrategy
-    {
-        protected override string ResolvePropertyName(string name)
-        {
-            if (name.Length == 0)
-            {
-                return name;
-            }
-
-            return char.ToLower(name[0]) + name[1..];
-        }
     }
 }

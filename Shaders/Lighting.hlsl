@@ -3,12 +3,14 @@
 
 #define MAX_LIGHT_COUNT 16
 
+#define TEXTURE_SAMPLER(texture) SamplerState sampler##texture
+
 struct LightData
 {
-    float4 position;      // Î»ÖÃ£¨w==1, µã¹âÔ´/¾Û¹âµÆ£©£»·½Ïò£¨w==0, Æ½ÐÐ¹â£©
-    float4 spotDirection; // ¾Û¹âµÆ·½Ïò£¨w Îª¾Û¹âÇ¿¶È£¬0 ±íÊ¾·Ç¾Û¹âµÆ£©
-    float4 color;         // ÑÕÉ«£¬w Î´Ê¹ÓÃ
-    float4 falloff;       // Ë¥¼õµÄÆðÊ¼ºÍ½áÊø¾àÀë£¨µã¹âÔ´/¾Û¹âµÆ£©£¬zw Î´Ê¹ÓÃ
+    float4 position;      // Î»ï¿½Ã£ï¿½w==1, ï¿½ï¿½ï¿½Ô´/ï¿½Û¹ï¿½Æ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½w==0, Æ½ï¿½Ð¹â£©
+    float4 spotDirection; // ï¿½Û¹ï¿½Æ·ï¿½ï¿½ï¿½w Îªï¿½Û¹ï¿½Ç¿ï¿½È£ï¿½0 ï¿½ï¿½Ê¾ï¿½Ç¾Û¹ï¿½Æ£ï¿½
+    float4 color;         // ï¿½ï¿½É«ï¿½ï¿½w Î´Ê¹ï¿½ï¿½
+    float4 falloff;       // Ë¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½Í½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë£¨ï¿½ï¿½ï¿½Ô´/ï¿½Û¹ï¿½Æ£ï¿½ï¿½ï¿½zw Î´Ê¹ï¿½ï¿½
 };
 
 struct Light

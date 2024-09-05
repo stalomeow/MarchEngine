@@ -46,6 +46,7 @@ add_custom_command(TARGET dx12-demo POST_BUILD
                "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/DX12Demo.Core.dll" # 会自动 copy pdb
                "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/DX12Demo.Core.runtimeconfig.json"
                "${CMAKE_SOURCE_DIR}/out/build/Managed/Core/bin/$<CONFIG>/net8.0/Newtonsoft.Json.dll"
+               "${CMAKE_SOURCE_DIR}/out/build/Managed/Editor/bin/$<CONFIG>/net8.0/Antlr4.Runtime.Standard.dll"
                "${CMAKE_SOURCE_DIR}/out/build/Managed/Editor/bin/$<CONFIG>/net8.0/DX12Demo.Editor.dll" # 会自动 copy pdb
                $<TARGET_FILE_DIR:dx12-demo>)
 

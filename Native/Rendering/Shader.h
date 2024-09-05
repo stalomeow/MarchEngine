@@ -253,6 +253,7 @@ namespace dx12demo
     public:
         void CompilePass(int passIndex,
             const std::string& filename,
+            const std::string& program,
             const std::string& entrypoint,
             const std::string& shaderModel,
             ShaderProgramType programType);
@@ -601,11 +602,12 @@ namespace dx12demo
             }
         }
 
-        inline CSHARP_API(void) Shader_CompilePass(Shader* pShader, CSharpInt passIndex, CSharpString filename, CSharpString entrypoint, CSharpString shaderModel, CSharpInt programType)
+        inline CSHARP_API(void) Shader_CompilePass(Shader* pShader, CSharpInt passIndex, CSharpString filename, CSharpString program, CSharpString entrypoint, CSharpString shaderModel, CSharpInt programType)
         {
             pShader->CompilePass(
                 passIndex,
                 CSharpString_ToUtf8(filename),
+                CSharpString_ToUtf8(program),
                 CSharpString_ToUtf8(entrypoint),
                 CSharpString_ToUtf8(shaderModel),
                 static_cast<ShaderProgramType>(programType)

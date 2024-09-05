@@ -40,6 +40,7 @@ namespace dx12demo
 
     void Shader::CompilePass(int passIndex,
         const std::string& filename,
+        const std::string& program,
         const std::string& entrypoint,
         const std::string& shaderModel,
         ShaderProgramType programType)
@@ -76,7 +77,7 @@ namespace dx12demo
         // Open source file.
         //
         ComPtr<IDxcBlobEncoding> pSource = nullptr;
-        THROW_IF_FAILED(pUtils->LoadFile(wFilename.c_str(), nullptr, &pSource));
+        THROW_IF_FAILED(pUtils->CreateBlob(program.data(), program.size(), DXC_CP_UTF8, &pSource));
         DxcBuffer Source = {};
         Source.Ptr = pSource->GetBufferPointer();
         Source.Size = pSource->GetBufferSize();

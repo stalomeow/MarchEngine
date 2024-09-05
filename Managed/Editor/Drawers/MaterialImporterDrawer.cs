@@ -50,7 +50,7 @@ namespace DX12Demo.Editor.Drawers
 
                         case ShaderPropertyType.Color:
                             {
-                                Color value = material.GetColor(shaderProp.Name, shaderProp.GetDefaultColor());
+                                Color value = material.GetColor(shaderProp.Name, shaderProp.DefaultColor);
                                 isChanged |= EditorGUI.ColorField(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetColor(shaderProp.Name, value);
                                 break;
@@ -58,7 +58,7 @@ namespace DX12Demo.Editor.Drawers
 
                         case ShaderPropertyType.Vector:
                             {
-                                Vector4 value = material.GetVector(shaderProp.Name, shaderProp.GetDefaultVector());
+                                Vector4 value = material.GetVector(shaderProp.Name, shaderProp.DefaultVector);
                                 isChanged |= EditorGUI.Vector4Field(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetVector(shaderProp.Name, value);
                                 break;
