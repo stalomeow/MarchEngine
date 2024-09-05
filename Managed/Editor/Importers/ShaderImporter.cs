@@ -3,7 +3,6 @@ using DX12Demo.Core;
 using DX12Demo.Core.Rendering;
 using DX12Demo.Editor.ShaderLab;
 using DX12Demo.Editor.ShaderLab.Internal;
-using Newtonsoft.Json;
 using System.Text;
 
 namespace DX12Demo.Editor.Importers
@@ -13,7 +12,7 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => 9;
+        protected override int Version => 11;
 
         protected override bool UseCache => true;
 
@@ -129,10 +128,5 @@ namespace DX12Demo.Editor.Importers
                 shader.CreatePassRootSignature(i);
             }
         }
-
-        private static readonly JsonSerializerSettings s_JsonSettings = new()
-        {
-            ObjectCreationHandling = ObjectCreationHandling.Replace, // 保证不会重新添加集合元素
-        };
     }
 }

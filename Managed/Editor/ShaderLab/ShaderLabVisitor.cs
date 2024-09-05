@@ -139,7 +139,7 @@ namespace DX12Demo.Editor.ShaderLab
 
         public override int VisitNameDeclaration([NotNull] ShaderLabParser.NameDeclarationContext context)
         {
-            CurrentPass.Name = context.StringLiteral().GetText();
+            CurrentPass.Name = context.StringLiteral().GetText()[1..^1]; // remove quotes
             return base.VisitNameDeclaration(context);
         }
 
@@ -345,10 +345,7 @@ namespace DX12Demo.Editor.ShaderLab
 
         public override int VisitHlslProgramDeclaration([NotNull] ShaderLabParser.HlslProgramDeclarationContext context)
         {
-            string code = context.HlslProgram().GetText();
-            code = code.Replace("HLSLPROGRAM", "");
-            code = code.Replace("ENDHLSL", "");
-            code = code.Trim();
+            string code = context.HlslProgram().GetText()[11..^7].Trim(); // Remove HLSLPROGRAM and ENDHLSL
             CurrentPass.HlslProgram = code;
 
             foreach (string line in code.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))

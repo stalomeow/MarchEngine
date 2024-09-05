@@ -3,6 +3,7 @@
 #include "Scripting/ScriptTypes.h"
 #include "Rendering/DxException.h"
 #include "Rendering/Resource/Texture.h"
+#include "Core/StringUtility.h"
 #include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
@@ -12,9 +13,73 @@
 #include <wrl.h>
 #include <dxcapi.h>
 #include <stdint.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+// TODO : Shader Changed Event to reload material
+// TODO : Implement LoadSource
 
 namespace dx12demo
 {
+    class ShaderIncludeHandler : public IDxcIncludeHandler
+    {
+    public:
+        ShaderIncludeHandler(IDxcUtils* utils)
+            : m_Utils(utils), m_RefCount(0)
+        {
+            THROW_IF_FAILED(m_Utils->CreateDefaultIncludeHandler(&m_DefaultHandler));
+        }
+
+        HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
+        {
+            std::string filename = StringUtility::Utf16ToUtf8(pFilename);
+            auto builtinPath = fs::path("C:/Projects/Graphics/dx12-demo/Shaders") / filename;
+
+            if (fs::exists(builtinPath))
+            {
+                return m_Utils->LoadFile(builtinPath.c_str(), nullptr, reinterpret_cast<IDxcBlobEncoding**>(ppIncludeSource));
+            }
+
+            return m_DefaultHandler->LoadSource(pFilename, ppIncludeSource);
+        }
+
+        HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+        {
+            if (riid == __uuidof(IUnknown) || riid == __uuidof(IDxcIncludeHandler))
+            {
+                *ppvObject = this;
+                AddRef();
+                return S_OK;
+            }
+
+            *ppvObject = nullptr;
+            return E_NOINTERFACE;
+        }
+
+        ULONG STDMETHODCALLTYPE AddRef(void) override
+        {
+            return ++m_RefCount;
+        }
+
+        ULONG STDMETHODCALLTYPE Release(void) override
+        {
+            ULONG refCount = --m_RefCount;
+
+            if (refCount == 0)
+            {
+                delete this;
+            }
+
+            return refCount;
+        }
+
+    private:
+        Microsoft::WRL::ComPtr<IDxcIncludeHandler> m_DefaultHandler;
+        IDxcUtils* m_Utils;
+        ULONG m_RefCount;
+    };
+
     enum class ShaderPropertyType
     {
         Float = 0,
