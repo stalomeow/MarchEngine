@@ -54,7 +54,8 @@ namespace dx12demo
         //
         // Create default include handler. (You can create your own...)
         //
-        ComPtr<IDxcIncludeHandler> pIncludeHandler = new ShaderIncludeHandler(pUtils);
+        ComPtr<IDxcIncludeHandler> pIncludeHandler;
+        THROW_IF_FAILED(pUtils->CreateDefaultIncludeHandler(&pIncludeHandler));
 
         std::wstring wFilename = StringUtility::Utf8ToUtf16(filename);
         std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(entrypoint);
@@ -66,8 +67,9 @@ namespace dx12demo
             L"-E", wEntrypoint.c_str(),            // Entry point.
             L"-T", wTargetProfile.c_str(),         // Target.
             // L"-D", L"MYDEFINE=1",               // A single define.
-            L"-Zi",                                // Enable debug information.
-            // L"-Qstrip_reflect",                    // Strip reflection into a separate blob.
+            L"-Zi",                                           // Enable debug information.
+            L"-I", L"C:/Projects/Graphics/dx12-demo/Shaders", // Include directory.
+            // L"-Qstrip_reflect",                            // Strip reflection into a separate blob.
         };
 
         //
