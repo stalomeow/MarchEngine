@@ -15,6 +15,8 @@ namespace dx12demo
     {
         m_CmdAllocator = s_CommandAllocatorPool->Get(m_Type);
         m_UploadHeapAllocator = std::make_unique<UploadHeapAllocator>(4096);
+        m_CbvSrvUavHeap = std::make_unique<DynamicDescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1024);
+        m_SamplerHeap = std::make_unique<DynamicDescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 1024);
 
         auto device = GetGfxManager().GetDevice();
         THROW_IF_FAILED(device->CreateCommandList(0, type, m_CmdAllocator, nullptr, IID_PPV_ARGS(&m_CmdList)));
@@ -37,6 +39,8 @@ namespace dx12demo
         UINT64 fenceValue = GetGfxManager().SignalNextFenceValue();
         s_CommandAllocatorPool->Release(std::exchange(m_CmdAllocator, nullptr), m_Type, fenceValue);
         m_UploadHeapAllocator->FlushPages(fenceValue);
+        m_CbvSrvUavHeap->Flush(fenceValue);
+        m_SamplerHeap->Flush(fenceValue);
         s_FreeCommandBuffers[m_Type].push(this);
 
         if (waitForCompletion)

@@ -27,7 +27,7 @@ namespace dx12demo
     {
         if (m_Resource != nullptr)
         {
-            GetGfxManager().SafeReleaseResource(m_Resource);
+            GetGfxManager().SafeReleaseObject(m_Resource);
             m_Resource = nullptr;
         }
 

@@ -15,7 +15,8 @@ namespace dx12demo
     RenderPipeline::RenderPipeline(int width, int height)
     {
         CheckMSAAQuailty();
-        CreateDescriptorHeaps();
+        m_RtvHandle = DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        m_DsvHandle = DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
         Resize(width, height);
     }
 
@@ -33,22 +34,14 @@ namespace dx12demo
         m_MSAAQuality = msQualityLevels.NumQualityLevels - 1;
     }
 
-    void RenderPipeline::CreateDescriptorHeaps()
+    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView() const
     {
-        m_RtvHeap = std::make_unique<DescriptorHeap>(L"Rtv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 0, 1, false);
-        m_DsvHeap = std::make_unique<DescriptorHeap>(L"Dsv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 0, 1, false);
-        m_SrvHeap = std::make_unique<DescriptorHeap>(L"Srv Heap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        m_SamplerHeap = std::make_unique<DescriptorHeap>(L"Sampler Heap", D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 20);
+        return DescriptorManager::GetCpuHandle(m_RtvHandle);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView()
+    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetDepthStencilTargetView() const
     {
-        return m_RtvHeap->GetCpuHandleForFixedDescriptor(0);
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetDepthStencilTargetView()
-    {
-        return m_DsvHeap->GetCpuHandleForFixedDescriptor(0);
+        return DescriptorManager::GetCpuHandle(m_DsvHandle);
     }
 
     void RenderPipeline::SetEnableMSAA(bool value)
@@ -77,7 +70,7 @@ namespace dx12demo
             &colorClearValue, IID_PPV_ARGS(&m_ColorTarget)));
         m_LastColorTargetState = D3D12_RESOURCE_STATE_COMMON;
         device->CreateRenderTargetView(m_ColorTarget.Get(), nullptr,
-            m_RtvHeap->GetCpuHandleForFixedDescriptor(0));
+            GetColorRenderTargetView());
 
         D3D12_CLEAR_VALUE dsClearValue = {};
         dsClearValue.Format = m_DepthStencilFormat;
@@ -93,7 +86,7 @@ namespace dx12demo
             D3D12_RESOURCE_STATE_DEPTH_WRITE,
             &dsClearValue, IID_PPV_ARGS(&m_DepthStencilTarget)));
         device->CreateDepthStencilView(m_DepthStencilTarget.Get(), nullptr,
-            m_DsvHeap->GetCpuHandleForFixedDescriptor(0));
+            GetDepthStencilTargetView());
     }
 
     void RenderPipeline::Resize(int width, int height)
@@ -125,14 +118,23 @@ namespace dx12demo
         m_ScissorRect = { 0, 0, width, height };
     }
 
-    static void BindRootCbv(ID3D12GraphicsCommandList* cmdList, const ShaderPass& pass,
+    static void BindCbv(const DescriptorHeapSpan& cbvSrvUavHeap, const ShaderPass* pass,
         const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address)
     {
-        UINT cbvIndex = 0;
-        if (pass.TryGetRootCbvIndex(name, &cbvIndex))
+        auto it = pass->ConstantBuffers.find(name);
+
+        if (it == pass->ConstantBuffers.end())
         {
-            cmdList->SetGraphicsRootConstantBufferView(cbvIndex, address);
+            return;
         }
+
+        D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
+        desc.BufferLocation = address;
+        desc.SizeInBytes = ConstantBuffer::GetAlignedSize(it->second.Size);
+
+        auto device = GetGfxManager().GetDevice();
+        device->CreateConstantBufferView(&desc,
+            cbvSrvUavHeap.GetCpuDescriptorHandle(it->second.DescriptorTableIndex));
     }
 
     void RenderPipeline::Render(CommandBuffer* cmd)
@@ -181,10 +183,10 @@ namespace dx12demo
             m_Lights[i]->FillLightData(passConsts.Lights[i]);
         }
 
-        auto cbPass = cmd->AllocateTempUploadHeap<PerPassConstants>(1, ConstantBufferAlignment);
+        auto cbPass = cmd->AllocateTempUploadHeap<PerPassConstants>(1, ConstantBuffer::Alignment);
         cbPass.SetData(0, passConsts);
 
-        auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(m_RenderObjects.size(), ConstantBufferAlignment);
+        auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(m_RenderObjects.size(), ConstantBuffer::Alignment);
         std::unordered_map<size_t, std::vector<int>> objs; // 优化 pso 切换
 
         for (int i = 0; i < m_RenderObjects.size(); i++)
@@ -195,7 +197,7 @@ namespace dx12demo
 
             if (m_RenderObjects[i]->Mat != nullptr)
             {
-                ShaderPass* pass = &(m_RenderObjects[i]->Mat->GetShader()->Passes[0]);
+                ShaderPass* pass = m_RenderObjects[i]->Mat->GetShader()->Passes[0].get();
                 size_t hash = HashState(&pass, 1, m_RenderObjects[i]->Desc.GetHash());
                 objs[hash].push_back(i);
             }
@@ -242,54 +244,73 @@ namespace dx12demo
             {
                 int index = it.second[i];
                 RenderObject* obj = m_RenderObjects[index];
-                ShaderPass& pass = obj->Mat->GetShader()->Passes[0];
-
-                if (i == 0)
-                {
-                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Desc, rpDesc);
-                    cmd->GetList()->SetPipelineState(pso);
-
-                    // ??? 不是 PSO 里已经有了吗
-                    cmd->GetList()->SetGraphicsRootSignature(pass.GetRootSignature());
-                    BindRootCbv(cmd->GetList(), pass, "cbPass", cbPass.GetGpuVirtualAddress());
-
-                    ID3D12DescriptorHeap* descriptorHeaps[] = { m_SrvHeap->GetHeapPointer(), m_SamplerHeap->GetHeapPointer() };
-                    cmd->GetList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-                }
-
                 if (!obj->IsActive || obj->Mesh == nullptr || obj->Mat == nullptr)
                 {
                     continue;
                 }
 
-                m_SrvHeap->Clear();
-                m_SamplerHeap->Clear();
+                ShaderPass* pass = obj->Mat->GetShader()->Passes[0].get();
+                std::vector<std::pair<UINT, DescriptorHeapSpan>> heaps{};
 
-                for (const ShaderPassTextureProperty& texProp : pass.TextureProperties)
+                if (pass->GetCbvSrvUavCount() > 0)
                 {
-                    Texture* texture = nullptr;
-                    if (obj->Mat->GetTexture(texProp.Name, &texture))
-                    {
-                        m_SrvHeap->Append(texture->GetTextureCpuDescriptorHandle());
+                    DescriptorHeapSpan cbvSrvUavHeap = cmd->AllocateTempCbvSrvUavHeap(pass->GetCbvSrvUavCount());
+                    heaps.emplace_back(pass->GetCbvSrvUavRootParamIndex(), cbvSrvUavHeap);
 
-                        if (texProp.HasSampler)
+                    for (auto& kv : pass->TextureProperties)
+                    {
+                        Texture* texture = nullptr;
+                        if (obj->Mat->GetTexture(kv.first, &texture))
                         {
-                            m_SamplerHeap->Append(texture->GetSamplerCpuDescriptorHandle());
+                            cbvSrvUavHeap.CopyDescriptor(kv.second.TextureDescriptorTableIndex, texture->GetTextureCpuDescriptorHandle());
+                        }
+                    }
+
+                    BindCbv(cbvSrvUavHeap, pass, "cbPass", cbPass.GetGpuVirtualAddress());
+                    BindCbv(cbvSrvUavHeap, pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
+
+                    ConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(pass);
+                    if (cbMat != nullptr)
+                    {
+                        BindCbv(cbvSrvUavHeap, pass, "cbMaterial", cbMat->GetGpuVirtualAddress());
+                    }
+                }
+
+                if (pass->GetSamplerCount() > 0)
+                {
+                    DescriptorHeapSpan samplerHeap = cmd->AllocateTempSamplerHeap(pass->GetSamplerCount());
+                    heaps.emplace_back(pass->GetSamplerRootParamIndex(), samplerHeap);
+
+                    for (auto& kv : pass->TextureProperties)
+                    {
+                        Texture* texture = nullptr;
+                        if (obj->Mat->GetTexture(kv.first, &texture))
+                        {
+                            if (kv.second.HasSampler)
+                            {
+                                samplerHeap.CopyDescriptor(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                            }
                         }
                     }
                 }
 
-                cmd->GetList()->SetGraphicsRootDescriptorTable(pass.GetRootSrvDescriptorTableIndex(),
-                    m_SrvHeap->GetGpuHandleForDynamicDescriptor(0));
-                cmd->GetList()->SetGraphicsRootDescriptorTable(pass.GetRootSamplerDescriptorTableIndex(),
-                    m_SamplerHeap->GetGpuHandleForDynamicDescriptor(0));
-
-                BindRootCbv(cmd->GetList(), pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
-
-                ConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(&pass);
-                if (cbMat != nullptr)
+                if (i == 0)
                 {
-                    BindRootCbv(cmd->GetList(), pass, "cbMaterial", cbMat->GetGpuVirtualAddress());
+                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Desc, rpDesc);
+                    cmd->GetList()->SetPipelineState(pso);
+                    cmd->GetList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
+                }
+
+                if (!heaps.empty())
+                {
+                    std::vector<ID3D12DescriptorHeap*> descriptorHeaps{};
+                    for (auto& span : heaps) descriptorHeaps.push_back(span.second.GetHeapPointer());
+                    cmd->GetList()->SetDescriptorHeaps(descriptorHeaps.size(), descriptorHeaps.data());
+
+                    for (auto& span : heaps)
+                    {
+                        cmd->GetList()->SetGraphicsRootDescriptorTable(span.first, span.second.GetGpuDescriptorHandle(0));
+                    }
                 }
 
                 obj->Mesh->Draw(cmd);

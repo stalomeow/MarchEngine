@@ -25,7 +25,7 @@ namespace dx12demo
     };
 
     ID3D12PipelineState* GetGraphicsPipelineState(
-        const ShaderPass& pass,
+        const ShaderPass* pPass,
         const MeshRendererDesc& rendererDesc,
         const RenderPipelineDesc& pipelineDesc);
 

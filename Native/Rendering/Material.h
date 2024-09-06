@@ -17,7 +17,13 @@ namespace dx12demo
 {
     class Material final
     {
+    private:
+        void CheckShaderVersion();
+        void RecreateConstantBuffers();
+
     public:
+        void Reset();
+
         void SetInt(const std::string& name, int32_t value);
         void SetFloat(const std::string& name, float value);
         void SetVector(const std::string& name, DirectX::XMFLOAT4 value);
@@ -31,16 +37,20 @@ namespace dx12demo
         Shader* GetShader() const { return m_Shader; }
         void SetShader(Shader* pShader);
 
-        ConstantBuffer* GetConstantBuffer(ShaderPass* pass, ConstantBuffer* defaultValue = nullptr) const
+        ConstantBuffer* GetConstantBuffer(ShaderPass* pass, ConstantBuffer* defaultValue = nullptr)
         {
+            CheckShaderVersion();
             auto it = m_ConstantBuffers.find(pass);
             return it == m_ConstantBuffers.end() ? defaultValue : it->second.get();
         }
 
     private:
+
         template<typename T>
-        void SetConstantBufferValue(const std::string& name, const T& value) const
+        void SetConstantBufferValue(const std::string& name, const T& value)
         {
+            CheckShaderVersion();
+
             for (const auto& kv : m_ConstantBuffers)
             {
                 const ShaderPass* pass = kv.first;
@@ -57,6 +67,7 @@ namespace dx12demo
         }
 
         Shader* m_Shader;
+        int32_t m_ShaderVersion;
         std::unordered_map<ShaderPass*, std::unique_ptr<ConstantBuffer>> m_ConstantBuffers;
 
         std::unordered_map<std::string, int32_t> m_Ints;
@@ -75,6 +86,11 @@ namespace dx12demo
         inline CSHARP_API(void) Material_Delete(Material* pMaterial)
         {
             delete pMaterial;
+        }
+
+        inline CSHARP_API(void) Material_Reset(Material* pMaterial)
+        {
+            pMaterial->Reset();
         }
 
         inline CSHARP_API(void) Material_SetShader(Material* pMaterial, Shader* pShader)

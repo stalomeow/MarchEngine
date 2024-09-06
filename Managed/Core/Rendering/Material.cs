@@ -38,6 +38,8 @@ namespace DX12Demo.Core.Rendering
         [OnDeserialized]
         private void OnDeserializedCallback(StreamingContext context)
         {
+            Material_Reset(NativePtr); // 避免 overwrite 后还有旧数据
+
             m_Shader = AssetManager.Load<Shader>(m_ShaderPath);
 
             if (m_Shader != null)
@@ -214,6 +216,9 @@ namespace DX12Demo.Core.Rendering
 
         [NativeFunction]
         private static partial void Material_Delete(nint pMaterial);
+
+        [NativeFunction]
+        private static partial void Material_Reset(nint pMaterial);
 
         [NativeFunction]
         private static partial void Material_SetShader(nint pMaterial, nint pShader);

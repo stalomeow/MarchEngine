@@ -22,11 +22,18 @@ namespace DX12Demo.Core.Rendering
         White = 1
     }
 
+    internal class ShaderPropertyAttribute
+    {
+        public string Name = string.Empty;
+        public string? Arguments = null;
+    }
+
     internal class ShaderProperty
     {
         public string Name = string.Empty;
         public string Label = string.Empty;
         public string Tooltip = string.Empty;
+        public ShaderPropertyAttribute[] Attributes = [];
         public ShaderPropertyType Type;
 
         public float DefaultFloat;

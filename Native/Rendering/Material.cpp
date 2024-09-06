@@ -1,8 +1,21 @@
 #include "Rendering/Material.h"
 #include "Core/StringUtility.h"
+#include "Core/Debug.h"
 
 namespace dx12demo
 {
+    void Material::Reset()
+    {
+        m_Shader = nullptr;
+        m_ShaderVersion = 0;
+        m_ConstantBuffers.clear();
+
+        m_Ints.clear();
+        m_Floats.clear();
+        m_Vectors.clear();
+        m_Textures.clear();
+    }
+
     void Material::SetInt(const std::string& name, int32_t value)
     {
         m_Ints[name] = value;
@@ -118,31 +131,42 @@ namespace dx12demo
         return false;
     }
 
-    void Material::SetShader(Shader* pShader)
+    void Material::CheckShaderVersion()
     {
-        if (m_Shader == pShader)
+        if (m_Shader == nullptr)
         {
             return;
         }
 
-        m_Shader = pShader;
+        if (m_ShaderVersion == m_Shader->Version)
+        {
+            return;
+        }
+
+        m_ShaderVersion = m_Shader->Version;
+        RecreateConstantBuffers();
+    }
+
+    void Material::RecreateConstantBuffers()
+    {
+        DEBUG_LOG_INFO("Recreate material cbuffer");
 
         // 创建 cbuffer
         m_ConstantBuffers.clear();
-        for (auto& pass : pShader->Passes)
+        for (auto& pass : m_Shader->Passes)
         {
-            auto matCb = pass.ConstantBuffers.find(ShaderPass::MaterialCbName);
-            if (matCb == pass.ConstantBuffers.end())
+            auto matCb = pass->ConstantBuffers.find(ShaderPass::MaterialCbName);
+            if (matCb == pass->ConstantBuffers.end())
             {
                 continue;
             }
 
-            std::wstring cbName = StringUtility::Utf8ToUtf16(pass.Name + "ConstantBuffer");
-            m_ConstantBuffers[&pass] = std::make_unique<ConstantBuffer>(cbName, matCb->second.Size, 1, false);
+            std::wstring cbName = StringUtility::Utf8ToUtf16(pass->Name + "ConstantBuffer");
+            m_ConstantBuffers[pass.get()] = std::make_unique<ConstantBuffer>(cbName, matCb->second.Size, 1, false);
         }
 
         // 初始化 cbuffer
-        for (const auto& kv : pShader->Properties)
+        for (const auto& kv : m_Shader->Properties)
         {
             const std::string& name = kv.first;
             const ShaderProperty& prop = kv.second;
@@ -188,5 +212,17 @@ namespace dx12demo
                 break;
             }
         }
+    }
+
+    void Material::SetShader(Shader* pShader)
+    {
+        if (m_Shader == pShader && m_ShaderVersion == pShader->Version)
+        {
+            return;
+        }
+
+        m_Shader = pShader;
+        m_ShaderVersion = pShader->Version;
+        RecreateConstantBuffers();
     }
 }

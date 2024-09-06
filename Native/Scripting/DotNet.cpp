@@ -150,6 +150,7 @@ namespace dx12demo
 
             CSHARP_BINDING_ENTRY(Material_New),
             CSHARP_BINDING_ENTRY(Material_Delete),
+            CSHARP_BINDING_ENTRY(Material_Reset),
             CSHARP_BINDING_ENTRY(Material_SetShader),
             CSHARP_BINDING_ENTRY(Material_SetInt),
             CSHARP_BINDING_ENTRY(Material_SetFloat),

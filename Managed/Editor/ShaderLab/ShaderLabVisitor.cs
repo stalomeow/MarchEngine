@@ -13,6 +13,7 @@ namespace DX12Demo.Editor.ShaderLab
         public string? Name;
         public string? Label;
         public string Tooltip = string.Empty;
+        public List<ShaderPropertyAttribute> Attributes = [];
         public ShaderPropertyType Type;
 
         public float DefaultFloat;
@@ -86,14 +87,22 @@ namespace DX12Demo.Editor.ShaderLab
                 Visit(attr);
 
                 string rawText = attr.BracketLiteral().GetText()[1..^1]; // remove brackets
+                Match m = AttributeRegex().Match(rawText);
 
-                if (rawText.StartsWith("Tooltip"))
+                if (m.Success)
                 {
-                    Match m = AttributeRegex().Match(rawText);
+                    string name = m.Groups[1].Value.Trim();
+                    string? arguments = m.Groups.Count > 2 ? m.Groups[3].Value.Trim() : null;
 
-                    if (m.Success)
+                    prop.Attributes.Add(new()
                     {
-                        prop.Tooltip = m.Groups[1].Value.Trim();
+                        Name = name,
+                        Arguments = arguments
+                    });
+
+                    if (name == "Tooltip")
+                    {
+                        prop.Tooltip = arguments ?? string.Empty;
                     }
                 }
             }
@@ -481,7 +490,7 @@ namespace DX12Demo.Editor.ShaderLab
             };
         }
 
-        [GeneratedRegex(@"\((.*)\)")]
+        [GeneratedRegex(@"^(.+?)(\((.*)\))?$")]
         private static partial Regex AttributeRegex();
     }
 }

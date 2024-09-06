@@ -50,13 +50,11 @@ namespace dx12demo
         BYTE* m_MappedData;
     };
 
-    const UINT ConstantBufferAlignment = 256;
-
     class ConstantBuffer : public GpuBuffer
     {
     public:
         ConstantBuffer(const std::wstring& name, UINT elementSize, UINT count, bool readable)
-            : GpuBuffer(name, MathHelper::AlignUp(elementSize, ConstantBufferAlignment), count, D3D12_HEAP_TYPE_UPLOAD)
+            : GpuBuffer(name, GetAlignedSize(elementSize), count, D3D12_HEAP_TYPE_UPLOAD)
         {
             CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
             THROW_IF_FAILED(m_Resource->Map(0, (readable ? nullptr : &readRange), reinterpret_cast<void**>(&m_MappedData)));
@@ -75,6 +73,10 @@ namespace dx12demo
 
     protected:
         BYTE* m_MappedData;
+
+    public:
+        static const UINT Alignment = 256;
+        static UINT GetAlignedSize(UINT size) { return MathHelper::AlignUp(size, Alignment); }
     };
 
     template<typename T>

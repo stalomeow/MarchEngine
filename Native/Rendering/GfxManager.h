@@ -27,7 +27,7 @@ namespace dx12demo
         void Present();
         void LogAdapters(DXGI_FORMAT format);
 
-        void SafeReleaseResource(ID3D12Resource* res);
+        void SafeReleaseObject(ID3D12Object* obj);
 
         IDXGIFactory4* GetFactory() const { return m_Factory.Get(); }
         ID3D12Device* GetDevice() const { return m_Device.Get(); }
@@ -86,7 +86,7 @@ namespace dx12demo
         int m_CurrentBackBufferIndex = 0;
         HANDLE m_FrameLatencyWaitEventHandle;
 
-        std::queue<std::pair<ID3D12Resource*, UINT64>> m_ReleaseQueue{};
+        std::queue<std::pair<ID3D12Object*, UINT64>> m_ReleaseQueue{};
 
         const DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;

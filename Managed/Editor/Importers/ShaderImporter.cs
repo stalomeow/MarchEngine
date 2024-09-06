@@ -41,6 +41,7 @@ namespace DX12Demo.Editor.Importers
                 Name = p.Name ?? throw new NotSupportedException("Shader property name is required."),
                 Label = p.Label ?? throw new NotSupportedException("Shader property label is required."),
                 Tooltip = p.Tooltip,
+                Attributes = p.Attributes.ToArray(),
                 Type = p.Type,
                 DefaultFloat = p.DefaultFloat,
                 DefaultInt = p.DefaultInt,

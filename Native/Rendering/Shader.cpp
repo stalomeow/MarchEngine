@@ -47,7 +47,7 @@ namespace dx12demo
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
-        ShaderPass& targetPass = Passes[passIndex];
+        ShaderPass& targetPass = *Passes[passIndex].get();
         IDxcUtils* pUtils = GetDxcUtils();
         IDxcCompiler3* pCompiler = GetDxcCompiler();
 
@@ -185,16 +185,12 @@ namespace dx12demo
 
                 case D3D_SIT_TEXTURE:
                 {
-                    auto it = std::find_if(targetPass.TextureProperties.begin(), targetPass.TextureProperties.end(),
-                        [&](const ShaderPassTextureProperty& prop) { return prop.Name == bindDesc.Name; });
-                    ShaderPassTextureProperty& tex = (it != targetPass.TextureProperties.end()) ? *it
-                        : targetPass.TextureProperties.emplace_back();
+                    ShaderPassTextureProperty& tex = targetPass.TextureProperties[bindDesc.Name];
 
-                    tex.Name = bindDesc.Name;
                     tex.ShaderRegisterTexture = bindDesc.BindPoint;
                     tex.RegisterSpaceTexture = bindDesc.Space;
 
-                    std::string samplerName = "sampler" + tex.Name;
+                    std::string samplerName = std::string("sampler") + bindDesc.Name;
                     D3D12_SHADER_INPUT_BIND_DESC samplerDesc = {};
                     HRESULT hr = pReflection->GetResourceBindingDescByName(samplerName.c_str(), &samplerDesc);
 
@@ -317,33 +313,60 @@ namespace dx12demo
 
     void ShaderPass::CreateRootSignature()
     {
-        std::vector<CD3DX12_DESCRIPTOR_RANGE> textureRanges;
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> cbvSrvUavRanges;
         std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
 
-        for (const ShaderPassTextureProperty& texProp : TextureProperties)
+        for (auto it = TextureProperties.begin(); it != TextureProperties.end(); ++it)
         {
-            textureRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
+            ShaderPassTextureProperty& texProp = it->second;
+
+            cbvSrvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
                 texProp.ShaderRegisterTexture, texProp.RegisterSpaceTexture,
                 D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+            texProp.TextureDescriptorTableIndex = cbvSrvUavRanges.size() - 1;
 
             if (texProp.HasSampler)
             {
                 samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
                     texProp.ShaderRegisterSampler, texProp.RegisterSpaceSampler,
                     D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                texProp.SamplerDescriptorTableIndex = samplerRanges.size() - 1;
             }
+        }
+
+        for (auto it = ConstantBuffers.begin(); it != ConstantBuffers.end(); ++it)
+        {
+            ShaderPassConstantBuffer& cbProp = it->second;
+            cbvSrvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1,
+                cbProp.ShaderRegister, cbProp.RegisterSpace,
+                D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+            cbProp.DescriptorTableIndex = cbvSrvUavRanges.size() - 1;
         }
 
         std::vector<CD3DX12_ROOT_PARAMETER> params;
 
+        // TODO: optimize visibility
         // Perfomance TIP: Order from most frequent to least frequent.
-        params.emplace_back().InitAsDescriptorTable(textureRanges.size(), textureRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
-        params.emplace_back().InitAsDescriptorTable(samplerRanges.size(), samplerRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
-
-        for (const std::pair<std::string, ShaderPassConstantBuffer>& kv : ConstantBuffers)
+        if (cbvSrvUavRanges.size() > 0)
         {
-            params.emplace_back().InitAsConstantBufferView(kv.second.ShaderRegister, kv.second.RegisterSpace);
-            m_CbRootParamIndexMap[kv.first] = static_cast<UINT>(params.size() - 1);
+            params.emplace_back().InitAsDescriptorTable(cbvSrvUavRanges.size(), cbvSrvUavRanges.data(), D3D12_SHADER_VISIBILITY_ALL);
+            m_CbvSrvUavCount = cbvSrvUavRanges.size();
+            m_CbvSrvUavRootParamIndex = params.size() - 1;
+        }
+        else
+        {
+            m_CbvSrvUavCount = 0;
+        }
+
+        if (samplerRanges.size() > 0)
+        {
+            params.emplace_back().InitAsDescriptorTable(samplerRanges.size(), samplerRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
+            m_SamplerCount = samplerRanges.size();
+            m_SamplerRootParamIndex = params.size() - 1;
+        }
+        else
+        {
+            m_SamplerCount = 0;
         }
 
         auto staticSamplers = CreateStaticSamplers();

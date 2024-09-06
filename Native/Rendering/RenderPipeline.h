@@ -82,27 +82,23 @@ namespace dx12demo
 
     private:
         void CheckMSAAQuailty();
-        void CreateDescriptorHeaps();
         void CreateColorAndDepthStencilTarget(int width, int height);
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView();
-        D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView();
+        D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView() const;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView() const;
 
     private:
         bool m_EnableMSAA = true;
         UINT m_MSAAQuality;
 
-        std::unique_ptr<DescriptorHeap> m_RtvHeap;
-        std::unique_ptr<DescriptorHeap> m_DsvHeap;
+        ShaderOpaqueDescriptorHandle m_RtvHandle;
+        ShaderOpaqueDescriptorHandle m_DsvHandle;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ColorTarget;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ResolvedColorTarget;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilTarget;
         D3D12_RESOURCE_STATES m_LastColorTargetState;
         D3D12_RESOURCE_STATES m_LastResolvedColorTargetState;
-
-        std::unique_ptr<DescriptorHeap> m_SrvHeap;
-        std::unique_ptr<DescriptorHeap> m_SamplerHeap;
 
         int m_RenderTargetWidth;
         int m_RenderTargetHeight;

@@ -67,8 +67,8 @@ namespace dx12demo
         WrapMode m_WrapMode = WrapMode::Repeat;
         DirectX::TexMetadata m_MetaData{};
 
-        DescriptorHandle m_TextureDescriptorHandle;
-        DescriptorHandle m_SamplerDescriptorHandle;
+        ShaderOpaqueDescriptorHandle m_TextureDescriptorHandle;
+        ShaderOpaqueDescriptorHandle m_SamplerDescriptorHandle;
 
     public:
         static Texture* GetDefaultBlack();

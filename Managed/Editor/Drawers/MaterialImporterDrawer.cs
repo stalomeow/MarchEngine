@@ -3,6 +3,7 @@ using DX12Demo.Core.Rendering;
 using DX12Demo.Core.Serialization;
 using DX12Demo.Editor.Importers;
 using Newtonsoft.Json.Serialization;
+using System.Linq;
 using System.Numerics;
 
 namespace DX12Demo.Editor.Drawers
@@ -34,9 +35,7 @@ namespace DX12Demo.Editor.Drawers
                     {
                         case ShaderPropertyType.Float:
                             {
-                                float value = material.GetFloat(shaderProp.Name, shaderProp.DefaultFloat);
-                                isChanged |= EditorGUI.FloatField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                                material.SetFloat(shaderProp.Name, value);
+                                isChanged |= DrawFloat(material, shaderProp);
                                 break;
                             }
 
@@ -78,6 +77,26 @@ namespace DX12Demo.Editor.Drawers
             }
 
             showApplyRevertButtons = true;
+            return isChanged;
+        }
+
+        private static bool DrawFloat(Material material, ShaderProperty prop)
+        {
+            bool isChanged;
+            float value = material.GetFloat(prop.Name, prop.DefaultFloat);
+            ShaderPropertyAttribute? rangeAttr = prop.Attributes.FirstOrDefault(a => a.Name == "Range");
+
+            if (rangeAttr == null || rangeAttr.Arguments == null)
+            {
+                isChanged = EditorGUI.FloatField(prop.Label, prop.Tooltip, ref value);
+            }
+            else
+            {
+                float[] limits = rangeAttr.Arguments.Split(',').Select(s => float.Parse(s.Trim())).ToArray();
+                isChanged = EditorGUI.FloatSliderField(prop.Label, prop.Tooltip, ref value, limits[0], limits[1]);
+            }
+
+            material.SetFloat(prop.Name, value);
             return isChanged;
         }
     }
