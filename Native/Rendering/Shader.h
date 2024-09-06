@@ -245,7 +245,7 @@ namespace dx12demo
     class Shader
     {
     public:
-        void CompilePass(int passIndex,
+        bool CompilePass(int passIndex,
             const std::string& filename,
             const std::string& program,
             const std::string& entrypoint,
@@ -604,16 +604,16 @@ namespace dx12demo
             }
         }
 
-        inline CSHARP_API(void) Shader_CompilePass(Shader* pShader, CSharpInt passIndex, CSharpString filename, CSharpString program, CSharpString entrypoint, CSharpString shaderModel, CSharpInt programType)
+        inline CSHARP_API(CSharpBool) Shader_CompilePass(Shader* pShader, CSharpInt passIndex, CSharpString filename, CSharpString program, CSharpString entrypoint, CSharpString shaderModel, CSharpInt programType)
         {
-            pShader->CompilePass(
+            return CSHARP_MARSHAL_BOOL(pShader->CompilePass(
                 passIndex,
                 CSharpString_ToUtf8(filename),
                 CSharpString_ToUtf8(program),
                 CSharpString_ToUtf8(entrypoint),
                 CSharpString_ToUtf8(shaderModel),
                 static_cast<ShaderProgramType>(programType)
-            );
+            ));
         }
 
         inline CSHARP_API(void) Shader_CreatePassRootSignature(Shader* pShader, CSharpInt passIndex)

@@ -366,7 +366,15 @@ namespace dx12demo
                 if (has_color) ImGui::PopStyleColor();
                 ImGui::SameLine();
 
-                ImGui::TextUnformatted(item.Message.c_str());
+                size_t newlinePos = item.Message.find_first_of("\r\n");
+                if (newlinePos == std::string::npos)
+                {
+                    ImGui::TextUnformatted(item.Message.c_str());
+                }
+                else
+                {
+                    ImGui::TextUnformatted(item.Message.substr(0, newlinePos).c_str());
+                }
             }
 
             // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.

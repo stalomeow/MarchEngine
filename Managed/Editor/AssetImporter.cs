@@ -95,7 +95,7 @@ namespace DX12Demo.Editor
             }
         }
 
-        protected virtual bool NeedReimportAsset()
+        public virtual bool NeedReimportAsset()
         {
             if (m_SerializedVersion != Version || m_AssetLastWriteTimeUtc != GetAssetLastWriteTimeUtc())
             {
@@ -190,7 +190,7 @@ namespace DX12Demo.Editor
 
     public abstract class ExternalAssetImporter : AssetImporter
     {
-        protected sealed override bool NeedReimportAsset()
+        public sealed override bool NeedReimportAsset()
         {
             if (UseCache && !File.Exists(AssetCacheFullPath))
             {

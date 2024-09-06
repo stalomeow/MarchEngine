@@ -25,6 +25,18 @@ namespace DX12Demo.Editor.Importers
         {
             string shaderCode = File.ReadAllText(AssetFullPath, Encoding.UTF8);
 
+            try
+            {
+                CompileShader(asset, shaderCode);
+            }
+            catch
+            {
+                CompileShader(asset, s_ErrorShader);
+            }
+        }
+
+        private void CompileShader(EngineObject asset, string shaderCode)
+        {
             AntlrInputStream inputStream = new(shaderCode);
             ShaderLabLexer lexer = new(inputStream);
             CommonTokenStream tokenStream = new(lexer);
@@ -118,16 +130,92 @@ namespace DX12Demo.Editor.Importers
 
                 if (pass.VsEntrypoint != null)
                 {
-                    shader.CompilePass(i, AssetFullPath, pass.HlslProgram, pass.VsEntrypoint, pass.ShaderModel, ShaderProgramType.Vertex);
+                    bool success = shader.CompilePass(i, AssetFullPath, pass.HlslProgram, pass.VsEntrypoint, pass.ShaderModel, ShaderProgramType.Vertex);
+
+                    if (!success)
+                    {
+                        throw new Exception();
+                    }
                 }
 
                 if (pass.PsEntrypoint != null)
                 {
-                    shader.CompilePass(i, AssetFullPath, pass.HlslProgram, pass.PsEntrypoint, pass.ShaderModel, ShaderProgramType.Pixel);
+                    bool success = shader.CompilePass(i, AssetFullPath, pass.HlslProgram, pass.PsEntrypoint, pass.ShaderModel, ShaderProgramType.Pixel);
+
+                    if (!success)
+                    {
+                        throw new Exception();
+                    }
                 }
 
                 shader.CreatePassRootSignature(i);
             }
         }
+
+        private const string s_ErrorShader = @"
+Shader ""ErrorShader""
+{
+    Pass
+    {
+        Name ""ErrorShaderPass""
+
+        Cull Off
+        ZTest Less
+        ZWrite On
+
+        Blend 0 Off
+
+        HLSLPROGRAM
+        #pragma target 6.0
+        #pragma vs vert
+        #pragma ps frag
+
+        #include ""Lighting.hlsl""
+
+        cbuffer cbObject
+        {
+            float4x4 _MatrixWorld;
+        };
+
+        cbuffer cbPass
+        {
+            float4x4 _MatrixView;
+            float4x4 _MatrixProjection;
+            float4x4 _MatrixViewProjection;
+            float4x4 _MatrixInvView;
+            float4x4 _MatrixInvProjection;
+            float4x4 _MatrixInvViewProjection;
+            float4 _Time;
+            float4 _CameraPositionWS;
+
+            LightData _LightData[MAX_LIGHT_COUNT];
+            int _LightCount;
+        };
+
+        struct Attributes
+        {
+            float3 positionOS : POSITION;
+        };
+
+        struct Varyings
+        {
+            float4 positionCS : SV_Position;
+        };
+
+        Varyings vert(Attributes input)
+        {
+            Varyings output;
+            float4 positionWS = mul(_MatrixWorld, float4(input.positionOS, 1.0));
+            output.positionCS = mul(_MatrixViewProjection, positionWS);
+            return output;
+        }
+
+        float4 frag(Varyings input) : SV_Target
+        {
+            return float4(1, 0, 1, 1);
+        }
+        ENDHLSL
+    }
+}";
     }
 }

@@ -524,14 +524,14 @@ namespace DX12Demo.Core.Rendering
 
         internal int GetPassCount() => Shader_GetPassCount(NativePtr);
 
-        internal void CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel, ShaderProgramType programType)
+        internal bool CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel, ShaderProgramType programType)
         {
             using NativeString f = filename;
             using NativeString p = program;
             using NativeString e = entrypoint;
             using NativeString s = shaderModel;
 
-            Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType);
+            return Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType);
         }
 
         internal void CreatePassRootSignature(int passIndex)
@@ -563,7 +563,7 @@ namespace DX12Demo.Core.Rendering
         private static partial void Shader_SetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
 
         [NativeFunction]
-        private static partial void Shader_CompilePass(nint pShader, int passIndex,
+        private static partial bool Shader_CompilePass(nint pShader, int passIndex,
             nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType);
 
         [NativeFunction]

@@ -38,7 +38,7 @@ namespace dx12demo
         }
     }
 
-    void Shader::CompilePass(int passIndex,
+    bool Shader::CompilePass(int passIndex,
         const std::string& filename,
         const std::string& program,
         const std::string& entrypoint,
@@ -104,7 +104,7 @@ namespace dx12demo
         // will be zero if there are no warnings or errors.
         if (pErrors != nullptr && pErrors->GetStringLength() != 0)
         {
-            DEBUG_LOG_ERROR("Compilation Failed; Warnings and Errors:\n%s\n", pErrors->GetStringPointer());
+            DEBUG_LOG_ERROR(pErrors->GetStringPointer());
         }
 
         //
@@ -114,7 +114,7 @@ namespace dx12demo
         THROW_IF_FAILED(pResults->GetStatus(&hrStatus));
         if (FAILED(hrStatus))
         {
-            return;
+            return false;
         }
 
         //
@@ -134,7 +134,7 @@ namespace dx12demo
 
         default:
             DEBUG_LOG_ERROR("Unknown ShaderProgramType: %d", (int)programType);
-            return;
+            return false;
         }
 
         ComPtr<IDxcBlobUtf16> pShaderName = nullptr;
@@ -235,6 +235,8 @@ namespace dx12demo
                 }
             }
         }
+
+        return true;
     }
 
     std::vector<CD3DX12_STATIC_SAMPLER_DESC> ShaderPass::CreateStaticSamplers()

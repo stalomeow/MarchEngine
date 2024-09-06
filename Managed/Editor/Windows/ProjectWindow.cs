@@ -30,10 +30,14 @@ namespace DX12Demo.Editor.Windows
 
         private static void OnFileChanged(FileSystemEventArgs e)
         {
-            Debug.LogWarning($"File changed: {e.FullPath}, {e.ChangeType}");
-
             string path = GetRootRelativePath(e.FullPath).ValidatePath();
-            AssetDatabase.GetAssetImporter(path)?.SaveImporterAndReimportAsset();
+            AssetImporter? importer = AssetDatabase.GetAssetImporter(path);
+
+            if (importer != null && importer.NeedReimportAsset())
+            {
+                Debug.LogInfo($"File changed: {e.FullPath}, {e.ChangeType}");
+                importer.SaveImporterAndReimportAsset();
+            }
         }
 
         private static void OnFileCreated(FileSystemEventArgs e)
@@ -103,7 +107,7 @@ namespace DX12Demo.Editor.Windows
                         break;
 
                     case WatcherChangeTypes.Created:
-                        OnFileCreated( e);
+                        OnFileCreated(e);
                         break;
 
                     case WatcherChangeTypes.Deleted:
