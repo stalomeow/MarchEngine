@@ -141,22 +141,23 @@ namespace dx12demo
         static D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(const TypedDescriptorHandle& handle);
 
     public:
-        static const UINT AllocatorPageSize = 4096;
+        static const UINT AllocatorPageSize = 1024;
 
     private:
         static DescriptorAllocator* GetAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
         static std::unique_ptr<DescriptorAllocator> s_Allocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
     };
 
+    // shader-visible descriptor heap span
     class DescriptorHeapSpan
     {
     public:
         DescriptorHeapSpan(DescriptorHeap* heap, UINT offset, UINT count);
         ~DescriptorHeapSpan() = default;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuDescriptorHandle(UINT index) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGpuDescriptorHandle(UINT index) const;
-        void CopyDescriptor(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(UINT index) const;
+        D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT index) const;
+        void Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
 
         ID3D12DescriptorHeap* GetHeapPointer() const { return m_Heap->GetHeapPointer(); }
 
@@ -166,18 +167,19 @@ namespace dx12demo
         UINT m_Count;
     };
 
-    class DynamicDescriptorHeap
+    // shader-visible descriptor heap allocator
+    class DescriptorHeapAllocator
     {
     public:
-        DynamicDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT pageSize);
-        ~DynamicDescriptorHeap() = default;
+        DescriptorHeapAllocator(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT pageSize);
+        ~DescriptorHeapAllocator() = default;
 
         DescriptorHeapSpan Allocate(UINT count);
         void Flush(UINT64 fenceValue);
 
     public:
-        DynamicDescriptorHeap(const DynamicDescriptorHeap&) = delete;
-        DynamicDescriptorHeap& operator=(const DynamicDescriptorHeap&) = delete;
+        DescriptorHeapAllocator(const DescriptorHeapAllocator&) = delete;
+        DescriptorHeapAllocator& operator=(const DescriptorHeapAllocator&) = delete;
 
     private:
         DescriptorHeap* RequestNewHeap();

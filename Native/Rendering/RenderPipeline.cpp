@@ -133,8 +133,7 @@ namespace dx12demo
         desc.SizeInBytes = ConstantBuffer::GetAlignedSize(it->second.Size);
 
         auto device = GetGfxManager().GetDevice();
-        device->CreateConstantBufferView(&desc,
-            cbvSrvUavHeap.GetCpuDescriptorHandle(it->second.DescriptorTableIndex));
+        device->CreateConstantBufferView(&desc, cbvSrvUavHeap.GetCpuHandle(it->second.DescriptorTableIndex));
     }
 
     void RenderPipeline::Render(CommandBuffer* cmd)
@@ -262,7 +261,7 @@ namespace dx12demo
                         Texture* texture = nullptr;
                         if (obj->Mat->GetTexture(kv.first, &texture))
                         {
-                            cbvSrvUavHeap.CopyDescriptor(kv.second.TextureDescriptorTableIndex, texture->GetTextureCpuDescriptorHandle());
+                            cbvSrvUavHeap.Copy(kv.second.TextureDescriptorTableIndex, texture->GetTextureCpuDescriptorHandle());
                         }
                     }
 
@@ -288,7 +287,7 @@ namespace dx12demo
                         {
                             if (kv.second.HasSampler)
                             {
-                                samplerHeap.CopyDescriptor(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                                samplerHeap.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
                             }
                         }
                     }
@@ -309,7 +308,7 @@ namespace dx12demo
 
                     for (auto& span : heaps)
                     {
-                        cmd->GetList()->SetGraphicsRootDescriptorTable(span.first, span.second.GetGpuDescriptorHandle(0));
+                        cmd->GetList()->SetGraphicsRootDescriptorTable(span.first, span.second.GetGpuHandle(0));
                     }
                 }
 

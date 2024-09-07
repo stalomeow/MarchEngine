@@ -19,13 +19,9 @@ namespace dx12demo
         ~CommandBuffer() = default;
 
         template<typename T = BYTE>
-        UploadHeapSpan<T> AllocateTempUploadHeap(UINT count, UINT alignment = 1)
-        {
-            return m_UploadHeapAllocator->Allocate<T>(count, alignment);
-        }
-
-        DescriptorHeapSpan AllocateTempCbvSrvUavHeap(UINT count) { return m_CbvSrvUavHeap->Allocate(count); }
-        DescriptorHeapSpan AllocateTempSamplerHeap(UINT count) { return m_SamplerHeap->Allocate(count); }
+        UploadHeapSpan<T> AllocateTempUploadHeap(UINT count, UINT alignment = 1) { return m_UploadHeapAllocator->Allocate<T>(count, alignment); }
+        DescriptorHeapSpan AllocateTempCbvSrvUavHeap(UINT count) { return m_CbvSrvUavHeapAllocator->Allocate(count); }
+        DescriptorHeapSpan AllocateTempSamplerHeap(UINT count) { return m_SamplerHeapAllocator->Allocate(count); }
         void ExecuteAndRelease(bool waitForCompletion = false);
 
         D3D12_COMMAND_LIST_TYPE GetType() const { return m_Type; }
@@ -39,8 +35,8 @@ namespace dx12demo
         ID3D12CommandAllocator* m_CmdAllocator; // We don't own this
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CmdList;
         std::unique_ptr<UploadHeapAllocator> m_UploadHeapAllocator;
-        std::unique_ptr<DynamicDescriptorHeap> m_CbvSrvUavHeap;
-        std::unique_ptr<DynamicDescriptorHeap> m_SamplerHeap;
+        std::unique_ptr<DescriptorHeapAllocator> m_CbvSrvUavHeapAllocator;
+        std::unique_ptr<DescriptorHeapAllocator> m_SamplerHeapAllocator;
 
     public:
         static CommandBuffer* Get(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);
