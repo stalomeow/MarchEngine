@@ -15,157 +15,8 @@
 #include <unordered_map>
 #include <string>
 
-using namespace dx12demo::binding;
-
-#define CSHARP_BINDING_ENTRY(name) { u8#name, ::dx12demo::binding::##name }
-
 namespace dx12demo
 {
-    namespace
-    {
-        std::unordered_map<std::string, void*> g_ExportFuncs =
-        {
-            CSHARP_BINDING_ENTRY(MarshalString),
-            CSHARP_BINDING_ENTRY(UnmarshalString),
-            CSHARP_BINDING_ENTRY(FreeString),
-            CSHARP_BINDING_ENTRY(NewArray),
-            CSHARP_BINDING_ENTRY(MarshalArray),
-            CSHARP_BINDING_ENTRY(UnmarshalArray),
-            CSHARP_BINDING_ENTRY(FreeArray),
-
-            CSHARP_BINDING_ENTRY(Debug_Info),
-            CSHARP_BINDING_ENTRY(Debug_Warn),
-            CSHARP_BINDING_ENTRY(Debug_Error),
-
-            CSHARP_BINDING_ENTRY(IEngine_GetRenderPipeline),
-
-            CSHARP_BINDING_ENTRY(Application_GetDeltaTime),
-            CSHARP_BINDING_ENTRY(Application_GetElapsedTime),
-            CSHARP_BINDING_ENTRY(Application_GetEngine),
-            CSHARP_BINDING_ENTRY(Application_GetDataPath),
-
-            CSHARP_BINDING_ENTRY(RenderObject_New),
-            CSHARP_BINDING_ENTRY(RenderObject_Delete),
-            CSHARP_BINDING_ENTRY(RenderObject_SetPosition),
-            CSHARP_BINDING_ENTRY(RenderObject_SetRotation),
-            CSHARP_BINDING_ENTRY(RenderObject_SetScale),
-            CSHARP_BINDING_ENTRY(RenderObject_GetMesh),
-            CSHARP_BINDING_ENTRY(RenderObject_SetMesh),
-            CSHARP_BINDING_ENTRY(RenderObject_GetIsActive),
-            CSHARP_BINDING_ENTRY(RenderObject_SetIsActive),
-            CSHARP_BINDING_ENTRY(RenderObject_SetMaterial),
-
-            CSHARP_BINDING_ENTRY(SimpleMesh_New),
-            CSHARP_BINDING_ENTRY(SimpleMesh_Delete),
-            CSHARP_BINDING_ENTRY(SimpleMesh_ClearSubMeshes),
-            CSHARP_BINDING_ENTRY(SimpleMesh_AddSubMeshCube),
-            CSHARP_BINDING_ENTRY(SimpleMesh_AddSubMeshSphere),
-
-            CSHARP_BINDING_ENTRY(RenderPipeline_AddRenderObject),
-            CSHARP_BINDING_ENTRY(RenderPipeline_RemoveRenderObject),
-            CSHARP_BINDING_ENTRY(RenderPipeline_AddLight),
-            CSHARP_BINDING_ENTRY(RenderPipeline_RemoveLight),
-
-            CSHARP_BINDING_ENTRY(Light_New),
-            CSHARP_BINDING_ENTRY(Light_Delete),
-            CSHARP_BINDING_ENTRY(Light_SetPosition),
-            CSHARP_BINDING_ENTRY(Light_SetRotation),
-            CSHARP_BINDING_ENTRY(Light_SetIsActive),
-            CSHARP_BINDING_ENTRY(Light_GetType),
-            CSHARP_BINDING_ENTRY(Light_SetType),
-            CSHARP_BINDING_ENTRY(Light_GetColor),
-            CSHARP_BINDING_ENTRY(Light_SetColor),
-            CSHARP_BINDING_ENTRY(Light_GetFalloffRange),
-            CSHARP_BINDING_ENTRY(Light_SetFalloffRange),
-            CSHARP_BINDING_ENTRY(Light_GetSpotPower),
-            CSHARP_BINDING_ENTRY(Light_SetSpotPower),
-
-            CSHARP_BINDING_ENTRY(EditorGUI_PrefixLabel),
-            CSHARP_BINDING_ENTRY(EditorGUI_IntField),
-            CSHARP_BINDING_ENTRY(EditorGUI_FloatField),
-            CSHARP_BINDING_ENTRY(EditorGUI_Vector2Field),
-            CSHARP_BINDING_ENTRY(EditorGUI_Vector3Field),
-            CSHARP_BINDING_ENTRY(EditorGUI_Vector4Field),
-            CSHARP_BINDING_ENTRY(EditorGUI_ColorField),
-            CSHARP_BINDING_ENTRY(EditorGUI_FloatSliderField),
-            CSHARP_BINDING_ENTRY(EditorGUI_CollapsingHeader),
-            CSHARP_BINDING_ENTRY(EditorGUI_Combo),
-            CSHARP_BINDING_ENTRY(EditorGUI_CenterButton),
-            CSHARP_BINDING_ENTRY(EditorGUI_Space),
-            CSHARP_BINDING_ENTRY(EditorGUI_SeparatorText),
-            CSHARP_BINDING_ENTRY(EditorGUI_TextField),
-            CSHARP_BINDING_ENTRY(EditorGUI_Checkbox),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginDisabled),
-            CSHARP_BINDING_ENTRY(EditorGUI_EndDisabled),
-            CSHARP_BINDING_ENTRY(EditorGUI_LabelField),
-            CSHARP_BINDING_ENTRY(EditorGUI_PushIDString),
-            CSHARP_BINDING_ENTRY(EditorGUI_PushIDInt),
-            CSHARP_BINDING_ENTRY(EditorGUI_PopID),
-            CSHARP_BINDING_ENTRY(EditorGUI_Foldout),
-            CSHARP_BINDING_ENTRY(EditorGUI_FoldoutClosable),
-            CSHARP_BINDING_ENTRY(EditorGUI_Indent),
-            CSHARP_BINDING_ENTRY(EditorGUI_Unindent),
-            CSHARP_BINDING_ENTRY(EditorGUI_SameLine),
-            CSHARP_BINDING_ENTRY(EditorGUI_GetContentRegionAvail),
-            CSHARP_BINDING_ENTRY(EditorGUI_SetNextItemWidth),
-            CSHARP_BINDING_ENTRY(EditorGUI_Separator),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginPopup),
-            CSHARP_BINDING_ENTRY(EditorGUI_EndPopup),
-            CSHARP_BINDING_ENTRY(EditorGUI_MenuItem),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginMenu),
-            CSHARP_BINDING_ENTRY(EditorGUI_EndMenu),
-            CSHARP_BINDING_ENTRY(EditorGUI_OpenPopup),
-            CSHARP_BINDING_ENTRY(EditorGUI_FloatRangeField),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginTreeNode),
-            CSHARP_BINDING_ENTRY(EditorGUI_EndTreeNode),
-            CSHARP_BINDING_ENTRY(EditorGUI_IsItemClicked),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextWindow),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginPopupContextItem),
-            CSHARP_BINDING_ENTRY(EditorGUI_DrawTexture),
-            CSHARP_BINDING_ENTRY(EditorGUI_Button),
-            CSHARP_BINDING_ENTRY(EditorGUI_BeginGroup),
-            CSHARP_BINDING_ENTRY(EditorGUI_EndGroup),
-            CSHARP_BINDING_ENTRY(EditorGUI_CalcButtonWidth),
-            CSHARP_BINDING_ENTRY(EditorGUI_GetItemSpacing),
-            CSHARP_BINDING_ENTRY(EditorGUI_GetCursorPosX),
-            CSHARP_BINDING_ENTRY(EditorGUI_SetCursorPosX),
-
-            CSHARP_BINDING_ENTRY(Texture_New),
-            CSHARP_BINDING_ENTRY(Texture_Delete),
-            CSHARP_BINDING_ENTRY(Texture_SetDDSData),
-            CSHARP_BINDING_ENTRY(Texture_SetFilterMode),
-            CSHARP_BINDING_ENTRY(Texture_SetWrapMode),
-            CSHARP_BINDING_ENTRY(Texture_GetFilterMode),
-            CSHARP_BINDING_ENTRY(Texture_GetWrapMode),
-
-            CSHARP_BINDING_ENTRY(Shader_New),
-            CSHARP_BINDING_ENTRY(Shader_Delete),
-            CSHARP_BINDING_ENTRY(Shader_ClearProperties),
-            CSHARP_BINDING_ENTRY(Shader_SetProperty),
-            CSHARP_BINDING_ENTRY(Shader_GetPassCount),
-            CSHARP_BINDING_ENTRY(Shader_GetPasses),
-            CSHARP_BINDING_ENTRY(Shader_SetPasses),
-            CSHARP_BINDING_ENTRY(Shader_CompilePass),
-            CSHARP_BINDING_ENTRY(Shader_CreatePassRootSignature),
-
-            CSHARP_BINDING_ENTRY(Material_New),
-            CSHARP_BINDING_ENTRY(Material_Delete),
-            CSHARP_BINDING_ENTRY(Material_Reset),
-            CSHARP_BINDING_ENTRY(Material_SetShader),
-            CSHARP_BINDING_ENTRY(Material_SetInt),
-            CSHARP_BINDING_ENTRY(Material_SetFloat),
-            CSHARP_BINDING_ENTRY(Material_SetVector),
-            CSHARP_BINDING_ENTRY(Material_SetTexture),
-        };
-
-        CSHARP_API(void*) LookUpExportFunc(CSharpChar* pKey, CSharpInt keyLength)
-        {
-            std::string key = CSharpString_ToUtf8(pKey, keyLength);
-            auto func = g_ExportFuncs.find(key);
-            return func == g_ExportFuncs.end() ? nullptr : func->second;
-        }
-    }
-
     void DotNetEnv::Load()
     {
         // Pre-allocate a large buffer for the path to hostfxr
@@ -232,15 +83,6 @@ namespace dx12demo
         assert(rc == 0);
 
         rc = get_function_pointer(
-            L"DX12Demo.Core.Binding.NativeFunctionAttribute,DX12Demo.Core",
-            L"SetLookUpFn",
-            UNMANAGEDCALLERSONLY_METHOD,
-            nullptr,
-            nullptr,
-            reinterpret_cast<void**>(&m_SetLookUpFn));
-        assert(rc == 0);
-
-        rc = get_function_pointer(
             L"DX12Demo.Core.EntryPoint,DX12Demo.Core",
             L"OnNativeTick",
             UNMANAGEDCALLERSONLY_METHOD,
@@ -284,11 +126,6 @@ namespace dx12demo
             nullptr,
             reinterpret_cast<void**>(&m_DrawHierarchyWindowFunc));
         assert(rc == 0);
-    }
-
-    void DotNetEnv::InvokeMainFunc()
-    {
-        m_SetLookUpFn(LookUpExportFunc);
     }
 
     void DotNetEnv::InvokeTickFunc()

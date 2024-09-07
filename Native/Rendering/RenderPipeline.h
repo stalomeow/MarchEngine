@@ -7,7 +7,6 @@
 #include "Rendering/Light.h"
 #include "Rendering/RenderObject.h"
 #include "Rendering/Resource/Texture.h"
-#include "Scripting/ScriptTypes.h"
 #include <d3d12.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
@@ -118,27 +117,4 @@ namespace dx12demo
         DXGI_FORMAT m_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
         UINT m_MSAASampleCount = 4;
     };
-
-    namespace binding
-    {
-        inline CSHARP_API(void) RenderPipeline_AddRenderObject(RenderPipeline* pPipeline, RenderObject* pObject)
-        {
-            pPipeline->AddRenderObject(pObject);
-        }
-
-        inline CSHARP_API(void) RenderPipeline_RemoveRenderObject(RenderPipeline* pPipeline, RenderObject* pObject)
-        {
-            pPipeline->RemoveRenderObject(pObject);
-        }
-
-        inline CSHARP_API(void) RenderPipeline_AddLight(RenderPipeline* pPipeline, Light* pLight)
-        {
-            pPipeline->AddLight(pLight);
-        }
-
-        inline CSHARP_API(void) RenderPipeline_RemoveLight(RenderPipeline* pPipeline, Light* pLight)
-        {
-            pPipeline->RemoveLight(pLight);
-        }
-    }
 };

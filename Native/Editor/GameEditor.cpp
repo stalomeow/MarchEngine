@@ -44,7 +44,6 @@ namespace dx12demo
         CreateDescriptorHeaps();
         InitImGui();
 
-        m_DotNet.InvokeMainFunc();
         m_DotNet.InvokeInitFunc();
     }
 

@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using DX12Demo.Core.Serialization;
 
 namespace DX12Demo.Core
 {

@@ -1,12 +1,12 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
-namespace DX12Demo.BindingSourceGen
+namespace DX12Demo.Binding
 {
     [Generator]
     public class BindingGenerator : ISourceGenerator
@@ -127,14 +127,8 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             source.AppendLine($"            if ({fieldName} == nint.Zero)");
             source.AppendLine($"            {{");
-            source.Append($"                char* __pKey = stackalloc char[] {{ ");
-            foreach(char c in entryPointName)
-            {
-                source.Append($"'\\u{(ushort)c:X4}', ");
-            }
-            source.AppendLine("'\\0' };"); // additional null terminator to be consistent with .NET's string implementation
-            source.AppendLine($"                {fieldName} = global::{NativeFuncAttrName}.LookUpFn(__pKey, {entryPointName.Length});");
-            source.AppendLine($"                if ({fieldName} == nint.Zero)");
+            source.AppendLine($"                nint hModule = global::System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();");
+            source.AppendLine($"                if (!global::System.Runtime.InteropServices.NativeLibrary.TryGetExport(hModule, \"{entryPointName}\", out {fieldName}))");
             source.AppendLine($"                {{");
             source.AppendLine($"                    throw new global::System.EntryPointNotFoundException();");
             source.AppendLine($"                }}");

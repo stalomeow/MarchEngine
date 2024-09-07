@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Scripting/ScriptTypes.h"
 #include <DirectXMath.h>
 
 namespace dx12demo
@@ -88,72 +87,4 @@ namespace dx12demo
         DirectX::XMFLOAT2 FalloffRange = { 1.0f, 10.0f };
         float SpotPower = 64.0f;
     };
-
-    namespace binding
-    {
-        inline CSHARP_API(Light*) Light_New()
-        {
-            return new Light();
-        }
-
-        inline CSHARP_API(void) Light_Delete(Light* pLight)
-        {
-            delete pLight;
-        }
-
-        inline CSHARP_API(void) Light_SetPosition(Light* pLight, CSharpVector3 position)
-        {
-            pLight->Position = ToXMFLOAT3(position);
-        }
-
-        inline CSHARP_API(void) Light_SetRotation(Light* pLight, CSharpQuaternion rotation)
-        {
-            pLight->Rotation = ToXMFLOAT4(rotation);
-        }
-
-        inline CSHARP_API(void) Light_SetIsActive(Light* pLight, CSharpBool isActive)
-        {
-            pLight->IsActive = isActive;
-        }
-
-        inline CSHARP_API(CSharpInt) Light_GetType(Light* pLight)
-        {
-            return static_cast<CSharpInt>(pLight->Type);
-        }
-
-        inline CSHARP_API(void) Light_SetType(Light* pLight, CSharpInt type)
-        {
-            pLight->Type = static_cast<LightType>(type);
-        }
-
-        inline CSHARP_API(CSharpColor) Light_GetColor(Light* pLight)
-        {
-            return ToCSharpColor(pLight->Color);
-        }
-
-        inline CSHARP_API(void) Light_SetColor(Light* pLight, CSharpColor color)
-        {
-            pLight->Color = ToXMFLOAT4(color);
-        }
-
-        inline CSHARP_API(CSharpVector2) Light_GetFalloffRange(Light* pLight)
-        {
-            return ToCSharpVector2(pLight->FalloffRange);
-        }
-
-        inline CSHARP_API(void) Light_SetFalloffRange(Light* pLight, CSharpVector2 range)
-        {
-            pLight->FalloffRange = ToXMFLOAT2(range);
-        }
-
-        inline CSHARP_API(CSharpFloat) Light_GetSpotPower(Light* pLight)
-        {
-            return pLight->SpotPower;
-        }
-
-        inline CSHARP_API(void) Light_SetSpotPower(Light* pLight, CSharpFloat power)
-        {
-            pLight->SpotPower = power;
-        }
-    }
 }

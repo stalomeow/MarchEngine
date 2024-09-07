@@ -6,7 +6,6 @@
 #include "Rendering/Resource/Texture.h"
 #include "Rendering/Shader.h"
 #include "Rendering/Resource/GpuBuffer.h"
-#include "Scripting/ScriptTypes.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <unordered_map>
@@ -75,47 +74,4 @@ namespace dx12demo
         std::unordered_map<std::string, DirectX::XMFLOAT4> m_Vectors;
         std::unordered_map<std::string, Texture*> m_Textures;
     };
-
-    namespace binding
-    {
-        inline CSHARP_API(Material*) Material_New()
-        {
-            return new Material();
-        }
-
-        inline CSHARP_API(void) Material_Delete(Material* pMaterial)
-        {
-            delete pMaterial;
-        }
-
-        inline CSHARP_API(void) Material_Reset(Material* pMaterial)
-        {
-            pMaterial->Reset();
-        }
-
-        inline CSHARP_API(void) Material_SetShader(Material* pMaterial, Shader* pShader)
-        {
-            pMaterial->SetShader(pShader);
-        }
-
-        inline CSHARP_API(void) Material_SetInt(Material* pMaterial, CSharpString name, CSharpInt value)
-        {
-            pMaterial->SetInt(CSharpString_ToUtf8(name), static_cast<int32_t>(value));
-        }
-
-        inline CSHARP_API(void) Material_SetFloat(Material* pMaterial, CSharpString name, CSharpFloat value)
-        {
-            pMaterial->SetFloat(CSharpString_ToUtf8(name), static_cast<float>(value));
-        }
-
-        inline CSHARP_API(void) Material_SetVector(Material* pMaterial, CSharpString name, CSharpVector4 value)
-        {
-            pMaterial->SetVector(CSharpString_ToUtf8(name), ToXMFLOAT4(value));
-        }
-
-        inline CSHARP_API(void) Material_SetTexture(Material* pMaterial, CSharpString name, Texture* pTexture)
-        {
-            pMaterial->SetTexture(CSharpString_ToUtf8(name), pTexture);
-        }
-    }
 }

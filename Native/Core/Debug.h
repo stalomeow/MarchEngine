@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/StringUtility.h"
-#include "Scripting/ScriptTypes.h"
 #include <string>
 #include <deque>
 #include <ctime>
@@ -33,26 +32,9 @@ namespace dx12demo
         std::vector<LogStackFrame> StackTrace;
     };
 
-    namespace binding
-    {
-        struct CSharpLogStackFrame
-        {
-            CSharpString MethodName;
-            CSharpString Filename;
-            CSharpInt Line;
-        };
-
-        CSHARP_API(void) Debug_Info(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
-        CSHARP_API(void) Debug_Warn(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
-        CSHARP_API(void) Debug_Error(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
-    }
-
     class Debug
     {
         friend class GameEditor;
-        friend CSHARP_API(void) binding::Debug_Info(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
-        friend CSHARP_API(void) binding::Debug_Warn(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
-        friend CSHARP_API(void) binding::Debug_Error(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount);
 
     public:
         template<typename ... Args>
@@ -97,9 +79,10 @@ namespace dx12demo
             AddLog(stackTrace, message, LogType::Error);
         }
 
-    private:
         static void AddLog(const std::vector<LogStackFrame>& stackTrace, const std::wstring& message, LogType type);
         static void AddLog(const std::vector<LogStackFrame>& stackTrace, const std::string& message, LogType type);
+
+    private:
         static int GetLogCount(LogType type);
         static std::string Debug::GetTypePrefix(LogType type);
         static std::string GetTimePrefix(time_t t);

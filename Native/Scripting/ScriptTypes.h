@@ -5,7 +5,7 @@
 #include <string>
 #include <DirectXMath.h>
 
-#define CSHARP_API(returnType) returnType __stdcall
+#define NATIVE_EXPORT(ret) extern "C" __declspec(dllexport) ret __stdcall
 #define CSHARP_TEXT(text) L##text
 #define CSHARP_MARSHAL_BOOL(value) static_cast<::dx12demo::CSharpBool>((value) ? 1 : 0)
 #define CSHARP_UNMARSHAL_BOOL(value) (value != 0)
@@ -201,65 +201,5 @@ namespace dx12demo
     inline CSharpVector3 ToCSharpVector3(const DirectX::XMFLOAT3& v)
     {
         return { v.x, v.y, v.z };
-    }
-
-    namespace binding
-    {
-        inline CSHARP_API(CSharpString) MarshalString(CSharpChar* p, CSharpInt len)
-        {
-            return CSharpString_FromUtf16(p, len);
-        }
-
-        inline CSHARP_API(void) UnmarshalString(CSharpString s, CSharpChar** ppOutData, CSharpInt* pOutLen)
-        {
-            static CSharpChar empty = CSHARP_TEXT('\0');
-
-            if (s == nullptr)
-            {
-                *ppOutData = &empty; // '\0' 结尾的空字符串
-                *pOutLen = 0;
-            }
-            else
-            {
-                *ppOutData = &s->FirstChar;
-                *pOutLen = s->Length;
-            }
-        }
-
-        inline CSHARP_API(void) FreeString(CSharpString s)
-        {
-            CSharpString_Free(s);
-        }
-
-        inline CSHARP_API(CSharpArray) NewArray(CSharpInt byteCount)
-        {
-            return CSharpArray_New<CSharpByte>(byteCount);
-        }
-
-        inline CSHARP_API(CSharpArray) MarshalArray(CSharpByte* p, CSharpInt byteCount)
-        {
-            CSharpArray array = CSharpArray_New<CSharpByte>(byteCount);
-            CSharpArray_CopyFrom(array, p);
-            return array;
-        }
-
-        inline CSHARP_API(void) UnmarshalArray(CSharpArray array, CSharpByte** ppOutData, CSharpInt* pOutByteCount)
-        {
-            if (array == nullptr)
-            {
-                *ppOutData = nullptr;
-                *pOutByteCount = 0;
-            }
-            else
-            {
-                *ppOutData = &array->FirstByte;
-                *pOutByteCount = array->Length;
-            }
-        }
-
-        inline CSHARP_API(void) FreeArray(CSharpArray array)
-        {
-            CSharpArray_Free(array);
-        }
     }
 }

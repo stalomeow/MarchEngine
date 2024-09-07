@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Rendering/RenderPipeline.h"
-#include "Scripting/ScriptTypes.h"
 #include <Windows.h>
 
 namespace dx12demo
@@ -32,12 +31,4 @@ namespace dx12demo
     public:
         virtual RenderPipeline* GetRenderPipeline() = 0;
     };
-
-    namespace binding
-    {
-        inline CSHARP_API(RenderPipeline*) IEngine_GetRenderPipeline(IEngine* pEngine)
-        {
-            return pEngine->GetRenderPipeline();
-        }
-    }
 }

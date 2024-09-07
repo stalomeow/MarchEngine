@@ -10,7 +10,6 @@ namespace dx12demo
     {
     public:
         void Load();
-        void InvokeMainFunc();
         void InvokeTickFunc();
         void InvokeInitFunc();
         void InvokeDrawInspectorFunc();
@@ -18,10 +17,8 @@ namespace dx12demo
         void InvokeDrawHierarchyWindowFunc();
 
     private:
-        typedef void (*SetLookUpFnDelegate)(void* fn);
         typedef void (*VoidDelegate)(void);
 
-        SetLookUpFnDelegate m_SetLookUpFn = nullptr;
         VoidDelegate m_TickFunc = nullptr;
         VoidDelegate m_InitFunc = nullptr;
         VoidDelegate m_DrawInspectorFunc = nullptr;
