@@ -91,8 +91,8 @@ namespace dx12demo
         bool m_EnableMSAA = true;
         UINT m_MSAAQuality;
 
-        ShaderOpaqueDescriptorHandle m_RtvHandle;
-        ShaderOpaqueDescriptorHandle m_DsvHandle;
+        TypedDescriptorHandle m_RtvHandle;
+        TypedDescriptorHandle m_DsvHandle;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ColorTarget;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ResolvedColorTarget;

@@ -50,11 +50,11 @@ namespace dx12demo
 
     void GameEditor::CreateDescriptorHeaps()
     {
-        m_SrvHeap = std::make_unique<DescriptorHeap>(L"EditorSrvHeap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2, true);
+        m_SrvHeap = std::make_unique<DescriptorHeap>(L"EditorSrvHeap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2, 4096, true);
         EditorGUI::SetSrvHeap(m_SrvHeap.get());
 
         auto device = GetGfxManager().GetDevice();
-        auto srvHandle = m_SrvHeap->GetCpuDescriptorHandle(1);
+        auto srvHandle = m_SrvHeap->GetCpuHandle(DescriptorHeapRegion::Fixed, 1);
         device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 
@@ -84,8 +84,8 @@ namespace dx12demo
         auto device = GetGfxManager().GetDevice();
         ImGui_ImplDX12_Init(device, GetGfxManager().GetMaxFrameLatency(),
             GetGfxManager().GetBackBufferFormat(), m_SrvHeap->GetHeapPointer(),
-            m_SrvHeap->GetCpuDescriptorHandle(0),
-            m_SrvHeap->GetGpuDescriptorHandle(0));
+            m_SrvHeap->GetCpuHandle(DescriptorHeapRegion::Fixed, 0),
+            m_SrvHeap->GetGpuHandle(DescriptorHeapRegion::Fixed, 0));
     }
 
     void GameEditor::OnQuit()
@@ -239,7 +239,7 @@ namespace dx12demo
                 ResizeRenderPipeline(m_LastSceneViewWidth, m_LastSceneViewHeight);
             }
 
-            auto srvHandle = m_SrvHeap->GetGpuDescriptorHandle(1);
+            auto srvHandle = m_SrvHeap->GetGpuHandle(DescriptorHeapRegion::Fixed, 1);
             ImGui::Image((ImTextureID)srvHandle.ptr, contextSize);
             ImGui::End();
         }
@@ -449,6 +449,7 @@ namespace dx12demo
 
         cmd->ExecuteAndRelease();
         GetGfxManager().Present();
+        m_SrvHeap->Flush();
     }
 
     void GameEditor::OnResized()
@@ -462,7 +463,7 @@ namespace dx12demo
         m_RenderPipeline->Resize(width, height);
 
         auto device = GetGfxManager().GetDevice();
-        auto srvHandle = m_SrvHeap->GetCpuDescriptorHandle(1);
+        auto srvHandle = m_SrvHeap->GetCpuHandle(DescriptorHeapRegion::Fixed, 1);
         device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 
