@@ -21,7 +21,8 @@ namespace DX12Demo.Editor
                 foreach ((string name, FolderNode node) in Folders)
                 {
                     bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == node.FolderPath);
-                    bool open = EditorGUI.BeginAssetTreeNode(name, node.FolderPath, openOnArrow: true, openOnDoubleClick: true, selected: selected, spanWidth: true);
+                    string assetPath = AssetDatabase.IsAsset(node.FolderPath) ? node.FolderPath : string.Empty;
+                    bool open = EditorGUI.BeginAssetTreeNode(name, assetPath, openOnArrow: true, openOnDoubleClick: true, selected: selected, spanWidth: true);
 
                     if (EditorGUI.IsItemClicked(EditorGUI.MouseButton.Left) ||
                         EditorGUI.IsItemClicked(EditorGUI.MouseButton.Right, ignorePopup: true)) // context menu 打开时，选中
@@ -39,7 +40,8 @@ namespace DX12Demo.Editor
                 foreach((string name, string path) in Files)
                 {
                     bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == path);
-                    bool open = EditorGUI.BeginAssetTreeNode(name, path, isLeaf: true, selected: selected, spanWidth: true);
+                    string assetPath = AssetDatabase.IsAsset(path) ? path : string.Empty;
+                    bool open = EditorGUI.BeginAssetTreeNode(name, assetPath, isLeaf: true, selected: selected, spanWidth: true);
 
                     if (EditorGUI.IsItemClicked(EditorGUI.MouseButton.Left) ||
                         EditorGUI.IsItemClicked(EditorGUI.MouseButton.Right, ignorePopup: true)) // context menu 打开时，选中

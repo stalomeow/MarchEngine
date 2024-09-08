@@ -72,7 +72,7 @@ namespace dx12demo
         static void SetCursorPosX(float localX);
 
         static bool BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
-        static bool AssetField(const std::string& label, const std::string& tooltip, std::string& path);
+        static bool AssetField(const std::string& label, const std::string& tooltip, const std::string& assetType, std::string& path);
 
         inline static void SetSrvHeap(DescriptorHeap* heap)
         {

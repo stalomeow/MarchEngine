@@ -312,17 +312,28 @@ namespace DX12Demo.Editor
         {
             string? guid = asset.Value?.PersistentGuid;
             string path = guid == null ? string.Empty : (AssetManager.GetPathByGuid(guid) ?? string.Empty);
+            string assetType = typeof(T).Name;
 
             using NativeString l = label;
             using NativeString t = tooltip;
             using NativeString p = path;
-            nint newPath = nint.Zero;
+            using NativeString at = assetType;
+            nint pNewPath = nint.Zero;
 
-            if (EditorGUI_AssetField(l.Data, t.Data, p.Data, &newPath))
+            if (EditorGUI_AssetField(l.Data, t.Data, at.Data, p.Data, &pNewPath))
             {
-                path = NativeString.GetAndFree(newPath);
-                asset.Value = AssetManager.Load<T>(path)!;
-                return true;
+                string newPath = NativeString.GetAndFree(pNewPath);
+                EngineObject? newAsset = AssetManager.Load<EngineObject>(newPath);
+
+                if (newAsset is T tNewAsset)
+                {
+                    asset.Value = tNewAsset;
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
             }
 
             return false;
@@ -691,7 +702,7 @@ namespace DX12Demo.Editor
         private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
 
         [NativeFunction]
-        private static partial bool EditorGUI_AssetField(nint label, nint tooltip, nint path, nint* outNewPath);
+        private static partial bool EditorGUI_AssetField(nint label, nint tooltip, nint assetType, nint path, nint* outNewPath);
 
         #endregion
     }

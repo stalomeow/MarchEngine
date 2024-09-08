@@ -475,7 +475,7 @@ namespace dx12demo
 
         // https://github.com/ocornut/imgui/issues/1931
 
-        if (ImGui::BeginDragDropSource())
+        if (!assetPath.empty() && ImGui::BeginDragDropSource())
         {
             // 显示 tooltip
             ImGui::TextUnformatted(assetPath.c_str());
@@ -488,9 +488,9 @@ namespace dx12demo
         return result;
     }
 
-    bool EditorGUI::AssetField(const std::string& label, const std::string& tooltip, std::string& path)
+    bool EditorGUI::AssetField(const std::string& label, const std::string& tooltip, const std::string& assetType, std::string& path)
     {
-        const std::string& displayPath = path.empty() ? "<None>" : path;
+        const std::string& displayPath = path.empty() ? ("None (" + assetType + ")") : path;
 
         if (IsHiddenLabel(label))
         {
@@ -507,6 +507,7 @@ namespace dx12demo
 
         if (ImGui::BeginDragDropTarget())
         {
+            // 没法根据 payload type + asset type 来判断是否接受，这样处理不了多态
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(DragDropPayloadType_AssetPath))
             {
                 const char* newAssetPath = reinterpret_cast<char*>(payload->Data);

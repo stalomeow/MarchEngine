@@ -113,6 +113,8 @@ namespace DX12Demo.Editor
 
         public static bool IsFolder([NotNullWhen(true)] AssetImporter? importer) => importer is FolderImporter;
 
+        public static bool IsAsset(string path) => GetAssetImporter(path) != null;
+
         public static AssetImporter? GetAssetImporter(string path)
         {
             return GetAssetImporter(path, null);
