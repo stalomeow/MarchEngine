@@ -271,3 +271,24 @@ NATIVE_EXPORT(void) EditorGUI_SetCursorPosX(CSharpFloat localX)
 {
     EditorGUI::SetCursorPosX(localX);
 }
+
+NATIVE_EXPORT(CSharpBool) EditorGUI_BeginAssetTreeNode(CSharpString label, CSharpString assetPath, CSharpBool isLeaf, CSharpBool openOnArrow, CSharpBool openOnDoubleClick, CSharpBool selected, CSharpBool showBackground, CSharpBool defaultOpen, CSharpBool spanWidth)
+{
+    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginAssetTreeNode(CSharpString_ToUtf8(label), CSharpString_ToUtf8(assetPath),
+        CSHARP_UNMARSHAL_BOOL(isLeaf), CSHARP_UNMARSHAL_BOOL(openOnArrow), CSHARP_UNMARSHAL_BOOL(openOnDoubleClick), CSHARP_UNMARSHAL_BOOL(selected),
+        CSHARP_UNMARSHAL_BOOL(showBackground), CSHARP_UNMARSHAL_BOOL(defaultOpen), CSHARP_UNMARSHAL_BOOL(spanWidth)));
+}
+
+NATIVE_EXPORT(CSharpBool) EditorGUI_AssetField(CSharpString label, CSharpString tooltip, CSharpString path, CSharpString* outNewPath)
+{
+    std::string pathContext = CSharpString_ToUtf8(path);
+
+    if (EditorGUI::AssetField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), pathContext))
+    {
+        *outNewPath = CSharpString_FromUtf8(pathContext);
+        return CSHARP_MARSHAL_BOOL(true);
+    }
+
+    *outNewPath = nullptr;
+    return CSHARP_MARSHAL_BOOL(false);
+}

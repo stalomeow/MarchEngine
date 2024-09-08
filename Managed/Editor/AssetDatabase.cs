@@ -1,8 +1,11 @@
 using DX12Demo.Core;
 using DX12Demo.Core.Serialization;
 using DX12Demo.Editor.Importers;
+using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace DX12Demo.Editor
 {
@@ -13,11 +16,56 @@ namespace DX12Demo.Editor
         private static readonly Dictionary<string, Type> s_AssetImporterTypeMap = new();
         private static int? s_AssetImporterTypeCacheVersion;
 
-        private static readonly Dictionary<string, AssetImporter> s_Importers = new();
+        private static readonly Dictionary<string, string> s_Guid2PathMap = new();
+        private static readonly Dictionary<string, AssetImporter> s_Path2Importers = new();
 
-        static AssetDatabase()
+        [ModuleInitializer]
+        [SuppressMessage("Usage", "CA2255:The 'ModuleInitializer' attribute should not be used in libraries", Justification = "<Pending>")]
+        internal static void InitAssetDatabase()
         {
             AssetManager.Impl = new EditorAssetManagerImpl();
+            LoadGuidMap(); // 提前加载缓存的 guid 表，这样后面 import asset 时，LoadByGuid 就能找到对应的 path
+        }
+
+        private static void LoadGuidMap()
+        {
+            string fullPath = GetGuidMapFullPath();
+
+            if (File.Exists(fullPath))
+            {
+                string json = File.ReadAllText(fullPath, Encoding.UTF8);
+                Dictionary<string, string>? data = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+
+                if (data != null)
+                {
+                    foreach (KeyValuePair<string, string> kvp in data)
+                    {
+                        s_Guid2PathMap[kvp.Key] = kvp.Value;
+                    }
+
+                    Debug.LogInfo($"AssetDatabase loads guid map with {data.Count} entries");
+                }
+            }
+        }
+
+        private static void SaveGuidMap()
+        {
+            string fullPath = GetGuidMapFullPath();
+            string json = JsonConvert.SerializeObject(s_Guid2PathMap);
+            File.WriteAllText(fullPath, json, Encoding.UTF8);
+        }
+
+        private static string GetGuidMapFullPath() => Path.Combine(Application.DataPath, "Library/AssetGuidMap.json");
+
+        public static string? GetGuidByPath(string path)
+        {
+            AssetImporter? importer = GetAssetImporter(path);
+            return importer?.AssetGuid;
+        }
+
+        public static string? GetPathByGuid(string guid)
+        {
+            return s_Guid2PathMap.TryGetValue(guid, out string? path) ? path : null;
         }
 
         public static EngineObject? Load(string path)
@@ -25,21 +73,38 @@ namespace DX12Demo.Editor
             return Load<EngineObject>(path);
         }
 
-        public static T? Load<T>(string path) where T : EngineObject
+        public static T? Load<T>(string path) where T : EngineObject?
         {
             if (IsImporterFilePath(path))
             {
-                throw new FileNotFoundException("Can not find asset", path);
+                throw new InvalidOperationException("Can not load an asset importer");
             }
 
             AssetImporter? importer = GetAssetImporter(path);
             return importer?.Asset as T;
         }
 
-        public static void Save(EngineObject obj, string path)
+        public static EngineObject? LoadByGuid(string guid)
         {
+            return LoadByGuid<EngineObject>(guid);
+        }
+
+        public static T? LoadByGuid<T>(string guid) where T : EngineObject?
+        {
+            string? path = GetPathByGuid(guid);
+            return path == null ? null : Load<T>(path);
+        }
+
+        public static void Create(string path, EngineObject asset)
+        {
+            if (asset.PersistentGuid != null || GetAssetImporter(path) != null)
+            {
+                throw new InvalidOperationException("Asset is already created");
+            }
+
             string fullPath = Path.Combine(Application.DataPath, path);
-            PersistentManager.Save(obj, fullPath);
+            PersistentManager.Save(asset, fullPath);
+            GetAssetImporter(path, asset); // Create importer
         }
 
         internal static bool IsImporterFilePath(string path) => path.EndsWith(ImporterPathSuffix);
@@ -50,18 +115,23 @@ namespace DX12Demo.Editor
 
         public static AssetImporter? GetAssetImporter(string path)
         {
-            if (string.IsNullOrWhiteSpace(path))
+            return GetAssetImporter(path, null);
+        }
+
+        private static AssetImporter? GetAssetImporter(string path, EngineObject? initAsset)
+        {
+            path = path.ValidatePath();
+
+            if (string.IsNullOrWhiteSpace(path) || path.Equals("assets", StringComparison.CurrentCultureIgnoreCase))
             {
                 return null;
             }
 
-            path = path.ValidatePath();
-
-            if (!s_Importers.TryGetValue(path, out AssetImporter? importer))
+            if (!s_Path2Importers.TryGetValue(path, out AssetImporter? importer))
             {
                 string assetFullPath = Path.Combine(Application.DataPath, path);
 
-                if (!File.Exists(assetFullPath))
+                if (!File.Exists(assetFullPath) && !Directory.Exists(assetFullPath))
                 {
                     return null;
                 }
@@ -83,17 +153,19 @@ namespace DX12Demo.Editor
                 importer.Initialize(
                     assetPath: path.ValidatePath(),
                     assetFullPath: Path.Combine(Application.DataPath, path).ValidatePath(),
-                    assetCacheFullPath: GetCacheFullPath(path).ValidatePath(),
-                    importerFullPath: importerFullPath.ValidatePath());
-                s_Importers.Add(path, importer);
+                    assetCacheFullPath: GetCacheFullPath(importer.AssetGuid).ValidatePath(),
+                    importerFullPath: importerFullPath.ValidatePath(),
+                    asset: initAsset);
+                s_Path2Importers.Add(path, importer);
+                s_Guid2PathMap[importer.AssetGuid] = path;
+                SaveGuidMap(); // TODO: 换到其他地方 Save，避免频繁写入
             }
 
             return importer;
 
-            static string GetCacheFullPath(string assetPath)
+            static string GetCacheFullPath(string guid)
             {
-                string path = Path.GetRelativePath("Assets", assetPath);
-                return Path.Combine(Application.DataPath, "Library/AssetCache", path + ".cache");
+                return Path.Combine(Application.DataPath, "Library/AssetCache", guid);
             }
         }
 
@@ -157,19 +229,39 @@ namespace DX12Demo.Editor
             s_AssetImporterTypeCacheVersion = TypeCache.Version;
         }
 
-        public static string ValidatePath(this string path)
+        [return: NotNullIfNotNull(nameof(path))]
+        public static string? ValidatePath(this string? path)
         {
-            path = path.Replace('\\', '/');
-            path = path.TrimEnd('/');
+            if (path != null)
+            {
+                path = path.Replace('\\', '/');
+                path = path.TrimEnd('/');
+            }
+
             return path;
         }
     }
 
     file class EditorAssetManagerImpl : IAssetManagerImpl
     {
-        public T? Load<T>(string path) where T : EngineObject
+        public string? GetGuidByPath(string path)
+        {
+            return AssetDatabase.GetGuidByPath(path);
+        }
+
+        public string? GetPathByGuid(string guid)
+        {
+            return AssetDatabase.GetPathByGuid(guid);
+        }
+
+        public T? Load<T>(string path) where T : EngineObject?
         {
             return AssetDatabase.Load<T>(path);
+        }
+
+        public T? LoadByGuid<T>(string guid) where T : EngineObject?
+        {
+            return AssetDatabase.LoadByGuid<T>(guid);
         }
     }
 }

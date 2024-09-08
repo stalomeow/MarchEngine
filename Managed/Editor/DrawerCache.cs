@@ -1,3 +1,5 @@
+using DX12Demo.Core;
+using DX12Demo.Editor.Drawers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace DX12Demo.Editor
@@ -43,6 +45,12 @@ namespace DX12Demo.Editor
                 m_NotFound.Remove(type);
             }
 
+            if (TryHandleSpecialTypes(type, out drawerType))
+            {
+                m_DrawerTypes.Add(type, drawerType);
+                return true;
+            }
+
             Type? t = type;
 
             while (t != null)
@@ -66,6 +74,19 @@ namespace DX12Demo.Editor
             }
 
             m_NotFound.Add(type, TypeCache.Version);
+            return false;
+        }
+
+        private static bool TryHandleSpecialTypes(Type type, [NotNullWhen(true)] out Type? drawerType)
+        {
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(AssetReference<>))
+            {
+                Type genericArgument = type.GetGenericArguments()[0];
+                drawerType = typeof(AssetReferenceDrawer<>).MakeGenericType(genericArgument);
+                return true;
+            }
+
+            drawerType = null;
             return false;
         }
 

@@ -7,31 +7,17 @@ namespace DX12Demo.Core.Rendering
 {
     public partial class Material : NativeEngineObject
     {
-        private struct TextureReference
-        {
-            public Texture Tex;
-            public int RefCount;
-        }
-
-        [JsonProperty] private string m_ShaderPath = string.Empty;
+        [JsonProperty] private AssetReference<Shader?> m_Shader = null;
         [JsonProperty] private Dictionary<string, int> m_Ints = [];
         [JsonProperty] private Dictionary<string, float> m_Floats = [];
         [JsonProperty] private Dictionary<string, Vector4> m_Vectors = [];
         [JsonProperty] private Dictionary<string, Color> m_Colors = [];
-        [JsonProperty] private Dictionary<string, string> m_Textures = [];
-
-        [JsonIgnore] private Shader? m_Shader = null;
-        [JsonIgnore] private Dictionary<string, TextureReference> m_TextureReferences = [];
+        [JsonProperty] private Dictionary<string, AssetReference<Texture>> m_Textures = [];
 
         public Material() : base(Material_New()) { }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                m_TextureReferences.Clear();
-            }
-
             Material_Delete(NativePtr);
         }
 
@@ -40,11 +26,9 @@ namespace DX12Demo.Core.Rendering
         {
             Material_Reset(NativePtr); // 避免 overwrite 后还有旧数据
 
-            m_Shader = AssetManager.Load<Shader>(m_ShaderPath);
-
-            if (m_Shader != null)
+            if (m_Shader.Value != null)
             {
-                Material_SetShader(NativePtr, m_Shader.NativePtr);
+                Material_SetShader(NativePtr, m_Shader.Value.NativePtr);
             }
 
             foreach (KeyValuePair<string, int> kvp in m_Ints)
@@ -71,58 +55,22 @@ namespace DX12Demo.Core.Rendering
                 Material_SetVector(NativePtr, n.Data, new Vector4(kvp.Value.R, kvp.Value.G, kvp.Value.B, kvp.Value.A));
             }
 
-            m_TextureReferences.Clear();
-
-            foreach (KeyValuePair<string, string> kvp in m_Textures)
+            foreach (KeyValuePair<string, AssetReference<Texture>> kvp in m_Textures)
             {
-                Texture? texture = AssetManager.Load<Texture>(kvp.Value);
-
-                if (texture != null)
-                {
-                    AddTextureRef(kvp.Value, texture);
-
-                    using NativeString n = kvp.Key;
-                    Material_SetTexture(NativePtr, n.Data, texture.NativePtr);
-                }
+                using NativeString n = kvp.Key;
+                Material_SetTexture(NativePtr, n.Data, kvp.Value.Value.NativePtr);
             }
         }
 
-        private void AddTextureRef(string textureAssetPath, Texture texture)
+        [JsonIgnore]
+        public Shader? Shader
         {
-            if (!m_TextureReferences.TryGetValue(textureAssetPath, out TextureReference reference))
+            get => m_Shader;
+            set
             {
-                reference = new TextureReference { Tex = texture };
+                m_Shader = value;
+                Material_SetShader(NativePtr, value?.NativePtr ?? nint.Zero);
             }
-
-            reference.RefCount++;
-            m_TextureReferences[textureAssetPath] = reference;
-        }
-
-        private void RemoveTextureRef(string textureAssetPath)
-        {
-            if (!m_TextureReferences.TryGetValue(textureAssetPath, out TextureReference reference))
-            {
-                return;
-            }
-
-            reference.RefCount--;
-
-            if (reference.RefCount <= 0)
-            {
-                m_TextureReferences.Remove(textureAssetPath);
-            }
-            else
-            {
-                m_TextureReferences[textureAssetPath] = reference;
-            }
-        }
-
-        public Shader Shader => m_Shader!;
-
-        public void SetShader(string shaderAssetPath, Shader shader)
-        {
-            m_ShaderPath = shaderAssetPath;
-            m_Shader = shader;
         }
 
         public void SetInt(string name, int value)
@@ -161,23 +109,16 @@ namespace DX12Demo.Core.Rendering
         /// 
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="textureAssetPath"></param>
         /// <param name="value">如果为 <c>null</c> 则删除</param>
-        public void SetTexture(string name, string textureAssetPath, Texture? value)
+        public void SetTexture(string name, Texture? value)
         {
-            if (m_Textures.TryGetValue(name, out string? prevTextureAssetPath))
-            {
-                RemoveTextureRef(prevTextureAssetPath);
-            }
-
             if (value == null)
             {
                 m_Textures.Remove(name);
             }
             else
             {
-                m_Textures[name] = textureAssetPath;
-                AddTextureRef(textureAssetPath, value);
+                m_Textures[name] = value;
             }
 
             using NativeString n = name;
@@ -204,9 +145,9 @@ namespace DX12Demo.Core.Rendering
             return m_Colors.GetValueOrDefault(name, defaultValue);
         }
 
-        public string GetTextureAssetPath(string name, string defaultTextureAssetPath = "")
+        public Texture? GetTexture(string name, Texture? defaultValue = default)
         {
-            return m_Textures.GetValueOrDefault(name, defaultTextureAssetPath);
+            return m_Textures.TryGetValue(name, out AssetReference<Texture> value) ? value : defaultValue;
         }
 
         #region Native

@@ -3,7 +3,6 @@ using DX12Demo.Core.Rendering;
 using DX12Demo.Core.Serialization;
 using DX12Demo.Editor.Importers;
 using Newtonsoft.Json.Serialization;
-using System.Linq;
 using System.Numerics;
 
 namespace DX12Demo.Editor.Drawers
@@ -16,17 +15,14 @@ namespace DX12Demo.Editor.Drawers
             var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(material.GetType());
             var isChanged = false;
 
-            EditorProperty shaderPath = contract.GetEditorProperty(material, "m_ShaderPath");
-            isChanged |= EditorGUI.PropertyField(in shaderPath);
-
-            string shaderAssetPath = shaderPath.GetValue<string>();
-            Shader? shader = AssetManager.Load<Shader>(shaderAssetPath);
+            Shader? shader = material.Shader;
+            isChanged |= EditorGUI.PropertyField("Shader", contract.GetEditorProperty(material, "m_Shader"));
 
             if (shader != null)
             {
                 if (material.Shader != shader)
                 {
-                    material.SetShader(shaderAssetPath, shader);
+                    material.Shader = shader;
                 }
 
                 foreach (ShaderProperty shaderProp in shader.Properties)
@@ -65,11 +61,9 @@ namespace DX12Demo.Editor.Drawers
 
                         case ShaderPropertyType.Texture:
                             {
-                                string textureAssetPath = material.GetTextureAssetPath(shaderProp.Name);
-                                isChanged |= EditorGUI.TextField(shaderProp.Label, shaderProp.Tooltip, ref textureAssetPath);
-
-                                Texture? texture = AssetManager.Load<Texture>(textureAssetPath);
-                                material.SetTexture(shaderProp.Name, textureAssetPath, texture);
+                                AssetReference<Texture?> value = material.GetTexture(shaderProp.Name);
+                                isChanged |= EditorGUI.AssetReferenceField(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                material.SetTexture(shaderProp.Name, value.Value);
                                 break;
                             }
                     }

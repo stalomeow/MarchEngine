@@ -9,17 +9,15 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Folder Asset";
 
-        protected override int Version => 1;
+        protected override int Version => base.Version + 1;
 
         protected override bool UseCache => false;
 
         protected override EngineObject CreateAsset()
         {
-            return s_SharedAsset;
+            return new FolderAsset();
         }
 
         protected override void PopulateAsset(EngineObject asset, bool willSaveToFile) { }
-
-        private static readonly FolderAsset s_SharedAsset = new();
     }
 }

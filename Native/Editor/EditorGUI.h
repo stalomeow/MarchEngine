@@ -71,6 +71,9 @@ namespace dx12demo
         static float GetCursorPosX();
         static void SetCursorPosX(float localX);
 
+        static bool BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
+        static bool AssetField(const std::string& label, const std::string& tooltip, std::string& path);
+
         inline static void SetSrvHeap(DescriptorHeap* heap)
         {
             SrvHeap = heap;
@@ -80,5 +83,6 @@ namespace dx12demo
         static DescriptorHeap* SrvHeap;
         static constexpr float MinLabelWidth = 140.0f;
         static constexpr float MaxFieldWidth = 320.0f;
+        static constexpr char* DragDropPayloadType_AssetPath = "ASSET_PATH";
     };
 }

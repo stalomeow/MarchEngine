@@ -166,8 +166,7 @@ namespace DX12Demo.Editor
 
             if (EditorGUI_TextField(l.Data, tp.Data, te.Data, &newText))
             {
-                text = NativeString.Get(newText);
-                NativeString.Free(newText);
+                text = NativeString.GetAndFree(newText);
                 return true;
             }
 
@@ -300,6 +299,33 @@ namespace DX12Demo.Editor
         {
             get => EditorGUI_GetCursorPosX();
             set => EditorGUI_SetCursorPosX(value);
+        }
+
+        public static bool BeginAssetTreeNode(string label, string assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        {
+            using NativeString l = label;
+            using NativeString a = assetPath;
+            return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+        }
+
+        public static bool AssetReferenceField<T>(string label, string tooltip, ref AssetReference<T> asset) where T : EngineObject?
+        {
+            string? guid = asset.Value?.PersistentGuid;
+            string path = guid == null ? string.Empty : (AssetManager.GetPathByGuid(guid) ?? string.Empty);
+
+            using NativeString l = label;
+            using NativeString t = tooltip;
+            using NativeString p = path;
+            nint newPath = nint.Zero;
+
+            if (EditorGUI_AssetField(l.Data, t.Data, p.Data, &newPath))
+            {
+                path = NativeString.GetAndFree(newPath);
+                asset.Value = AssetManager.Load<T>(path)!;
+                return true;
+            }
+
+            return false;
         }
 
         #region PropertyField
@@ -660,6 +686,12 @@ namespace DX12Demo.Editor
 
         [NativeFunction]
         private static partial void EditorGUI_SetCursorPosX(float localX);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_AssetField(nint label, nint tooltip, nint path, nint* outNewPath);
 
         #endregion
     }

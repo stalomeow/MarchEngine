@@ -2,6 +2,7 @@ using DX12Demo.Core;
 using DX12Demo.Core.Serialization;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.Serialization;
 
 namespace DX12Demo.Editor
 {
@@ -32,11 +33,18 @@ namespace DX12Demo.Editor
         internal string ImporterFullPath { get; private set; } = string.Empty;
 
         /// <summary>
+        /// 资产的 Guid，第一次分配后不会改变
+        /// </summary>
+        [JsonProperty]
+        [HideInInspector]
+        public string AssetGuid { get; private set; }
+
+        /// <summary>
         /// 序列化时使用的 <see cref="AssetImporter"/> 版本号
         /// </summary>
         [JsonProperty]
         [HideInInspector]
-        private int? m_SerializedVersion;
+        private int m_SerializedVersion;
 
         /// <summary>
         /// 资产最后写入时间，用于判断是否需要重新导入
@@ -53,6 +61,11 @@ namespace DX12Demo.Editor
 
         protected AssetImporter()
         {
+            // 生成一个新的 Guid，反序列化时可能会被覆盖
+            // https://learn.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=net-8.0
+            AssetGuid = System.Guid.NewGuid().ToString("N");
+
+            // 记录版本号，反序列化时可能会被覆盖
             m_SerializedVersion = Version;
         }
 
@@ -82,12 +95,19 @@ namespace DX12Demo.Editor
             }
         }
 
-        internal void Initialize(string assetPath, string assetFullPath, string assetCacheFullPath, string importerFullPath)
+        internal void Initialize(string assetPath, string assetFullPath, string assetCacheFullPath,
+            string importerFullPath, EngineObject? asset = null)
         {
             AssetPath = assetPath;
             AssetFullPath = assetFullPath;
             AssetCacheFullPath = assetCacheFullPath;
             ImporterFullPath = importerFullPath;
+
+            if (asset != null)
+            {
+                m_AssetWeakRef = new WeakReference<EngineObject>(asset);
+                SetAssetMetadata(asset);
+            }
 
             if (NeedReimportAsset())
             {
@@ -97,7 +117,7 @@ namespace DX12Demo.Editor
 
         public virtual bool NeedReimportAsset()
         {
-            if (m_SerializedVersion != Version || m_AssetLastWriteTimeUtc != GetAssetLastWriteTimeUtc())
+            if (m_SerializedVersion != Version || m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(AssetFullPath))
             {
                 return true;
             }
@@ -108,41 +128,77 @@ namespace DX12Demo.Editor
         /// <summary>
         /// 保存 <see cref="AssetImporter"/> 并重新导入资产
         /// </summary>
-        [MemberNotNull(nameof(m_SerializedVersion), nameof(m_AssetLastWriteTimeUtc))]
+        [MemberNotNull(nameof(m_AssetLastWriteTimeUtc))]
         public void SaveImporterAndReimportAsset()
         {
             m_SerializedVersion = Version;
-            m_AssetLastWriteTimeUtc = GetAssetLastWriteTimeUtc();
+            RecordAssetLastWriteTime();
             PersistentManager.Save(this, ImporterFullPath);
 
             EngineObject asset = GetAssetReference(out _);
             ReimportAsset(asset);
+
+            Debug.LogInfo($"Reimport asset: {AssetPath}");
+        }
+
+        [MemberNotNull(nameof(m_AssetLastWriteTimeUtc))]
+        protected void RecordAssetLastWriteTime()
+        {
+            m_AssetLastWriteTimeUtc = File.GetLastWriteTimeUtc(AssetFullPath);
+        }
+
+        private EngineObject? GetAssetReference()
+        {
+            if (m_AssetWeakRef != null && m_AssetWeakRef.TryGetTarget(out EngineObject? target))
+            {
+                return target;
+            }
+
+            return null;
         }
 
         private EngineObject GetAssetReference(out bool isEmptyObject)
         {
-            if (m_AssetWeakRef != null && m_AssetWeakRef.TryGetTarget(out EngineObject? target))
-            {
-                isEmptyObject = false;
-                return target;
-            }
+            EngineObject? asset = GetAssetReference();
 
-            EngineObject asset = CreateAsset();
-            isEmptyObject = true;
-
-            if (m_AssetWeakRef == null)
+            if (asset == null)
             {
-                m_AssetWeakRef = new WeakReference<EngineObject>(asset);
+                asset = CreateAsset();
+                SetAssetMetadata(asset);
+                isEmptyObject = true;
+
+                if (m_AssetWeakRef == null)
+                {
+                    m_AssetWeakRef = new WeakReference<EngineObject>(asset);
+                }
+                else
+                {
+                    m_AssetWeakRef.SetTarget(asset);
+                }
             }
             else
             {
-                m_AssetWeakRef.SetTarget(asset);
+                isEmptyObject = false;
             }
 
             return asset;
         }
 
-        private DateTime GetAssetLastWriteTimeUtc() => File.GetLastWriteTimeUtc(AssetFullPath);
+        private void SetAssetMetadata(EngineObject asset)
+        {
+            asset.PersistentGuid = AssetGuid;
+        }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            EngineObject? asset = GetAssetReference();
+
+            if (asset != null)
+            {
+                SetAssetMetadata(asset);
+            }
+        }
 
         /// <summary>
         /// <see cref="AssetImporter"/> 的显示名称，必须返回一个常量
@@ -151,10 +207,11 @@ namespace DX12Demo.Editor
         public abstract string DisplayName { get; }
 
         /// <summary>
-        /// <see cref="AssetImporter"/> 代码的版本，必须返回一个常量，每次修改代码时都必须增加这个版本号
+        /// <see cref="AssetImporter"/> 代码的版本，每次修改代码时都必须增加这个版本号
         /// </summary>
+        /// <remarks>子类重写时返回 <c>base.Version + number</c></remarks>
         [JsonIgnore]
-        protected abstract int Version { get; }
+        protected virtual int Version => 1;
 
         /// <summary>
         /// 创建 Asset 实例，只创建实例，不填充数据
@@ -185,6 +242,12 @@ namespace DX12Demo.Editor
         protected sealed override void ReimportAsset(EngineObject asset)
         {
             PersistentManager.Overwrite(AssetFullPath, asset);
+        }
+
+        public void SaveAsset()
+        {
+            PersistentManager.Save(Asset, AssetFullPath);
+            RecordAssetLastWriteTime(); // 避免等会又重新导入
         }
     }
 

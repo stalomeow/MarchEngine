@@ -5,6 +5,12 @@ namespace DX12Demo.Core
     [JsonObject(MemberSerialization.OptIn)]
     public abstract class EngineObject
     {
+        /// <summary>
+        /// 全局唯一 id。如果为 <c>null</c>，则表示该对象未被持久化
+        /// </summary>
+        [JsonIgnore]
+        public string? PersistentGuid { get; set; }
+
         protected EngineObject() { }
     }
 

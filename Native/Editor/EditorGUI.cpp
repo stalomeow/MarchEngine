@@ -403,7 +403,12 @@ namespace dx12demo
 
         ImGuiHoveredFlags hoveredFlags = ImGuiHoveredFlags_None;
         if (ignorePopup) hoveredFlags |= ImGuiHoveredFlags_AllowWhenBlockedByPopup;
-        return ImGui::IsMouseClicked(button) && ImGui::IsItemHovered(hoveredFlags);
+
+        // return ImGui::IsMouseClicked(button) && ImGui::IsItemHovered(hoveredFlags);
+
+        // https://github.com/ocornut/imgui/issues/7879
+        // 实现 down -> release 再触发 click 的效果
+        return ImGui::IsMouseReleased(button) && !ImGui::IsMouseDragPastThreshold(button) && ImGui::IsItemHovered(hoveredFlags);
     }
 
     bool EditorGUI::BeginPopupContextWindow()
@@ -462,5 +467,59 @@ namespace dx12demo
     void EditorGUI::SetCursorPosX(float localX)
     {
         ImGui::SetCursorPosX(localX);
+    }
+
+    bool EditorGUI::BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
+    {
+        bool result = BeginTreeNode(label, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+
+        // https://github.com/ocornut/imgui/issues/1931
+
+        if (ImGui::BeginDragDropSource())
+        {
+            // 显示 tooltip
+            ImGui::TextUnformatted(assetPath.c_str());
+
+            // 拷贝 payload 时，需要加上最后一个 '\0'
+            ImGui::SetDragDropPayload(DragDropPayloadType_AssetPath, assetPath.c_str(), assetPath.size() + 1);
+            ImGui::EndDragDropSource();
+        }
+
+        return result;
+    }
+
+    bool EditorGUI::AssetField(const std::string& label, const std::string& tooltip, std::string& path)
+    {
+        const std::string& displayPath = path.empty() ? "<None>" : path;
+
+        if (IsHiddenLabel(label))
+        {
+            ImGui::SetNextItemWidth(-1);
+            ImGui::LabelText(label.c_str(), "%s", displayPath.c_str());
+        }
+        else
+        {
+            PrefixLabel(label, tooltip);
+            ImGui::LabelText(("##" + label).c_str(), "%s", displayPath.c_str());
+        }
+
+        bool isChanged = false;
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(DragDropPayloadType_AssetPath))
+            {
+                const char* newAssetPath = reinterpret_cast<char*>(payload->Data);
+
+                if (strcmp(newAssetPath, path.c_str()) != 0)
+                {
+                    path.assign(newAssetPath);
+                    isChanged = true;
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        return isChanged;
     }
 }

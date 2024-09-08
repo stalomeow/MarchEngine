@@ -15,7 +15,7 @@ namespace DX12Demo.Core.Rendering
         private nint m_RenderObject;
         private MeshType m_MeshType;
         private string m_MaterialPath = string.Empty;
-        private Material? m_Material; // Strong Reference
+        private AssetReference<Material?> m_Material;
 
         [JsonProperty]
         public MeshType MeshType
@@ -32,24 +32,15 @@ namespace DX12Demo.Core.Rendering
         }
 
         [JsonProperty]
-        public string MaterialPath
+        public AssetReference<Material?> Material
         {
-            get => m_MaterialPath;
+            get => m_Material;
             set
             {
-                Material? mat = AssetManager.Load<Material>(value);
-
-                if (mat != null)
-                {
-                    m_MaterialPath = value;
-                    m_Material = mat;
-                    RenderObject_SetMaterial(m_RenderObject, mat.NativePtr);
-                }
+                m_Material = value;
+                RenderObject_SetMaterial(m_RenderObject, value.Value?.NativePtr ?? nint.Zero);
             }
         }
-
-        [JsonIgnore]
-        public Material? Material => m_Material;
 
         public MeshRenderer()
         {

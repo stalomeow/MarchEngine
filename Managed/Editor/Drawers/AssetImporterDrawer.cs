@@ -89,7 +89,7 @@ namespace DX12Demo.Editor.Drawers
 
         protected override void ApplyChanges()
         {
-            PersistentManager.Save(Target.Asset, Target.AssetFullPath);
+            Target.SaveAsset();
         }
 
         protected override void RevertChanges()

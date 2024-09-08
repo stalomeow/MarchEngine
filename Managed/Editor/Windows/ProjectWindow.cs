@@ -35,7 +35,6 @@ namespace DX12Demo.Editor.Windows
 
             if (importer != null && importer.NeedReimportAsset())
             {
-                Debug.LogInfo($"File changed: {e.FullPath}, {e.ChangeType}");
                 importer.SaveImporterAndReimportAsset();
             }
         }

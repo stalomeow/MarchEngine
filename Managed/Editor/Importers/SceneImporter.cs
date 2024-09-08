@@ -8,7 +8,7 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Scene Asset";
 
-        protected override int Version => 1;
+        protected override int Version => base.Version + 1;
 
         protected override bool UseCache => false;
 

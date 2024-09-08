@@ -12,7 +12,7 @@ namespace DX12Demo.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => 11;
+        protected override int Version => base.Version + 11;
 
         protected override bool UseCache => true;
 
