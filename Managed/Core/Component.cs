@@ -1,8 +1,9 @@
+using DX12Demo.Core.Serialization;
 using Newtonsoft.Json;
 
 namespace DX12Demo.Core
 {
-    public abstract class Component : EngineObject
+    public abstract class Component : EngineObject, IForceInlineSerialization
     {
         [JsonProperty] private bool m_IsEnabled = false;
         private GameObject? m_MountingObject = null;

@@ -5,6 +5,11 @@ using System.Text;
 
 namespace DX12Demo.Core.Serialization
 {
+    /// <summary>
+    /// 禁止使用 <see cref="Guid"/> 进行序列化
+    /// </summary>
+    public interface IForceInlineSerialization { }
+
     public class LoadPersistentObjectException(string message) : Exception(message) { }
 
     public static class PersistentManager
@@ -140,11 +145,9 @@ namespace DX12Demo.Core.Serialization
 #pragma warning restore CS8603   // Possible null reference return.
                 }
 
-                // 让 EngineObject 类型的 Property 使用 Guid 序列化
-
                 if (prop.PropertyType != null)
                 {
-                    if (prop.PropertyType.IsSubclassOf(typeof(EngineObject)))
+                    if (UseGuidSerialization(prop.PropertyType))
                     {
                         prop.Converter = new EngineObjectGuidJsonConverter();
                     }
@@ -159,13 +162,13 @@ namespace DX12Demo.Core.Serialization
 
                             Type def = i.GetGenericTypeDefinition();
 
-                            if (def == typeof(IEnumerable<>) && i.GetGenericArguments()[0].IsSubclassOf(typeof(EngineObject)))
+                            if (def == typeof(IDictionary<,>) && UseGuidSerialization(i.GetGenericArguments()[1]))
                             {
                                 prop.ItemConverter = new EngineObjectGuidJsonConverter();
                                 break;
                             }
 
-                            if (def == typeof(IDictionary<,>) && i.GetGenericArguments()[1].IsSubclassOf(typeof(EngineObject)))
+                            if (def == typeof(IEnumerable<>) && UseGuidSerialization(i.GetGenericArguments()[0]))
                             {
                                 prop.ItemConverter = new EngineObjectGuidJsonConverter();
                                 break;
@@ -175,6 +178,11 @@ namespace DX12Demo.Core.Serialization
                 }
 
                 return prop;
+            }
+
+            private static bool UseGuidSerialization(Type type)
+            {
+                return type.IsSubclassOf(typeof(EngineObject)) && !typeof(IForceInlineSerialization).IsAssignableFrom(type);
             }
         }
     }

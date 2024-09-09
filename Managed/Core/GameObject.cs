@@ -1,3 +1,4 @@
+using DX12Demo.Core.Serialization;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
@@ -5,7 +6,7 @@ using System.Runtime.Serialization;
 
 namespace DX12Demo.Core
 {
-    public sealed class GameObject : EngineObject
+    public sealed class GameObject : EngineObject, IForceInlineSerialization
     {
         [JsonProperty] private bool m_IsActive = false;
         [JsonProperty(PropertyName = "Rotation", Order = 2)] private Rotator m_Rotation = Rotator.Identity;

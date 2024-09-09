@@ -9,7 +9,7 @@ namespace DX12Demo.Core
         /// 全局唯一 id。如果为 <c>null</c>，则表示该对象未被持久化
         /// </summary>
         [JsonIgnore]
-        public string? PersistentGuid { get; set; }
+        public string? PersistentGuid { get; internal set; }
 
         protected EngineObject() { }
     }

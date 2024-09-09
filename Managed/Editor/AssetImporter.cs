@@ -131,9 +131,7 @@ namespace DX12Demo.Editor
         [MemberNotNull(nameof(m_AssetLastWriteTimeUtc))]
         public void SaveImporterAndReimportAsset()
         {
-            m_SerializedVersion = Version;
-            RecordAssetLastWriteTime();
-            PersistentManager.Save(this, ImporterFullPath);
+            UpdateAndSaveImporter();
 
             EngineObject asset = GetAssetReference(out _);
             ReimportAsset(asset);
@@ -142,7 +140,15 @@ namespace DX12Demo.Editor
         }
 
         [MemberNotNull(nameof(m_AssetLastWriteTimeUtc))]
-        protected void RecordAssetLastWriteTime()
+        protected void UpdateAndSaveImporter()
+        {
+            m_SerializedVersion = Version;
+            RecordAssetLastWriteTime();
+            PersistentManager.Save(this, ImporterFullPath);
+        }
+
+        [MemberNotNull(nameof(m_AssetLastWriteTimeUtc))]
+        private void RecordAssetLastWriteTime()
         {
             m_AssetLastWriteTimeUtc = File.GetLastWriteTimeUtc(AssetFullPath);
         }
@@ -247,7 +253,7 @@ namespace DX12Demo.Editor
         public void SaveAsset()
         {
             PersistentManager.Save(Asset, AssetFullPath);
-            RecordAssetLastWriteTime(); // 避免等会又重新导入
+            UpdateAndSaveImporter(); // 避免等会又重新导入
         }
     }
 
