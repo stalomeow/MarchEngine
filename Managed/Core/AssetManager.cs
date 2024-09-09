@@ -1,18 +1,5 @@
-using DX12Demo.Core.Serialization;
-using Newtonsoft.Json;
-
 namespace DX12Demo.Core
 {
-    [JsonConverter(typeof(AssetReferenceJsonConverter))]
-    public struct AssetReference<T>(T value) where T : EngineObject?
-    {
-        public T Value { get; set; } = value;
-
-        public static implicit operator T(AssetReference<T> reference) => reference.Value;
-
-        public static implicit operator AssetReference<T>(T value) => new(value);
-    }
-
     public interface IAssetManagerImpl
     {
         string? GetGuidByPath(string path);

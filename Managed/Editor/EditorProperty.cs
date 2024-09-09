@@ -44,10 +44,10 @@ namespace DX12Demo.Editor
         public EditorProperty(object target, JsonProperty json)
             : this(target, json, EditorPropertyKind.Member, -1, null) { }
 
-        public readonly T GetValue<T>() where T : notnull
+        public readonly T? GetValue<T>() where T : notnull
         {
             IValueProvider? valueProvider = Json.ValueProvider ?? throw new InvalidOperationException("ValueProvider is null");
-            object value = valueProvider.GetValue(m_Target) ?? throw new NotSupportedException("Property value is null");
+            object? value = valueProvider.GetValue(m_Target);
 
             switch (Kind)
             {
@@ -61,7 +61,7 @@ namespace DX12Demo.Editor
                         throw new InvalidOperationException("Property is not IList");
                     }
 
-                    value = list[m_ListIndex] ?? throw new NotSupportedException("ListItem is null");
+                    value = list[m_ListIndex];
                     break;
 
                 case EditorPropertyKind.DictionaryItem:
@@ -70,17 +70,17 @@ namespace DX12Demo.Editor
                         throw new InvalidOperationException("Property is not IDictionary");
                     }
 
-                    value = dictionary[m_DictionaryKey!] ?? throw new NotSupportedException("DictionaryItem is null");
+                    value = dictionary[m_DictionaryKey!];
                     break;
 
                 default:
                     throw new NotSupportedException($"Unsupported {nameof(EditorPropertyKind)}: {Kind}");
             }
 
-            return (T)value;
+            return (T?)value;
         }
 
-        public readonly void SetValue(object value)
+        public readonly void SetValue(object? value)
         {
             IValueProvider? valueProvider = Json.ValueProvider ?? throw new InvalidOperationException("ValueProvider is null");
 
@@ -155,9 +155,14 @@ namespace DX12Demo.Editor
             get => Json.Ignored || GetAttribute<HideInInspectorAttribute>() != null;
         }
 
-        public readonly Type PropertyType
+        public readonly Type? PropertyType
         {
-            get => GetValue<object>().GetType();
+            get => Kind switch
+            {
+                EditorPropertyKind.Member => Json.PropertyType,
+                EditorPropertyKind.ListItem or EditorPropertyKind.DictionaryItem => GetValue<object>()?.GetType(),
+                _ => throw new NotSupportedException("Unsupported EditorPropertyKind"),
+            };
         }
 
         public readonly EditorProperty GetListItemProperty(int index)

@@ -6,7 +6,13 @@ namespace DX12Demo.Editor.Drawers
     {
         public bool Draw(string label, string tooltip, in EditorProperty property)
         {
-            var list = property.GetValue<IList>();
+            IList? list = property.GetValue<IList>();
+
+            if (list == null)
+            {
+                EditorGUI.LabelField(label, tooltip, "null");
+                return false;
+            }
 
             if (!EditorGUI.Foldout($"{label} ({list.Count})###{label}", tooltip))
             {

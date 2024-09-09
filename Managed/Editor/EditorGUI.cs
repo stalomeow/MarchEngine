@@ -308,27 +308,75 @@ namespace DX12Demo.Editor
             return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool AssetReferenceField<T>(string label, string tooltip, ref AssetReference<T> asset) where T : EngineObject?
+        public static bool EngineObjectField<T>(string label, string tooltip, ref T? asset) where T : EngineObject
         {
-            string? guid = asset.Value?.PersistentGuid;
-            string path = guid == null ? string.Empty : (AssetManager.GetPathByGuid(guid) ?? string.Empty);
-            string assetType = typeof(T).Name;
+            EngineObject? obj = asset;
+
+            if (EngineObjectField(label, tooltip, typeof(T), ref obj))
+            {
+                asset = (T?)obj;
+                return true;
+            }
+
+            return false;
+        }
+
+        private enum EngineObjectState : int
+        {
+            Null = 0,
+            Persistent = 1,
+            Temporary = 2
+        };
+
+        public static bool EngineObjectField(string label, string tooltip, Type assetType, ref EngineObject? asset)
+        {
+            EngineObjectState state;
+            string? path;
+
+            if (asset == null)
+            {
+                state = EngineObjectState.Null;
+                path = string.Empty;
+            }
+            else if (asset.PersistentGuid == null)
+            {
+                state = EngineObjectState.Temporary;
+                path = string.Empty;
+            }
+            else
+            {
+                state = EngineObjectState.Persistent;
+                path = AssetManager.GetPathByGuid(asset.PersistentGuid);
+
+                if (path == null)
+                {
+                    LabelField(label, tooltip, "Asset is invalid");
+                    return false;
+                }
+            }
 
             using NativeString l = label;
             using NativeString t = tooltip;
+            using NativeString ty = assetType.Name;
             using NativeString p = path;
-            using NativeString at = assetType;
             nint pNewPath = nint.Zero;
 
-            if (EditorGUI_AssetField(l.Data, t.Data, at.Data, p.Data, &pNewPath))
+            if (EditorGUI_EngineObjectField(l.Data, t.Data, ty.Data, p.Data, &pNewPath, state))
             {
                 string newPath = NativeString.GetAndFree(pNewPath);
                 EngineObject? newAsset = AssetManager.Load<EngineObject>(newPath);
 
-                if (newAsset is T tNewAsset)
+                if (newAsset != asset)
                 {
-                    asset.Value = tNewAsset;
-                    return true;
+                    if (newAsset == null || assetType.IsAssignableFrom(newAsset.GetType()))
+                    {
+                        asset = newAsset;
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
                 else
                 {
@@ -354,7 +402,13 @@ namespace DX12Demo.Editor
         {
             using (new GroupScope())
             {
-                Type propertyType = property.PropertyType;
+                Type? propertyType = property.PropertyType;
+
+                if (propertyType == null)
+                {
+                    LabelField(label, tooltip, "Can not determine property type");
+                    return false;
+                }
 
                 if (s_PropertyDrawerCache.TryGetSharedInstance(propertyType, out IPropertyDrawer? drawer))
                 {
@@ -363,6 +417,15 @@ namespace DX12Demo.Editor
 
                 if (PersistentManager.ResolveJsonContract(propertyType) is JsonObjectContract contract)
                 {
+                    // Draw as a nested object
+                    object? nestedTarget = property.GetValue<object>();
+
+                    if (nestedTarget == null)
+                    {
+                        LabelField(label, tooltip, "Null");
+                        return false;
+                    }
+
                     bool isLabelHidden = IsLabelHidden(label);
 
                     if (!isLabelHidden && !Foldout(label, tooltip))
@@ -373,8 +436,6 @@ namespace DX12Demo.Editor
                     using (new IDScope(label))
                     using (new IndentedScope(isLabelHidden ? 0u : 1u))
                     {
-                        // Draw as a nested object
-                        object nestedTarget = property.GetValue<object>();
                         bool changed = ObjectPropertyFields(nestedTarget, contract);
 
                         if (changed && propertyType.IsValueType)
@@ -390,7 +451,7 @@ namespace DX12Demo.Editor
                 // Fallback
                 using (new DisabledScope())
                 {
-                    LabelField(label, string.Empty, $"Type {propertyType} is not supported");
+                    LabelField(label, tooltip, $"Type {propertyType} is not supported");
                     return false;
                 }
             }
@@ -702,7 +763,7 @@ namespace DX12Demo.Editor
         private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
 
         [NativeFunction]
-        private static partial bool EditorGUI_AssetField(nint label, nint tooltip, nint assetType, nint path, nint* outNewPath);
+        private static partial bool EditorGUI_EngineObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentPath, EngineObjectState currentObjectState);
 
         #endregion
     }

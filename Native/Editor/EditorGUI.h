@@ -71,8 +71,15 @@ namespace dx12demo
         static float GetCursorPosX();
         static void SetCursorPosX(float localX);
 
+        enum class EngineObjectState
+        {
+            Null = 0,
+            Persistent = 1,
+            Temporary = 2
+        };
+
         static bool BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
-        static bool AssetField(const std::string& label, const std::string& tooltip, const std::string& assetType, std::string& path);
+        static bool EngineObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, EngineObjectState currentObjectState);
 
         inline static void SetSrvHeap(DescriptorHeap* heap)
         {

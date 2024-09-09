@@ -488,19 +488,38 @@ namespace dx12demo
         return result;
     }
 
-    bool EditorGUI::AssetField(const std::string& label, const std::string& tooltip, const std::string& assetType, std::string& path)
+    bool EditorGUI::EngineObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, EngineObjectState currentObjectState)
     {
-        const std::string& displayPath = path.empty() ? ("None (" + assetType + ")") : path;
+        std::string displayValue;
+
+        switch (currentObjectState)
+        {
+        case EngineObjectState::Null:
+            displayValue = "None (" + type + ")";
+            break;
+        case EngineObjectState::Persistent:
+            displayValue = persistentPath;
+            break;
+        case EngineObjectState::Temporary:
+            displayValue = "Runtime Object (" + type + ")";
+            break;
+        default:
+            displayValue = "Unknown";
+            break;
+        }
 
         if (IsHiddenLabel(label))
         {
             ImGui::SetNextItemWidth(-1);
-            ImGui::LabelText(label.c_str(), "%s", displayPath.c_str());
+            ImGui::LabelText(label.c_str(), "%s", displayValue.c_str());
         }
         else
         {
             PrefixLabel(label, tooltip);
-            ImGui::LabelText(("##" + label).c_str(), "%s", displayPath.c_str());
+
+            ImGui::PushID(label.c_str());
+            ImGui::TextUnformatted(displayValue.c_str());
+            ImGui::PopID();
         }
 
         bool isChanged = false;
@@ -512,9 +531,9 @@ namespace dx12demo
             {
                 const char* newAssetPath = reinterpret_cast<char*>(payload->Data);
 
-                if (strcmp(newAssetPath, path.c_str()) != 0)
+                if (currentObjectState != EngineObjectState::Persistent || newAssetPath != persistentPath)
                 {
-                    path.assign(newAssetPath);
+                    persistentPath.assign(newAssetPath);
                     isChanged = true;
                 }
             }

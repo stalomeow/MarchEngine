@@ -13,19 +13,12 @@ namespace DX12Demo.Editor.Drawers
         {
             var material = (Material)Target.Asset;
             var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(material.GetType());
-            var isChanged = false;
 
-            Shader? shader = material.Shader;
-            isChanged |= EditorGUI.PropertyField("Shader", contract.GetEditorProperty(material, "m_Shader"));
+            bool isChanged = EditorGUI.PropertyField(contract.GetEditorProperty(material, "Shader"));
 
-            if (shader != null)
+            if (material.Shader != null)
             {
-                if (material.Shader != shader)
-                {
-                    material.Shader = shader;
-                }
-
-                foreach (ShaderProperty shaderProp in shader.Properties)
+                foreach (ShaderProperty shaderProp in material.Shader.Properties)
                 {
                     switch (shaderProp.Type)
                     {
@@ -61,9 +54,9 @@ namespace DX12Demo.Editor.Drawers
 
                         case ShaderPropertyType.Texture:
                             {
-                                AssetReference<Texture?> value = material.GetTexture(shaderProp.Name);
-                                isChanged |= EditorGUI.AssetReferenceField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                                material.SetTexture(shaderProp.Name, value.Value);
+                                Texture? value = material.GetTexture(shaderProp.Name);
+                                isChanged |= EditorGUI.EngineObjectField(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                material.SetTexture(shaderProp.Name, value);
                                 break;
                             }
                     }

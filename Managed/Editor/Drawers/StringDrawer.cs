@@ -5,7 +5,14 @@ namespace DX12Demo.Editor.Drawers
         public bool Draw(string label, string tooltip, in EditorProperty property)
         {
             bool changed = false;
-            string value = property.GetValue<string>();
+            string? value = property.GetValue<string>();
+
+            if (value == null)
+            {
+                value = string.Empty;
+                property.SetValue(value);
+                changed = true;
+            }
 
             if (EditorGUI.TextField(label, tooltip, ref value))
             {

@@ -15,7 +15,7 @@ namespace DX12Demo.Core.Rendering
         private nint m_RenderObject;
         private MeshType m_MeshType;
         private string m_MaterialPath = string.Empty;
-        private AssetReference<Material?> m_Material;
+        private Material? m_Material;
 
         [JsonProperty]
         public MeshType MeshType
@@ -32,13 +32,13 @@ namespace DX12Demo.Core.Rendering
         }
 
         [JsonProperty]
-        public AssetReference<Material?> Material
+        public Material? Material
         {
             get => m_Material;
             set
             {
                 m_Material = value;
-                RenderObject_SetMaterial(m_RenderObject, value.Value?.NativePtr ?? nint.Zero);
+                RenderObject_SetMaterial(m_RenderObject, value?.NativePtr ?? nint.Zero);
             }
         }
 

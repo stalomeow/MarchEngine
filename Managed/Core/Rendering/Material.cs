@@ -7,12 +7,23 @@ namespace DX12Demo.Core.Rendering
 {
     public partial class Material : NativeEngineObject
     {
-        [JsonProperty] private AssetReference<Shader?> m_Shader = null;
+        [JsonIgnore] private Shader? m_Shader = null;
         [JsonProperty] private Dictionary<string, int> m_Ints = [];
         [JsonProperty] private Dictionary<string, float> m_Floats = [];
         [JsonProperty] private Dictionary<string, Vector4> m_Vectors = [];
         [JsonProperty] private Dictionary<string, Color> m_Colors = [];
-        [JsonProperty] private Dictionary<string, AssetReference<Texture>> m_Textures = [];
+        [JsonProperty] private Dictionary<string, Texture> m_Textures = [];
+
+        [JsonProperty]
+        public Shader? Shader
+        {
+            get => m_Shader;
+            set
+            {
+                m_Shader = value;
+                Material_SetShader(NativePtr, value?.NativePtr ?? nint.Zero);
+            }
+        }
 
         public Material() : base(Material_New()) { }
 
@@ -21,16 +32,15 @@ namespace DX12Demo.Core.Rendering
             Material_Delete(NativePtr);
         }
 
+        [OnDeserializing]
+        private void OnDeserializingCallback(StreamingContext context)
+        {
+            Material_Reset(NativePtr); // 避免 overwrite 后还有旧数据
+        }
+
         [OnDeserialized]
         private void OnDeserializedCallback(StreamingContext context)
         {
-            Material_Reset(NativePtr); // 避免 overwrite 后还有旧数据
-
-            if (m_Shader.Value != null)
-            {
-                Material_SetShader(NativePtr, m_Shader.Value.NativePtr);
-            }
-
             foreach (KeyValuePair<string, int> kvp in m_Ints)
             {
                 using NativeString n = kvp.Key;
@@ -55,21 +65,10 @@ namespace DX12Demo.Core.Rendering
                 Material_SetVector(NativePtr, n.Data, new Vector4(kvp.Value.R, kvp.Value.G, kvp.Value.B, kvp.Value.A));
             }
 
-            foreach (KeyValuePair<string, AssetReference<Texture>> kvp in m_Textures)
+            foreach (KeyValuePair<string, Texture> kvp in m_Textures)
             {
                 using NativeString n = kvp.Key;
-                Material_SetTexture(NativePtr, n.Data, kvp.Value.Value.NativePtr);
-            }
-        }
-
-        [JsonIgnore]
-        public Shader? Shader
-        {
-            get => m_Shader;
-            set
-            {
-                m_Shader = value;
-                Material_SetShader(NativePtr, value?.NativePtr ?? nint.Zero);
+                Material_SetTexture(NativePtr, n.Data, kvp.Value.NativePtr);
             }
         }
 
@@ -147,7 +146,7 @@ namespace DX12Demo.Core.Rendering
 
         public Texture? GetTexture(string name, Texture? defaultValue = default)
         {
-            return m_Textures.TryGetValue(name, out AssetReference<Texture> value) ? value : defaultValue;
+            return m_Textures.TryGetValue(name, out Texture? value) ? value : defaultValue;
         }
 
         #region Native

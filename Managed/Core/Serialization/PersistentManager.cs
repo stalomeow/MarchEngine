@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using System.Reflection;
 using System.Text;
 
 namespace DX12Demo.Core.Serialization
@@ -104,23 +105,73 @@ namespace DX12Demo.Core.Serialization
             return stringWriter.ToString();
         }
 
+        private sealed class EngineObjectGuidJsonConverter : JsonConverter<EngineObject>
+        {
+            public override EngineObject? ReadJson(JsonReader reader, Type objectType, EngineObject? existingValue, bool hasExistingValue, JsonSerializer serializer)
+            {
+                string? guid = reader.Value?.ToString();
+                return guid == null ? null : AssetManager.LoadByGuid(guid);
+            }
+
+            public override void WriteJson(JsonWriter writer, EngineObject? value, JsonSerializer serializer)
+            {
+                if (value?.PersistentGuid == null)
+                {
+                    writer.WriteNull();
+                }
+                else
+                {
+                    writer.WriteValue(value.PersistentGuid);
+                }
+            }
+        }
+
         private sealed class ContractResolver : DefaultContractResolver
         {
-            protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
+            protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
             {
-                IList<JsonProperty> properties = base.CreateProperties(type, memberSerialization);
+                JsonProperty prop = base.CreateProperty(member, memberSerialization);
 
-                for (int i = properties.Count - 1; i >= 0; i--)
+                if (!prop.Readable || !prop.Writable || prop.ValueProvider == null)
                 {
-                    JsonProperty prop = properties[i];
+#pragma warning disable CS8603   // Possible null reference return.
+                    return null; // 返回 null 表示忽略该属性
+#pragma warning restore CS8603   // Possible null reference return.
+                }
 
-                    if (!prop.Readable || !prop.Writable || prop.ValueProvider == null)
+                if (prop.PropertyType != null)
+                {
+                    if (prop.PropertyType.IsSubclassOf(typeof(EngineObject)))
                     {
-                        properties.RemoveAt(i);
+                        prop.Converter = new EngineObjectGuidJsonConverter();
+                    }
+                    else
+                    {
+                        foreach (Type i in prop.PropertyType.GetInterfaces())
+                        {
+                            if (!i.IsGenericType)
+                            {
+                                continue;
+                            }
+
+                            Type def = i.GetGenericTypeDefinition();
+
+                            if (def == typeof(IEnumerable<>) && i.GetGenericArguments()[0].IsSubclassOf(typeof(EngineObject)))
+                            {
+                                prop.ItemConverter = new EngineObjectGuidJsonConverter();
+                                break;
+                            }
+
+                            if (def == typeof(IDictionary<,>) && i.GetGenericArguments()[1].IsSubclassOf(typeof(EngineObject)))
+                            {
+                                prop.ItemConverter = new EngineObjectGuidJsonConverter();
+                                break;
+                            }
+                        }
                     }
                 }
 
-                return properties;
+                return prop;
             }
         }
     }
