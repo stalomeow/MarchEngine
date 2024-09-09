@@ -117,6 +117,7 @@ namespace DX12Demo.Core.Serialization
             {
                 if (value?.PersistentGuid == null)
                 {
+                    writer.WriteComment("Not Persistent");
                     writer.WriteNull();
                 }
                 else
@@ -138,6 +139,8 @@ namespace DX12Demo.Core.Serialization
                     return null; // 返回 null 表示忽略该属性
 #pragma warning restore CS8603   // Possible null reference return.
                 }
+
+                // 让 EngineObject 类型的 Property 使用 Guid 序列化
 
                 if (prop.PropertyType != null)
                 {
