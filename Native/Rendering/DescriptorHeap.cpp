@@ -26,19 +26,13 @@ namespace dx12demo
         }
     }
 
-    DescriptorHeap::DescriptorHeap(const std::wstring& name, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT fixedCapacity, UINT dynamicCapacity, bool shaderVisible)
-        : m_DynamicBase(0)
-        , m_DynamicRear(0)
-        , m_DynamicFront(0)
-        , m_DynamicCapacity(dynamicCapacity)
-        , m_DynamicUsed{}
-        , m_FixedCapacity(fixedCapacity)
+    DescriptorHeap::DescriptorHeap(const std::wstring& name, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT capacity, bool shaderVisible)
     {
         auto device = GetGfxManager().GetDevice();
         m_DescriptorSize = device->GetDescriptorHandleIncrementSize(type);
 
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.NumDescriptors = dynamicCapacity + fixedCapacity;
+        desc.NumDescriptors = capacity;
         desc.Type = type;
         desc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         THROW_IF_FAILED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_Heap)));
@@ -56,84 +50,33 @@ namespace dx12demo
         m_Heap = nullptr;
     }
 
-    UINT DescriptorHeap::Append()
+    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandle(UINT index) const
     {
-        if (m_DynamicCapacity <= 0)
-        {
-            throw std::out_of_range("The capacity of dynamic descriptor heap is zero");
-        }
-
-        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
-
-        // 清理已经使用完成的空间
-        while (!m_DynamicUsed.empty() && m_DynamicUsed.front().first <= completedFenceValue)
-        {
-            m_DynamicFront = m_DynamicUsed.front().second;
-            m_DynamicUsed.pop();
-        }
-
-        UINT newRear = (m_DynamicRear + 1) % m_DynamicCapacity;
-
-        if (newRear == m_DynamicFront)
-        {
-            throw std::out_of_range("Dynamic descriptor heap is full");
-        }
-
-        return std::exchange(m_DynamicRear, newRear) - m_DynamicBase;
-    }
-
-    void DescriptorHeap::Flush()
-    {
-        UINT64 fenceValue = GetGfxManager().GetNextFenceValue();
-        m_DynamicUsed.emplace(fenceValue, m_DynamicRear);
-        m_DynamicBase = m_DynamicRear; // 更新起点
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandle(DescriptorHeapRegion region, UINT index) const
-    {
-        if (index < 0 || index >= GetCount(region))
+        if (index < 0 || index >= GetCapacity())
         {
             throw std::out_of_range("Index out of the range of descriptor heap");
         }
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_Heap->GetCPUDescriptorHandleForHeapStart());
-
-        switch (region)
-        {
-        case dx12demo::DescriptorHeapRegion::Fixed:
-            return handle.Offset(m_DynamicCapacity + index, m_DescriptorSize);
-        case dx12demo::DescriptorHeapRegion::Dynamic:
-            return handle.Offset((m_DynamicBase + index) % m_DynamicCapacity, m_DescriptorSize);
-        default:
-            THROW_INVALID_DESCRIPTOR_HEAP_REGION;
-        }
+        return handle.Offset(index, m_DescriptorSize);
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGpuHandle(DescriptorHeapRegion region, UINT index) const
+    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGpuHandle(UINT index) const
     {
-        if (index < 0 || index >= GetCount(region))
+        if (index < 0 || index >= GetCapacity())
         {
             throw std::out_of_range("Index out of the range of descriptor heap");
         }
 
         CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_Heap->GetGPUDescriptorHandleForHeapStart());
-
-        switch (region)
-        {
-        case dx12demo::DescriptorHeapRegion::Fixed:
-            return handle.Offset(m_DynamicCapacity + index, m_DescriptorSize);
-        case dx12demo::DescriptorHeapRegion::Dynamic:
-            return handle.Offset((m_DynamicBase + index) % m_DynamicCapacity, m_DescriptorSize);
-        default:
-            THROW_INVALID_DESCRIPTOR_HEAP_REGION;
-        }
+        return handle.Offset(index, m_DescriptorSize);
     }
 
-    void DescriptorHeap::Copy(DescriptorHeapRegion region, UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
+    void DescriptorHeap::Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
     {
         auto device = GetGfxManager().GetDevice();
-        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor = GetCpuHandle(region, destIndex);
-        device->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetHeapType());
+        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor = GetCpuHandle(destIndex);
+        device->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetType());
     }
 
     DescriptorAllocator::DescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType, UINT pageSize)
@@ -153,14 +96,16 @@ namespace dx12demo
             return result;
         }
 
-        if (m_Pages.empty() || m_Pages.back()->IsFull(DescriptorHeapRegion::Dynamic))
+        if (m_Pages.empty() || m_NextDescriptorIndex >= m_PageSize)
         {
+            m_NextDescriptorIndex = 0;
+
             std::wstring name = L"DescriptorAllocatorPage" + std::to_wstring(m_Pages.size());
             m_Pages.push_back(std::make_unique<DescriptorHeap>(name, m_DescriptorType, 0, m_PageSize, false));
             DEBUG_LOG_INFO(L"Create %s; Size: %d; Type: %s", name.c_str(), m_PageSize, GetDescriptorHeapTypeName(m_DescriptorType));
         }
 
-        return std::make_pair(m_Pages.size() - 1, m_Pages.back()->Append());
+        return std::make_pair(m_Pages.size() - 1, m_NextDescriptorIndex++);
     }
 
     void DescriptorAllocator::Free(const DescriptorHandle& handle)
@@ -170,12 +115,7 @@ namespace dx12demo
 
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAllocator::GetCpuHandle(const DescriptorHandle& handle) const
     {
-        return m_Pages[handle.first]->GetCpuHandle(DescriptorHeapRegion::Dynamic, handle.second);
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorAllocator::GetGpuHandle(const DescriptorHandle& handle) const
-    {
-        return m_Pages[handle.first]->GetGpuHandle(DescriptorHeapRegion::Dynamic, handle.second);
+        return m_Pages[handle.first]->GetCpuHandle(handle.second);
     }
 
     TypedDescriptorHandle DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
@@ -193,16 +133,9 @@ namespace dx12demo
         return GetAllocator(handle.first)->GetCpuHandle(handle.second);
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorManager::GetGpuHandle(const TypedDescriptorHandle& handle)
-    {
-        return GetAllocator(handle.first)->GetGpuHandle(handle.second);
-    }
-
-    std::unique_ptr<DescriptorAllocator> DescriptorManager::s_Allocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES] = {};
-
     DescriptorAllocator* DescriptorManager::GetAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
     {
-        std::unique_ptr<DescriptorAllocator>& allocator = s_Allocators[descriptorType];
+        std::unique_ptr<DescriptorAllocator>& allocator = m_Allocators[descriptorType];
 
         if (allocator == nullptr)
         {
@@ -212,91 +145,118 @@ namespace dx12demo
         return allocator.get();
     }
 
-    DescriptorHeapSpan::DescriptorHeapSpan(DescriptorHeap* heap, UINT offset, UINT count)
+    DescriptorTable::DescriptorTable(DescriptorHeap* heap, UINT offset, UINT count)
         : m_Heap(heap), m_Offset(offset), m_Count(count)
     {
 
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapSpan::GetCpuHandle(UINT index) const
+    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorTable::GetCpuHandle(UINT index) const
     {
         if (index < 0 || index >= m_Count)
         {
-            throw std::out_of_range("Index out of the range of descriptor heap span");
+            throw std::out_of_range("Index out of the range of descriptor table");
         }
 
-        return m_Heap->GetCpuHandle(DescriptorHeapRegion::Fixed, m_Offset + index);
+        return m_Heap->GetCpuHandle(m_Offset + index);
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapSpan::GetGpuHandle(UINT index) const
+    D3D12_GPU_DESCRIPTOR_HANDLE DescriptorTable::GetGpuHandle(UINT index) const
     {
         if (index < 0 || index >= m_Count)
         {
-            throw std::out_of_range("Index out of the range of descriptor heap span");
+            throw std::out_of_range("Index out of the range of descriptor table");
         }
 
-        return m_Heap->GetGpuHandle(DescriptorHeapRegion::Fixed, m_Offset + index);
+        return m_Heap->GetGpuHandle(m_Offset + index);
     }
 
-    void DescriptorHeapSpan::Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
+    void DescriptorTable::Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
     {
         if (destIndex < 0 || destIndex >= m_Count)
         {
             throw std::out_of_range("Index out of the range of descriptor heap span");
         }
 
-        m_Heap->Copy(DescriptorHeapRegion::Fixed, m_Offset + destIndex, srcDescriptor);
+        m_Heap->Copy(m_Offset + destIndex, srcDescriptor);
     }
 
-    DescriptorHeapAllocator::DescriptorHeapAllocator(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT pageSize)
-        : m_HeapType(heapType), m_PageSize(pageSize)
+    DescriptorTableAllocator::DescriptorTableAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity)
+        : m_DynamicUsedIndices{}, m_DynamicReleaseQueue{}, m_DynamicSearchStart(0), m_DynamicCapacity(dynamicDescriptorCapacity)
     {
-
+        std::wstring name = GetDescriptorHeapTypeName(type) + std::wstring(L"_DescriptorTablePool");
+        UINT capacity = dynamicDescriptorCapacity + staticDescriptorCount; // static 部分放在 dynamic 后面
+        m_Heap = std::make_unique<DescriptorHeap>(name, type, capacity, true);
     }
 
-    DescriptorHeapSpan DescriptorHeapAllocator::Allocate(UINT count)
-    {
-        if (count > m_PageSize)
-        {
-            throw std::out_of_range("Requested descriptor count exceeds the page size of DescriptorHeapAllocator");
-        }
-
-        if (m_ActiveHeaps.empty() || m_ActiveHeaps.back()->GetCapacity(DescriptorHeapRegion::Fixed) - m_Offset < count)
-        {
-            m_ActiveHeaps.push_back(RequestNewHeap());
-            m_Offset = 0;
-        }
-
-        DescriptorHeapSpan span(m_ActiveHeaps.back(), m_Offset, count);
-        m_Offset += count;
-        return span;
-    }
-
-    void DescriptorHeapAllocator::Flush(UINT64 fenceValue)
-    {
-        for (DescriptorHeap* heap : m_ActiveHeaps)
-        {
-            m_PendingHeaps.emplace(fenceValue, heap);
-        }
-
-        m_ActiveHeaps.clear();
-        m_Offset = 0;
-    }
-
-    DescriptorHeap* DescriptorHeapAllocator::RequestNewHeap()
+    DescriptorTable DescriptorTableAllocator::AllocateDynamicTable(UINT descriptorCount)
     {
         UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
+        bool released = false;
+        UINT minReleasedOffset = 0;
 
-        if (!m_PendingHeaps.empty() && m_PendingHeaps.front().first <= completedFenceValue)
+        while (!m_DynamicReleaseQueue.empty() && m_DynamicReleaseQueue.top().FenceValue <= completedFenceValue)
         {
-            DescriptorHeap* heap = m_PendingHeaps.front().second;
-            m_PendingHeaps.pop();
-            return heap;
+            const ReleaseRange& range = m_DynamicReleaseQueue.top();
+
+            if (!released || range.Offset < minReleasedOffset)
+            {
+                minReleasedOffset = range.Offset;
+            }
+
+            for (UINT i = 0; i < range.Count; i++)
+            {
+                m_DynamicUsedIndices.erase(range.Offset + i);
+            }
+
+            released = true;
         }
 
-        std::wstring name = L"DescriptorHeapAllocatorPage" + std::to_wstring(m_AllHeaps.size());
-        m_AllHeaps.push_back(std::make_unique<DescriptorHeap>(name.c_str(), m_HeapType, m_PageSize, 0, true));
-        DEBUG_LOG_INFO(L"Create %s; Size: %d; Type: %s", name.c_str(), m_PageSize, GetDescriptorHeapTypeName(m_HeapType));
-        return m_AllHeaps.back().get();
+        if (released)
+        {
+            m_DynamicSearchStart = minReleasedOffset;
+        }
+
+        UINT freeCount = 0;
+
+        for (UINT i = m_DynamicSearchStart; i < m_DynamicCapacity; i++)
+        {
+            if (m_DynamicUsedIndices.count(i) > 0)
+            {
+                freeCount = 0;
+            }
+            else
+            {
+                freeCount++;
+            }
+
+            if (freeCount >= descriptorCount)
+            {
+                UINT offset = i - descriptorCount + 1;
+
+                for (UINT j = offset; j <= i; j++)
+                {
+                    m_DynamicUsedIndices.insert(j);
+                }
+
+                m_DynamicSearchStart = offset + descriptorCount;
+                return DescriptorTable(m_Heap.get(), offset, descriptorCount);
+            }
+        }
+
+        throw std::runtime_error("Failed to allocate dynamic descriptor table");
+    }
+
+    void DescriptorTableAllocator::ReleaseDynamicTables(UINT tableCount, const DescriptorTable* pTables, UINT64 fenceValue)
+    {
+        for (int i = 0; i < tableCount; i++)
+        {
+            m_DynamicReleaseQueue.push({ pTables[i].m_Offset, pTables[i].m_Count, fenceValue });
+        }
+    }
+
+    DescriptorTable DescriptorTableAllocator::GetStaticTable() const
+    {
+        return DescriptorTable(m_Heap.get(), m_DynamicCapacity, GetStaticDescriptorCount());
     }
 }

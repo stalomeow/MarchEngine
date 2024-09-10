@@ -51,8 +51,6 @@ namespace dx12demo
         bool m_ConsoleWindowAutoScroll = true;
         bool m_ConsoleWindowScrollToBottom = true;
         bool m_ShowHierarchyWindow = true;
-        int m_SelectedGameObjectIndex = 0;
-        ImVec4 m_ImGUIClearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
         RenderDoc m_RenderDoc{};
         DotNetEnv m_DotNet{};

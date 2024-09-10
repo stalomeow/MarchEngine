@@ -2,6 +2,7 @@
 
 #include <directx/d3dx12.h>
 #include <d3d12.h>
+#include "Rendering/DescriptorHeap.h"
 #include <dxgi1_4.h>
 #include <wrl.h>
 #include <Windows.h>
@@ -47,12 +48,6 @@ namespace dx12demo
 
         ID3D12Resource* GetBackBuffer() const { return m_SwapChainBuffers[m_CurrentBackBufferIndex].Get(); }
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferView() const
-        {
-            CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-            return handle.Offset(m_CurrentBackBufferIndex, m_RtvDescriptorSize);
-        }
-
         DXGI_FORMAT GetBackBufferFormat() const { return m_BackBufferFormat; }
         D3D12_COMMAND_LIST_TYPE GetCommandListType() const { return m_CommandListType; }
         UINT GetMaxFrameLatency() const { return m_MaxFrameLatency; }
@@ -61,7 +56,6 @@ namespace dx12demo
         void InitDeviceAndFactory();
         void InitDebugInfoCallback();
         void InitCommandObjectsAndFence();
-        void InitDescriptorHeaps();
         void InitSwapChain(HWND window, int width, int height);
 
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);
@@ -77,9 +71,6 @@ namespace dx12demo
         UINT64 m_FenceCurrentValue = 0;
         HANDLE m_FenceEventHandle;
 
-        UINT m_RtvDescriptorSize;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap = nullptr;
-
         static const int s_SwapChainBufferCount = 2;
         Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_SwapChainBuffers[s_SwapChainBufferCount];
@@ -87,6 +78,9 @@ namespace dx12demo
         HANDLE m_FrameLatencyWaitEventHandle;
 
         std::queue<std::pair<ID3D12Object*, UINT64>> m_ReleaseQueue{};
+
+        std::unique_ptr<DescriptorTableAllocator> m_ViewHeapAllocator;
+        std::unique_ptr<DescriptorTableAllocator> m_SamplerHeapAllocator;
 
         const DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const D3D12_COMMAND_LIST_TYPE m_CommandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;

@@ -7,73 +7,24 @@
 #include <vector>
 #include <stdexcept>
 #include <exception>
-
-#define THROW_INVALID_DESCRIPTOR_HEAP_REGION throw std::invalid_argument("Invalid descriptor heap region")
+#include <unordered_set>
 
 namespace dx12demo
 {
-    enum class DescriptorHeapRegion
-    {
-        Fixed,   // 固定长度的区域，类似数组
-        Dynamic, // 动态长度的区域，类似循环队列
-    };
-
     class DescriptorHeap
     {
     public:
-        DescriptorHeap(const std::wstring& name, D3D12_DESCRIPTOR_HEAP_TYPE type,
-            UINT fixedCapacity, UINT dynamicCapacity, bool shaderVisible);
+        DescriptorHeap(const std::wstring& name, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT capacity, bool shaderVisible);
         virtual ~DescriptorHeap();
 
-        UINT Append();
-        void Flush();
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(DescriptorHeapRegion region, UINT index) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(DescriptorHeapRegion region, UINT index) const;
-        void Copy(DescriptorHeapRegion region, UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
-
-        bool IsFull(DescriptorHeapRegion region) const
-        {
-            switch (region)
-            {
-            case dx12demo::DescriptorHeapRegion::Fixed:
-                return true;
-            case dx12demo::DescriptorHeapRegion::Dynamic:
-                return ((m_DynamicRear + 1) % m_DynamicCapacity) == m_DynamicFront;
-            default:
-                THROW_INVALID_DESCRIPTOR_HEAP_REGION;
-            }
-        }
-
-        UINT GetCount(DescriptorHeapRegion region) const
-        {
-            switch (region)
-            {
-            case dx12demo::DescriptorHeapRegion::Fixed:
-                return m_FixedCapacity;
-            case dx12demo::DescriptorHeapRegion::Dynamic:
-                return (m_DynamicRear - m_DynamicBase + m_DynamicCapacity) % m_DynamicCapacity;
-            default:
-                THROW_INVALID_DESCRIPTOR_HEAP_REGION;
-            }
-        }
-
-        UINT GetCapacity(DescriptorHeapRegion region) const
-        {
-            switch (region)
-            {
-            case dx12demo::DescriptorHeapRegion::Fixed:
-                return m_FixedCapacity;
-            case dx12demo::DescriptorHeapRegion::Dynamic:
-                return m_DynamicCapacity - 1; // 循环队列需要预留一个空位
-            default:
-                THROW_INVALID_DESCRIPTOR_HEAP_REGION;
-            }
-        }
+        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(UINT index) const;
+        D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT index) const;
+        void Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
 
         UINT GetDescriptorSize() const { return m_DescriptorSize; }
         ID3D12DescriptorHeap* GetHeapPointer() const { return m_Heap; }
-        D3D12_DESCRIPTOR_HEAP_TYPE GetHeapType() const { return m_Heap->GetDesc().Type; }
+        D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Heap->GetDesc().Type; }
+        UINT GetCapacity() const { return m_Heap->GetDesc().NumDescriptors; }
 
         bool IsShaderVisible() const
         {
@@ -87,14 +38,6 @@ namespace dx12demo
         DescriptorHeap& operator=(const DescriptorHeap&) = delete;
 
     private:
-        UINT m_DynamicBase; // 本次的起点
-        UINT m_DynamicRear;
-        UINT m_DynamicFront;
-        UINT m_DynamicCapacity;
-        std::queue<std::pair<UINT64, UINT>> m_DynamicUsed; // fence-value, front
-
-        UINT m_FixedCapacity;
-
         UINT m_DescriptorSize;
         ID3D12DescriptorHeap* m_Heap;
     };
@@ -113,7 +56,6 @@ namespace dx12demo
         void Free(const DescriptorHandle& handle);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(const DescriptorHandle& handle) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(const DescriptorHandle& handle) const;
 
         D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorType() const { return m_DescriptorType; }
         UINT GetPageSize() const { return m_PageSize; }
@@ -126,6 +68,7 @@ namespace dx12demo
         D3D12_DESCRIPTOR_HEAP_TYPE m_DescriptorType;
         UINT m_PageSize;
 
+        UINT m_NextDescriptorIndex = 0;
         std::vector<std::unique_ptr<DescriptorHeap>> m_Pages{};
         std::queue<std::pair<UINT64, DescriptorHandle>> m_FreeList{};
     };
@@ -134,32 +77,30 @@ namespace dx12demo
     class DescriptorManager
     {
     public:
-        static TypedDescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
-        static void Free(const TypedDescriptorHandle& handle);
+        TypedDescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
+        void Free(const TypedDescriptorHandle& handle);
 
-        static D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(const TypedDescriptorHandle& handle);
-        static D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(const TypedDescriptorHandle& handle);
+        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(const TypedDescriptorHandle& handle);
 
     public:
-        static const UINT AllocatorPageSize = 1024;
+        const UINT AllocatorPageSize = 1024;
 
     private:
-        static DescriptorAllocator* GetAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
-        static std::unique_ptr<DescriptorAllocator> s_Allocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+        DescriptorAllocator* GetAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
+        std::unique_ptr<DescriptorAllocator> m_Allocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES]{};
     };
 
-    // shader-visible descriptor heap span
-    class DescriptorHeapSpan
+    class DescriptorTable
     {
+        friend DescriptorTableAllocator;
+
     public:
-        DescriptorHeapSpan(DescriptorHeap* heap, UINT offset, UINT count);
-        ~DescriptorHeapSpan() = default;
+        DescriptorTable(DescriptorHeap* heap, UINT offset, UINT count);
+        ~DescriptorTable() = default;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(UINT index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT index) const;
         void Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
-
-        ID3D12DescriptorHeap* GetHeapPointer() const { return m_Heap->GetHeapPointer(); }
 
     private:
         DescriptorHeap* m_Heap;
@@ -167,30 +108,42 @@ namespace dx12demo
         UINT m_Count;
     };
 
-    // shader-visible descriptor heap allocator
-    class DescriptorHeapAllocator
+    class DescriptorTableAllocator
     {
     public:
-        DescriptorHeapAllocator(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT pageSize);
-        ~DescriptorHeapAllocator() = default;
+        DescriptorTableAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity);
+        ~DescriptorTableAllocator() = default;
 
-        DescriptorHeapSpan Allocate(UINT count);
-        void Flush(UINT64 fenceValue);
+        DescriptorTable AllocateDynamicTable(UINT descriptorCount);
+        void ReleaseDynamicTables(UINT tableCount, const DescriptorTable* pTables, UINT64 fenceValue);
+
+        DescriptorTable GetStaticTable() const;
+
+        UINT GetStaticDescriptorCount() const { return m_Heap->GetCapacity() - m_DynamicCapacity; }
+        UINT GetDynamicDescriptorCapacity() const { return m_DynamicCapacity; }
+        ID3D12DescriptorHeap* GetHeapPointer() const { return m_Heap->GetHeapPointer(); }
 
     public:
-        DescriptorHeapAllocator(const DescriptorHeapAllocator&) = delete;
-        DescriptorHeapAllocator& operator=(const DescriptorHeapAllocator&) = delete;
+        DescriptorTableAllocator(const DescriptorTableAllocator&) = delete;
+        DescriptorTableAllocator& operator=(const DescriptorTableAllocator&) = delete;
 
     private:
-        DescriptorHeap* RequestNewHeap();
+        struct ReleaseRange
+        {
+            UINT Offset;
+            UINT Count;
+            UINT64 FenceValue;
 
-    private:
-        D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType;
-        UINT m_PageSize;
+            bool operator>(const ReleaseRange& rhs) const
+            {
+                return FenceValue > rhs.FenceValue;
+            }
+        };
 
-        std::vector<std::unique_ptr<DescriptorHeap>> m_AllHeaps{};
-        std::queue<std::pair<UINT64, DescriptorHeap*>> m_PendingHeaps{};
-        std::vector<DescriptorHeap*> m_ActiveHeaps{};
-        UINT m_Offset = 0;
+        std::unique_ptr<DescriptorHeap> m_Heap;
+        std::unordered_set<UINT> m_DynamicUsedIndices;
+        std::priority_queue<ReleaseRange, std::vector<ReleaseRange>, std::greater<ReleaseRange>> m_DynamicReleaseQueue;
+        UINT m_DynamicSearchStart;
+        UINT m_DynamicCapacity;
     };
 }

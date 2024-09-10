@@ -34,7 +34,6 @@ namespace dx12demo
         InitDeviceAndFactory();
         InitDebugInfoCallback();
         InitCommandObjectsAndFence();
-        InitDescriptorHeaps();
         InitSwapChain(window, width, height);
 
 //#if defined(DEBUG) || defined(_DEBUG)
@@ -104,17 +103,6 @@ namespace dx12demo
 
         THROW_IF_FAILED(m_Device->CreateFence(m_FenceCurrentValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
         m_FenceEventHandle = CreateEventExW(NULL, NULL, NULL, EVENT_ALL_ACCESS);
-    }
-
-    void GfxManager::InitDescriptorHeaps()
-    {
-        m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-        rtvHeapDesc.NumDescriptors = s_SwapChainBufferCount;
-        rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        THROW_IF_FAILED(m_Device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_RtvHeap)));
     }
 
     void GfxManager::InitSwapChain(HWND window, int width, int height)

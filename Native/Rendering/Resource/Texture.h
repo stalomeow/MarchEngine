@@ -55,10 +55,7 @@ namespace dx12demo
         const DirectX::TexMetadata& GetMetaData() const { return m_MetaData; }
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetTextureCpuDescriptorHandle() const { return DescriptorManager::GetCpuHandle(m_TextureDescriptorHandle); }
-        D3D12_GPU_DESCRIPTOR_HANDLE GetTextureGpuDescriptorHandle() const { return DescriptorManager::GetGpuHandle(m_TextureDescriptorHandle); }
-        
         D3D12_CPU_DESCRIPTOR_HANDLE GetSamplerCpuDescriptorHandle() const { return DescriptorManager::GetCpuHandle(m_SamplerDescriptorHandle); }
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSamplerGpuDescriptorHandle() const { return DescriptorManager::GetGpuHandle(m_SamplerDescriptorHandle); }
 
     private:
         void UpdateSampler() const;

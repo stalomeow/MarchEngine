@@ -35,8 +35,6 @@ namespace dx12demo
         ID3D12CommandAllocator* m_CmdAllocator; // We don't own this
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CmdList;
         std::unique_ptr<UploadHeapAllocator> m_UploadHeapAllocator;
-        std::unique_ptr<DescriptorHeapAllocator> m_CbvSrvUavHeapAllocator;
-        std::unique_ptr<DescriptorHeapAllocator> m_SamplerHeapAllocator;
 
     public:
         static CommandBuffer* Get(D3D12_COMMAND_LIST_TYPE type = D3D12_COMMAND_LIST_TYPE_DIRECT);

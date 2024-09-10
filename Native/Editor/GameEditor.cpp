@@ -438,7 +438,6 @@ namespace dx12demo
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
         cmd->GetList()->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
 
-        const float clear_color_with_alpha[4] = { m_ImGUIClearColor.x * m_ImGUIClearColor.w, m_ImGUIClearColor.y * m_ImGUIClearColor.w, m_ImGUIClearColor.z * m_ImGUIClearColor.w, m_ImGUIClearColor.w };
         ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap->GetHeapPointer() };
         cmd->GetList()->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd->GetList());
