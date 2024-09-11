@@ -54,8 +54,8 @@ namespace dx12demo
 
         const DirectX::TexMetadata& GetMetaData() const { return m_MetaData; }
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetTextureCpuDescriptorHandle() const { return DescriptorManager::GetCpuHandle(m_TextureDescriptorHandle); }
-        D3D12_CPU_DESCRIPTOR_HANDLE GetSamplerCpuDescriptorHandle() const { return DescriptorManager::GetCpuHandle(m_SamplerDescriptorHandle); }
+        D3D12_CPU_DESCRIPTOR_HANDLE GetTextureCpuDescriptorHandle() const { return m_TextureDescriptorHandle.GetCpuHandle(); }
+        D3D12_CPU_DESCRIPTOR_HANDLE GetSamplerCpuDescriptorHandle() const { return m_SamplerDescriptorHandle.GetCpuHandle(); }
 
     private:
         void UpdateSampler() const;
@@ -64,8 +64,8 @@ namespace dx12demo
         WrapMode m_WrapMode = WrapMode::Repeat;
         DirectX::TexMetadata m_MetaData{};
 
-        TypedDescriptorHandle m_TextureDescriptorHandle;
-        TypedDescriptorHandle m_SamplerDescriptorHandle;
+        DescriptorHandle m_TextureDescriptorHandle;
+        DescriptorHandle m_SamplerDescriptorHandle;
 
     public:
         static Texture* GetDefaultBlack();

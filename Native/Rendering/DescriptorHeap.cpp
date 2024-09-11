@@ -26,9 +26,9 @@ namespace dx12demo
         }
     }
 
-    DescriptorHeap::DescriptorHeap(const std::wstring& name, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT capacity, bool shaderVisible)
+    DescriptorHeap::DescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT capacity, bool shaderVisible, const std::wstring& name)
+        : m_Device(device)
     {
-        auto device = GetGfxManager().GetDevice();
         m_DescriptorSize = device->GetDescriptorHandleIncrementSize(type);
 
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
@@ -42,12 +42,6 @@ namespace dx12demo
 #else
         (name);
 #endif
-    }
-
-    DescriptorHeap::~DescriptorHeap()
-    {
-        GetGfxManager().SafeReleaseObject(m_Heap);
-        m_Heap = nullptr;
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCpuHandle(UINT index) const
@@ -74,21 +68,18 @@ namespace dx12demo
 
     void DescriptorHeap::Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
     {
-        auto device = GetGfxManager().GetDevice();
         D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor = GetCpuHandle(destIndex);
-        device->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetType());
+        m_Device->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetType());
     }
 
-    DescriptorAllocator::DescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType, UINT pageSize)
-        : m_DescriptorType(descriptorType), m_PageSize(pageSize)
+    DescriptorAllocator::DescriptorAllocator(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE descriptorType, UINT pageSize)
+        : m_Device(device), m_DescriptorType(descriptorType), m_PageSize(pageSize)
     {
 
     }
 
-    DescriptorHandle DescriptorAllocator::Allocate()
+    DescriptorHandle DescriptorAllocator::Allocate(UINT64 completedFenceValue)
     {
-        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
-
         if (!m_FreeList.empty() && m_FreeList.front().first <= completedFenceValue)
         {
             DescriptorHandle result = m_FreeList.front().second;
@@ -101,48 +92,17 @@ namespace dx12demo
             m_NextDescriptorIndex = 0;
 
             std::wstring name = L"DescriptorAllocatorPage" + std::to_wstring(m_Pages.size());
-            m_Pages.push_back(std::make_unique<DescriptorHeap>(name, m_DescriptorType, 0, m_PageSize, false));
+            m_Pages.push_back(std::make_unique<DescriptorHeap>(m_Device, m_DescriptorType, m_PageSize, false, name));
             DEBUG_LOG_INFO(L"Create %s; Size: %d; Type: %s", name.c_str(), m_PageSize, GetDescriptorHeapTypeName(m_DescriptorType));
         }
 
-        return std::make_pair(m_Pages.size() - 1, m_NextDescriptorIndex++);
+        return DescriptorHandle(m_Pages.back().get(), m_Pages.size() - 1, m_NextDescriptorIndex++);
     }
 
-    void DescriptorAllocator::Free(const DescriptorHandle& handle)
+    void DescriptorAllocator::Free(const DescriptorHandle& handle, UINT64 fenceValue)
     {
-        m_FreeList.emplace(GetGfxManager().GetNextFenceValue(), handle);
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorAllocator::GetCpuHandle(const DescriptorHandle& handle) const
-    {
-        return m_Pages[handle.first]->GetCpuHandle(handle.second);
-    }
-
-    TypedDescriptorHandle DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
-    {
-        return std::make_pair(descriptorType, GetAllocator(descriptorType)->Allocate());
-    }
-
-    void DescriptorManager::Free(const TypedDescriptorHandle& handle)
-    {
-        GetAllocator(handle.first)->Free(handle.second);
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE DescriptorManager::GetCpuHandle(const TypedDescriptorHandle& handle)
-    {
-        return GetAllocator(handle.first)->GetCpuHandle(handle.second);
-    }
-
-    DescriptorAllocator* DescriptorManager::GetAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
-    {
-        std::unique_ptr<DescriptorAllocator>& allocator = m_Allocators[descriptorType];
-
-        if (allocator == nullptr)
-        {
-            allocator = std::make_unique<DescriptorAllocator>(descriptorType, AllocatorPageSize);
-        }
-
-        return allocator.get();
+        // TODO check if the handle is valid
+        m_FreeList.emplace(fenceValue, handle);
     }
 
     DescriptorTable::DescriptorTable(DescriptorHeap* heap, UINT offset, UINT count)
@@ -181,17 +141,16 @@ namespace dx12demo
         m_Heap->Copy(m_Offset + destIndex, srcDescriptor);
     }
 
-    DescriptorTableAllocator::DescriptorTableAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity)
+    DescriptorTableAllocator::DescriptorTableAllocator(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity)
         : m_DynamicUsedIndices{}, m_DynamicReleaseQueue{}, m_DynamicSearchStart(0), m_DynamicCapacity(dynamicDescriptorCapacity)
     {
         std::wstring name = GetDescriptorHeapTypeName(type) + std::wstring(L"_DescriptorTablePool");
         UINT capacity = dynamicDescriptorCapacity + staticDescriptorCount; // static 部分放在 dynamic 后面
-        m_Heap = std::make_unique<DescriptorHeap>(name, type, capacity, true);
+        m_Heap = std::make_unique<DescriptorHeap>(device, type, capacity, true, name);
     }
 
-    DescriptorTable DescriptorTableAllocator::AllocateDynamicTable(UINT descriptorCount)
+    DescriptorTable DescriptorTableAllocator::AllocateDynamicTable(UINT descriptorCount, UINT64 completedFenceValue)
     {
-        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
         bool released = false;
         UINT minReleasedOffset = 0;
 
@@ -210,6 +169,7 @@ namespace dx12demo
             }
 
             released = true;
+            m_DynamicReleaseQueue.pop();
         }
 
         if (released)
@@ -251,7 +211,7 @@ namespace dx12demo
     {
         for (int i = 0; i < tableCount; i++)
         {
-            m_DynamicReleaseQueue.push({ pTables[i].m_Offset, pTables[i].m_Count, fenceValue });
+            m_DynamicReleaseQueue.push({ pTables[i].GetOffset(), pTables[i].GetCount(), fenceValue});
         }
     }
 

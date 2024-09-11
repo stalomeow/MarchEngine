@@ -1,6 +1,7 @@
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/DxException.h"
 #include "Rendering/GfxManager.h"
+#include "Core/Debug.h"
 #include <assert.h>
 #include <utility>
 
@@ -14,12 +15,12 @@ namespace dx12demo
         : m_Type(type)
     {
         m_CmdAllocator = s_CommandAllocatorPool->Get(m_Type);
-        m_UploadHeapAllocator = std::make_unique<UploadHeapAllocator>(4096);
-        m_CbvSrvUavHeapAllocator = std::make_unique<DescriptorHeapAllocator>(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1024);
-        m_SamplerHeapAllocator = std::make_unique<DescriptorHeapAllocator>(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 1024);
+        m_UploadHeapAllocator = std::make_unique<UploadHeapAllocator>(4 * 1024 * 1024 /* 4 MB */);
 
         auto device = GetGfxManager().GetDevice();
         THROW_IF_FAILED(device->CreateCommandList(0, type, m_CmdAllocator, nullptr, IID_PPV_ARGS(&m_CmdList)));
+
+        SetDescriptorHeaps();
     }
 
     void CommandBuffer::Reset()
@@ -28,6 +29,34 @@ namespace dx12demo
 
         m_CmdAllocator = s_CommandAllocatorPool->Get(m_Type);
         THROW_IF_FAILED(m_CmdList->Reset(m_CmdAllocator, nullptr));
+
+        SetDescriptorHeaps();
+    }
+
+    void CommandBuffer::SetDescriptorHeaps()
+    {
+        DescriptorTableAllocator* allocator1 = GetGfxManager().GetViewDescriptorTableAllocator();
+        DescriptorTableAllocator* allocator2 = GetGfxManager().GetSamplerDescriptorTableAllocator();
+        ID3D12DescriptorHeap* heaps[] = { allocator1->GetHeapPointer(), allocator2->GetHeapPointer() };
+        m_CmdList->SetDescriptorHeaps(2, heaps);
+    }
+
+    DescriptorTable CommandBuffer::AllocateTempViewDescriptorTable(UINT descriptorCount)
+    {
+        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
+        DescriptorTableAllocator* allocator = GetGfxManager().GetViewDescriptorTableAllocator();
+        DescriptorTable table = allocator->AllocateDynamicTable(descriptorCount, completedFenceValue);
+        m_TempDescriptorTables.push_back(table);
+        return table;
+    }
+
+    DescriptorTable CommandBuffer::AllocateTempSamplerDescriptorTable(UINT descriptorCount)
+    {
+        UINT64 completedFenceValue = GetGfxManager().GetCompletedFenceValue();
+        DescriptorTableAllocator* allocator = GetGfxManager().GetSamplerDescriptorTableAllocator();
+        DescriptorTable table = allocator->AllocateDynamicTable(descriptorCount, completedFenceValue);
+        m_TempDescriptorTables.push_back(table);
+        return table;
     }
 
     void CommandBuffer::ExecuteAndRelease(bool waitForCompletion)
@@ -39,8 +68,24 @@ namespace dx12demo
         UINT64 fenceValue = GetGfxManager().SignalNextFenceValue();
         s_CommandAllocatorPool->Release(std::exchange(m_CmdAllocator, nullptr), m_Type, fenceValue);
         m_UploadHeapAllocator->FlushPages(fenceValue);
-        m_CbvSrvUavHeapAllocator->Flush(fenceValue);
-        m_SamplerHeapAllocator->Flush(fenceValue);
+
+        for (const DescriptorTable& table : m_TempDescriptorTables)
+        {
+            switch (table.GetType())
+            {
+            case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+                GetGfxManager().GetViewDescriptorTableAllocator()->ReleaseDynamicTables(1, &table, fenceValue);
+                break;
+            case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+                GetGfxManager().GetSamplerDescriptorTableAllocator()->ReleaseDynamicTables(1, &table, fenceValue);
+                break;
+            default:
+                DEBUG_LOG_ERROR("Unknown descriptor table type");
+                break;
+            }
+        }
+
+        m_TempDescriptorTables.clear();
         s_FreeCommandBuffers[m_Type].push(this);
 
         if (waitForCompletion)

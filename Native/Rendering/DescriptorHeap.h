@@ -14,8 +14,7 @@ namespace dx12demo
     class DescriptorHeap
     {
     public:
-        DescriptorHeap(const std::wstring& name, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT capacity, bool shaderVisible);
-        virtual ~DescriptorHeap();
+        DescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT capacity, bool shaderVisible, const std::wstring& name);
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(UINT index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT index) const;
@@ -33,29 +32,46 @@ namespace dx12demo
             return (desc.Flags & shaderVisibleFlag) == shaderVisibleFlag;
         }
 
-    public:
-        DescriptorHeap(const DescriptorHeap&) = delete;
-        DescriptorHeap& operator=(const DescriptorHeap&) = delete;
+    //public:
+    //    DescriptorHeap(const DescriptorHeap&) = delete;
+    //    DescriptorHeap& operator=(const DescriptorHeap&) = delete;
 
     private:
         UINT m_DescriptorSize;
         ID3D12DescriptorHeap* m_Heap;
+        ID3D12Device* m_Device;
     };
 
-    typedef std::pair<UINT, UINT> DescriptorHandle; // page-index, descriptor-index
-    typedef std::pair<D3D12_DESCRIPTOR_HEAP_TYPE, DescriptorHandle> TypedDescriptorHandle;
+    class DescriptorAllocator;
+
+    class DescriptorHandle
+    {
+        friend DescriptorAllocator;
+
+    public:
+        DescriptorHandle() = default;
+        DescriptorHandle(DescriptorHeap* heap, UINT pageIndex, UINT heapIndex)
+            : m_Heap(heap), m_PageIndex(pageIndex), m_HeapIndex(heapIndex)
+        {
+        }
+
+        D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Heap->GetType(); }
+        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle() const { return m_Heap->GetCpuHandle(m_HeapIndex); }
+
+    private:
+        DescriptorHeap* m_Heap;
+        UINT m_PageIndex;
+        UINT m_HeapIndex;
+    };
 
     // shader-opaque descriptor allocator
     class DescriptorAllocator
     {
     public:
-        DescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType, UINT pageSize);
-        ~DescriptorAllocator() = default;
+        DescriptorAllocator(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE descriptorType, UINT pageSize);
 
-        DescriptorHandle Allocate();
-        void Free(const DescriptorHandle& handle);
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(const DescriptorHandle& handle) const;
+        DescriptorHandle Allocate(UINT64 completedFenceValue);
+        void Free(const DescriptorHandle& handle, UINT64 fenceValue);
 
         D3D12_DESCRIPTOR_HEAP_TYPE GetDescriptorType() const { return m_DescriptorType; }
         UINT GetPageSize() const { return m_PageSize; }
@@ -65,6 +81,7 @@ namespace dx12demo
         DescriptorAllocator& operator=(const DescriptorAllocator&) = delete;
 
     private:
+        ID3D12Device* m_Device;
         D3D12_DESCRIPTOR_HEAP_TYPE m_DescriptorType;
         UINT m_PageSize;
 
@@ -73,34 +90,21 @@ namespace dx12demo
         std::queue<std::pair<UINT64, DescriptorHandle>> m_FreeList{};
     };
 
-    // shader-opaque descriptor manager
-    class DescriptorManager
-    {
-    public:
-        TypedDescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
-        void Free(const TypedDescriptorHandle& handle);
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(const TypedDescriptorHandle& handle);
-
-    public:
-        const UINT AllocatorPageSize = 1024;
-
-    private:
-        DescriptorAllocator* GetAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType);
-        std::unique_ptr<DescriptorAllocator> m_Allocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES]{};
-    };
-
     class DescriptorTable
     {
-        friend DescriptorTableAllocator;
-
     public:
+        DescriptorTable() = default;
         DescriptorTable(DescriptorHeap* heap, UINT offset, UINT count);
         ~DescriptorTable() = default;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(UINT index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT index) const;
         void Copy(UINT destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
+
+        D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Heap->GetType(); }
+        ID3D12DescriptorHeap* GetHeapPointer() const { return m_Heap->GetHeapPointer(); }
+        UINT GetOffset() const { return m_Offset; }
+        UINT GetCount() const { return m_Count; }
 
     private:
         DescriptorHeap* m_Heap;
@@ -111,10 +115,10 @@ namespace dx12demo
     class DescriptorTableAllocator
     {
     public:
-        DescriptorTableAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity);
+        DescriptorTableAllocator(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity);
         ~DescriptorTableAllocator() = default;
 
-        DescriptorTable AllocateDynamicTable(UINT descriptorCount);
+        DescriptorTable AllocateDynamicTable(UINT descriptorCount, UINT64 completedFenceValue);
         void ReleaseDynamicTables(UINT tableCount, const DescriptorTable* pTables, UINT64 fenceValue);
 
         DescriptorTable GetStaticTable() const;

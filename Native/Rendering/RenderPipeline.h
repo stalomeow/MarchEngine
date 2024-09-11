@@ -90,8 +90,8 @@ namespace dx12demo
         bool m_EnableMSAA = true;
         UINT m_MSAAQuality;
 
-        TypedDescriptorHandle m_RtvHandle;
-        TypedDescriptorHandle m_DsvHandle;
+        DescriptorHandle m_RtvHandle;
+        DescriptorHandle m_DsvHandle;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ColorTarget;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_ResolvedColorTarget;

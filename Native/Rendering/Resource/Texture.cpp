@@ -11,16 +11,16 @@ namespace dx12demo
 {
     Texture::Texture()
     {
-        m_TextureDescriptorHandle = DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        m_SamplerDescriptorHandle = DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        m_TextureDescriptorHandle = GetGfxManager().AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        m_SamplerDescriptorHandle = GetGfxManager().AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
         UpdateSampler();
     }
 
     Texture::~Texture()
     {
-        DescriptorManager::Free(m_TextureDescriptorHandle);
-        DescriptorManager::Free(m_SamplerDescriptorHandle);
+        GetGfxManager().FreeDescriptor(m_TextureDescriptorHandle);
+        GetGfxManager().FreeDescriptor(m_SamplerDescriptorHandle);
     }
 
     void Texture::SetDDSData(const std::wstring& name, const void* pSourceDDS, size_t size)
@@ -56,7 +56,7 @@ namespace dx12demo
             0, static_cast<UINT>(subresources.size()), subresources.data());
         cmd->ExecuteAndRelease(true); // 等待上传完成，ScratchImage 等会被析构
 
-        device->CreateShaderResourceView(m_Resource, nullptr, DescriptorManager::GetCpuHandle(m_TextureDescriptorHandle));
+        device->CreateShaderResourceView(m_Resource, nullptr, m_TextureDescriptorHandle.GetCpuHandle());
     }
 
     void Texture::UpdateSampler() const
@@ -106,7 +106,7 @@ namespace dx12demo
         samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
 
         ID3D12Device* device = GetGfxManager().GetDevice();
-        device->CreateSampler(&samplerDesc, DescriptorManager::GetCpuHandle(m_SamplerDescriptorHandle));
+        device->CreateSampler(&samplerDesc, m_SamplerDescriptorHandle.GetCpuHandle());
     }
 
     Texture* Texture::s_pBlackTexture = nullptr;

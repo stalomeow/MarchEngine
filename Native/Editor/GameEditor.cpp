@@ -38,23 +38,17 @@ namespace dx12demo
         m_DotNet.Load(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
-        GetGfxManager().Initialize(GetApp().GetHWND(), width, height);
+        GetGfxManager().Initialize(GetApp().GetHWND(), width, height, 2, 0);
         m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
+        m_StaticDescriptorViewTable = GetGfxManager().GetViewDescriptorTableAllocator()->GetStaticTable();
 
-        CreateDescriptorHeaps();
+        auto device = GetGfxManager().GetDevice();
+        auto srvHandle = m_StaticDescriptorViewTable.GetCpuHandle(1);
+        device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
+
         InitImGui();
 
         m_DotNet.InvokeInitFunc();
-    }
-
-    void GameEditor::CreateDescriptorHeaps()
-    {
-        m_SrvHeap = std::make_unique<DescriptorHeap>(L"EditorSrvHeap", D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2, 4096, true);
-        EditorGUI::SetSrvHeap(m_SrvHeap.get());
-
-        auto device = GetGfxManager().GetDevice();
-        auto srvHandle = m_SrvHeap->GetCpuHandle(DescriptorHeapRegion::Fixed, 1);
-        device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 
     void GameEditor::InitImGui()
@@ -82,9 +76,8 @@ namespace dx12demo
 
         auto device = GetGfxManager().GetDevice();
         ImGui_ImplDX12_Init(device, GetGfxManager().GetMaxFrameLatency(),
-            GetGfxManager().GetBackBufferFormat(), m_SrvHeap->GetHeapPointer(),
-            m_SrvHeap->GetCpuHandle(DescriptorHeapRegion::Fixed, 0),
-            m_SrvHeap->GetGpuHandle(DescriptorHeapRegion::Fixed, 0));
+            GetGfxManager().GetBackBufferFormat(), m_StaticDescriptorViewTable.GetHeapPointer(),
+            m_StaticDescriptorViewTable.GetCpuHandle(0), m_StaticDescriptorViewTable.GetGpuHandle(0));
     }
 
     void GameEditor::OnQuit()
@@ -238,7 +231,7 @@ namespace dx12demo
                 ResizeRenderPipeline(m_LastSceneViewWidth, m_LastSceneViewHeight);
             }
 
-            auto srvHandle = m_SrvHeap->GetGpuHandle(DescriptorHeapRegion::Fixed, 1);
+            auto srvHandle = m_StaticDescriptorViewTable.GetGpuHandle(1);
             ImGui::Image((ImTextureID)srvHandle.ptr, contextSize);
             ImGui::End();
         }
@@ -426,11 +419,11 @@ namespace dx12demo
         GetGfxManager().WaitForFameLatency();
         CalculateFrameStats();
 
+        CommandBuffer* cmd = CommandBuffer::Get();
+        EditorGUI::SetCommandBuffer(cmd);
+
         m_DotNet.InvokeTickFunc();
         DrawImGui();
-
-        CommandBuffer* cmd = CommandBuffer::Get();
-
         m_RenderPipeline->Render(cmd);
 
         // Render Dear ImGui graphics
@@ -438,16 +431,14 @@ namespace dx12demo
             D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
         cmd->GetList()->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
 
-        ID3D12DescriptorHeap* imguiDescriptorHeaps[] = { m_SrvHeap->GetHeapPointer() };
-        cmd->GetList()->SetDescriptorHeaps(_countof(imguiDescriptorHeaps), imguiDescriptorHeaps);
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd->GetList());
 
         cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
             D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
         cmd->ExecuteAndRelease();
+        EditorGUI::SetCommandBuffer(nullptr);
         GetGfxManager().Present();
-        m_SrvHeap->Flush();
     }
 
     void GameEditor::OnResized()
@@ -461,7 +452,7 @@ namespace dx12demo
         m_RenderPipeline->Resize(width, height);
 
         auto device = GetGfxManager().GetDevice();
-        auto srvHandle = m_SrvHeap->GetCpuHandle(DescriptorHeapRegion::Fixed, 1);
+        auto srvHandle = m_StaticDescriptorViewTable.GetCpuHandle(1);
         device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
     }
 

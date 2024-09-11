@@ -22,7 +22,7 @@ namespace dx12demo
         }
     }
 
-    void GfxManager::Initialize(HWND window, int width, int height)
+    void GfxManager::Initialize(HWND window, int width, int height, UINT staticViewDescriptorCount, UINT staticSamplerDescriptorCount)
     {
         // 开启调试层
 #if defined(DEBUG) || defined(_DEBUG)
@@ -34,6 +34,7 @@ namespace dx12demo
         InitDeviceAndFactory();
         InitDebugInfoCallback();
         InitCommandObjectsAndFence();
+        InitDescriptorTableAllocators(staticViewDescriptorCount, staticSamplerDescriptorCount);
         InitSwapChain(window, width, height);
 
 //#if defined(DEBUG) || defined(_DEBUG)
@@ -195,13 +196,12 @@ namespace dx12demo
             DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
         m_CurrentBackBufferIndex = 0;
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-
         for (int i = 0; i < s_SwapChainBufferCount; i++)
         {
             THROW_IF_FAILED(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&m_SwapChainBuffers[i])));
-            m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, rtvHeapHandle);
-            rtvHeapHandle.Offset(1, m_RtvDescriptorSize);
+
+            m_RtvHandles[i] = AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, m_RtvHandles[i].GetCpuHandle());
         }
     }
 
@@ -278,6 +278,37 @@ namespace dx12demo
 
             DEBUG_LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
         }
+    }
+
+    DescriptorHandle GfxManager::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
+    {
+        UINT64 completedFenceValue = GetCompletedFenceValue();
+        return GetDescriptorAllocator(descriptorType)->Allocate(completedFenceValue);
+    }
+
+    void GfxManager::FreeDescriptor(const DescriptorHandle& handle)
+    {
+        GetDescriptorAllocator(handle.GetType())->Free(handle, GetNextFenceValue());
+    }
+
+    DescriptorAllocator* GfxManager::GetDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
+    {
+        std::unique_ptr<DescriptorAllocator>& allocator = m_DescriptorAllocators[descriptorType];
+
+        if (allocator == nullptr)
+        {
+            allocator = std::make_unique<DescriptorAllocator>(m_Device.Get(), descriptorType, m_DescriptorAllocatorPageSize);
+        }
+
+        return allocator.get();
+    }
+
+    void GfxManager::InitDescriptorTableAllocators(UINT staticViewDescriptorCount, UINT staticSamplerDescriptorCount)
+    {
+        m_ViewHeapAllocator = std::make_unique<DescriptorTableAllocator>(m_Device.Get(),
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, staticViewDescriptorCount, 4096);
+        m_SamplerHeapAllocator = std::make_unique<DescriptorTableAllocator>(m_Device.Get(),
+            D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, staticSamplerDescriptorCount, 256);
     }
 
     GfxManager& GetGfxManager()

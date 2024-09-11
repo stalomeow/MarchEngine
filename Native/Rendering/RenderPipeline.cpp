@@ -15,8 +15,8 @@ namespace dx12demo
     RenderPipeline::RenderPipeline(int width, int height)
     {
         CheckMSAAQuailty();
-        m_RtvHandle = DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_DsvHandle = DescriptorManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        m_RtvHandle = GetGfxManager().AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        m_DsvHandle = GetGfxManager().AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
         Resize(width, height);
     }
 
@@ -36,12 +36,12 @@ namespace dx12demo
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView() const
     {
-        return DescriptorManager::GetCpuHandle(m_RtvHandle);
+        return m_RtvHandle.GetCpuHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetDepthStencilTargetView() const
     {
-        return DescriptorManager::GetCpuHandle(m_DsvHandle);
+        return m_DsvHandle.GetCpuHandle();
     }
 
     void RenderPipeline::SetEnableMSAA(bool value)
@@ -118,7 +118,7 @@ namespace dx12demo
         m_ScissorRect = { 0, 0, width, height };
     }
 
-    static void BindCbv(const DescriptorHeapSpan& cbvSrvUavHeap, const ShaderPass* pass,
+    static void BindCbv(const DescriptorTable& table, const ShaderPass* pass,
         const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address)
     {
         auto it = pass->ConstantBuffers.find(name);
@@ -133,7 +133,7 @@ namespace dx12demo
         desc.SizeInBytes = ConstantBuffer::GetAlignedSize(it->second.Size);
 
         auto device = GetGfxManager().GetDevice();
-        device->CreateConstantBufferView(&desc, cbvSrvUavHeap.GetCpuHandle(it->second.DescriptorTableIndex));
+        device->CreateConstantBufferView(&desc, table.GetCpuHandle(it->second.DescriptorTableIndex));
     }
 
     void RenderPipeline::Render(CommandBuffer* cmd)
@@ -239,6 +239,8 @@ namespace dx12demo
 
         for (auto& it : objs)
         {
+            bool isFirst = true;
+
             for (int i = 0; i < it.second.size(); i++)
             {
                 int index = it.second[i];
@@ -249,36 +251,45 @@ namespace dx12demo
                 }
 
                 ShaderPass* pass = obj->Mat->GetShader()->Passes[0].get();
-                std::vector<std::pair<UINT, DescriptorHeapSpan>> heaps{};
+
+                if (isFirst)
+                {
+                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Desc, rpDesc);
+                    cmd->GetList()->SetPipelineState(pso);
+                    cmd->GetList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
+                }
+
+                isFirst = false;
 
                 if (pass->GetCbvSrvUavCount() > 0)
                 {
-                    DescriptorHeapSpan cbvSrvUavHeap = cmd->AllocateTempCbvSrvUavHeap(pass->GetCbvSrvUavCount());
-                    heaps.emplace_back(pass->GetCbvSrvUavRootParamIndex(), cbvSrvUavHeap);
+                    DescriptorTable viewTable = cmd->AllocateTempViewDescriptorTable(pass->GetCbvSrvUavCount());
 
                     for (auto& kv : pass->TextureProperties)
                     {
                         Texture* texture = nullptr;
                         if (obj->Mat->GetTexture(kv.first, &texture))
                         {
-                            cbvSrvUavHeap.Copy(kv.second.TextureDescriptorTableIndex, texture->GetTextureCpuDescriptorHandle());
+                            viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetTextureCpuDescriptorHandle());
                         }
                     }
 
-                    BindCbv(cbvSrvUavHeap, pass, "cbPass", cbPass.GetGpuVirtualAddress());
-                    BindCbv(cbvSrvUavHeap, pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
+                    BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress());
+                    BindCbv(viewTable, pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
 
                     ConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(pass);
                     if (cbMat != nullptr)
                     {
-                        BindCbv(cbvSrvUavHeap, pass, "cbMaterial", cbMat->GetGpuVirtualAddress());
+                        BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress());
                     }
+
+                    cmd->GetList()->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(),
+                        viewTable.GetGpuHandle(0));
                 }
 
                 if (pass->GetSamplerCount() > 0)
                 {
-                    DescriptorHeapSpan samplerHeap = cmd->AllocateTempSamplerHeap(pass->GetSamplerCount());
-                    heaps.emplace_back(pass->GetSamplerRootParamIndex(), samplerHeap);
+                    DescriptorTable samplerTable = cmd->AllocateTempSamplerDescriptorTable(pass->GetSamplerCount());
 
                     for (auto& kv : pass->TextureProperties)
                     {
@@ -287,29 +298,13 @@ namespace dx12demo
                         {
                             if (kv.second.HasSampler)
                             {
-                                samplerHeap.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                                samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
                             }
                         }
                     }
-                }
 
-                if (i == 0)
-                {
-                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Desc, rpDesc);
-                    cmd->GetList()->SetPipelineState(pso);
-                    cmd->GetList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
-                }
-
-                if (!heaps.empty())
-                {
-                    std::vector<ID3D12DescriptorHeap*> descriptorHeaps{};
-                    for (auto& span : heaps) descriptorHeaps.push_back(span.second.GetHeapPointer());
-                    cmd->GetList()->SetDescriptorHeaps(descriptorHeaps.size(), descriptorHeaps.data());
-
-                    for (auto& span : heaps)
-                    {
-                        cmd->GetList()->SetGraphicsRootDescriptorTable(span.first, span.second.GetGpuHandle(0));
-                    }
+                    cmd->GetList()->SetGraphicsRootDescriptorTable(pass->GetSamplerRootParamIndex(),
+                        samplerTable.GetGpuHandle(0));
                 }
 
                 obj->Mesh->Draw(cmd);

@@ -31,7 +31,6 @@ namespace dx12demo
         RenderPipeline* GetRenderPipeline() override { return m_RenderPipeline.get(); }
 
     private:
-        void CreateDescriptorHeaps();
         void InitImGui();
         void DrawImGui();
         void ResizeRenderPipeline(int width, int height);
@@ -39,8 +38,8 @@ namespace dx12demo
         void CalculateFrameStats();
 
     private:
-        std::unique_ptr<DescriptorHeap> m_SrvHeap = nullptr;
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
+        DescriptorTable m_StaticDescriptorViewTable;
 
         int m_LastSceneViewWidth = 0;
         int m_LastSceneViewHeight = 0;

@@ -1,11 +1,12 @@
 #include "Editor/EditorGUI.h"
+#include "Rendering/DescriptorHeap.h"
 #include <utility>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
 
 namespace dx12demo
 {
-    DescriptorHeap* EditorGUI::SrvHeap = nullptr;
+    CommandBuffer* EditorGUI::CmdBuffer = nullptr;
 
     namespace
     {
@@ -424,9 +425,9 @@ namespace dx12demo
 
     void EditorGUI::DrawTexture(Texture* texture)
     {
-        UINT index = SrvHeap->Append();
-        SrvHeap->Copy(DescriptorHeapRegion::Dynamic, index, texture->GetTextureCpuDescriptorHandle());
-        auto id = (ImTextureID)SrvHeap->GetGpuHandle(DescriptorHeapRegion::Dynamic, index).ptr;
+        DescriptorTable table = CmdBuffer->AllocateTempViewDescriptorTable(1);
+        table.Copy(0, texture->GetTextureCpuDescriptorHandle());
+        auto id = (ImTextureID)table.GetGpuHandle(0).ptr;
         const auto& metaData = texture->GetMetaData();
         ImVec2 region = ImGui::GetContentRegionAvail();
         ImVec2 size = { region.x, static_cast<float>(metaData.height) / metaData.width * region.x };
