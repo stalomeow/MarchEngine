@@ -1,13 +1,13 @@
 #pragma once
 
 #include <directx/d3dx12.h>
+#include <d3d12.h>
 #include "Rendering/Mesh.hpp"
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/Command/CommandBuffer.h"
 #include "Rendering/Light.h"
 #include "Rendering/RenderObject.h"
 #include "Rendering/Resource/Texture.h"
-#include <d3d12.h>
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <wrl.h>

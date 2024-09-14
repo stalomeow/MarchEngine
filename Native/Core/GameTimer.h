@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <stdint.h>
 
 namespace dx12demo
 {
@@ -17,6 +18,7 @@ namespace dx12demo
 
         float GetDeltaTime() const { return m_DeltaTime; }
         float GetElapsedTime() const { return m_ElapsedTime; }
+        uint64_t GetFrameCount() const { return m_FrameCount; }
         bool GetIsRunning() const { return m_IsRunning; }
 
     private:
@@ -28,5 +30,7 @@ namespace dx12demo
 
         float m_ElapsedTime;
         float m_DeltaTime;
+
+        uint64_t m_FrameCount;
     };
 }

@@ -8,10 +8,15 @@ namespace DX12Demo.Core
 
         public static float Elapsed => Application_GetElapsedTime();
 
+        public static ulong FrameCount => Application_GetFrameCount();
+
         [NativeFunction]
         private static partial float Application_GetDeltaTime();
 
         [NativeFunction]
         private static partial float Application_GetElapsedTime();
+
+        [NativeFunction]
+        private static partial ulong Application_GetFrameCount();
     }
 }

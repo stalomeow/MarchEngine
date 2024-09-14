@@ -8,6 +8,7 @@
 #include "Core/Debug.h"
 #include "Core/StringUtility.h"
 #include <DirectXMath.h>
+#include <stdint.h>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
 #include <tuple>
@@ -243,10 +244,91 @@ namespace dx12demo
             ImGui::End();
         }
 
+        if (m_ShowDescriptorHeapWindow)
+        {
+            ImGui::Begin("DescriptorTable Profiler", &m_ShowDescriptorHeapWindow);
+            DrawDebugDescriptorTableAllocator("CBV-SRV-UAV Allocator", GetGfxManager().GetViewDescriptorTableAllocator());
+            ImGui::Spacing();
+            DrawDebugDescriptorTableAllocator("Sampler Allocator", GetGfxManager().GetSamplerDescriptorTableAllocator());
+            ImGui::End();
+        }
+
         DrawConsoleWindow();
 
         // Rendering
         ImGui::Render();
+    }
+
+    void GameEditor::DrawDebugDescriptorTableAllocator(const std::string& name, DescriptorTableAllocator* allocator)
+    {
+        if (!ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
+        {
+            return;
+        }
+
+        int minDescriptorCount = INT_MAX;
+        int maxDescriptorCount = INT_MIN;
+        int maxLifetime = INT_MIN;
+        int dynamicDescriptorCount = 0;
+
+        const ImVec2 p = ImGui::GetCursorScreenPos();
+        const float width = ImGui::GetContentRegionAvail().x;
+        const float height = 50.0f; // 固定高度
+
+        const uint64_t currentFrame = GetApp().GetFrameCount();
+        const UINT dynamicCapacity = allocator->GetDynamicDescriptorCapacity();
+        const UINT staticCapacity = allocator->GetStaticDescriptorCount();
+        const UINT capacity = dynamicCapacity + staticCapacity;
+        const float columnWidth = width / static_cast<float>(capacity);
+
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // 动态区域用绿色表示，静态区域用灰色表示
+        drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + dynamicCapacity * columnWidth, p.y + height), IM_COL32(0, 255, 0, 80));
+        drawList->AddRectFilled(ImVec2(p.x + dynamicCapacity * columnWidth, p.y), ImVec2(p.x + width, p.y + height), IM_COL32(192, 192, 192, 80));
+
+        for (const auto& kv : allocator->GetDynamicSegments())
+        {
+            minDescriptorCount = min(minDescriptorCount, static_cast<int>(kv.second.Count));
+            maxDescriptorCount = max(maxDescriptorCount, static_cast<int>(kv.second.Count));
+            maxLifetime = max(maxLifetime, static_cast<int>(currentFrame - kv.second.CreatedFrame));
+            dynamicDescriptorCount += kv.second.Count;
+
+            float x0 = p.x + kv.first * columnWidth; // kv.first 是 offset
+            float x1 = x0 + kv.second.Count * columnWidth;
+
+            ImU32 color = kv.second.CanRelease ? IM_COL32(0, 0, 255, 255) : IM_COL32(255, 0, 0, 255);
+            drawList->AddRectFilled(ImVec2(x0, p.y), ImVec2(x1, p.y + height), color);
+        }
+
+        // 让 ImGui 知道这个区域是有内容的
+        ImGui::Dummy(ImVec2(width, height));
+
+        if (ImGui::BeginTable("DescriptorTableAllocatorInfo", 2, ImGuiTableFlags_Borders))
+        {
+            ImGui::TableSetupColumn("Segment");
+            ImGui::TableSetupColumn("Capacity");
+            ImGui::TableHeadersRow();
+
+            ImGui::TableNextColumn();
+            const UINT segmentCount = allocator->GetDynamicSegments().size();
+            ImGui::Text("Count: %d", static_cast<int>(segmentCount));
+            if (segmentCount > 0)
+            {
+                ImGui::Text("Min Size: %d Descriptors", minDescriptorCount);
+                ImGui::Text("Max Size: %d Descriptors", maxDescriptorCount);
+                ImGui::Text("Max Lifetime: %d Frames", maxLifetime);
+            }
+
+            ImGui::TableNextColumn();
+            float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
+            ImGui::Text("Dynamic: %d (%.2f%% Used)", static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
+            ImGui::Text("Static: %d", static_cast<int>(staticCapacity));
+
+            ImGui::EndTable();
+        }
+
+        ImGui::TreePop();
     }
 
     void GameEditor::DrawConsoleWindow()

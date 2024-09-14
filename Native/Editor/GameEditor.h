@@ -1,15 +1,16 @@
 #pragma once
 
 #include <directx/d3dx12.h>
+#include <d3d12.h>
 #include "Core/IEngine.h"
 #include "Rendering/RenderPipeline.h"
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/RenderDoc.h"
 #include "Scripting/DotNet.h"
-#include <d3d12.h>
 #include <vector>
 #include <wrl.h>
 #include <memory>
+#include <string>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx12.h>
@@ -34,6 +35,7 @@ namespace dx12demo
         void InitImGui();
         void DrawImGui();
         void ResizeRenderPipeline(int width, int height);
+        void DrawDebugDescriptorTableAllocator(const std::string& name, DescriptorTableAllocator* allocator);
         void DrawConsoleWindow();
         void CalculateFrameStats();
 
@@ -50,6 +52,7 @@ namespace dx12demo
         bool m_ConsoleWindowAutoScroll = true;
         bool m_ConsoleWindowScrollToBottom = true;
         bool m_ShowHierarchyWindow = true;
+        bool m_ShowDescriptorHeapWindow = true;
 
         RenderDoc m_RenderDoc{};
         DotNetEnv m_DotNet{};

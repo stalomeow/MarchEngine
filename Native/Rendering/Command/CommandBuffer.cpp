@@ -74,10 +74,10 @@ namespace dx12demo
             switch (table.GetType())
             {
             case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
-                GetGfxManager().GetViewDescriptorTableAllocator()->ReleaseDynamicTables(1, &table, fenceValue);
+                GetGfxManager().GetViewDescriptorTableAllocator()->ReleaseDynamicTable(table, fenceValue);
                 break;
             case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
-                GetGfxManager().GetSamplerDescriptorTableAllocator()->ReleaseDynamicTables(1, &table, fenceValue);
+                GetGfxManager().GetSamplerDescriptorTableAllocator()->ReleaseDynamicTable(table, fenceValue);
                 break;
             default:
                 DEBUG_LOG_ERROR("Unknown descriptor table type");

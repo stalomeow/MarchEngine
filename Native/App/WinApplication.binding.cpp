@@ -13,6 +13,11 @@ NATIVE_EXPORT(CSharpFloat) Application_GetElapsedTime()
     return GetApp().GetElapsedTime();
 }
 
+NATIVE_EXPORT(CSharpULong) Application_GetFrameCount()
+{
+    return GetApp().GetFrameCount();
+}
+
 NATIVE_EXPORT(IEngine*) Application_GetEngine()
 {
     return GetApp().GetEngine();

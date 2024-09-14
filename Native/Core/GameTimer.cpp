@@ -19,6 +19,8 @@ namespace dx12demo
 
         m_ElapsedTime = 0;
         m_DeltaTime = 0;
+
+        m_FrameCount = 0;
     }
 
     void GameTimer::Start()
@@ -60,6 +62,8 @@ namespace dx12demo
         m_ElapsedTime = static_cast<float>(m_Elapsed * m_Count2Seconds);
         m_DeltaTime = static_cast<float>(delta * m_Count2Seconds);
         m_LastTickTimestamp = timestamp;
+
+        m_FrameCount++;
         return true;
     }
 }

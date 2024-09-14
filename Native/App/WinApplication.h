@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <string>
 #include <tuple>
+#include <stdint.h>
 
 namespace dx12demo
 {
@@ -22,6 +23,8 @@ namespace dx12demo
         float GetDeltaTime() const { return m_Timer.GetDeltaTime(); }
 
         float GetElapsedTime() const { return m_Timer.GetElapsedTime(); }
+
+        uint64_t GetFrameCount() const { return m_Timer.GetFrameCount(); }
 
         void SetTitle(const std::wstring& title) const
         {

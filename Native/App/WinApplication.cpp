@@ -73,8 +73,10 @@ namespace dx12demo
     {
         m_Engine = engine;
 
+#if !defined(_DEBUG) && !defined(DEBUG)
         try
         {
+#endif
             MSG msg = { 0 };
             m_Timer.Restart();
             m_Engine->OnStart();
@@ -108,6 +110,7 @@ namespace dx12demo
 
             m_Engine->OnQuit();
             return (int)msg.wParam;
+#if !defined(_DEBUG) && !defined(DEBUG)
         }
         catch (const std::exception& e)
         {
@@ -121,6 +124,7 @@ namespace dx12demo
             m_Engine->OnQuit();
             return 0;
         }
+#endif
     }
 
     void WinApplication::Quit(int exitCode)

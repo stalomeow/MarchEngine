@@ -1,5 +1,6 @@
 #pragma once
 
+#include <directx/d3dx12.h>
 #include <d3d12.h>
 #include <wrl.h>
 #include <string>
@@ -7,7 +8,8 @@
 #include <vector>
 #include <stdexcept>
 #include <exception>
-#include <unordered_set>
+#include <map>
+#include <stdint.h>
 
 namespace dx12demo
 {
@@ -95,7 +97,6 @@ namespace dx12demo
     public:
         DescriptorTable() = default;
         DescriptorTable(DescriptorHeap* heap, UINT offset, UINT count);
-        ~DescriptorTable() = default;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(UINT index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(UINT index) const;
@@ -119,7 +120,7 @@ namespace dx12demo
         ~DescriptorTableAllocator() = default;
 
         DescriptorTable AllocateDynamicTable(UINT descriptorCount, UINT64 completedFenceValue);
-        void ReleaseDynamicTables(UINT tableCount, const DescriptorTable* pTables, UINT64 fenceValue);
+        void ReleaseDynamicTable(const DescriptorTable& table, UINT64 fenceValue);
 
         DescriptorTable GetStaticTable() const;
 
@@ -131,23 +132,25 @@ namespace dx12demo
         DescriptorTableAllocator(const DescriptorTableAllocator&) = delete;
         DescriptorTableAllocator& operator=(const DescriptorTableAllocator&) = delete;
 
-    private:
-        struct ReleaseRange
+    public:
+        struct SegmentData
         {
-            UINT Offset;
             UINT Count;
             UINT64 FenceValue;
+            bool CanRelease;
+            uint64_t CreatedFrame;
 
-            bool operator>(const ReleaseRange& rhs) const
-            {
-                return FenceValue > rhs.FenceValue;
-            }
+            SegmentData(UINT count, bool canRelease = false);
+            SegmentData();
         };
 
+        const std::map<UINT, SegmentData>& GetDynamicSegments() const { return m_DynamicSegments; }
+
+    private:
         std::unique_ptr<DescriptorHeap> m_Heap;
-        std::unordered_set<UINT> m_DynamicUsedIndices;
-        std::priority_queue<ReleaseRange, std::vector<ReleaseRange>, std::greater<ReleaseRange>> m_DynamicReleaseQueue;
-        UINT m_DynamicSearchStart;
+        std::map<UINT, SegmentData> m_DynamicSegments; // key is the offset of the segment
+        UINT m_DynamicFront;
+        UINT m_DynamicRear;
         UINT m_DynamicCapacity;
     };
 }

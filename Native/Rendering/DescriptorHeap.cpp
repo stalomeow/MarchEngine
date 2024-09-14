@@ -1,8 +1,9 @@
-#include <directx/d3dx12.h>
 #include "Rendering/DescriptorHeap.h"
 #include "Rendering/GfxManager.h"
 #include "Rendering/DxException.h"
+#include "App/WinApplication.h"
 #include "Core/Debug.h"
+#include <assert.h>
 
 namespace dx12demo
 {
@@ -48,7 +49,7 @@ namespace dx12demo
     {
         if (index < 0 || index >= GetCapacity())
         {
-            throw std::out_of_range("Index out of the range of descriptor heap");
+            throw std::out_of_range("GetCpuHandle: Index out of the range of descriptor heap");
         }
 
         CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_Heap->GetCPUDescriptorHandleForHeapStart());
@@ -59,7 +60,7 @@ namespace dx12demo
     {
         if (index < 0 || index >= GetCapacity())
         {
-            throw std::out_of_range("Index out of the range of descriptor heap");
+            throw std::out_of_range("GetGpuHandle: Index out of the range of descriptor heap");
         }
 
         CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_Heap->GetGPUDescriptorHandleForHeapStart());
@@ -141,8 +142,15 @@ namespace dx12demo
         m_Heap->Copy(m_Offset + destIndex, srcDescriptor);
     }
 
+    DescriptorTableAllocator::SegmentData::SegmentData(UINT count, bool canRelease)
+        : Count(count), FenceValue(0), CanRelease(canRelease), CreatedFrame(GetApp().GetFrameCount())
+    {
+    }
+
+    DescriptorTableAllocator::SegmentData::SegmentData() : SegmentData(0) {}
+
     DescriptorTableAllocator::DescriptorTableAllocator(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT staticDescriptorCount, UINT dynamicDescriptorCapacity)
-        : m_DynamicUsedIndices{}, m_DynamicReleaseQueue{}, m_DynamicSearchStart(0), m_DynamicCapacity(dynamicDescriptorCapacity)
+        : m_DynamicSegments{}, m_DynamicFront(0), m_DynamicRear(0), m_DynamicCapacity(dynamicDescriptorCapacity)
     {
         std::wstring name = GetDescriptorHeapTypeName(type) + std::wstring(L"_DescriptorTablePool");
         UINT capacity = dynamicDescriptorCapacity + staticDescriptorCount; // static 部分放在 dynamic 后面
@@ -151,67 +159,88 @@ namespace dx12demo
 
     DescriptorTable DescriptorTableAllocator::AllocateDynamicTable(UINT descriptorCount, UINT64 completedFenceValue)
     {
-        bool released = false;
-        UINT minReleasedOffset = 0;
-
-        while (!m_DynamicReleaseQueue.empty() && m_DynamicReleaseQueue.top().FenceValue <= completedFenceValue)
+        // 循环队列需要保留一个空间来区分队列满和队列空
+        if (descriptorCount > m_DynamicCapacity - 1)
         {
-            const ReleaseRange& range = m_DynamicReleaseQueue.top();
-
-            if (!released || range.Offset < minReleasedOffset)
-            {
-                minReleasedOffset = range.Offset;
-            }
-
-            for (UINT i = 0; i < range.Count; i++)
-            {
-                m_DynamicUsedIndices.erase(range.Offset + i);
-            }
-
-            released = true;
-            m_DynamicReleaseQueue.pop();
+            throw std::out_of_range("Dynamic descriptor table size exceeds the capacity of the allocator");
         }
 
-        if (released)
+        // 回收可以使用的空间
+        decltype(m_DynamicSegments)::const_iterator it;
+        while ((it = m_DynamicSegments.find(m_DynamicFront)) != m_DynamicSegments.cend())
         {
-            m_DynamicSearchStart = minReleasedOffset;
+            if (!it->second.CanRelease || it->second.FenceValue > completedFenceValue)
+            {
+                break;
+            }
+
+            m_DynamicFront += it->second.Count;
+            m_DynamicFront %= m_DynamicCapacity;
+            m_DynamicSegments.erase(it);
         }
 
-        UINT freeCount = 0;
+        bool canAllocate = false;
 
-        for (UINT i = m_DynamicSearchStart; i < m_DynamicCapacity; i++)
+        if (m_DynamicFront <= m_DynamicRear)
         {
-            if (m_DynamicUsedIndices.count(i) > 0)
+            UINT remaining = m_DynamicCapacity - m_DynamicRear;
+
+            if (m_DynamicFront == 0)
             {
-                freeCount = 0;
+                // 空出一个位置来区分队列满和队列空
+                if (remaining - 1 >= descriptorCount)
+                {
+                    canAllocate = true;
+                }
             }
             else
             {
-                freeCount++;
-            }
-
-            if (freeCount >= descriptorCount)
-            {
-                UINT offset = i - descriptorCount + 1;
-
-                for (UINT j = offset; j <= i; j++)
+                if (remaining < descriptorCount)
                 {
-                    m_DynamicUsedIndices.insert(j);
+                    if (remaining > 0)
+                    {
+                        m_DynamicSegments.emplace(m_DynamicRear, SegmentData(remaining, true));
+                    }
+                    m_DynamicRear = 0; // 后面不够了，从头开始分配，之后 Front > Rear
                 }
-
-                m_DynamicSearchStart = offset + descriptorCount;
-                return DescriptorTable(m_Heap.get(), offset, descriptorCount);
+                else
+                {
+                    canAllocate = true;
+                }
             }
         }
 
-        throw std::runtime_error("Failed to allocate dynamic descriptor table");
+        if (!canAllocate && m_DynamicFront - m_DynamicRear - 1 >= descriptorCount)
+        {
+            canAllocate = true;
+        }
+
+        if (!canAllocate)
+        {
+            throw std::out_of_range("Descriptor table pool is full");
+        }
+
+        m_DynamicSegments.emplace(m_DynamicRear, SegmentData(descriptorCount));
+        DescriptorTable table(m_Heap.get(), m_DynamicRear, descriptorCount);
+        m_DynamicRear = (m_DynamicRear + descriptorCount) % m_DynamicCapacity;
+        return table;
     }
 
-    void DescriptorTableAllocator::ReleaseDynamicTables(UINT tableCount, const DescriptorTable* pTables, UINT64 fenceValue)
+    void DescriptorTableAllocator::ReleaseDynamicTable(const DescriptorTable& table, UINT64 fenceValue)
     {
-        for (int i = 0; i < tableCount; i++)
+        auto it = m_DynamicSegments.find(table.GetOffset());
+
+        if (it != m_DynamicSegments.end())
         {
-            m_DynamicReleaseQueue.push({ pTables[i].GetOffset(), pTables[i].GetCount(), fenceValue});
+            assert(m_Heap->GetHeapPointer() == table.GetHeapPointer());
+            assert(it->second.Count == table.GetCount());
+
+            it->second.FenceValue = fenceValue;
+            it->second.CanRelease = true;
+        }
+        else
+        {
+            DEBUG_LOG_ERROR("Attempt to release an invalid dynamic descriptor table");
         }
     }
 

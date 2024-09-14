@@ -17,6 +17,7 @@ namespace dx12demo
     typedef uint8_t CSharpByte;
     typedef int32_t CSharpInt;
     typedef uint32_t CSharpUInt;
+    typedef uint64_t CSharpULong;
     typedef float CSharpFloat;
     typedef double CSharpDouble;
     typedef uint8_t CSharpBool;
