@@ -15,7 +15,7 @@ namespace DX12Demo.Core.Rendering
         private nint m_RenderObject;
         private MeshType m_MeshType;
         private string m_MaterialPath = string.Empty;
-        private Material? m_Material;
+        private List<Material?> m_Materials = [];
 
         [JsonProperty]
         public MeshType MeshType
@@ -32,14 +32,10 @@ namespace DX12Demo.Core.Rendering
         }
 
         [JsonProperty]
-        public Material? Material
+        public List<Material?> Materials
         {
-            get => m_Material;
-            set
-            {
-                m_Material = value;
-                RenderObject_SetMaterial(m_RenderObject, value?.NativePtr ?? nint.Zero);
-            }
+            get => m_Materials;
+            set => m_Materials = value;
         }
 
         public MeshRenderer()
@@ -104,6 +100,15 @@ namespace DX12Demo.Core.Rendering
             RenderObject_SetPosition(m_RenderObject, MountingObject.Position);
             RenderObject_SetRotation(m_RenderObject, MountingObject.Rotation);
             RenderObject_SetScale(m_RenderObject, MountingObject.Scale);
+
+            if (m_Materials.Count > 0)
+            {
+                RenderObject_SetMaterial(m_RenderObject, m_Materials[0]?.NativePtr ?? nint.Zero);
+            }
+            else
+            {
+                RenderObject_SetMaterial(m_RenderObject, nint.Zero);
+            }
         }
 
         private void UpdateMesh()

@@ -1,3 +1,4 @@
+using DX12Demo.Core;
 using System.Collections;
 
 namespace DX12Demo.Editor.Drawers
@@ -49,7 +50,8 @@ namespace DX12Demo.Editor.Drawers
                     {
                         using (new EditorGUI.IndentedScope())
                         {
-                            changed |= EditorGUI.PropertyField($"##Element{i}", string.Empty, property.GetListItemProperty(i));
+                            EditorProperty itemProperty = property.GetListItemProperty(i);
+                            changed |= EditorGUI.PropertyField($"##Element{i}", string.Empty, in itemProperty);
                         }
                     }
                 }
@@ -58,7 +60,8 @@ namespace DX12Demo.Editor.Drawers
                 {
                     if (EditorGUI.ButtonRight("Add"))
                     {
-                        list.Add(CreateInstance(GetElementType(list)));
+                        Type? itemType = EditorPropertyUtility.GetListItemType(property.PropertyType);
+                        list.Add(CreateInstance(itemType));
                         changed = true;
                     }
                 }
@@ -67,32 +70,24 @@ namespace DX12Demo.Editor.Drawers
             return changed;
         }
 
-        private static object CreateInstance(Type type)
+        private static object? CreateInstance(Type? type)
         {
+            if (type == null)
+            {
+                throw new NotSupportedException("Cannot determine the type of list item");
+            }
+
             if (type == typeof(string))
             {
                 return string.Empty;
             }
 
+            if (type.IsSubclassOf(typeof(EngineObject)))
+            {
+                return null;
+            }
+
             return Activator.CreateInstance(type, nonPublic: true)!;
-        }
-
-        private static Type GetElementType(IList list)
-        {
-            if (list.Count > 0)
-            {
-                return list[^1]?.GetType() ?? throw new NotSupportedException("IListItem is null");
-            }
-
-            foreach (var i in list.GetType().GetInterfaces())
-            {
-                if (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                {
-                    return i.GetGenericArguments()[0];
-                }
-            }
-
-            throw new NotSupportedException("Cannot determine element type of IList");
         }
     }
 }
