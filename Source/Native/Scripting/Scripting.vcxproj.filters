@@ -18,10 +18,7 @@
     <ClInclude Include="ThirdParty\hostfxr.h">
       <Filter>ThirdParty</Filter>
     </ClInclude>
-    <ClInclude Include="ThirdParty\nethost.h">
-      <Filter>ThirdParty</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\DotNet.h">
+    <ClInclude Include="Public\DotNetRuntime.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\ScriptTypes.h">
@@ -29,7 +26,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\DotNet.cpp">
+    <ClCompile Include="Private\DotNetRuntime.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\ScriptTypes.binding.cpp">

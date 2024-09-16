@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
@@ -26,19 +18,6 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v143</PlatformToolset>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -56,14 +35,6 @@
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared" />
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.Cpp.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.Cpp.props" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Common.Cpp.props" />
@@ -76,64 +47,6 @@
   <PropertyGroup Label="Vcpkg" />
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
-  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
-  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Graphics\Public;..\Core\Public;..\Utility\Public;..\Scripting\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy /y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y "C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.dll" "$(TargetDir)"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
-xcopy /y /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
-xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Graphics\Public;..\Core\Public;..\Utility\Public;..\Scripting\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy /y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y "C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.dll" "$(TargetDir)"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
-xcopy /y /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
-xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -142,13 +55,12 @@ xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"</Comma
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y "C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.dll" "$(TargetDir)"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
@@ -157,7 +69,8 @@ xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
 xcopy /y /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
-xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"</Command>
+xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
+xcopy /y /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -172,13 +85,12 @@ xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"</Comma
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y "C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\8.0.8\runtimes\win-x64\native\nethost.dll" "$(TargetDir)"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
@@ -187,7 +99,8 @@ xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
 xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
 xcopy /y /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
-xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"</Command>
+xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
+xcopy /y /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

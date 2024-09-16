@@ -6,7 +6,7 @@
 #include "RenderPipeline.h"
 #include "DescriptorHeap.h"
 #include "RenderDoc.h"
-#include "DotNet.h"
+#include "DotNetRuntime.h"
 #include <vector>
 #include <wrl.h>
 #include <memory>
@@ -56,7 +56,7 @@ namespace march
         bool m_ShowDescriptorHeapWindow = true;
 
         RenderDoc m_RenderDoc{};
-        DotNetEnv m_DotNet{};
+        std::unique_ptr<IDotNetRuntime> m_DotNet{};
 
     private:
         float m_FontSize = 15.0f;

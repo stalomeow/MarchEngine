@@ -37,7 +37,7 @@ namespace march
     void GameEditor::OnStart()
     {
         m_RenderDoc.Load(); // 越早越好
-        m_DotNet.Load(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
+        m_DotNet.reset(CreateDotNetRuntime()); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
         GetGfxManager().Initialize(GetApp().GetHWND(), width, height, 2, 0);
@@ -50,7 +50,7 @@ namespace march
 
         InitImGui();
 
-        m_DotNet.InvokeInitFunc();
+        m_DotNet->Invoke(ManagedMethod::Initialize);
     }
 
     void GameEditor::InitImGui()
@@ -187,11 +187,11 @@ namespace march
 
         {
             ImGui::Begin("Inspector");
-            m_DotNet.InvokeDrawInspectorFunc();
+            m_DotNet->Invoke(ManagedMethod::DrawInspectorWindow);
             ImGui::End();
 
             ImGui::Begin("Project");
-            m_DotNet.InvokeDrawProjectWindowFunc();
+            m_DotNet->Invoke(ManagedMethod::DrawProjectWindow);
             ImGui::End();
         }
 
@@ -241,7 +241,7 @@ namespace march
         if (m_ShowHierarchyWindow)
         {
             ImGui::Begin("Hierarchy", &m_ShowHierarchyWindow);
-            m_DotNet.InvokeDrawHierarchyWindowFunc();
+            m_DotNet->Invoke(ManagedMethod::DrawHierarchyWindow);
             ImGui::End();
         }
 
@@ -505,7 +505,7 @@ namespace march
         CommandBuffer* cmd = CommandBuffer::Get();
         EditorGUI::SetCommandBuffer(cmd);
 
-        m_DotNet.InvokeTickFunc();
+        m_DotNet->Invoke(ManagedMethod::Tick);
         DrawImGui();
         m_RenderPipeline->Render(cmd);
 
