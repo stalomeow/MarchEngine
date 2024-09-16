@@ -12,13 +12,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\DotNetRuntime.h" />
-    <ClInclude Include="Public\ScriptTypes.h" />
+    <ClInclude Include="Public\InteropServices.h" />
     <ClInclude Include="ThirdParty\coreclr_delegates.h" />
     <ClInclude Include="ThirdParty\hostfxr.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\DotNetRuntime.cpp" />
-    <ClCompile Include="Private\ScriptTypes.binding.cpp" />
+    <ClCompile Include="Private\InteropServices.binding.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

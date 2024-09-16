@@ -60,17 +60,17 @@
       <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
-xcopy /y /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
-xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
-xcopy /y /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
+      <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
+xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
+xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
+xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -90,17 +90,17 @@ xcopy /y /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
-xcopy /y "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
-xcopy /y /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
-xcopy /y /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
-xcopy /y /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
+      <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
+xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
+xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
+xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

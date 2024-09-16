@@ -2,20 +2,19 @@
 
 #include "GpuResource.h"
 #include "DescriptorHeap.h"
-#include "ScriptTypes.h"
 #include <DirectXTex.h>
 #include <string>
 
 namespace march
 {
-    enum class FilterMode : CSharpInt
+    enum class FilterMode
     {
         Point = 0,
         Bilinear = 1,
         Trilinear = 2,
     };
 
-    enum class WrapMode : CSharpInt
+    enum class WrapMode
     {
         Repeat = 0,
         Clamp = 1,

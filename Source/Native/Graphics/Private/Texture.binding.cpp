@@ -1,5 +1,5 @@
 #include "Texture.h"
-#include "ScriptTypes.h"
+#include "InteropServices.h"
 
 using namespace march;
 
@@ -18,22 +18,22 @@ NATIVE_EXPORT(void) Texture_SetDDSData(Texture* pTexture, CSharpString name, con
     pTexture->SetDDSData(CSharpString_ToUtf16(name), pSourceDDS, static_cast<size_t>(size));
 }
 
-NATIVE_EXPORT(void) Texture_SetFilterMode(Texture* pTexture, FilterMode mode)
+NATIVE_EXPORT(void) Texture_SetFilterMode(Texture* pTexture, CSharpInt mode)
 {
-    pTexture->SetFilterMode(mode);
+    pTexture->SetFilterMode(static_cast<FilterMode>(mode));
 }
 
-NATIVE_EXPORT(void) Texture_SetWrapMode(Texture* pTexture, WrapMode mode)
+NATIVE_EXPORT(void) Texture_SetWrapMode(Texture* pTexture, CSharpInt mode)
 {
-    pTexture->SetWrapMode(mode);
+    pTexture->SetWrapMode(static_cast<WrapMode>(mode));
 }
 
-NATIVE_EXPORT(FilterMode) Texture_GetFilterMode(Texture* pTexture)
+NATIVE_EXPORT(CSharpInt) Texture_GetFilterMode(Texture* pTexture)
 {
-    return pTexture->GetFilterMode();
+    return static_cast<CSharpInt>(pTexture->GetFilterMode());
 }
 
-NATIVE_EXPORT(WrapMode) Texture_GetWrapMode(Texture* pTexture)
+NATIVE_EXPORT(CSharpInt) Texture_GetWrapMode(Texture* pTexture)
 {
-    return pTexture->GetWrapMode();
+    return static_cast<CSharpInt>(pTexture->GetWrapMode());
 }

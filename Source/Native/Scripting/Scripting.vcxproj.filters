@@ -21,7 +21,7 @@
     <ClInclude Include="Public\DotNetRuntime.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\ScriptTypes.h">
+    <ClInclude Include="Public\InteropServices.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>
@@ -29,7 +29,7 @@
     <ClCompile Include="Private\DotNetRuntime.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\ScriptTypes.binding.cpp">
+    <ClCompile Include="Private\InteropServices.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>
