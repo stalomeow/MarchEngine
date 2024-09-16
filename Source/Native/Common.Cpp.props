@@ -8,8 +8,6 @@
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
-  </PropertyGroup>
-  <PropertyGroup Label="Vcpkg">
     <VcpkgInstalledDir>$(SolutionDir)Build\VcpkgInstalled</VcpkgInstalledDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
