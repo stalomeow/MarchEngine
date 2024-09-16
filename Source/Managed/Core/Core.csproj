@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <BaseOutputPath>$(SolutionDir)Build\ManagedOutput\Core\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Build\ManagedIntermediate\Core\</BaseIntermediateOutputPath>
+    <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <AssemblyName>March.Core</AssemblyName>
+    <RootNamespace>March.Core</RootNamespace>
+    <EnableDynamicLoading>True</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Binding\Binding.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

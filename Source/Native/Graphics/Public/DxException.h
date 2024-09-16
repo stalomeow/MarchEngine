@@ -1,0 +1,27 @@
+#pragma once
+
+#include <Windows.h>
+#include <string>
+
+namespace march
+{
+    class DxException final
+    {
+    public:
+        DxException(HRESULT hr, const std::wstring& expr, const std::wstring& filename, int line);
+
+        std::wstring ToString() const;
+
+    private:
+        HRESULT m_ErrorCode;
+        std::wstring m_Expression;
+        std::wstring m_Filename;
+        int m_Line;
+    };
+}
+
+#define THROW_IF_FAILED(x) \
+{ \
+    HRESULT ___hr___ = (x); \
+    if (FAILED(___hr___)) { throw march::DxException(___hr___, L#x, __FILEW__, __LINE__); } \
+}

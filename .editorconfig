@@ -4,17 +4,12 @@ root = true
 end_of_line = lf
 insert_final_newline = true
 
-[*.{h,hpp,cpp,cs}]
+[*.{h,hpp,cpp,cs,hlsl}]
 charset = utf-8
 indent_style = space
 indent_size = 4
 
-[{.editorconfig,CMakePresets.json}]
+[{.editorconfig}]
 charset = utf-8
 indent_style = space
 indent_size = 4
-
-[CMakeLists.txt]
-charset = utf-8
-indent_style = space
-indent_size = 2

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Public">
+      <UniqueIdentifier>{980a950a-c416-4977-950b-ccad0504c9d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private">
+      <UniqueIdentifier>{a99887b8-34d6-4203-8f17-717331e9cf96}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\MathHelper.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\StringUtility.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Public\PathHelper.h">
+      <Filter>Public</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\PathHelper.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public\MathHelper.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\StringUtility.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Public">
+      <UniqueIdentifier>{67016dff-8ccd-46cd-8f31-d5874af97679}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{27db24ef-2167-4b52-ac56-3ffae250ce84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private">
+      <UniqueIdentifier>{fa00d2af-1ab1-4224-a015-a01aa5746c84}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public\CommandAllocatorPool.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\CommandBuffer.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DescriptorHeap.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DxException.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxManager.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GpuBuffer.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GpuResource.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Light.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Material.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Mesh.hpp">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\PipelineState.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderDoc.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderObject.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderPipeline.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Shader.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Texture.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\UploadHeapAllocator.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\renderdoc_app.h">
+      <Filter>ThirdParty</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\CommandAllocatorPool.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\CommandBuffer.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\DescriptorHeap.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\DxException.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxManager.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GpuBuffer.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Light.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Material.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Material.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Mesh.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\PipelineState.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderDoc.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderObject.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderObject.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderPipeline.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderPipeline.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Shader.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Shader.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Texture.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Texture.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\UploadHeapAllocator.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
