@@ -3,7 +3,7 @@
 #include "UploadHeapAllocator.h"
 #include "CommandAllocatorPool.h"
 #include "DescriptorHeap.h"
-#include <d3d12.h>
+#include <directx/d3dx12.h>
 #include <wrl.h>
 #include <memory>
 #include <queue>

@@ -3,7 +3,6 @@
 #include "DxException.h"
 #include "Texture.h"
 #include <directx/d3dx12.h>
-#include <d3d12.h>
 #include <DirectXMath.h>
 #include <vector>
 #include <unordered_map>

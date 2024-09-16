@@ -1,7 +1,6 @@
 #pragma once
 
 #include <directx/d3dx12.h>
-#include <d3d12.h>
 #include "Mesh.hpp"
 #include "DescriptorHeap.h"
 #include "CommandBuffer.h"

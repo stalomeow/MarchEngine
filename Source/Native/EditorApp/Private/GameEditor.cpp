@@ -75,6 +75,8 @@ namespace march
         // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
         ImGui::GetStyle().FrameBorderSize = 1.0f;
         ImGui::GetStyle().FrameRounding = 2.0f;
+        ImGui::GetStyle().TabRounding = 2.0f;
+        ImGui::GetStyle().TabBarOverlineSize = 0.0f;
 
         auto device = GetGfxManager().GetDevice();
         ImGui_ImplDX12_Init(device, GetGfxManager().GetMaxFrameLatency(),

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <directx/d3dx12.h>
-#include <d3d12.h>
 #include "Debug.h"
 #include "Texture.h"
 #include "Shader.h"

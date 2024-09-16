@@ -4,7 +4,7 @@
 #include "GfxManager.h"
 #include "Debug.h"
 #include "MathHelper.h"
-#include <d3d12.h>
+#include <directx/d3dx12.h>
 #include <memory>
 #include <string>
 #include <list>
