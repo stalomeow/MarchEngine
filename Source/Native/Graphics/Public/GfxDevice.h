@@ -23,6 +23,7 @@ namespace march
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3D12Device() const { return m_Device.Get(); }
         GfxCommandQueue* GetGraphicsCommandQueue() const { return m_GraphicsCommandQueue.get(); }
+        GfxFence* GetGraphicsFence() const { return m_GraphicsFence.get(); }
 
         void BeginFrame();
         void EndFrame();

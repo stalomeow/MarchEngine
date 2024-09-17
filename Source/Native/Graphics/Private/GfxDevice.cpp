@@ -1,4 +1,5 @@
 #include "GfxDevice.h"
+#include "GfxCommandList.h"
 #include "GfxCommandQueue.h"
 #include "GfxFence.h"
 #include "GfxSwapChain.h"
@@ -10,6 +11,13 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
+    static void __stdcall D3D12DebugMessageCallback(
+        D3D12_MESSAGE_CATEGORY Category,
+        D3D12_MESSAGE_SEVERITY Severity,
+        D3D12_MESSAGE_ID ID,
+        LPCSTR pDescription,
+        void* pContext);
+
     GfxDevice::GfxDevice(HWND hWnd, uint32_t width, uint32_t height)
         : m_ReleaseQueue{}
     {
@@ -33,9 +41,20 @@ namespace march
             GFX_HR(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
         }
 
+#pragma warning( disable : 6387 )
+        // 获取 D3D12 输出的调试信息
+        DWORD callbackCookie = 0;
         GFX_HR(m_Device->QueryInterface(IID_PPV_ARGS(&m_DebugInfoQueue)));
+        GFX_HR(m_DebugInfoQueue->RegisterMessageCallback(D3D12DebugMessageCallback,
+            D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &callbackCookie));
+#pragma warning( default : 6387 )
 
-        m_GraphicsCommandQueue = std::make_unique<GfxCommandQueue>(this, GfxCommandQueueType::Graphics, "GraphicsCommandQueue");
+        if (callbackCookie == 0)
+        {
+            DEBUG_LOG_WARN("Failed to register D3D12 debug message callback");
+        }
+
+        m_GraphicsCommandQueue = std::make_unique<GfxCommandQueue>(this, GfxCommandListType::Graphics, "GraphicsCommandQueue");
         m_GraphicsFence = std::make_unique<GfxFence>(this, "GraphicsFence");
         m_SwapChain = std::make_unique<GfxSwapChain>(this, hWnd, width, height);
 
@@ -55,10 +74,12 @@ namespace march
     void GfxDevice::BeginFrame()
     {
         m_SwapChain->WaitForFrameLatency();
+        ProcessReleaseQueue();
     }
 
     void GfxDevice::EndFrame()
     {
+        m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
         m_SwapChain->Preset();
     }
 
@@ -91,6 +112,35 @@ namespace march
     {
         m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
         m_GraphicsFence->Wait();
+    }
+
+    static void __stdcall D3D12DebugMessageCallback(
+        D3D12_MESSAGE_CATEGORY Category,
+        D3D12_MESSAGE_SEVERITY Severity,
+        D3D12_MESSAGE_ID ID,
+        LPCSTR pDescription,
+        void* pContext)
+    {
+        switch (Severity)
+        {
+        case D3D12_MESSAGE_SEVERITY_INFO:
+        case D3D12_MESSAGE_SEVERITY_MESSAGE:
+            DEBUG_LOG_INFO("%s", pDescription);
+            break;
+
+        case D3D12_MESSAGE_SEVERITY_WARNING:
+            DEBUG_LOG_WARN("%s", pDescription);
+            break;
+
+        case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+        case D3D12_MESSAGE_SEVERITY_ERROR:
+            DEBUG_LOG_ERROR("%s", pDescription);
+            break;
+
+        default:
+            DEBUG_LOG_WARN("Unknown D3D12_MESSAGE_SEVERITY: %d; %s", Severity, pDescription);
+            break;
+        }
     }
 
     static std::unique_ptr<GfxDevice> g_GfxDevice = nullptr;

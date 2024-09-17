@@ -2,24 +2,25 @@
 #include "GfxDevice.h"
 #include "GfxExcept.h"
 #include "GfxFence.h"
+#include "GfxCommandList.h"
 #include "StringUtility.h"
 #include <Windows.h>
 
 namespace march
 {
-    GfxCommandQueue::GfxCommandQueue(GfxDevice* device, GfxCommandQueueType type, const std::string& name, int32_t priority, bool disableGpuTimeout)
+    GfxCommandQueue::GfxCommandQueue(GfxDevice* device, GfxCommandListType type, const std::string& name, int32_t priority, bool disableGpuTimeout)
     {
         D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 
         switch (type)
         {
-        case march::GfxCommandQueueType::Graphics:
+        case march::GfxCommandListType::Graphics:
             queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
             break;
-        case march::GfxCommandQueueType::Compute:
+        case march::GfxCommandListType::Compute:
             queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
             break;
-        case march::GfxCommandQueueType::Copy:
+        case march::GfxCommandListType::Copy:
             queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
             break;
         default:
@@ -43,20 +44,20 @@ namespace march
 #endif
     }
 
-    GfxCommandQueueType GfxCommandQueue::GetType() const
+    GfxCommandListType GfxCommandQueue::GetType() const
     {
         D3D12_COMMAND_QUEUE_DESC queueDesc = m_CommandQueue->GetDesc();
 
         switch (queueDesc.Type)
         {
         case D3D12_COMMAND_LIST_TYPE_DIRECT:
-            return GfxCommandQueueType::Graphics;
+            return GfxCommandListType::Graphics;
 
         case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-            return GfxCommandQueueType::Compute;
+            return GfxCommandListType::Compute;
 
         case D3D12_COMMAND_LIST_TYPE_COPY:
-            return GfxCommandQueueType::Copy;
+            return GfxCommandListType::Copy;
 
         default:
             throw GfxException("Invalid command queue type");
