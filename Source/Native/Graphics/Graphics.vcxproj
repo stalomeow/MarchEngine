@@ -11,11 +11,18 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Private\GfxExcept.h" />
     <ClInclude Include="Public\CommandAllocatorPool.h" />
     <ClInclude Include="Public\CommandBuffer.h" />
     <ClInclude Include="Public\DescriptorHeap.h" />
     <ClInclude Include="Public\DxException.h" />
+    <ClInclude Include="Public\GfxCommandAllocatorPool.h" />
+    <ClInclude Include="Public\GfxCommandList.h" />
+    <ClInclude Include="Public\GfxCommandQueue.h" />
+    <ClInclude Include="Public\GfxDevice.h" />
+    <ClInclude Include="Public\GfxFence.h" />
     <ClInclude Include="Public\GfxManager.h" />
+    <ClInclude Include="Public\GfxSwapChain.h" />
     <ClInclude Include="Public\GpuBuffer.h" />
     <ClInclude Include="Public\GpuResource.h" />
     <ClInclude Include="Public\Light.h" />
@@ -35,7 +42,12 @@
     <ClCompile Include="Private\CommandBuffer.cpp" />
     <ClCompile Include="Private\DescriptorHeap.cpp" />
     <ClCompile Include="Private\DxException.cpp" />
+    <ClCompile Include="Private\GfxCommandQueue.cpp" />
+    <ClCompile Include="Private\GfxDevice.cpp" />
+    <ClCompile Include="Private\GfxExcept.cpp" />
+    <ClCompile Include="Private\GfxFence.cpp" />
     <ClCompile Include="Private\GfxManager.cpp" />
+    <ClCompile Include="Private\GfxSwapChain.cpp" />
     <ClCompile Include="Private\GpuBuffer.cpp" />
     <ClCompile Include="Private\Light.binding.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />

@@ -46,6 +46,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Utility", "Source\Native\Ut
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Shaders", "Source\Shaders\Shaders.shproj", "{163BF68A-BBBD-4097-9961-70F3362795B7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderPipeline", "Source\Native\RenderPipeline\RenderPipeline.vcxproj", "{14DF447E-F87E-48B9-A17D-4026FF0E2ECB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -84,6 +86,10 @@ Global
 		{31AB1A7B-D46E-4695-B5D8-D201435D999E}.Debug|x64.Build.0 = Debug|x64
 		{31AB1A7B-D46E-4695-B5D8-D201435D999E}.Release|x64.ActiveCfg = Release|x64
 		{31AB1A7B-D46E-4695-B5D8-D201435D999E}.Release|x64.Build.0 = Release|x64
+		{14DF447E-F87E-48B9-A17D-4026FF0E2ECB}.Debug|x64.ActiveCfg = Debug|x64
+		{14DF447E-F87E-48B9-A17D-4026FF0E2ECB}.Debug|x64.Build.0 = Debug|x64
+		{14DF447E-F87E-48B9-A17D-4026FF0E2ECB}.Release|x64.ActiveCfg = Release|x64
+		{14DF447E-F87E-48B9-A17D-4026FF0E2ECB}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,6 +103,7 @@ Global
 		{EC2990C8-B5DC-4E58-911A-BE1433E7750A} = {C4BD5924-EBFF-4398-BD99-C9A69F7B18A2}
 		{CFC46F16-60D5-475F-A7D9-1E1869DE3064} = {C4BD5924-EBFF-4398-BD99-C9A69F7B18A2}
 		{31AB1A7B-D46E-4695-B5D8-D201435D999E} = {D3C9C439-DB27-493E-A0BC-488C77780639}
+		{14DF447E-F87E-48B9-A17D-4026FF0E2ECB} = {D3C9C439-DB27-493E-A0BC-488C77780639}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CF793B38-1F5F-45B0-B887-CBFA509E6190}

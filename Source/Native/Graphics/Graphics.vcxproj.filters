@@ -66,6 +66,27 @@
     <ClInclude Include="ThirdParty\renderdoc_app.h">
       <Filter>ThirdParty</Filter>
     </ClInclude>
+    <ClInclude Include="Public\GfxFence.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxDevice.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\GfxExcept.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxSwapChain.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxCommandQueue.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxCommandAllocatorPool.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxCommandList.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\CommandAllocatorPool.cpp">
@@ -129,6 +150,21 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\UploadHeapAllocator.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxFence.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxExcept.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxSwapChain.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxCommandQueue.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxDevice.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>
