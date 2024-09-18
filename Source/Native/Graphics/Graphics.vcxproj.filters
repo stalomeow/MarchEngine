@@ -12,22 +12,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\CommandAllocatorPool.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\CommandBuffer.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\DescriptorHeap.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\DxException.h">
+    <ClInclude Include="Public\GfxDescriptorHeap.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GfxManager.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GpuBuffer.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GpuResource.h">
@@ -60,9 +51,6 @@
     <ClInclude Include="Public\Texture.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\UploadHeapAllocator.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="ThirdParty\renderdoc_app.h">
       <Filter>ThirdParty</Filter>
     </ClInclude>
@@ -87,24 +75,24 @@
     <ClInclude Include="Public\GfxCommandList.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\GfxResource.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxBuffer.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxUploadMemoryAllocator.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\CommandAllocatorPool.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\CommandBuffer.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\DescriptorHeap.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\DxException.cpp">
+    <ClCompile Include="Private\GfxDescriptorHeap.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxManager.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GpuBuffer.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Light.binding.cpp">
@@ -149,9 +137,6 @@
     <ClCompile Include="Private\Texture.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\UploadHeapAllocator.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\GfxFence.cpp">
       <Filter>Private</Filter>
     </ClCompile>
@@ -165,6 +150,21 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxDevice.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxCommandAllocatorPool.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxCommandList.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxResource.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxBuffer.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxUploadMemoryAllocator.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

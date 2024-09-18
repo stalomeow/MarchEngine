@@ -12,18 +12,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Private\GfxExcept.h" />
-    <ClInclude Include="Public\CommandAllocatorPool.h" />
     <ClInclude Include="Public\CommandBuffer.h" />
-    <ClInclude Include="Public\DescriptorHeap.h" />
-    <ClInclude Include="Public\DxException.h" />
+    <ClInclude Include="Public\GfxDescriptorHeap.h" />
+    <ClInclude Include="Public\GfxBuffer.h" />
     <ClInclude Include="Public\GfxCommandAllocatorPool.h" />
     <ClInclude Include="Public\GfxCommandList.h" />
     <ClInclude Include="Public\GfxCommandQueue.h" />
     <ClInclude Include="Public\GfxDevice.h" />
     <ClInclude Include="Public\GfxFence.h" />
     <ClInclude Include="Public\GfxManager.h" />
+    <ClInclude Include="Public\GfxResource.h" />
     <ClInclude Include="Public\GfxSwapChain.h" />
-    <ClInclude Include="Public\GpuBuffer.h" />
+    <ClInclude Include="Public\GfxUploadMemoryAllocator.h" />
     <ClInclude Include="Public\GpuResource.h" />
     <ClInclude Include="Public\Light.h" />
     <ClInclude Include="Public\Material.h" />
@@ -34,21 +34,22 @@
     <ClInclude Include="Public\RenderPipeline.h" />
     <ClInclude Include="Public\Shader.h" />
     <ClInclude Include="Public\Texture.h" />
-    <ClInclude Include="Public\UploadHeapAllocator.h" />
     <ClInclude Include="ThirdParty\renderdoc_app.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\CommandAllocatorPool.cpp" />
     <ClCompile Include="Private\CommandBuffer.cpp" />
-    <ClCompile Include="Private\DescriptorHeap.cpp" />
-    <ClCompile Include="Private\DxException.cpp" />
+    <ClCompile Include="Private\GfxDescriptorHeap.cpp" />
+    <ClCompile Include="Private\GfxBuffer.cpp" />
+    <ClCompile Include="Private\GfxCommandAllocatorPool.cpp" />
+    <ClCompile Include="Private\GfxCommandList.cpp" />
     <ClCompile Include="Private\GfxCommandQueue.cpp" />
     <ClCompile Include="Private\GfxDevice.cpp" />
     <ClCompile Include="Private\GfxExcept.cpp" />
     <ClCompile Include="Private\GfxFence.cpp" />
     <ClCompile Include="Private\GfxManager.cpp" />
+    <ClCompile Include="Private\GfxResource.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />
-    <ClCompile Include="Private\GpuBuffer.cpp" />
+    <ClCompile Include="Private\GfxUploadMemoryAllocator.cpp" />
     <ClCompile Include="Private\Light.binding.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />
     <ClCompile Include="Private\Material.cpp" />
@@ -63,7 +64,6 @@
     <ClCompile Include="Private\Shader.cpp" />
     <ClCompile Include="Private\Texture.binding.cpp" />
     <ClCompile Include="Private\Texture.cpp" />
-    <ClCompile Include="Private\UploadHeapAllocator.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

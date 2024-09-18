@@ -18,14 +18,14 @@ namespace march
 
         void Resize(uint32_t width, uint32_t height);
         void WaitForFrameLatency() const;
-        void Preset();
+        void Present();
 
     private:
         void CreateBackBuffers();
 
     public:
         static const DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-        static const int32_t BackBufferCount = 2;
+        static const uint32_t BackBufferCount = 2;
         static const uint32_t MaxFrameLatency = 3;
 
     private:
@@ -35,6 +35,6 @@ namespace march
         HANDLE m_FrameLatencyHandle;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> m_BackBuffers[BackBufferCount];
-        int32_t m_CurrentBackBufferIndex;
+        uint32_t m_CurrentBackBufferIndex;
     };
 }

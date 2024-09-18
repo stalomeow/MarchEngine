@@ -8,6 +8,7 @@ namespace march
 {
     class GfxDevice;
     class GfxFence;
+    class GfxCommandList;
     enum class GfxCommandListType;
 
     class GfxCommandQueue
@@ -18,6 +19,8 @@ namespace march
 
         GfxCommandListType GetType() const;
         ID3D12CommandQueue* GetD3D12CommandQueue() const { return m_CommandQueue.Get(); }
+
+        void ExecuteCommandList(GfxCommandList* commandList);
 
         void Wait(GfxFence* fence);
         void Wait(GfxFence* fence, uint64_t value);

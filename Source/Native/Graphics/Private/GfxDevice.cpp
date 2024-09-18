@@ -3,6 +3,8 @@
 #include "GfxCommandQueue.h"
 #include "GfxFence.h"
 #include "GfxSwapChain.h"
+#include "GfxCommandAllocatorPool.h"
+#include "GfxUploadMemoryAllocator.h"
 #include "GfxExcept.h"
 #include "Debug.h"
 #include <assert.h>
@@ -56,6 +58,9 @@ namespace march
 
         m_GraphicsCommandQueue = std::make_unique<GfxCommandQueue>(this, GfxCommandListType::Graphics, "GraphicsCommandQueue");
         m_GraphicsFence = std::make_unique<GfxFence>(this, "GraphicsFence");
+        m_GraphicsCommandAllocatorPool = std::make_unique<GfxCommandAllocatorPool>(this, GfxCommandListType::Graphics);
+        m_GraphicsCommandList = std::make_unique<GfxCommandList>(this, GfxCommandListType::Graphics, "GraphicsCommandList");
+        m_UploadMemoryAllocator = std::make_unique<GfxUploadMemoryAllocator>(this);
         m_SwapChain = std::make_unique<GfxSwapChain>(this, hWnd, width, height);
 
 //#if defined(DEBUG) || defined(_DEBUG)
@@ -75,12 +80,21 @@ namespace march
     {
         m_SwapChain->WaitForFrameLatency();
         ProcessReleaseQueue();
+
+        m_GraphicsCommandAllocatorPool->BeginFrame();
+        m_UploadMemoryAllocator->BeginFrame();
+        m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get());
     }
 
     void GfxDevice::EndFrame()
     {
-        m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
-        m_SwapChain->Preset();
+        m_GraphicsCommandList->End();
+        m_GraphicsCommandQueue->ExecuteCommandList(m_GraphicsCommandList.get());
+
+        uint64_t fenceValue = m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
+        m_GraphicsCommandAllocatorPool->EndFrame(fenceValue);
+        m_UploadMemoryAllocator->EndFrame(fenceValue);
+        m_SwapChain->Present();
     }
 
     void GfxDevice::ReleaseD3D12Object(ID3D12Object* object)
@@ -112,6 +126,11 @@ namespace march
     {
         m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
         m_GraphicsFence->Wait();
+    }
+
+    GfxUploadMemory GfxDevice::AllocateTransientUploadMemory(uint32_t size, uint32_t count, uint32_t alignment)
+    {
+        return m_UploadMemoryAllocator->Allocate(size, count, alignment);
     }
 
     static void __stdcall D3D12DebugMessageCallback(

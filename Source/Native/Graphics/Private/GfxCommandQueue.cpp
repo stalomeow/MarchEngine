@@ -11,22 +11,7 @@ namespace march
     GfxCommandQueue::GfxCommandQueue(GfxDevice* device, GfxCommandListType type, const std::string& name, int32_t priority, bool disableGpuTimeout)
     {
         D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-
-        switch (type)
-        {
-        case march::GfxCommandListType::Graphics:
-            queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            break;
-        case march::GfxCommandListType::Compute:
-            queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-            break;
-        case march::GfxCommandListType::Copy:
-            queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-            break;
-        default:
-            throw GfxException("Invalid command queue type");
-        }
-
+        queueDesc.Type = GfxCommandList::ToD3D12Type(type);
         queueDesc.Priority = priority;
 
         if (disableGpuTimeout)
@@ -47,21 +32,13 @@ namespace march
     GfxCommandListType GfxCommandQueue::GetType() const
     {
         D3D12_COMMAND_QUEUE_DESC queueDesc = m_CommandQueue->GetDesc();
+        return GfxCommandList::FromD3D12Type(queueDesc.Type);
+    }
 
-        switch (queueDesc.Type)
-        {
-        case D3D12_COMMAND_LIST_TYPE_DIRECT:
-            return GfxCommandListType::Graphics;
-
-        case D3D12_COMMAND_LIST_TYPE_COMPUTE:
-            return GfxCommandListType::Compute;
-
-        case D3D12_COMMAND_LIST_TYPE_COPY:
-            return GfxCommandListType::Copy;
-
-        default:
-            throw GfxException("Invalid command queue type");
-        }
+    void GfxCommandQueue::ExecuteCommandList(GfxCommandList* commandList)
+    {
+        ID3D12CommandList* lists = commandList->GetD3D12CommandList();
+        m_CommandQueue->ExecuteCommandLists(1, &lists);
     }
 
     void GfxCommandQueue::Wait(GfxFence* fence)

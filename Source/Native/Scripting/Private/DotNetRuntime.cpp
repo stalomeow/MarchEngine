@@ -162,9 +162,9 @@ namespace march
         return m_Methods[index];
     }
 
-    IDotNetRuntime* CreateDotNetRuntime()
+    std::unique_ptr<IDotNetRuntime> CreateDotNetRuntime()
     {
-        auto impl = new DotNetRuntimeImpl();
+        auto impl = std::make_unique<DotNetRuntimeImpl>();
         impl->LoadAssemblies();
         return impl;
     }

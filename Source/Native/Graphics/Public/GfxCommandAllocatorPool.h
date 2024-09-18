@@ -17,12 +17,21 @@ namespace march
         GfxCommandAllocatorPool(GfxDevice* device, GfxCommandListType type);
         ~GfxCommandAllocatorPool() = default;
 
+        GfxCommandAllocatorPool(const GfxCommandAllocatorPool&) = delete;
+        GfxCommandAllocatorPool& operator=(const GfxCommandAllocatorPool&) = delete;
+
+        void BeginFrame();
+        void EndFrame(uint64_t fenceValue);
         ID3D12CommandAllocator* Get();
-        void Release(ID3D12CommandAllocator* allocator);
+
+        GfxCommandListType GetType() const { return m_Type; }
 
     private:
         GfxDevice* m_Device;
-        std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_Allocators;
+        GfxCommandListType m_Type;
+
+        std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_Allocators; // 保存所有的 allocator 的引用
+        std::vector<ID3D12CommandAllocator*> m_UsedAllocators;
         std::queue<std::pair<uint64_t, ID3D12CommandAllocator*>> m_ReleaseQueue;
     };
 }

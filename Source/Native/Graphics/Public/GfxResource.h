@@ -1,0 +1,33 @@
+#pragma once
+
+#include <directx/d3dx12.h>
+
+namespace march
+{
+    class GfxDevice;
+
+    class GfxResource
+    {
+    protected:
+        GfxResource(GfxDevice* device, D3D12_RESOURCE_STATES state);
+        void SetResourceName(const std::string& name);
+
+    public:
+        virtual ~GfxResource();
+
+        GfxResource(const GfxResource&) = delete;
+        GfxResource& operator=(const GfxResource&) = delete;
+
+        ID3D12Resource* GetResource() const { return m_Resource; }
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress() const { return m_Resource->GetGPUVirtualAddress(); }
+
+        D3D12_RESOURCE_STATES GetState() const { return m_State; }
+        void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
+        bool NeedTransition(D3D12_RESOURCE_STATES stateAfter) const { return (m_State & stateAfter) != stateAfter; }
+
+    protected:
+        GfxDevice* m_Device;
+        ID3D12Resource* m_Resource;
+        D3D12_RESOURCE_STATES m_State;
+    };
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 namespace march
 {
     enum class ManagedMethod : int
@@ -35,7 +37,7 @@ namespace march
         virtual void* GetFunctionPointer(ManagedMethod method) = 0;
     };
 
-    IDotNetRuntime* CreateDotNetRuntime();
+    std::unique_ptr<IDotNetRuntime> CreateDotNetRuntime();
 
     template <typename Ret, typename ...Args>
     Ret IDotNetRuntime::Invoke(ManagedMethod method, Args ...args)

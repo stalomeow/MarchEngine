@@ -27,7 +27,7 @@ namespace march
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
         swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.BufferCount = BackBufferCount;
+        swapChainDesc.BufferCount = static_cast<UINT>(BackBufferCount);
         swapChainDesc.Scaling = DXGI_SCALING_NONE;
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
@@ -59,7 +59,7 @@ namespace march
     void GfxSwapChain::Resize(uint32_t width, uint32_t height)
     {
         // 先释放之前的 buffer 引用，然后才能 resize
-        for (int i = 0; i < BackBufferCount; i++)
+        for (uint32_t i = 0; i < BackBufferCount; i++)
         {
             m_BackBuffers[i].Reset();
         }
@@ -76,7 +76,7 @@ namespace march
 
     void GfxSwapChain::CreateBackBuffers()
     {
-        for (int32_t i = 0; i < BackBufferCount; i++)
+        for (uint32_t i = 0; i < BackBufferCount; i++)
         {
             GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&m_BackBuffers[i])));
 
@@ -90,7 +90,7 @@ namespace march
         WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
     }
 
-    void GfxSwapChain::Preset()
+    void GfxSwapChain::Present()
     {
         GFX_HR(m_SwapChain->Present(0, 0)); // No vsync
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;

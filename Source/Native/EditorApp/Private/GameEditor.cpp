@@ -1,6 +1,5 @@
 #include "GameEditor.h"
 #include "WinApplication.h"
-#include "DxException.h"
 #include "GfxManager.h"
 #include "EditorGUI.h"
 #include "CommandBuffer.h"
@@ -37,7 +36,7 @@ namespace march
     void GameEditor::OnStart()
     {
         m_RenderDoc.Load(); // 越早越好
-        m_DotNet.reset(CreateDotNetRuntime()); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
+        m_DotNet = CreateDotNetRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
         GetGfxManager().Initialize(GetApp().GetHWND(), width, height, 2, 0);
