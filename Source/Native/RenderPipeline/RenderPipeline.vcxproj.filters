@@ -8,4 +8,50 @@
       <UniqueIdentifier>{15c44a22-78df-4f15-8e2f-c203cc818614}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public\Light.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Material.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderObject.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderPipeline.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Shader.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\Light.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Material.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Material.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderObject.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderObject.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderPipeline.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderPipeline.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Shader.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Shader.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+  </ItemGroup>
 </Project>

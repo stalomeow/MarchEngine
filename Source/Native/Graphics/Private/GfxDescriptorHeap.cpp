@@ -4,9 +4,7 @@
 #include "GfxExcept.h"
 #include "StringUtility.h"
 #include "Debug.h"
-#include "WinApplication.h"
 #include <Windows.h>
-#include <assert.h>
 
 namespace march
 {
@@ -167,29 +165,29 @@ namespace march
         m_Heap->Copy(m_Offset + destIndex, srcDescriptor);
     }
 
-    GfxDescriptorTableAllocator::SegmentData::SegmentData(uint32_t count, bool canRelease)
-        : Count(count), FenceValue(0), CanRelease(canRelease), CreatedFrame(GetApp().GetFrameCount())
+    GfxDescriptorTableAllocator::GfxDescriptorTableAllocator(GfxDevice* device, GfxDescriptorTableType type, uint32_t staticDescriptorCount, uint32_t dynamicDescriptorCapacity)
+        : m_ReleaseQueue{}, m_DynamicFront(0), m_DynamicRear(0), m_DynamicCapacity(dynamicDescriptorCapacity)
     {
-    }
-
-    GfxDescriptorTableAllocator::SegmentData::SegmentData() : SegmentData(0) {}
-
-    GfxDescriptorTableAllocator::GfxDescriptorTableAllocator(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t staticDescriptorCount, uint32_t dynamicDescriptorCapacity)
-        : m_DynamicSegments{}, m_DynamicFront(0), m_DynamicRear(0), m_DynamicCapacity(dynamicDescriptorCapacity)
-    {
-        std::string name = GetDescriptorHeapTypeName(type) + std::string("_DescriptorTablePool");
+        D3D12_DESCRIPTOR_HEAP_TYPE heapType = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(type);
+        std::string name = GetDescriptorHeapTypeName(heapType) + std::string("_DescriptorTablePool");
         uint32_t capacity = dynamicDescriptorCapacity + staticDescriptorCount; // static 部分放在 dynamic 后面
-        m_Heap = std::make_unique<GfxDescriptorHeap>(device, type, capacity, true, name);
+        m_Heap = std::make_unique<GfxDescriptorHeap>(device, heapType, capacity, true, name);
     }
 
     void GfxDescriptorTableAllocator::BeginFrame()
     {
+        GfxFence* fence = m_Heap->GetDevice()->GetGraphicsFence();
 
+        while (!m_ReleaseQueue.empty() && fence->IsCompleted(m_ReleaseQueue.front().first))
+        {
+            m_DynamicFront = m_ReleaseQueue.front().second;
+            m_ReleaseQueue.pop();
+        }
     }
 
     void GfxDescriptorTableAllocator::EndFrame(uint64_t fenceValue)
     {
-
+        m_ReleaseQueue.emplace(fenceValue, m_DynamicRear);
     }
 
     GfxDescriptorTable GfxDescriptorTableAllocator::AllocateDynamicTable(uint32_t descriptorCount)
@@ -198,20 +196,6 @@ namespace march
         if (descriptorCount > m_DynamicCapacity - 1)
         {
             throw std::out_of_range("Dynamic descriptor table size exceeds the capacity of the allocator");
-        }
-
-        // 回收可以使用的空间
-        decltype(m_DynamicSegments)::const_iterator it;
-        while ((it = m_DynamicSegments.find(m_DynamicFront)) != m_DynamicSegments.cend())
-        {
-            if (!it->second.CanRelease || it->second.FenceValue > completedFenceValue)
-            {
-                break;
-            }
-
-            m_DynamicFront += it->second.Count;
-            m_DynamicFront %= m_DynamicCapacity;
-            m_DynamicSegments.erase(it);
         }
 
         bool canAllocate = false;
@@ -232,10 +216,6 @@ namespace march
             {
                 if (remaining < descriptorCount)
                 {
-                    if (remaining > 0)
-                    {
-                        m_DynamicSegments.emplace(m_DynamicRear, SegmentData(remaining, true));
-                    }
                     m_DynamicRear = 0; // 后面不够了，从头开始分配，之后 Front > Rear
                 }
                 else
@@ -245,7 +225,7 @@ namespace march
             }
         }
 
-        if (!canAllocate && m_DynamicFront - m_DynamicRear - 1 >= descriptorCount)
+        if (m_DynamicFront - m_DynamicRear - 1 >= descriptorCount)
         {
             canAllocate = true;
         }
@@ -255,32 +235,13 @@ namespace march
             throw std::out_of_range("Descriptor table pool is full");
         }
 
-        m_DynamicSegments.emplace(m_DynamicRear, SegmentData(descriptorCount));
-        DescriptorTable table(m_Heap.get(), m_DynamicRear, descriptorCount);
+        GfxDescriptorTable table(m_Heap.get(), m_DynamicRear, descriptorCount);
         m_DynamicRear = (m_DynamicRear + descriptorCount) % m_DynamicCapacity;
         return table;
     }
 
-    void GfxDescriptorTableAllocator::ReleaseDynamicTable(const DescriptorTable& table, UINT64 fenceValue)
-    {
-        auto it = m_DynamicSegments.find(table.GetOffset());
-
-        if (it != m_DynamicSegments.end())
-        {
-            assert(m_Heap->GetHeapPointer() == table.GetHeapPointer());
-            assert(it->second.Count == table.GetCount());
-
-            it->second.FenceValue = fenceValue;
-            it->second.CanRelease = true;
-        }
-        else
-        {
-            DEBUG_LOG_ERROR("Attempt to release an invalid dynamic descriptor table");
-        }
-    }
-
     GfxDescriptorTable GfxDescriptorTableAllocator::GetStaticTable() const
     {
-        return DescriptorTable(m_Heap.get(), m_DynamicCapacity, GetStaticDescriptorCount());
+        return GfxDescriptorTable(m_Heap.get(), m_DynamicCapacity, GetStaticDescriptorCount());
     }
 }

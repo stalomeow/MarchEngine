@@ -55,9 +55,9 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;Core.lib;Graphics.lib;RenderPipeline.lib;Scripting.lib;Utility.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:RenderPipeline.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\RenderPipeline\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
@@ -85,9 +85,9 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;Core.lib;Graphics.lib;Scripting.lib;Utility.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;Core.lib;Graphics.lib;RenderPipeline.lib;Scripting.lib;Utility.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:RenderPipeline.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\RenderPipeline\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"

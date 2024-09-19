@@ -10,7 +10,8 @@ namespace march
     {
     protected:
         GfxResource(GfxDevice* device, D3D12_RESOURCE_STATES state);
-        void SetResourceName(const std::string& name);
+        void SetD3D12ResourceName(const std::string& name);
+        void ReleaseD3D12Resource();
 
     public:
         virtual ~GfxResource();
@@ -18,12 +19,14 @@ namespace march
         GfxResource(const GfxResource&) = delete;
         GfxResource& operator=(const GfxResource&) = delete;
 
-        ID3D12Resource* GetResource() const { return m_Resource; }
+        GfxDevice* GetDevice() const { return m_Device; }
+
+        ID3D12Resource* GetD3D12Resource() const { return m_Resource; }
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress() const { return m_Resource->GetGPUVirtualAddress(); }
 
         D3D12_RESOURCE_STATES GetState() const { return m_State; }
         void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
-        bool NeedTransition(D3D12_RESOURCE_STATES stateAfter) const { return (m_State & stateAfter) != stateAfter; }
+        bool NeedStateTransition(D3D12_RESOURCE_STATES stateAfter) const { return (m_State & stateAfter) != stateAfter; }
 
     protected:
         GfxDevice* m_Device;

@@ -5,6 +5,7 @@
 #include "GfxSwapChain.h"
 #include "GfxCommandAllocatorPool.h"
 #include "GfxUploadMemoryAllocator.h"
+#include "GfxDescriptorHeap.h"
 #include "GfxExcept.h"
 #include "Debug.h"
 #include <assert.h>
@@ -20,8 +21,8 @@ namespace march
         LPCSTR pDescription,
         void* pContext);
 
-    GfxDevice::GfxDevice(HWND hWnd, uint32_t width, uint32_t height)
-        : m_ReleaseQueue{}
+    GfxDevice::GfxDevice(const GfxDeviceDesc& desc)
+        : m_DescriptorAllocators{}, m_ReleaseQueue{}
     {
         // 开启调试层
 #if defined(DEBUG) || defined(_DEBUG)
@@ -61,10 +62,18 @@ namespace march
         m_GraphicsCommandAllocatorPool = std::make_unique<GfxCommandAllocatorPool>(this, GfxCommandListType::Graphics);
         m_GraphicsCommandList = std::make_unique<GfxCommandList>(this, GfxCommandListType::Graphics, "GraphicsCommandList");
         m_UploadMemoryAllocator = std::make_unique<GfxUploadMemoryAllocator>(this);
-        m_SwapChain = std::make_unique<GfxSwapChain>(this, hWnd, width, height);
+
+        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
+        {
+            m_DescriptorAllocators[i] = std::make_unique<GfxDescriptorAllocator>(this, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+        }
+
+        m_ViewDescriptorTableAllocator = std::make_unique<GfxDescriptorTableAllocator>(this, GfxDescriptorTableType::CbvSrvUav, desc.ViewTableStaticDescriptorCount, desc.ViewTableDynamicDescriptorCapacity);
+        m_SamplerDescriptorTableAllocator = std::make_unique<GfxDescriptorTableAllocator>(this, GfxDescriptorTableType::Sampler, desc.SamplerTableStaticDescriptorCount, desc.SamplerTableDynamicDescriptorCapacity);
+        m_SwapChain = std::make_unique<GfxSwapChain>(this, desc.WindowHandle, desc.WindowWidth, desc.WindowHeight);
 
 //#if defined(DEBUG) || defined(_DEBUG)
-//        LogAdapters(m_BackBufferFormat);
+//        LogAdapters(GfxSwapChain::BackBufferFormat);
 //#endif
     }
 
@@ -83,7 +92,21 @@ namespace march
 
         m_GraphicsCommandAllocatorPool->BeginFrame();
         m_UploadMemoryAllocator->BeginFrame();
-        m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get());
+
+        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
+        {
+            m_DescriptorAllocators[i]->BeginFrame();
+        }
+
+        m_ViewDescriptorTableAllocator->BeginFrame();
+        m_SamplerDescriptorTableAllocator->BeginFrame();
+
+        ID3D12DescriptorHeap* const descriptorHeaps[] =
+        {
+            m_ViewDescriptorTableAllocator->GetD3D12DescriptorHeap(),
+            m_SamplerDescriptorTableAllocator->GetD3D12DescriptorHeap(),
+        };
+        m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get(), static_cast<uint32_t>(std::size(descriptorHeaps)), descriptorHeaps);
     }
 
     void GfxDevice::EndFrame()
@@ -92,8 +115,18 @@ namespace march
         m_GraphicsCommandQueue->ExecuteCommandList(m_GraphicsCommandList.get());
 
         uint64_t fenceValue = m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
+
+        m_ViewDescriptorTableAllocator->EndFrame(fenceValue);
+        m_SamplerDescriptorTableAllocator->EndFrame(fenceValue);
+
+        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
+        {
+            m_DescriptorAllocators[i]->EndFrame(fenceValue);
+        }
+
         m_GraphicsCommandAllocatorPool->EndFrame(fenceValue);
         m_UploadMemoryAllocator->EndFrame(fenceValue);
+
         m_SwapChain->Present();
     }
 
@@ -128,9 +161,122 @@ namespace march
         m_GraphicsFence->Wait();
     }
 
+    void GfxDevice::ResizeBackBuffer(uint32_t width, uint32_t height)
+    {
+        WaitForIdle();
+        m_SwapChain->Resize(width, height);
+    }
+
+    ID3D12Resource* GfxDevice::GetBackBuffer() const
+    {
+        return m_SwapChain->GetBackBuffer();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxDevice::GetBackBufferRtv() const
+    {
+        return m_SwapChain->GetBackBufferRtv();
+    }
+
+    GfxDescriptorHandle GfxDevice::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type)
+    {
+        return m_DescriptorAllocators[static_cast<int>(type)]->Allocate();
+    }
+
+    void GfxDevice::FreeDescriptor(const GfxDescriptorHandle& handle)
+    {
+        int index = static_cast<int>(handle.GetType());
+        m_DescriptorAllocators[index]->Free(handle);
+    }
+
     GfxUploadMemory GfxDevice::AllocateTransientUploadMemory(uint32_t size, uint32_t count, uint32_t alignment)
     {
         return m_UploadMemoryAllocator->Allocate(size, count, alignment);
+    }
+
+    GfxDescriptorTable GfxDevice::AllocateTransientDescriptorTable(GfxDescriptorTableType type, uint32_t descriptorCount)
+    {
+        switch (type)
+        {
+        case GfxDescriptorTableType::CbvSrvUav:
+            return m_ViewDescriptorTableAllocator->AllocateDynamicTable(descriptorCount);
+
+        case GfxDescriptorTableType::Sampler:
+            return m_SamplerDescriptorTableAllocator->AllocateDynamicTable(descriptorCount);
+
+        default:
+            throw GfxException("Invalid D3D12_DESCRIPTOR_HEAP_TYPE");
+        }
+    }
+
+    GfxDescriptorTable GfxDevice::GetStaticDescriptorTable(GfxDescriptorTableType type)
+    {
+        switch (type)
+        {
+        case GfxDescriptorTableType::CbvSrvUav:
+            return m_ViewDescriptorTableAllocator->GetStaticTable();
+
+        case GfxDescriptorTableType::Sampler:
+            return m_SamplerDescriptorTableAllocator->GetStaticTable();
+
+        default:
+            throw GfxException("Invalid D3D12_DESCRIPTOR_HEAP_TYPE");
+        }
+    }
+
+    void GfxDevice::LogAdapters(DXGI_FORMAT format)
+    {
+        UINT i = 0;
+        IDXGIAdapter* adapter = nullptr;
+
+        while (m_Factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+        {
+            DXGI_ADAPTER_DESC desc;
+            adapter->GetDesc(&desc);
+
+            DEBUG_LOG_INFO(L"***Adapter: %s", desc.Description);
+
+            LogAdapterOutputs(adapter, format);
+            adapter->Release();
+            ++i;
+        }
+    }
+
+    void GfxDevice::LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format)
+    {
+        UINT i = 0;
+        IDXGIOutput* output = nullptr;
+        while (adapter->EnumOutputs(i, &output) != DXGI_ERROR_NOT_FOUND)
+        {
+            DXGI_OUTPUT_DESC desc;
+            output->GetDesc(&desc);
+
+            DEBUG_LOG_INFO(L"***Output: %s", desc.DeviceName);
+
+            LogOutputDisplayModes(output, format);
+            output->Release();
+            ++i;
+        }
+    }
+
+    void GfxDevice::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
+    {
+        UINT count = 0;
+        UINT flags = 0;
+
+        // Call with nullptr to get list count.
+        output->GetDisplayModeList(format, flags, &count, nullptr);
+
+        auto modeList = std::make_unique<DXGI_MODE_DESC[]>(count);
+        output->GetDisplayModeList(format, flags, &count, modeList.get());
+
+        for (int i = 0; i < count; i++)
+        {
+            auto& x = modeList[i];
+            UINT n = x.RefreshRate.Numerator;
+            UINT d = x.RefreshRate.Denominator;
+
+            DEBUG_LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
+        }
     }
 
     static void __stdcall D3D12DebugMessageCallback(
@@ -169,8 +315,8 @@ namespace march
         return g_GfxDevice.get();
     }
 
-    void InitGfxDevice(HWND hWnd, uint32_t width, uint32_t height)
+    void InitGfxDevice(const GfxDeviceDesc& desc)
     {
-        g_GfxDevice = std::make_unique<GfxDevice>(hWnd, width, height);
+        g_GfxDevice = std::make_unique<GfxDevice>(desc);
     }
 }

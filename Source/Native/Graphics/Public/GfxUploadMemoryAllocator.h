@@ -18,7 +18,8 @@ namespace march
 
         uint8_t* GetMappedData(uint32_t index) const;
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t index) const;
-        ID3D12Resource* GetResource() const;
+        uint32_t GetD3D12ResourceOffset(uint32_t index) const;
+        ID3D12Resource* GetD3D12Resource() const;
 
         uint32_t GetStride() const { return m_Stride; }
         uint32_t GetCount() const { return m_Count; }

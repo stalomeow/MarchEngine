@@ -1,13 +1,13 @@
 #include "EditorGUI.h"
-#include "DescriptorHeap.h"
+#include "GfxDevice.h"
+#include "GfxDescriptorHeap.h"
+#include "GfxTexture.h"
 #include <utility>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
 
 namespace march
 {
-    CommandBuffer* EditorGUI::CmdBuffer = nullptr;
-
     namespace
     {
         bool IsHiddenLabel(const std::string& label)
@@ -423,14 +423,13 @@ namespace march
         return ImGui::BeginPopupContextItem(idStr);
     }
 
-    void EditorGUI::DrawTexture(Texture* texture)
+    void EditorGUI::DrawTexture(GfxTexture* texture)
     {
-        DescriptorTable table = CmdBuffer->AllocateTempViewDescriptorTable(1);
-        table.Copy(0, texture->GetTextureCpuDescriptorHandle());
+        GfxDescriptorTable table = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, 1);
+        table.Copy(0, texture->GetSrvCpuDescriptorHandle());
         auto id = (ImTextureID)table.GetGpuHandle(0).ptr;
-        const auto& metaData = texture->GetMetaData();
         ImVec2 region = ImGui::GetContentRegionAvail();
-        ImVec2 size = { region.x, static_cast<float>(metaData.height) / metaData.width * region.x };
+        ImVec2 size = { region.x, static_cast<float>(texture->GetHeight()) / texture->GetWidth() * region.x };
         ImGui::Image(id, size);
     }
 

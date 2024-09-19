@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <map>
 
 namespace march
 {
@@ -24,6 +23,7 @@ namespace march
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32_t index) const;
         void Copy(uint32_t destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
 
+        GfxDevice* GetDevice() const { return m_Device; }
         uint32_t GetIncrementSize() const { return m_IncrementSize; }
         ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_Heap; }
         D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Heap->GetDesc().Type; }
@@ -89,6 +89,12 @@ namespace march
         std::queue<std::pair<uint64_t, GfxDescriptorHandle>> m_ReleaseQueue;
     };
 
+    enum class GfxDescriptorTableType
+    {
+        CbvSrvUav = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+        Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+    };
+
     class GfxDescriptorTable
     {
     public:
@@ -99,7 +105,7 @@ namespace march
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32_t index) const;
         void Copy(uint32_t destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
 
-        D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Heap->GetType(); }
+        GfxDescriptorTableType GetType() const { return static_cast<GfxDescriptorTableType>(m_Heap->GetType()); }
         ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_Heap->GetD3D12DescriptorHeap(); }
         uint32_t GetOffset() const { return m_Offset; }
         uint32_t GetCount() const { return m_Count; }
@@ -113,7 +119,7 @@ namespace march
     class GfxDescriptorTableAllocator
     {
     public:
-        GfxDescriptorTableAllocator(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t staticDescriptorCount, uint32_t dynamicDescriptorCapacity);
+        GfxDescriptorTableAllocator(GfxDevice* device, GfxDescriptorTableType type, uint32_t staticDescriptorCount, uint32_t dynamicDescriptorCapacity);
         ~GfxDescriptorTableAllocator() = default;
 
         GfxDescriptorTableAllocator(const GfxDescriptorTableAllocator&) = delete;
@@ -129,23 +135,9 @@ namespace march
         uint32_t GetDynamicDescriptorCapacity() const { return m_DynamicCapacity; }
         ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_Heap->GetD3D12DescriptorHeap(); }
 
-        struct SegmentData
-        {
-            uint32_t Count;
-            uint64_t FenceValue;
-            bool CanRelease;
-            uint64_t CreatedFrame;
-
-            SegmentData(uint32_t count, bool canRelease = false);
-            SegmentData();
-        };
-
-        const std::map<uint32_t, SegmentData>& GetDynamicSegments() const { return m_DynamicSegments; }
-
     private:
         std::unique_ptr<GfxDescriptorHeap> m_Heap;
-        // std::vector<GfxDescriptorTable> m_UsedDynamicTables;
-        std::map<uint32_t, SegmentData> m_DynamicSegments; // key is the offset of the segment
+        std::queue<std::pair<uint64_t, uint32_t>> m_ReleaseQueue;
         uint32_t m_DynamicFront;
         uint32_t m_DynamicRear;
         uint32_t m_DynamicCapacity;

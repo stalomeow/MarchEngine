@@ -14,19 +14,24 @@ namespace march
 
     GfxResource::~GfxResource()
     {
-        if (m_Resource != nullptr)
-        {
-            m_Device->ReleaseD3D12Object(m_Resource);
-            m_Resource = nullptr;
-        }
+        ReleaseD3D12Resource();
     }
 
-    void GfxResource::SetResourceName(const std::string& name)
+    void GfxResource::SetD3D12ResourceName(const std::string& name)
     {
 #ifdef ENABLE_GFX_DEBUG_NAME
         GFX_HR(m_Resource->SetName(StringUtility::Utf8ToUtf16(name).c_str()));
 #else
         (name);
 #endif
+    }
+
+    void GfxResource::ReleaseD3D12Resource()
+    {
+        if (m_Resource != nullptr)
+        {
+            m_Device->ReleaseD3D12Object(m_Resource);
+            m_Resource = nullptr;
+        }
     }
 }

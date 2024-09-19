@@ -12,43 +12,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\CommandBuffer.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\GfxDescriptorHeap.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GfxManager.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GpuResource.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Light.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Material.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\Mesh.hpp">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\PipelineState.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RenderDoc.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RenderObject.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RenderPipeline.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Shader.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Texture.h">
+    <ClInclude Include="Public\GfxTexture.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="ThirdParty\renderdoc_app.h">
@@ -84,24 +54,12 @@
     <ClInclude Include="Public\GfxUploadMemoryAllocator.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\RenderDoc.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\CommandBuffer.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\GfxDescriptorHeap.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GfxManager.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Light.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Material.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Material.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Mesh.binding.cpp">
@@ -110,31 +68,10 @@
     <ClCompile Include="Private\PipelineState.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\RenderDoc.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderObject.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderObject.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderPipeline.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderPipeline.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Shader.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Shader.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\Texture.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Texture.cpp">
+    <ClCompile Include="Private\GfxTexture.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxFence.cpp">
@@ -165,6 +102,9 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxUploadMemoryAllocator.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderDoc.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

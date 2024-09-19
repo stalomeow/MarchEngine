@@ -38,9 +38,14 @@ namespace march
         return addr + offset;
     }
 
-    ID3D12Resource* GfxUploadMemory::GetResource() const
+    uint32_t GfxUploadMemory::GetD3D12ResourceOffset(uint32_t index) const
     {
-        return m_Buffer->GetResource();
+        return m_Offset + index * m_Stride;
+    }
+
+    ID3D12Resource* GfxUploadMemory::GetD3D12Resource() const
+    {
+        return m_Buffer->GetD3D12Resource();
     }
 
     GfxUploadMemoryAllocator::GfxUploadMemoryAllocator(GfxDevice* device)

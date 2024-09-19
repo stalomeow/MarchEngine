@@ -10,6 +10,24 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public\Light.h" />
+    <ClInclude Include="Public\Material.h" />
+    <ClInclude Include="Public\RenderObject.h" />
+    <ClInclude Include="Public\RenderPipeline.h" />
+    <ClInclude Include="Public\Shader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\Light.binding.cpp" />
+    <ClCompile Include="Private\Material.binding.cpp" />
+    <ClCompile Include="Private\Material.cpp" />
+    <ClCompile Include="Private\RenderObject.binding.cpp" />
+    <ClCompile Include="Private\RenderObject.cpp" />
+    <ClCompile Include="Private\RenderPipeline.binding.cpp" />
+    <ClCompile Include="Private\RenderPipeline.cpp" />
+    <ClCompile Include="Private\Shader.binding.cpp" />
+    <ClCompile Include="Private\Shader.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -47,12 +65,8 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>..\Graphics\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -62,14 +76,10 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>..\Graphics\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>

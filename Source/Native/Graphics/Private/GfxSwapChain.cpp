@@ -8,7 +8,7 @@ using namespace Microsoft::WRL;
 namespace march
 {
     GfxSwapChain::GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height)
-        : m_Device(device), m_BackBuffers{}, m_CurrentBackBufferIndex(0)
+        : m_Device(device), m_BackBuffers{}, m_BackBufferRtvHandles{}, m_CurrentBackBufferIndex(0)
     {
         // https://github.com/microsoft/DirectXTK/wiki/Line-drawing-and-anti-aliasing#technical-note
         // The ability to create an MSAA DXGI swap chain is only supported for the older "bit-blt" style presentation modes,
@@ -48,17 +48,29 @@ namespace march
         GFX_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(MaxFrameLatency)));
         m_FrameLatencyHandle = swapChain2->GetFrameLatencyWaitableObject();
 
+        for (uint32_t i = 0; i < BackBufferCount; i++)
+        {
+            m_BackBufferRtvHandles[i] = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        }
+
         CreateBackBuffers();
     }
 
     GfxSwapChain::~GfxSwapChain()
     {
         CloseHandle(m_FrameLatencyHandle);
+
+        for (uint32_t i = 0; i < BackBufferCount; i++)
+        {
+            m_Device->FreeDescriptor(m_BackBufferRtvHandles[i]);
+        }
     }
 
     void GfxSwapChain::Resize(uint32_t width, uint32_t height)
     {
-        // 先释放之前的 buffer 引用，然后才能 resize
+        // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
+        // You can't resize a swap chain unless you release all outstanding references to its back buffers.
+        // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
             m_BackBuffers[i].Reset();
@@ -80,8 +92,8 @@ namespace march
         {
             GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&m_BackBuffers[i])));
 
-            //m_RtvHandles[i] = AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-            //m_Device->CreateRenderTargetView(m_SwapChainBuffers[i].Get(), nullptr, m_RtvHandles[i].GetCpuHandle());
+            ID3D12Device4* device = m_Device->GetD3D12Device();
+            device->CreateRenderTargetView(m_BackBuffers[i].Get(), nullptr, m_BackBufferRtvHandles[i].GetCpuHandle());
         }
     }
 

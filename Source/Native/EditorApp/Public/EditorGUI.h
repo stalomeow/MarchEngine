@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Texture.h"
-#include "CommandBuffer.h"
 #include <string>
 #include <imgui.h>
 #include <DirectXMath.h>
@@ -9,6 +7,8 @@
 
 namespace march
 {
+    class GfxTexture;
+
     class EditorGUI final
     {
     public:
@@ -61,7 +61,7 @@ namespace march
         static bool BeginPopupContextWindow();
         static bool BeginPopupContextItem(const std::string& id = "");
 
-        static void DrawTexture(Texture* texture);
+        static void DrawTexture(GfxTexture* texture);
         static bool Button(const std::string& label);
 
         static void BeginGroup();
@@ -81,13 +81,7 @@ namespace march
         static bool BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
         static bool EngineObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, EngineObjectState currentObjectState);
 
-        inline static void SetCommandBuffer(CommandBuffer* cmd)
-        {
-            CmdBuffer = cmd;
-        }
-
     public:
-        static CommandBuffer* CmdBuffer;
         static constexpr float MinLabelWidth = 140.0f;
         static constexpr float MaxFieldWidth = 320.0f;
         static constexpr char* DragDropPayloadType_AssetPath = "ASSET_PATH";

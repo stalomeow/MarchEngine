@@ -15,7 +15,7 @@ namespace march
             D3D12_HEAP_FLAG_NONE,
             &CD3DX12_RESOURCE_DESC::Buffer(width),
             m_State, nullptr, IID_PPV_ARGS(&m_Resource)));
-        SetResourceName(name);
+        SetD3D12ResourceName(name);
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS GfxBuffer::GetGpuVirtualAddress(uint32_t index) const

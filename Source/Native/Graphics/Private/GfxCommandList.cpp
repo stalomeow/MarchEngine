@@ -1,5 +1,6 @@
 #include "GfxCommandList.h"
 #include "GfxDevice.h"
+#include "GfxResource.h"
 #include "GfxExcept.h"
 #include "StringUtility.h"
 #include <assert.h>
@@ -7,12 +8,11 @@
 namespace march
 {
     GfxCommandList::GfxCommandList(GfxDevice* device, GfxCommandListType type, const std::string& name)
-        : m_Device(device), m_Type(type), m_Name(name), m_CommandList(nullptr)
+        : m_Device(device), m_Type(type), m_Name(name), m_CommandList(nullptr), m_ResourceBarriers{}
     {
-
     }
 
-    void GfxCommandList::Begin(ID3D12CommandAllocator* commandAllocator)
+    void GfxCommandList::Begin(ID3D12CommandAllocator* commandAllocator, uint32_t descriptorHeapCount, ID3D12DescriptorHeap* const* descriptorHeaps)
     {
         if (m_CommandList == nullptr)
         {
@@ -28,11 +28,41 @@ namespace march
         {
             GFX_HR(m_CommandList->Reset(commandAllocator, nullptr));
         }
+
+        m_CommandList->SetDescriptorHeaps(static_cast<UINT>(descriptorHeapCount), descriptorHeaps);
     }
 
     void GfxCommandList::End()
     {
+        FlushResourceBarriers();
         GFX_HR(m_CommandList->Close());
+    }
+
+    void GfxCommandList::ResourceBarrier(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter, bool immediate)
+    {
+        if (resource->NeedStateTransition(stateAfter))
+        {
+            ID3D12Resource* pRes = resource->GetD3D12Resource();
+            D3D12_RESOURCE_STATES stateBefore = resource->GetState();
+            m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(pRes, stateBefore, stateAfter));
+            resource->SetState(stateAfter);
+        }
+
+        if (immediate)
+        {
+            FlushResourceBarriers();
+        }
+    }
+
+    void GfxCommandList::FlushResourceBarriers()
+    {
+        if (!m_ResourceBarriers.empty())
+        {
+            // 尽量合并后一起提交
+            UINT count = static_cast<UINT>(m_ResourceBarriers.size());
+            m_CommandList->ResourceBarrier(count, m_ResourceBarriers.data());
+            m_ResourceBarriers.clear();
+        }
     }
 
     GfxCommandListType GfxCommandList::FromD3D12Type(D3D12_COMMAND_LIST_TYPE type)
