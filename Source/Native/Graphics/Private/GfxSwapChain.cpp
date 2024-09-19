@@ -98,22 +98,30 @@ namespace march
         }
     }
 
-    void GfxSwapChain::Begin() const
+    void GfxSwapChain::WaitForFrameLatency() const
     {
         WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
-
-        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
-        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBuffer(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
     }
 
     void GfxSwapChain::Present()
     {
-        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
-        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBuffer(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+        // D3D12_RESOURCE_STATE_PRESENT = 0，不用特地过渡过去
 
         GFX_HR(m_SwapChain->Present(0, 0)); // No vsync
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
+    }
+
+    void GfxSwapChain::PrepareBackBuffer()
+    {
+        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
+        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_BackBuffers[m_CurrentBackBufferIndex].Get(),
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+    }
+
+    void GfxSwapChain::PreparePresent()
+    {
+        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
+        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_BackBuffers[m_CurrentBackBufferIndex].Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
     }
 }

@@ -40,7 +40,7 @@ namespace march
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView() const
     {
-        return m_ResolvedColorTarget->GetRtvDsvCpuDescriptorHandle();
+        return m_ColorTarget->GetRtvDsvCpuDescriptorHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorShaderResourceView() const

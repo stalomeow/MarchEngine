@@ -35,7 +35,7 @@ namespace march
 
     void GameEditor::OnStart()
     {
-        m_RenderDoc.Load(); // 越早越好
+        //m_RenderDoc.Load(); // 越早越好
         m_DotNet = CreateDotNetRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();

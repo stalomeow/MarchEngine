@@ -87,7 +87,7 @@ namespace march
 
     void GfxDevice::BeginFrame()
     {
-        m_SwapChain->Begin();
+        m_SwapChain->WaitForFrameLatency();
         ProcessReleaseQueue();
 
         m_GraphicsCommandAllocatorPool->BeginFrame();
@@ -107,10 +107,14 @@ namespace march
             m_SamplerDescriptorTableAllocator->GetD3D12DescriptorHeap(),
         };
         m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get(), static_cast<uint32_t>(std::size(descriptorHeaps)), descriptorHeaps);
+
+        m_SwapChain->PrepareBackBuffer();
     }
 
     void GfxDevice::EndFrame()
     {
+        m_SwapChain->PreparePresent();
+
         m_GraphicsCommandList->End();
         m_GraphicsCommandQueue->ExecuteCommandList(m_GraphicsCommandList.get());
 

@@ -92,6 +92,8 @@ namespace march
 
     protected:
         static bool IsDepthStencilFormat(DXGI_FORMAT format);
+        static DXGI_FORMAT GetDepthStencilResFormat(DXGI_FORMAT format);
+        static DXGI_FORMAT GetDepthStencilSRVFormat(DXGI_FORMAT format);
 
         uint32_t m_Width;
         uint32_t m_Height;

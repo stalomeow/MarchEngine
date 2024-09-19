@@ -67,6 +67,7 @@ namespace march
         }
 
         m_UsedPages.clear();
+        m_AllocateOffset = PageSize; // 保证第一次分配时会创建新的 page
     }
 
     GfxUploadMemory GfxUploadMemoryAllocator::Allocate(uint32_t size, uint32_t count, uint32_t alignment)
