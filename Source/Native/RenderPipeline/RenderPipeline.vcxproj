@@ -15,7 +15,6 @@
     <ClInclude Include="Public\Material.h" />
     <ClInclude Include="Public\RenderObject.h" />
     <ClInclude Include="Public\RenderPipeline.h" />
-    <ClInclude Include="Public\Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp" />
@@ -25,8 +24,6 @@
     <ClCompile Include="Private\RenderObject.cpp" />
     <ClCompile Include="Private\RenderPipeline.binding.cpp" />
     <ClCompile Include="Private\RenderPipeline.cpp" />
-    <ClCompile Include="Private\Shader.binding.cpp" />
-    <ClCompile Include="Private\Shader.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -66,7 +63,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Graphics\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Graphics\Public;..\Scripting\Public;..\Core\Public;..\Utility\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -79,7 +76,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Graphics\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Graphics\Public;..\Scripting\Public;..\Core\Public;..\Utility\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>

@@ -3,7 +3,7 @@
 #include <directx/d3dx12.h>
 #include "IEngine.h"
 #include "RenderPipeline.h"
-#include "DescriptorHeap.h"
+#include "GfxDescriptorHeap.h"
 #include "RenderDoc.h"
 #include "DotNetRuntime.h"
 #include <vector>
@@ -34,14 +34,14 @@ namespace march
         void InitImGui();
         void DrawImGui();
         void ResizeRenderPipeline(int width, int height);
-        void DrawDebugDescriptorTableAllocator(const std::string& name, DescriptorTableAllocator* allocator);
+        void DrawDebugDescriptorTableAllocator(const std::string& name, GfxDescriptorTableAllocator* allocator);
         void DrawConsoleWindow();
         void CalculateFrameStats();
         std::string GetFontPath();
 
     private:
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
-        DescriptorTable m_StaticDescriptorViewTable;
+        GfxDescriptorTable m_StaticDescriptorViewTable;
 
         int m_LastSceneViewWidth = 0;
         int m_LastSceneViewHeight = 0;

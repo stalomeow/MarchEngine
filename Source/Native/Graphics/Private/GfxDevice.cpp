@@ -87,7 +87,7 @@ namespace march
 
     void GfxDevice::BeginFrame()
     {
-        m_SwapChain->WaitForFrameLatency();
+        m_SwapChain->Begin();
         ProcessReleaseQueue();
 
         m_GraphicsCommandAllocatorPool->BeginFrame();
@@ -175,6 +175,16 @@ namespace march
     D3D12_CPU_DESCRIPTOR_HANDLE GfxDevice::GetBackBufferRtv() const
     {
         return m_SwapChain->GetBackBufferRtv();
+    }
+
+    DXGI_FORMAT GfxDevice::GetBackBufferFormat() const
+    {
+        return GfxSwapChain::BackBufferFormat;
+    }
+
+    uint32_t GfxDevice::GetMaxFrameLatency() const
+    {
+        return GfxSwapChain::MaxFrameLatency;
     }
 
     GfxDescriptorHandle GfxDevice::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type)

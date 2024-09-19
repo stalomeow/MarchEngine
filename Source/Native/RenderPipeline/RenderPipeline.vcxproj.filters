@@ -21,9 +21,6 @@
     <ClInclude Include="Public\RenderPipeline.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Shader.h">
-      <Filter>Public</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp">
@@ -45,12 +42,6 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\RenderPipeline.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Shader.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Shader.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

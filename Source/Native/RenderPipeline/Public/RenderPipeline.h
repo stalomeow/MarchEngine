@@ -1,12 +1,8 @@
 #pragma once
 
 #include <directx/d3dx12.h>
-#include "Mesh.hpp"
-#include "DescriptorHeap.h"
-#include "CommandBuffer.h"
 #include "Light.h"
 #include "RenderObject.h"
-#include "Texture.h"
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <wrl.h>
@@ -17,6 +13,8 @@
 
 namespace march
 {
+    class GfxRenderTexture;
+
     struct PerObjConstants
     {
         DirectX::XMFLOAT4X4 WorldMatrix;
@@ -44,7 +42,7 @@ namespace march
         ~RenderPipeline() = default;
 
         void Resize(int width, int height);
-        void Render(CommandBuffer* cmd);
+        void Render();
 
         bool GetEnableMSAA() const { return m_EnableMSAA; }
         void SetEnableMSAA(bool value);
@@ -52,7 +50,7 @@ namespace march
         bool GetIsWireframe() const { return m_IsWireframe; }
         void SetIsWireframe(bool value) { m_IsWireframe = value; }
 
-        ID3D12Resource* GetResolvedColorTarget() const { return m_ResolvedColorTarget.Get(); }
+        D3D12_CPU_DESCRIPTOR_HANDLE GetColorShaderResourceView() const;
 
         void AddRenderObject(RenderObject* obj) { m_RenderObjects.push_back(obj); }
 
@@ -89,14 +87,9 @@ namespace march
         bool m_EnableMSAA = true;
         UINT m_MSAAQuality;
 
-        DescriptorHandle m_RtvHandle;
-        DescriptorHandle m_DsvHandle;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_ColorTarget;
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_ResolvedColorTarget;
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_DepthStencilTarget;
-        D3D12_RESOURCE_STATES m_LastColorTargetState;
-        D3D12_RESOURCE_STATES m_LastResolvedColorTargetState;
+        std::unique_ptr<GfxRenderTexture> m_ColorTarget;
+        std::unique_ptr<GfxRenderTexture> m_ResolvedColorTarget;
+        std::unique_ptr<GfxRenderTexture> m_DepthStencilTarget;
 
         int m_RenderTargetWidth;
         int m_RenderTargetHeight;

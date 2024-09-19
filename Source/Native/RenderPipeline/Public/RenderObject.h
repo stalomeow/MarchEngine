@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Mesh.hpp"
-#include "GpuBuffer.h"
 #include "Material.h"
 #include "PipelineState.h"
 #include <DirectXMath.h>
@@ -9,6 +7,8 @@
 
 namespace march
 {
+    class GfxMesh;
+
     class RenderObject
     {
     public:
@@ -20,7 +20,7 @@ namespace march
         DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
         DirectX::XMFLOAT3 Scale = { 1.0f, 1.0f, 1.0f };
-        Mesh* Mesh = nullptr;
+        GfxMesh* Mesh = nullptr;
         Material* Mat = nullptr;
         MeshRendererDesc Desc = {};
 

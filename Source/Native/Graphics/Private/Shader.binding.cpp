@@ -242,10 +242,10 @@ NATIVE_EXPORT(void) Shader_SetPasses(Shader* pShader, CSharpArray passes)
 
         pass->Name = CSharpString_ToUtf8(cs.Name);
 
-        THROW_IF_FAILED(Shader::GetDxcUtils()->CreateBlob(
+        GFX_HR(Shader::GetDxcUtils()->CreateBlob(
             &cs.VertexShader->FirstByte, cs.VertexShader->Length, DXC_CP_ACP,
             reinterpret_cast<IDxcBlobEncoding**>(pass->VertexShader.ReleaseAndGetAddressOf())));
-        THROW_IF_FAILED(Shader::GetDxcUtils()->CreateBlob(
+        GFX_HR(Shader::GetDxcUtils()->CreateBlob(
             &cs.PixelShader->FirstByte, cs.PixelShader->Length, DXC_CP_ACP,
             reinterpret_cast<IDxcBlobEncoding**>(pass->PixelShader.ReleaseAndGetAddressOf())));
 

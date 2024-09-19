@@ -1,5 +1,6 @@
 #include "Material.h"
 #include "InteropServices.h"
+#include "GfxTexture.h"
 
 using namespace march;
 
@@ -38,7 +39,7 @@ NATIVE_EXPORT(void) Material_SetVector(Material* pMaterial, CSharpString name, C
     pMaterial->SetVector(CSharpString_ToUtf8(name), ToXMFLOAT4(value));
 }
 
-NATIVE_EXPORT(void) Material_SetTexture(Material* pMaterial, CSharpString name, Texture* pTexture)
+NATIVE_EXPORT(void) Material_SetTexture(Material* pMaterial, CSharpString name, GfxTexture* pTexture)
 {
     pMaterial->SetTexture(CSharpString_ToUtf8(name), pTexture);
 }

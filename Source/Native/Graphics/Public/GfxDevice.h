@@ -55,6 +55,8 @@ namespace march
         void ResizeBackBuffer(uint32_t width, uint32_t height);
         ID3D12Resource* GetBackBuffer() const;
         D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferRtv() const;
+        DXGI_FORMAT GetBackBufferFormat() const;
+        uint32_t GetMaxFrameLatency() const;
 
         GfxDescriptorHandle AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
         void FreeDescriptor(const GfxDescriptorHandle& handle);

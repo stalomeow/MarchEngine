@@ -1,6 +1,9 @@
 #include "Material.h"
 #include "StringUtility.h"
 #include "Debug.h"
+#include "GfxDevice.h"
+#include "GfxTexture.h"
+#include "GfxBuffer.h"
 
 namespace march
 {
@@ -34,7 +37,7 @@ namespace march
         SetConstantBufferValue(name, value);
     }
 
-    void Material::SetTexture(const std::string& name, Texture* texture)
+    void Material::SetTexture(const std::string& name, GfxTexture* texture)
     {
         if (texture == nullptr)
         {
@@ -112,7 +115,7 @@ namespace march
         return false;
     }
 
-    bool Material::GetTexture(const std::string& name, Texture** outValue) const
+    bool Material::GetTexture(const std::string& name, GfxTexture** outValue) const
     {
         auto matProp = m_Textures.find(name);
         if (matProp != m_Textures.end())
@@ -161,8 +164,8 @@ namespace march
                 continue;
             }
 
-            std::wstring cbName = StringUtility::Utf8ToUtf16(pass->Name + "ConstantBuffer");
-            m_ConstantBuffers[pass.get()] = std::make_unique<ConstantBuffer>(cbName, matCb->second.Size, 1, false);
+            std::string cbName = pass->Name + "ConstantBuffer";
+            m_ConstantBuffers[pass.get()] = std::make_unique<GfxConstantBuffer>(GetGfxDevice(), cbName, matCb->second.Size, 1, false);
         }
 
         // 初始化 cbuffer

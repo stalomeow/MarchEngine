@@ -231,7 +231,7 @@ NATIVE_EXPORT(CSharpBool) EditorGUI_BeginPopupContextItem(CSharpString id)
     return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextItem(CSharpString_ToUtf8(id)));
 }
 
-NATIVE_EXPORT(void) EditorGUI_DrawTexture(Texture* texture)
+NATIVE_EXPORT(void) EditorGUI_DrawTexture(GfxTexture* texture)
 {
     EditorGUI::DrawTexture(texture);
 }

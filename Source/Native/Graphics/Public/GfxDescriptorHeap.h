@@ -42,6 +42,8 @@ namespace march
         ID3D12DescriptorHeap* m_Heap;
     };
 
+    class GfxDescriptorAllocator;
+
     class GfxDescriptorHandle
     {
         friend GfxDescriptorAllocator;

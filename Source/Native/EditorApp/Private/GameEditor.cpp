@@ -1,9 +1,9 @@
 #include "GameEditor.h"
 #include "WinApplication.h"
-#include "GfxManager.h"
+#include "GfxDevice.h"
 #include "EditorGUI.h"
-#include "CommandBuffer.h"
-#include "GpuBuffer.h"
+#include "GfxCommandList.h"
+#include "GfxBuffer.h"
 #include "Debug.h"
 #include "StringUtility.h"
 #include "PathHelper.h"
@@ -39,13 +39,20 @@ namespace march
         m_DotNet = CreateDotNetRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
-        GetGfxManager().Initialize(GetApp().GetHWND(), width, height, 2, 0);
-        m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
-        m_StaticDescriptorViewTable = GetGfxManager().GetViewDescriptorTableAllocator()->GetStaticTable();
 
-        auto device = GetGfxManager().GetDevice();
-        auto srvHandle = m_StaticDescriptorViewTable.GetCpuHandle(1);
-        device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
+        GfxDeviceDesc desc{};
+        desc.WindowHandle = GetApp().GetHWND();
+        desc.WindowWidth = width;
+        desc.WindowHeight = height;
+        desc.ViewTableStaticDescriptorCount = 2;
+        desc.ViewTableDynamicDescriptorCapacity = 4096;
+        desc.SamplerTableStaticDescriptorCount = 0;
+        desc.SamplerTableDynamicDescriptorCapacity = 1024;
+        InitGfxDevice(desc);
+
+        m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
+        m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
+        m_StaticDescriptorViewTable.Copy(1, m_RenderPipeline->GetColorShaderResourceView());
 
         InitImGui();
 
@@ -77,15 +84,15 @@ namespace march
         ImGui::GetStyle().TabRounding = 2.0f;
         ImGui::GetStyle().TabBarOverlineSize = 0.0f;
 
-        auto device = GetGfxManager().GetDevice();
-        ImGui_ImplDX12_Init(device, GetGfxManager().GetMaxFrameLatency(),
-            GetGfxManager().GetBackBufferFormat(), m_StaticDescriptorViewTable.GetHeapPointer(),
+        auto device = GetGfxDevice()->GetD3D12Device();
+        ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
+            GetGfxDevice()->GetBackBufferFormat(), m_StaticDescriptorViewTable.GetD3D12DescriptorHeap(),
             m_StaticDescriptorViewTable.GetCpuHandle(0), m_StaticDescriptorViewTable.GetGpuHandle(0));
     }
 
     void GameEditor::OnQuit()
     {
-        GetGfxManager().WaitForGpuIdle();
+        GetGfxDevice()->WaitForIdle();
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
@@ -249,9 +256,9 @@ namespace march
         if (m_ShowDescriptorHeapWindow)
         {
             ImGui::Begin("DescriptorTable Profiler", &m_ShowDescriptorHeapWindow);
-            DrawDebugDescriptorTableAllocator("CBV-SRV-UAV Allocator", GetGfxManager().GetViewDescriptorTableAllocator());
+            // DrawDebugDescriptorTableAllocator("CBV-SRV-UAV Allocator", Getgfxde().GetViewDescriptorTableAllocator());
             ImGui::Spacing();
-            DrawDebugDescriptorTableAllocator("Sampler Allocator", GetGfxManager().GetSamplerDescriptorTableAllocator());
+            // DrawDebugDescriptorTableAllocator("Sampler Allocator", GetGfxManager().GetSamplerDescriptorTableAllocator());
             ImGui::End();
         }
 
@@ -261,7 +268,7 @@ namespace march
         ImGui::Render();
     }
 
-    void GameEditor::DrawDebugDescriptorTableAllocator(const std::string& name, DescriptorTableAllocator* allocator)
+    void GameEditor::DrawDebugDescriptorTableAllocator(const std::string& name, GfxDescriptorTableAllocator* allocator)
     {
         if (!ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
         {
@@ -289,22 +296,22 @@ namespace march
         drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + dynamicCapacity * columnWidth, p.y + height), IM_COL32(0, 255, 0, 80));
         drawList->AddRectFilled(ImVec2(p.x + dynamicCapacity * columnWidth, p.y), ImVec2(p.x + width, p.y + height), IM_COL32(192, 192, 192, 80));
 
-        for (const auto& kv : allocator->GetDynamicSegments())
-        {
-            minDescriptorCount = min(minDescriptorCount, static_cast<int>(kv.second.Count));
-            maxDescriptorCount = max(maxDescriptorCount, static_cast<int>(kv.second.Count));
-            maxLifetime = max(maxLifetime, static_cast<int>(currentFrame - kv.second.CreatedFrame));
-            dynamicDescriptorCount += kv.second.Count;
+        //for (const auto& kv : allocator->GetDynamicSegments())
+        //{
+        //    minDescriptorCount = min(minDescriptorCount, static_cast<int>(kv.second.Count));
+        //    maxDescriptorCount = max(maxDescriptorCount, static_cast<int>(kv.second.Count));
+        //    maxLifetime = max(maxLifetime, static_cast<int>(currentFrame - kv.second.CreatedFrame));
+        //    dynamicDescriptorCount += kv.second.Count;
 
-            float x0 = p.x + kv.first * columnWidth; // kv.first 是 offset
-            float x1 = x0 + kv.second.Count * columnWidth;
+        //    float x0 = p.x + kv.first * columnWidth; // kv.first 是 offset
+        //    float x1 = x0 + kv.second.Count * columnWidth;
 
-            ImU32 color = kv.second.CanRelease ? IM_COL32(0, 0, 255, 255) : IM_COL32(255, 0, 0, 255);
-            drawList->AddRectFilled(ImVec2(x0, p.y), ImVec2(x1, p.y + height), color);
-        }
+        //    ImU32 color = kv.second.CanRelease ? IM_COL32(0, 0, 255, 255) : IM_COL32(255, 0, 0, 255);
+        //    drawList->AddRectFilled(ImVec2(x0, p.y), ImVec2(x1, p.y + height), color);
+        //}
 
         // 让 ImGui 知道这个区域是有内容的
-        ImGui::Dummy(ImVec2(width, height));
+        /*ImGui::Dummy(ImVec2(width, height));
 
         if (ImGui::BeginTable("DescriptorTableAllocatorInfo", 2, ImGuiTableFlags_Borders))
         {
@@ -328,7 +335,7 @@ namespace march
             ImGui::Text("Static: %d", static_cast<int>(staticCapacity));
 
             ImGui::EndTable();
-        }
+        }*/
 
         ImGui::TreePop();
     }
@@ -500,44 +507,30 @@ namespace march
 
     void GameEditor::OnTick()
     {
-        GetGfxManager().WaitForFameLatency();
+        GetGfxDevice()->BeginFrame();
         CalculateFrameStats();
-
-        CommandBuffer* cmd = CommandBuffer::Get();
-        EditorGUI::SetCommandBuffer(cmd);
 
         m_DotNet->Invoke(ManagedMethod::Tick);
         DrawImGui();
-        m_RenderPipeline->Render(cmd);
+        m_RenderPipeline->Render();
 
         // Render Dear ImGui graphics
-        cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-        cmd->GetList()->OMSetRenderTargets(1, &GetGfxManager().GetBackBufferView(), false, nullptr);
+        GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList()->OMSetRenderTargets(1, &GetGfxDevice()->GetBackBufferRtv(), false, nullptr);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList());
 
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd->GetList());
-
-        cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetGfxManager().GetBackBuffer(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
-        cmd->ExecuteAndRelease();
-        EditorGUI::SetCommandBuffer(nullptr);
-        GetGfxManager().Present();
+        GetGfxDevice()->EndFrame();
     }
 
     void GameEditor::OnResized()
     {
         auto [width, height] = GetApp().GetClientWidthAndHeight();
-        GetGfxManager().ResizeBackBuffer(width, height);
+        GetGfxDevice()->ResizeBackBuffer(width, height);
     }
 
     void GameEditor::ResizeRenderPipeline(int width, int height)
     {
         m_RenderPipeline->Resize(width, height);
-
-        auto device = GetGfxManager().GetDevice();
-        auto srvHandle = m_StaticDescriptorViewTable.GetCpuHandle(1);
-        device->CreateShaderResourceView(m_RenderPipeline->GetResolvedColorTarget(), nullptr, srvHandle);
+        m_StaticDescriptorViewTable.Copy(1, m_RenderPipeline->GetColorShaderResourceView());
     }
 
     std::string GameEditor::GetFontPath()

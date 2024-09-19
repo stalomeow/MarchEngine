@@ -1,8 +1,8 @@
 #include "Shader.h"
 #include "Debug.h"
 #include "StringUtility.h"
-#include "GfxManager.h"
-#include "Mesh.hpp"
+#include "GfxMesh.h"
+#include "GfxDevice.h"
 #include "PathHelper.h"
 #include <d3d12shader.h>    // Shader reflection.
 #include <algorithm>
@@ -56,7 +56,7 @@ namespace march
         // Create default include handler. (You can create your own...)
         //
         ComPtr<IDxcIncludeHandler> pIncludeHandler;
-        THROW_IF_FAILED(pUtils->CreateDefaultIncludeHandler(&pIncludeHandler));
+        GFX_HR(pUtils->CreateDefaultIncludeHandler(&pIncludeHandler));
 
         std::wstring wFilename = StringUtility::Utf8ToUtf16(filename);
         std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(entrypoint);
@@ -78,7 +78,7 @@ namespace march
         // Open source file.
         //
         ComPtr<IDxcBlobEncoding> pSource = nullptr;
-        THROW_IF_FAILED(pUtils->CreateBlob(program.data(), program.size(), DXC_CP_UTF8, &pSource));
+        GFX_HR(pUtils->CreateBlob(program.data(), program.size(), DXC_CP_UTF8, &pSource));
         DxcBuffer Source = {};
         Source.Ptr = pSource->GetBufferPointer();
         Source.Size = pSource->GetBufferSize();
@@ -88,7 +88,7 @@ namespace march
         // Compile it with specified arguments.
         //
         ComPtr<IDxcResult> pResults;
-        THROW_IF_FAILED(pCompiler->Compile(
+        GFX_HR(pCompiler->Compile(
             &Source,                // Source buffer.
             pszArgs,                // Array of pointers to arguments.
             _countof(pszArgs),      // Number of arguments.
@@ -100,7 +100,7 @@ namespace march
         // Print errors if present.
         //
         ComPtr<IDxcBlobUtf8> pErrors = nullptr;
-        THROW_IF_FAILED(pResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrors), nullptr));
+        GFX_HR(pResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrors), nullptr));
         // Note that d3dcompiler would return null if no errors or warnings are present.
         // IDxcCompiler3::Compile will always return an error buffer, but its length
         // will be zero if there are no warnings or errors.
@@ -113,7 +113,7 @@ namespace march
         // Quit if the compilation failed.
         //
         HRESULT hrStatus;
-        THROW_IF_FAILED(pResults->GetStatus(&hrStatus));
+        GFX_HR(pResults->GetStatus(&hrStatus));
         if (FAILED(hrStatus))
         {
             return false;
@@ -140,13 +140,13 @@ namespace march
         }
 
         ComPtr<IDxcBlobUtf16> pShaderName = nullptr;
-        THROW_IF_FAILED(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(pShader->ReleaseAndGetAddressOf()), &pShaderName));
+        GFX_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(pShader->ReleaseAndGetAddressOf()), &pShaderName));
 
         //
         // Get separate reflection.
         //
         ComPtr<IDxcBlob> pReflectionData;
-        THROW_IF_FAILED(pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&pReflectionData), nullptr));
+        GFX_HR(pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&pReflectionData), nullptr));
         if (pReflectionData != nullptr)
         {
             // Optionally, save reflection blob for later here.
@@ -163,12 +163,12 @@ namespace march
             // Use reflection interface here.
 
             D3D12_SHADER_DESC shaderDesc = {};
-            THROW_IF_FAILED(pReflection->GetDesc(&shaderDesc));
+            GFX_HR(pReflection->GetDesc(&shaderDesc));
 
             for (UINT i = 0; i < shaderDesc.BoundResources; i++)
             {
                 D3D12_SHADER_INPUT_BIND_DESC bindDesc = {};
-                THROW_IF_FAILED(pReflection->GetResourceBindingDesc(i, &bindDesc));
+                GFX_HR(pReflection->GetResourceBindingDesc(i, &bindDesc));
 
                 switch (bindDesc.Type)
                 {
@@ -176,7 +176,7 @@ namespace march
                 {
                     ID3D12ShaderReflectionConstantBuffer* cbMat = pReflection->GetConstantBufferByName(bindDesc.Name);
                     D3D12_SHADER_BUFFER_DESC cbDesc = {};
-                    THROW_IF_FAILED(cbMat->GetDesc(&cbDesc));
+                    GFX_HR(cbMat->GetDesc(&cbDesc));
 
                     ShaderPassConstantBuffer& cb = targetPass.ConstantBuffers[bindDesc.Name];
                     cb.ShaderRegister = bindDesc.BindPoint;
@@ -229,7 +229,7 @@ namespace march
                 {
                     ID3D12ShaderReflectionVariable* var = cbMat->GetVariableByIndex(i);
                     D3D12_SHADER_VARIABLE_DESC varDesc = {};
-                    THROW_IF_FAILED(var->GetDesc(&varDesc));
+                    GFX_HR(var->GetDesc(&varDesc));
 
                     ShaderPassMaterialProperty& prop = targetPass.MaterialProperties[varDesc.Name];
                     prop.Offset = varDesc.StartOffset;
@@ -388,9 +388,9 @@ namespace march
         {
             DEBUG_LOG_ERROR(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
         }
-        THROW_IF_FAILED(hr);
+        GFX_HR(hr);
 
-        THROW_IF_FAILED(GetGfxManager().GetDevice()->CreateRootSignature(0,
+        GFX_HR(GetGfxDevice()->GetD3D12Device()->CreateRootSignature(0,
             serializedRootSig->GetBufferPointer(), serializedRootSig->GetBufferSize(),
             IID_PPV_ARGS(&m_RootSignature)));
     }

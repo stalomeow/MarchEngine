@@ -192,7 +192,7 @@ namespace march
         device->CreateShaderResourceView(m_Resource, nullptr, GetSrvCpuDescriptorHandle());
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount = 1, uint32_t sampleQuality = 0)
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount, uint32_t sampleQuality)
         : GfxTexture(device), m_Width(width), m_Height(height)
     {
         D3D12_RESOURCE_FLAGS flags;

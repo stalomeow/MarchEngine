@@ -57,7 +57,7 @@ namespace march
     class GfxVertexBuffer : public GfxBuffer
     {
     public:
-        GfxVertexBuffer(GfxDevice* device, const std::wstring& name, UINT count)
+        GfxVertexBuffer(GfxDevice* device, const std::string& name, uint32_t count)
             : GfxBuffer(device, D3D12_HEAP_TYPE_DEFAULT, name, sizeof(T), count)
         {
         }
@@ -80,7 +80,7 @@ namespace march
         static_assert(sizeof(T) == 2 || sizeof(T) == 4, "T must be 2 or 4 bytes in size.");
 
     public:
-        GfxIndexBuffer(GfxDevice* device, const std::wstring& name, UINT count)
+        GfxIndexBuffer(GfxDevice* device, const std::string& name, uint32_t count)
             : GfxBuffer(device, D3D12_HEAP_TYPE_DEFAULT, name, sizeof(T), count)
         {
         }

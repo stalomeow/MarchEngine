@@ -19,7 +19,7 @@ namespace march
 
         // 调用 Resize 前，必须保证 GPU Idle
         void Resize(uint32_t width, uint32_t height);
-        void WaitForFrameLatency() const;
+        void Begin() const;
         void Present();
 
         ID3D12Resource* GetBackBuffer() const { return m_BackBuffers[m_CurrentBackBufferIndex].Get(); }

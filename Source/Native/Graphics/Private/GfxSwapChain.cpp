@@ -1,5 +1,6 @@
 #include "GfxSwapChain.h"
 #include "GfxCommandQueue.h"
+#include "GfxCommandList.h"
 #include "GfxDevice.h"
 #include "GfxExcept.h"
 
@@ -97,13 +98,21 @@ namespace march
         }
     }
 
-    void GfxSwapChain::WaitForFrameLatency() const
+    void GfxSwapChain::Begin() const
     {
         WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
+
+        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
+        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBuffer(),
+            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
     }
 
     void GfxSwapChain::Present()
     {
+        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
+        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBuffer(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
         GFX_HR(m_SwapChain->Present(0, 0)); // No vsync
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }

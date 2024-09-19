@@ -6,6 +6,8 @@
 #include <queue>
 #include <memory>
 
+#include "GfxBuffer.h"
+
 namespace march
 {
     class GfxDevice;

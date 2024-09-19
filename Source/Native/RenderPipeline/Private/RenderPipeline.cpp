@@ -1,7 +1,13 @@
 #include "RenderPipeline.h"
-#include "DxException.h"
-#include "GfxManager.h"
 #include "Debug.h"
+#include "GfxTexture.h"
+#include "GfxDevice.h"
+#include "GfxMesh.h"
+#include "GfxDescriptorHeap.h"
+#include "GfxExcept.h"
+#include "GfxBuffer.h"
+#include "GfxUploadMemoryAllocator.h"
+#include "GfxCommandList.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
@@ -15,20 +21,18 @@ namespace march
     RenderPipeline::RenderPipeline(int width, int height)
     {
         CheckMSAAQuailty();
-        m_RtvHandle = GetGfxManager().AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        m_DsvHandle = GetGfxManager().AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
         Resize(width, height);
     }
 
     void RenderPipeline::CheckMSAAQuailty()
     {
-        auto device = GetGfxManager().GetDevice();
+        auto device = GetGfxDevice()->GetD3D12Device();
 
         D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels = {};
-        msQualityLevels.Format = GetGfxManager().GetBackBufferFormat();
+        msQualityLevels.Format = GetGfxDevice()->GetBackBufferFormat();
         msQualityLevels.SampleCount = m_MSAASampleCount;
         msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-        THROW_IF_FAILED(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        GFX_HR(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
             &msQualityLevels, sizeof(msQualityLevels)));
 
         m_MSAAQuality = msQualityLevels.NumQualityLevels - 1;
@@ -36,74 +40,52 @@ namespace march
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView() const
     {
-        return m_RtvHandle.GetCpuHandle();
+        return m_ResolvedColorTarget->GetRtvDsvCpuDescriptorHandle();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorShaderResourceView() const
+    {
+        return m_ResolvedColorTarget->GetSrvCpuDescriptorHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetDepthStencilTargetView() const
     {
-        return m_DsvHandle.GetCpuHandle();
+        return m_DepthStencilTarget->GetRtvDsvCpuDescriptorHandle();
     }
 
     void RenderPipeline::SetEnableMSAA(bool value)
     {
         m_EnableMSAA = value;
 
-        GetGfxManager().WaitForGpuIdle();
+        GetGfxDevice()->WaitForIdle();
         CreateColorAndDepthStencilTarget(m_RenderTargetWidth, m_RenderTargetHeight);
     }
 
     void RenderPipeline::CreateColorAndDepthStencilTarget(int width, int height)
     {
-        auto device = GetGfxManager().GetDevice();
+        GfxDevice* device = GetGfxDevice();
 
-        D3D12_CLEAR_VALUE colorClearValue = {};
-        colorClearValue.Format = GetGfxManager().GetBackBufferFormat();
-        memcpy(colorClearValue.Color, DirectX::Colors::Black, sizeof(colorClearValue.Color));
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Tex2D(GetGfxManager().GetBackBufferFormat(), width, height, 1, 1,
-                m_EnableMSAA ? m_MSAASampleCount : 1,
-                m_EnableMSAA ? m_MSAAQuality : 0,
-                D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET),
-            D3D12_RESOURCE_STATE_COMMON,
-            &colorClearValue, IID_PPV_ARGS(&m_ColorTarget)));
-        m_LastColorTargetState = D3D12_RESOURCE_STATE_COMMON;
-        device->CreateRenderTargetView(m_ColorTarget.Get(), nullptr,
-            GetColorRenderTargetView());
+        m_ColorTarget = std::make_unique<GfxRenderTexture>(device, "ColorTarget",
+            device->GetBackBufferFormat(), width, height,
+            m_EnableMSAA ? m_MSAASampleCount : 1,
+            m_EnableMSAA ? m_MSAAQuality : 0);
 
-        D3D12_CLEAR_VALUE dsClearValue = {};
-        dsClearValue.Format = m_DepthStencilFormat;
-        dsClearValue.DepthStencil.Depth = 1.0f;
-        dsClearValue.DepthStencil.Stencil = 0;
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Tex2D(m_DepthStencilFormat, width, height, 1, 1,
-                m_EnableMSAA ? m_MSAASampleCount : 1,
-                m_EnableMSAA ? m_MSAAQuality : 0,
-                D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
-            D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &dsClearValue, IID_PPV_ARGS(&m_DepthStencilTarget)));
-        device->CreateDepthStencilView(m_DepthStencilTarget.Get(), nullptr,
-            GetDepthStencilTargetView());
+        m_DepthStencilTarget = std::make_unique<GfxRenderTexture>(device, "DepthStencilTarget",
+            m_DepthStencilFormat, width, height,
+            m_EnableMSAA ? m_MSAASampleCount : 1,
+            m_EnableMSAA ? m_MSAAQuality : 0);
     }
 
     void RenderPipeline::Resize(int width, int height)
     {
-        GetGfxManager().WaitForGpuIdle();
+        GetGfxDevice()->WaitForIdle();
 
         width = max(width, 10);
         height = max(height, 10);
-        CreateColorAndDepthStencilTarget(width, height);
 
-        THROW_IF_FAILED(GetGfxManager().GetDevice()->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Tex2D(GetGfxManager().GetBackBufferFormat(), width, height, 1, 1, 1, 0),
-            D3D12_RESOURCE_STATE_COMMON,
-            nullptr, IID_PPV_ARGS(&m_ResolvedColorTarget)));
-        m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_COMMON;
+        CreateColorAndDepthStencilTarget(width, height);
+        m_ResolvedColorTarget = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "ResolvedColorTarget",
+            GetGfxDevice()->GetBackBufferFormat(), width, height);
 
         m_RenderTargetWidth = width;
         m_RenderTargetHeight = height;
@@ -118,7 +100,7 @@ namespace march
         m_ScissorRect = { 0, 0, width, height };
     }
 
-    static void BindCbv(const DescriptorTable& table, const ShaderPass* pass,
+    static void BindCbv(const GfxDescriptorTable& table, const ShaderPass* pass,
         const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address)
     {
         auto it = pass->ConstantBuffers.find(name);
@@ -130,13 +112,13 @@ namespace march
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
         desc.BufferLocation = address;
-        desc.SizeInBytes = ConstantBuffer::GetAlignedSize(it->second.Size);
+        desc.SizeInBytes = GfxConstantBuffer::GetAlignedSize(it->second.Size);
 
-        auto device = GetGfxManager().GetDevice();
+        auto device = GetGfxDevice()->GetD3D12Device();
         device->CreateConstantBufferView(&desc, table.GetCpuHandle(it->second.DescriptorTableIndex));
     }
 
-    void RenderPipeline::Render(CommandBuffer* cmd)
+    void RenderPipeline::Render()
     {
         if (m_RenderObjects.empty())
         {
@@ -182,17 +164,17 @@ namespace march
             m_Lights[i]->FillLightData(passConsts.Lights[i]);
         }
 
-        auto cbPass = cmd->AllocateTempUploadHeap<PerPassConstants>(1, ConstantBuffer::Alignment);
-        cbPass.SetData(0, passConsts);
+        auto cbPass = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerPassConstants), 1, GfxConstantBuffer::Alignment);
+        *reinterpret_cast<PerPassConstants*>(cbPass.GetMappedData(0)) = passConsts;
 
-        auto cbPerObj = cmd->AllocateTempUploadHeap<PerObjConstants>(m_RenderObjects.size(), ConstantBuffer::Alignment);
+        auto cbPerObj = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerObjConstants), m_RenderObjects.size(), GfxConstantBuffer::Alignment);
         std::unordered_map<size_t, std::vector<int>> objs; // 优化 pso 切换
 
         for (int i = 0; i < m_RenderObjects.size(); i++)
         {
             PerObjConstants consts = {};
             consts.WorldMatrix = m_RenderObjects[i]->GetWorldMatrix();
-            cbPerObj.SetData(i, consts);
+            *reinterpret_cast<PerObjConstants*>(cbPerObj.GetMappedData(i)) = consts;
 
             if (m_RenderObjects[i]->Mat != nullptr)
             {
@@ -204,7 +186,7 @@ namespace march
 
         RenderPipelineDesc rpDesc = {};
         rpDesc.NumRenderTargets = 1;
-        rpDesc.RTVFormats[0] = GetGfxManager().GetBackBufferFormat();
+        rpDesc.RTVFormats[0] = GetGfxDevice()->GetBackBufferFormat();
         rpDesc.DSVFormat = m_DepthStencilFormat;
         rpDesc.Wireframe = m_IsWireframe;
 
@@ -219,23 +201,20 @@ namespace march
             rpDesc.SampleDesc.Quality = 0;
         }
 
-        // Indicate a state transition on the resource usage.
-        if (m_LastColorTargetState != D3D12_RESOURCE_STATE_RENDER_TARGET)
-        {
-            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
-                m_LastColorTargetState, D3D12_RESOURCE_STATE_RENDER_TARGET));
-        }
+        GfxCommandList* cmd = GetGfxDevice()->GetGraphicsCommandList();
+
+        cmd->ResourceBarrier(m_ColorTarget.get(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
         // Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-        cmd->GetList()->RSSetViewports(1, &m_Viewport);
-        cmd->GetList()->RSSetScissorRects(1, &m_ScissorRect);
+        cmd->GetD3D12CommandList()->RSSetViewports(1, &m_Viewport);
+        cmd->GetD3D12CommandList()->RSSetScissorRects(1, &m_ScissorRect);
 
         // Clear the back buffer and depth buffer.
-        cmd->GetList()->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
-        cmd->GetList()->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+        cmd->GetD3D12CommandList()->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
+        cmd->GetD3D12CommandList()->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
         // Specify the buffers we are going to render to.
-        cmd->GetList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
+        cmd->GetD3D12CommandList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
 
         for (auto& it : objs)
         {
@@ -255,45 +234,45 @@ namespace march
                 if (isFirst)
                 {
                     ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Desc, rpDesc);
-                    cmd->GetList()->SetPipelineState(pso);
-                    cmd->GetList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
+                    cmd->GetD3D12CommandList()->SetPipelineState(pso);
+                    cmd->GetD3D12CommandList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
                 }
 
                 isFirst = false;
 
                 if (pass->GetCbvSrvUavCount() > 0)
                 {
-                    DescriptorTable viewTable = cmd->AllocateTempViewDescriptorTable(pass->GetCbvSrvUavCount());
+                    GfxDescriptorTable viewTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, pass->GetCbvSrvUavCount());
 
                     for (auto& kv : pass->TextureProperties)
                     {
-                        Texture* texture = nullptr;
+                        GfxTexture* texture = nullptr;
                         if (obj->Mat->GetTexture(kv.first, &texture))
                         {
-                            viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetTextureCpuDescriptorHandle());
+                            viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
                         }
                     }
 
-                    BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress());
+                    BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress(0));
                     BindCbv(viewTable, pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
 
-                    ConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(pass);
+                    GfxConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(pass);
                     if (cbMat != nullptr)
                     {
-                        BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress());
+                        BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress(0));
                     }
 
-                    cmd->GetList()->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(),
+                    cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(),
                         viewTable.GetGpuHandle(0));
                 }
 
                 if (pass->GetSamplerCount() > 0)
                 {
-                    DescriptorTable samplerTable = cmd->AllocateTempSamplerDescriptorTable(pass->GetSamplerCount());
+                    GfxDescriptorTable samplerTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::Sampler, pass->GetSamplerCount());
 
                     for (auto& kv : pass->TextureProperties)
                     {
-                        Texture* texture = nullptr;
+                        GfxTexture* texture = nullptr;
                         if (obj->Mat->GetTexture(kv.first, &texture))
                         {
                             if (kv.second.HasSampler)
@@ -303,49 +282,31 @@ namespace march
                         }
                     }
 
-                    cmd->GetList()->SetGraphicsRootDescriptorTable(pass->GetSamplerRootParamIndex(),
+                    cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetSamplerRootParamIndex(),
                         samplerTable.GetGpuHandle(0));
                 }
 
-                obj->Mesh->Draw(cmd);
+                obj->Mesh->Draw();
             }
         }
 
         if (m_EnableMSAA)
         {
-            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
-                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE));
+            cmd->ResourceBarrier(m_ColorTarget.get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+            cmd->ResourceBarrier(m_ResolvedColorTarget.get(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
+            cmd->FlushResourceBarriers();
 
-            if (m_LastResolvedColorTargetState != D3D12_RESOURCE_STATE_RESOLVE_DEST)
-            {
-                cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
-                    m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_RESOLVE_DEST));
-            }
-
-            cmd->GetList()->ResolveSubresource(m_ResolvedColorTarget.Get(), 0, m_ColorTarget.Get(), 0, GetGfxManager().GetBackBufferFormat());
-            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
-                D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
-
-            m_LastColorTargetState = D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-            m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_GENERIC_READ;
+            cmd->GetD3D12CommandList()->ResolveSubresource(m_ResolvedColorTarget->GetD3D12Resource(), 0, m_ColorTarget->GetD3D12Resource(), 0, GetGfxDevice()->GetBackBufferFormat());
         }
         else
         {
-            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ColorTarget.Get(),
-                D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE));
+            cmd->ResourceBarrier(m_ColorTarget.get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+            cmd->ResourceBarrier(m_ResolvedColorTarget.get(), D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd->FlushResourceBarriers();
 
-            if (m_LastResolvedColorTargetState != D3D12_RESOURCE_STATE_COPY_DEST)
-            {
-                cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
-                    m_LastResolvedColorTargetState, D3D12_RESOURCE_STATE_COPY_DEST));
-            }
-
-            cmd->GetList()->CopyResource(m_ResolvedColorTarget.Get(), m_ColorTarget.Get());
-            cmd->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_ResolvedColorTarget.Get(),
-                D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
-
-            m_LastColorTargetState = D3D12_RESOURCE_STATE_COPY_SOURCE;
-            m_LastResolvedColorTargetState = D3D12_RESOURCE_STATE_GENERIC_READ;
+            cmd->GetD3D12CommandList()->CopyResource(m_ResolvedColorTarget->GetD3D12Resource(), m_ColorTarget->GetD3D12Resource());
         }
+
+        cmd->ResourceBarrier(m_ResolvedColorTarget.get(), D3D12_RESOURCE_STATE_GENERIC_READ, true);
     }
 }

@@ -1,5 +1,4 @@
 #include "WinApplication.h"
-#include "GfxManager.h"
 #include "GameEditor.h"
 
 using namespace march;

@@ -1,5 +1,4 @@
 #include "WinApplication.h"
-#include "DxException.h"
 #include <assert.h>
 #include <WindowsX.h>
 

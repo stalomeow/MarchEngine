@@ -1,7 +1,7 @@
 #pragma once
 
-#include "DxException.h"
-#include "Texture.h"
+#include "GfxExcept.h"
+#include "GfxTexture.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <vector>
@@ -38,15 +38,15 @@ namespace march
         DirectX::XMFLOAT4 DefaultVector;
         ShaderDefaultTexture DefaultTexture;
 
-        Texture* GetDefaultTexture() const
+        GfxTexture* GetDefaultTexture() const
         {
             switch (DefaultTexture)
             {
             case march::ShaderDefaultTexture::Black:
-                return Texture::GetDefaultBlack();
+                return GfxTexture::GetDefaultBlack();
 
             case march::ShaderDefaultTexture::White:
-                return Texture::GetDefaultWhite();
+                return GfxTexture::GetDefaultWhite();
 
             default:
                 return nullptr;
@@ -258,7 +258,7 @@ namespace march
         {
             if (s_Utils == nullptr)
             {
-                THROW_IF_FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_Utils)));
+                GFX_HR(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_Utils)));
             }
 
             return s_Utils.Get();
@@ -268,7 +268,7 @@ namespace march
         {
             if (s_Compiler == nullptr)
             {
-                THROW_IF_FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_Compiler)));
+                GFX_HR(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_Compiler)));
             }
 
             return s_Compiler.Get();

@@ -1,39 +1,40 @@
-#include "Texture.h"
+#include "GfxTexture.h"
+#include "GfxDevice.h"
 #include "InteropServices.h"
 
 using namespace march;
 
-NATIVE_EXPORT(Texture*) Texture_New()
+NATIVE_EXPORT(GfxTexture*) Texture_New()
 {
-    return new Texture();
+    return new GfxTexture2D(GetGfxDevice());
 }
 
-NATIVE_EXPORT(void) Texture_Delete(Texture* pTexture)
+NATIVE_EXPORT(void) Texture_Delete(GfxTexture* pTexture)
 {
     delete pTexture;
 }
 
-NATIVE_EXPORT(void) Texture_SetDDSData(Texture* pTexture, CSharpString name, const void* pSourceDDS, CSharpInt size)
+NATIVE_EXPORT(void) Texture_SetDDSData(GfxTexture* pTexture, CSharpString name, const void* pSourceDDS, CSharpInt size)
 {
-    pTexture->SetDDSData(CSharpString_ToUtf16(name), pSourceDDS, static_cast<size_t>(size));
+    reinterpret_cast<GfxTexture2D*>(pTexture)->LoadFromDDS(CSharpString_ToUtf8(name), pSourceDDS, static_cast<size_t>(size));
 }
 
-NATIVE_EXPORT(void) Texture_SetFilterMode(Texture* pTexture, CSharpInt mode)
+NATIVE_EXPORT(void) Texture_SetFilterMode(GfxTexture* pTexture, CSharpInt mode)
 {
-    pTexture->SetFilterMode(static_cast<FilterMode>(mode));
+    pTexture->SetFilterMode(static_cast<GfxFilterMode>(mode));
 }
 
-NATIVE_EXPORT(void) Texture_SetWrapMode(Texture* pTexture, CSharpInt mode)
+NATIVE_EXPORT(void) Texture_SetWrapMode(GfxTexture* pTexture, CSharpInt mode)
 {
-    pTexture->SetWrapMode(static_cast<WrapMode>(mode));
+    pTexture->SetWrapMode(static_cast<GfxWrapMode>(mode));
 }
 
-NATIVE_EXPORT(CSharpInt) Texture_GetFilterMode(Texture* pTexture)
+NATIVE_EXPORT(CSharpInt) Texture_GetFilterMode(GfxTexture* pTexture)
 {
     return static_cast<CSharpInt>(pTexture->GetFilterMode());
 }
 
-NATIVE_EXPORT(CSharpInt) Texture_GetWrapMode(Texture* pTexture)
+NATIVE_EXPORT(CSharpInt) Texture_GetWrapMode(GfxTexture* pTexture)
 {
     return static_cast<CSharpInt>(pTexture->GetWrapMode());
 }

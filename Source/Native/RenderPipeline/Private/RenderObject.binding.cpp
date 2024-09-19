@@ -1,5 +1,6 @@
 #include "RenderObject.h"
 #include "InteropServices.h"
+#include "GfxMesh.h"
 
 using namespace march;
 
@@ -28,16 +29,16 @@ NATIVE_EXPORT(void) RenderObject_SetScale(RenderObject* pObject, CSharpVector3 v
     pObject->Scale = ToXMFLOAT3(value);
 }
 
-NATIVE_EXPORT(Mesh*) RenderObject_GetMesh(RenderObject* pObject)
+NATIVE_EXPORT(GfxMesh*) RenderObject_GetMesh(RenderObject* pObject)
 {
     return pObject->Mesh;
 }
 
-NATIVE_EXPORT(void) RenderObject_SetMesh(RenderObject* pObject, Mesh* pMesh)
+NATIVE_EXPORT(void) RenderObject_SetMesh(RenderObject* pObject, GfxMesh* pMesh)
 {
     pObject->Mesh = pMesh;
-    pObject->Desc.InputLayout = pMesh->VertexInputLayout();
-    pObject->Desc.PrimitiveTopologyType = pMesh->TopologyType();
+    pObject->Desc.InputLayout = pMesh->GetVertexInputLayout();
+    pObject->Desc.PrimitiveTopologyType = pMesh->GetTopologyType();
 }
 
 NATIVE_EXPORT(CSharpBool) RenderObject_GetIsActive(RenderObject* pObject)

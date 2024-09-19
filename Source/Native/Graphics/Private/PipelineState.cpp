@@ -1,5 +1,6 @@
 #include "PipelineState.h"
-#include "GfxManager.h"
+#include "GfxDevice.h"
+#include "GfxExcept.h"
 #include "Debug.h"
 #include <unordered_map>
 #include <wrl.h>
@@ -94,8 +95,8 @@ namespace march
         psoDesc.SampleDesc = pipelineDesc.SampleDesc;
 
         ComPtr<ID3D12PipelineState>& pso = g_PsoMap[hash];
-        auto device = GetGfxManager().GetDevice();
-        THROW_IF_FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)));
+        auto device = GetGfxDevice()->GetD3D12Device();
+        GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)));
         DEBUG_LOG_INFO("Create new Graphics PSO");
         return pso.Get();
     }
