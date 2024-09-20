@@ -573,7 +573,7 @@ namespace march
             std::wstring fpsStr = std::to_wstring(fps);
             std::wstring mspfStr = std::to_wstring(mspf);
 
-            GetApp().SetTitle(std::wstring(L"DX12 Demo") +
+            GetApp().SetTitle(std::wstring(L"March Engine") +
                 L"    fps: " + fpsStr +
                 L"   mspf: " + mspfStr);
 
