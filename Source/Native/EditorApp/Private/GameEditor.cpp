@@ -45,6 +45,12 @@ namespace march
         auto [width, height] = GetApp().GetClientWidthAndHeight();
 
         GfxDeviceDesc desc{};
+
+        if (std::count(args.begin(), args.end(), "-enable-d3d12-debug-layer") > 0)
+        {
+            desc.EnableDebugLayer = true;
+        }
+
         desc.WindowHandle = GetApp().GetHWND();
         desc.WindowWidth = width;
         desc.WindowHeight = height;
@@ -285,8 +291,8 @@ namespace march
 
         const uint64_t currentFrame = GetApp().GetFrameCount();
         const UINT dynamicCapacity = allocator->GetDynamicDescriptorCapacity();
-        const UINT staticCapacity = allocator->GetStaticDescriptorCount();
-        const UINT capacity = dynamicCapacity + staticCapacity;
+        const UINT staticCount = allocator->GetStaticDescriptorCount();
+        const UINT capacity = dynamicCapacity + staticCount;
         const float columnWidth = width / static_cast<float>(capacity);
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -323,7 +329,7 @@ namespace march
 
         float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
         std::string label1 = StringUtility::Format("Dynamic Capacity: %d / %d (%.2f%% Used)", dynamicDescriptorCount, static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
-        std::string label2 = StringUtility::Format("Static Capacity: %d", staticCapacity);
+        std::string label2 = StringUtility::Format("Static Count: %d", staticCount);
 
         float startX = ImGui::GetCursorPosX();
         ImGui::TextUnformatted(label1.c_str());

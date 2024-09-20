@@ -26,6 +26,7 @@ namespace march
 
     struct GfxDeviceDesc
     {
+        bool EnableDebugLayer;
         HWND WindowHandle;
         uint32_t WindowWidth;
         uint32_t WindowHeight;

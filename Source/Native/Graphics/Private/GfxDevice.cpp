@@ -24,12 +24,13 @@ namespace march
         : m_DescriptorAllocators{}, m_ReleaseQueue{}
     {
         // 开启调试层
-#if defined(DEBUG) || defined(_DEBUG)
-        ComPtr<ID3D12Debug> debugController;
-        GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
-        debugController->EnableDebugLayer();
-        DEBUG_LOG_INFO("D3D12 Debug Layer Enabled");
-#endif
+        if (desc.EnableDebugLayer)
+        {
+            ComPtr<ID3D12Debug> debugController;
+            GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+            debugController->EnableDebugLayer();
+            DEBUG_LOG_INFO("D3D12 Debug Layer Enabled");
+        }
 
         GFX_HR(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
 
@@ -44,17 +45,32 @@ namespace march
             GFX_HR(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
         }
 
-#pragma warning( disable : 6387 )
         // 获取 D3D12 输出的调试信息
-        DWORD callbackCookie = 0;
-        GFX_HR(m_Device->QueryInterface(IID_PPV_ARGS(&m_DebugInfoQueue)));
-        GFX_HR(m_DebugInfoQueue->RegisterMessageCallback(D3D12DebugMessageCallback,
-            D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &callbackCookie));
+        if (desc.EnableDebugLayer)
+        {
+            if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&m_DebugInfoQueue))))
+            {
+                DWORD callbackCookie = 0;
+
+#pragma warning( disable : 6387 )
+                GFX_HR(m_DebugInfoQueue->RegisterMessageCallback(D3D12DebugMessageCallback,
+                    D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &callbackCookie));
 #pragma warning( default : 6387 )
 
-        if (callbackCookie == 0)
+                if (callbackCookie == 0)
+                {
+                    DEBUG_LOG_WARN("Failed to register D3D12 debug message callback");
+                }
+            }
+            else
+            {
+                m_DebugInfoQueue = nullptr;
+                DEBUG_LOG_WARN("Failed to get D3D12 debug info queue");
+            }
+        }
+        else
         {
-            DEBUG_LOG_WARN("Failed to register D3D12 debug message callback");
+            m_DebugInfoQueue = nullptr;
         }
 
         m_GraphicsCommandQueue = std::make_unique<GfxCommandQueue>(this, GfxCommandListType::Graphics, "GraphicsCommandQueue");
