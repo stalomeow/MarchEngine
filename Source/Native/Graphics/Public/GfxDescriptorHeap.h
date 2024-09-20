@@ -137,6 +137,9 @@ namespace march
         uint32_t GetDynamicDescriptorCapacity() const { return m_DynamicCapacity; }
         ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_Heap->GetD3D12DescriptorHeap(); }
 
+        uint32_t GetDynamicFront() const { return m_DynamicFront; }
+        uint32_t GetDynamicRear() const { return m_DynamicRear; }
+
     private:
         std::unique_ptr<GfxDescriptorHeap> m_Heap;
         std::queue<std::pair<uint64_t, uint32_t>> m_ReleaseQueue;

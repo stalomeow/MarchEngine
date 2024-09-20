@@ -260,9 +260,9 @@ namespace march
         if (m_ShowDescriptorHeapWindow)
         {
             ImGui::Begin("DescriptorTable Profiler", &m_ShowDescriptorHeapWindow);
-            // DrawDebugDescriptorTableAllocator("CBV-SRV-UAV Allocator", Getgfxde().GetViewDescriptorTableAllocator());
+            DrawDebugDescriptorTableAllocator("CBV-SRV-UAV Allocator", GetGfxDevice()->GetViewDescriptorTableAllocator());
             ImGui::Spacing();
-            // DrawDebugDescriptorTableAllocator("Sampler Allocator", GetGfxManager().GetSamplerDescriptorTableAllocator());
+            DrawDebugDescriptorTableAllocator("Sampler Allocator", GetGfxDevice()->GetSamplerDescriptorTableAllocator());
             ImGui::End();
         }
 
@@ -274,15 +274,10 @@ namespace march
 
     void GameEditor::DrawDebugDescriptorTableAllocator(const std::string& name, GfxDescriptorTableAllocator* allocator)
     {
-        if (!ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
+        if (!ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
             return;
         }
-
-        int minDescriptorCount = INT_MAX;
-        int maxDescriptorCount = INT_MIN;
-        int maxLifetime = INT_MIN;
-        int dynamicDescriptorCount = 0;
 
         const ImVec2 p = ImGui::GetCursorScreenPos();
         const float width = ImGui::GetContentRegionAvail().x;
@@ -300,46 +295,42 @@ namespace march
         drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + dynamicCapacity * columnWidth, p.y + height), IM_COL32(0, 255, 0, 80));
         drawList->AddRectFilled(ImVec2(p.x + dynamicCapacity * columnWidth, p.y), ImVec2(p.x + width, p.y + height), IM_COL32(192, 192, 192, 80));
 
-        //for (const auto& kv : allocator->GetDynamicSegments())
-        //{
-        //    minDescriptorCount = min(minDescriptorCount, static_cast<int>(kv.second.Count));
-        //    maxDescriptorCount = max(maxDescriptorCount, static_cast<int>(kv.second.Count));
-        //    maxLifetime = max(maxLifetime, static_cast<int>(currentFrame - kv.second.CreatedFrame));
-        //    dynamicDescriptorCount += kv.second.Count;
+        uint32_t front = allocator->GetDynamicFront();
+        uint32_t rear = allocator->GetDynamicRear();
 
-        //    float x0 = p.x + kv.first * columnWidth; // kv.first 是 offset
-        //    float x1 = x0 + kv.second.Count * columnWidth;
+        if (front < rear)
+        {
+            float x0 = p.x + front * columnWidth;
+            float x1 = p.x + rear * columnWidth;
 
-        //    ImU32 color = kv.second.CanRelease ? IM_COL32(0, 0, 255, 255) : IM_COL32(255, 0, 0, 255);
-        //    drawList->AddRectFilled(ImVec2(x0, p.y), ImVec2(x1, p.y + height), color);
-        //}
+            ImU32 color = IM_COL32(255, 0, 0, 255);
+            drawList->AddRectFilled(ImVec2(x0, p.y), ImVec2(x1, p.y + height), color);
+        }
+        else if (front > rear)
+        {
+            float x0 = p.x + rear * columnWidth;
+            float x1 = p.x + front * columnWidth;
+
+            ImU32 color = IM_COL32(255, 0, 0, 255);
+            drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(x0, p.y + height), color);
+            drawList->AddRectFilled(ImVec2(x1, p.y), ImVec2(p.x + width, p.y + height), color);
+        }
+
+        int dynamicDescriptorCount = static_cast<int>((rear + dynamicCapacity - front) % dynamicCapacity);
 
         // 让 ImGui 知道这个区域是有内容的
-        /*ImGui::Dummy(ImVec2(width, height));
+        ImGui::Dummy(ImVec2(width, height));
 
-        if (ImGui::BeginTable("DescriptorTableAllocatorInfo", 2, ImGuiTableFlags_Borders))
-        {
-            ImGui::TableSetupColumn("Segment");
-            ImGui::TableSetupColumn("Capacity");
-            ImGui::TableHeadersRow();
+        float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
+        std::string label1 = StringUtility::Format("Dynamic Capacity: %d / %d (%.2f%% Used)", dynamicDescriptorCount, static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
+        std::string label2 = StringUtility::Format("Static Capacity: %d", staticCapacity);
 
-            ImGui::TableNextColumn();
-            const UINT segmentCount = allocator->GetDynamicSegments().size();
-            ImGui::Text("Count: %d", static_cast<int>(segmentCount));
-            if (segmentCount > 0)
-            {
-                ImGui::Text("Min Size: %d Descriptors", minDescriptorCount);
-                ImGui::Text("Max Size: %d Descriptors", maxDescriptorCount);
-                ImGui::Text("Max Lifetime: %d Frames", maxLifetime);
-            }
-
-            ImGui::TableNextColumn();
-            float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
-            ImGui::Text("Dynamic: %d (%.2f%% Used)", static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
-            ImGui::Text("Static: %d", static_cast<int>(staticCapacity));
-
-            ImGui::EndTable();
-        }*/
+        float startX = ImGui::GetCursorPosX();
+        ImGui::TextUnformatted(label1.c_str());
+        ImGui::SameLine();
+        ImVec2 label2Size = ImGui::CalcTextSize(label2.c_str());
+        ImGui::SetCursorPosX(startX + width - label2Size.x);
+        ImGui::TextUnformatted(label2.c_str());
 
         ImGui::TreePop();
     }

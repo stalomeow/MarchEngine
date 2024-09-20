@@ -45,6 +45,8 @@ namespace march
         ID3D12Device4* GetD3D12Device() const { return m_Device.Get(); }
         GfxCommandQueue* GetGraphicsCommandQueue() const { return m_GraphicsCommandQueue.get(); }
         GfxCommandList* GetGraphicsCommandList() const { return m_GraphicsCommandList.get(); }
+        GfxDescriptorTableAllocator* GetViewDescriptorTableAllocator() const { return m_ViewDescriptorTableAllocator.get(); }
+        GfxDescriptorTableAllocator* GetSamplerDescriptorTableAllocator() const { return m_SamplerDescriptorTableAllocator.get(); }
 
         void BeginFrame();
         void EndFrame();
