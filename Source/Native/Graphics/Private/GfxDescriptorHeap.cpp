@@ -105,7 +105,7 @@ namespace march
 
     GfxDescriptorHandle GfxDescriptorAllocator::Allocate()
     {
-        if (!m_ReleaseQueue.empty() && m_Device->GetGraphicsFence()->IsCompleted(m_ReleaseQueue.front().first))
+        if (!m_ReleaseQueue.empty() && m_Device->IsGraphicsFenceCompleted(m_ReleaseQueue.front().first))
         {
             GfxDescriptorHandle result = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
@@ -176,9 +176,9 @@ namespace march
 
     void GfxDescriptorTableAllocator::BeginFrame()
     {
-        GfxFence* fence = m_Heap->GetDevice()->GetGraphicsFence();
+        GfxDevice* device = m_Heap->GetDevice();
 
-        while (!m_ReleaseQueue.empty() && fence->IsCompleted(m_ReleaseQueue.front().first))
+        while (!m_ReleaseQueue.empty() && device->IsGraphicsFenceCompleted(m_ReleaseQueue.front().first))
         {
             m_DynamicFront = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();

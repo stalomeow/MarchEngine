@@ -519,7 +519,7 @@ namespace march
         m_RenderPipeline->Render();
 
         // Render Dear ImGui graphics
-        GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList()->OMSetRenderTargets(1, &GetGfxDevice()->GetBackBufferRtv(), false, nullptr);
+        GetGfxDevice()->SetBackBufferAsRenderTarget();
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList());
 
         GetGfxDevice()->EndFrame();

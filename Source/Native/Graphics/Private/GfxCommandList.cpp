@@ -47,7 +47,7 @@ namespace march
         {
             ID3D12Resource* pRes = resource->GetD3D12Resource();
             D3D12_RESOURCE_STATES stateBefore = resource->GetState();
-            m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(pRes, stateBefore, stateAfter));
+            AddResourceBarrier(CD3DX12_RESOURCE_BARRIER::Transition(pRes, stateBefore, stateAfter));
             resource->SetState(stateAfter);
         }
 
@@ -55,6 +55,11 @@ namespace march
         {
             FlushResourceBarriers();
         }
+    }
+
+    void GfxCommandList::AddResourceBarrier(const CD3DX12_RESOURCE_BARRIER& resourceBarrier)
+    {
+        m_ResourceBarriers.push_back(resourceBarrier);
     }
 
     void GfxCommandList::FlushResourceBarriers()
@@ -129,7 +134,7 @@ namespace march
     {
         ID3D12CommandAllocator* result;
 
-        if (!m_ReleaseQueue.empty() && m_Device->GetGraphicsFence()->IsCompleted(m_ReleaseQueue.front().first))
+        if (!m_ReleaseQueue.empty() && m_Device->IsGraphicsFenceCompleted(m_ReleaseQueue.front().first))
         {
             result = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();

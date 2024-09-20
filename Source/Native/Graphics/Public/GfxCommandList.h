@@ -31,6 +31,7 @@ namespace march
         void End();
 
         void ResourceBarrier(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter, bool immediate = false);
+        void AddResourceBarrier(const CD3DX12_RESOURCE_BARRIER& resourceBarrier);
         void FlushResourceBarriers();
 
         GfxDevice* GetDevice() const { return m_Device; }

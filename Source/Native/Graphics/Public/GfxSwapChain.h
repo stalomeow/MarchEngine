@@ -10,6 +10,7 @@
 namespace march
 {
     class GfxDevice;
+    class GfxCommandList;
 
     class GfxSwapChain
     {
@@ -22,17 +23,12 @@ namespace march
         void WaitForFrameLatency() const;
         void Present();
 
-        // 需要使用 CommandList
-        void PrepareBackBuffer();
-
-        // 需要使用 CommandList
-        void PreparePresent();
-
-        ID3D12Resource* GetBackBuffer() const { return m_BackBuffers[m_CurrentBackBufferIndex].Get(); }
-        D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferRtv() const { return m_BackBufferRtvHandles[m_CurrentBackBufferIndex].GetCpuHandle(); }
+        void SetRenderTarget(GfxCommandList* commandList);
+        void PreparePresent(GfxCommandList* commandList);
 
     private:
         void CreateBackBuffers();
+        void DoBackBufferTransition(GfxCommandList* commandList, D3D12_RESOURCE_STATES targetState, bool flush);
 
     public:
         static const DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -46,6 +42,7 @@ namespace march
         HANDLE m_FrameLatencyHandle;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> m_BackBuffers[BackBufferCount];
+        D3D12_RESOURCE_STATES m_BackBufferStates[BackBufferCount];
         GfxDescriptorHandle m_BackBufferRtvHandles[BackBufferCount];
         uint32_t m_CurrentBackBufferIndex;
     };

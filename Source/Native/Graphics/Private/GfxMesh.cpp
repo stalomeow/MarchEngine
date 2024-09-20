@@ -42,7 +42,7 @@ namespace march
 
     protected:
         void UpdateBufferIfDirty();
-        static void UploadToBuffer(GfxBuffer* dest, const void* pData, uint32_t size);
+        void UploadToBuffer(GfxBuffer* dest, const void* pData, uint32_t size);
 
     private:
         D3D12_PRIMITIVE_TOPOLOGY m_Topology;
@@ -125,8 +125,8 @@ namespace march
         subResData.SlicePitch = static_cast<LONG_PTR>(size);
 
         // TODO remove static
-        GfxUploadMemory m = GetGfxDevice()->AllocateTransientUploadMemory(size);
-        GfxCommandList* cmdList = GetGfxDevice()->GetGraphicsCommandList();
+        GfxUploadMemory m = GetDevice()->AllocateTransientUploadMemory(size);
+        GfxCommandList* cmdList = GetDevice()->GetGraphicsCommandList();
 
         cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_COPY_DEST, true);
         UpdateSubresources(cmdList->GetD3D12CommandList(), dest->GetD3D12Resource(),

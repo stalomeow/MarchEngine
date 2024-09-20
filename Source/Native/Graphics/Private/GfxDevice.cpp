@@ -28,6 +28,7 @@ namespace march
         ComPtr<ID3D12Debug> debugController;
         GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
         debugController->EnableDebugLayer();
+        DEBUG_LOG_INFO("D3D12 Debug Layer Enabled");
 #endif
 
         GFX_HR(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
@@ -105,15 +106,13 @@ namespace march
             m_ViewDescriptorTableAllocator->GetD3D12DescriptorHeap(),
             m_SamplerDescriptorTableAllocator->GetD3D12DescriptorHeap(),
         };
-        m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get(), static_cast<uint32_t>(std::size(descriptorHeaps)), descriptorHeaps);
-
-        m_SwapChain->PrepareBackBuffer();
+        m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get(),
+            static_cast<uint32_t>(std::size(descriptorHeaps)), descriptorHeaps);
     }
 
     void GfxDevice::EndFrame()
     {
-        m_SwapChain->PreparePresent();
-
+        m_SwapChain->PreparePresent(m_GraphicsCommandList.get());
         m_GraphicsCommandList->End();
         m_GraphicsCommandQueue->ExecuteCommandList(m_GraphicsCommandList.get());
 
@@ -146,16 +145,21 @@ namespace march
             m_ReleaseQueue.pop();
 
             // 释放资源较多时，太卡了！
-            //wchar_t name[256];
-            //UINT size = sizeof(name);
-            //if (SUCCEEDED(object->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
-            //{
-            //    DEBUG_LOG_INFO(L"Release D3D12Object %s", name);
-            //}
+            wchar_t name[256];
+            UINT size = sizeof(name);
+            if (SUCCEEDED(object->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
+            {
+                DEBUG_LOG_INFO(L"Release D3D12Object %s", name);
+            }
 
             // 保证彻底释放
             while (object->Release() > 0) {}
         }
+    }
+
+    bool GfxDevice::IsGraphicsFenceCompleted(uint64_t fenceValue)
+    {
+        return m_GraphicsFence->IsCompleted(fenceValue);
     }
 
     void GfxDevice::WaitForIdle()
@@ -170,14 +174,9 @@ namespace march
         m_SwapChain->Resize(width, height);
     }
 
-    ID3D12Resource* GfxDevice::GetBackBuffer() const
+    void GfxDevice::SetBackBufferAsRenderTarget()
     {
-        return m_SwapChain->GetBackBuffer();
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxDevice::GetBackBufferRtv() const
-    {
-        return m_SwapChain->GetBackBufferRtv();
+        m_SwapChain->SetRenderTarget(m_GraphicsCommandList.get());
     }
 
     DXGI_FORMAT GfxDevice::GetBackBufferFormat() const

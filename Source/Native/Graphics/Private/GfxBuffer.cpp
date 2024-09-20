@@ -142,9 +142,7 @@ namespace march
 
         if (m_UsedPages.empty() || offset + totalSize > PageSize)
         {
-            GfxFence* fence = m_Device->GetGraphicsFence();
-
-            if (!m_ReleaseQueue.empty() && fence->IsCompleted(m_ReleaseQueue.front().first))
+            if (!m_ReleaseQueue.empty() && m_Device->IsGraphicsFenceCompleted(m_ReleaseQueue.front().first))
             {
                 m_UsedPages.emplace_back(std::move(m_ReleaseQueue.front().second));
                 m_ReleaseQueue.pop();

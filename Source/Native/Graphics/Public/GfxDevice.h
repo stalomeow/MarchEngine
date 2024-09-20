@@ -44,17 +44,16 @@ namespace march
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3D12Device() const { return m_Device.Get(); }
         GfxCommandQueue* GetGraphicsCommandQueue() const { return m_GraphicsCommandQueue.get(); }
-        GfxFence* GetGraphicsFence() const { return m_GraphicsFence.get(); }
         GfxCommandList* GetGraphicsCommandList() const { return m_GraphicsCommandList.get(); }
 
         void BeginFrame();
         void EndFrame();
         void ReleaseD3D12Object(ID3D12Object* object);
+        bool IsGraphicsFenceCompleted(uint64_t fenceValue);
         void WaitForIdle();
 
         void ResizeBackBuffer(uint32_t width, uint32_t height);
-        ID3D12Resource* GetBackBuffer() const;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetBackBufferRtv() const;
+        void SetBackBufferAsRenderTarget();
         DXGI_FORMAT GetBackBufferFormat() const;
         uint32_t GetMaxFrameLatency() const;
 

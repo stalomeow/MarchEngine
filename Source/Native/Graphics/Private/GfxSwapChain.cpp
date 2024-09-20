@@ -9,7 +9,7 @@ using namespace Microsoft::WRL;
 namespace march
 {
     GfxSwapChain::GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height)
-        : m_Device(device), m_BackBuffers{}, m_BackBufferRtvHandles{}, m_CurrentBackBufferIndex(0)
+        : m_Device(device), m_BackBuffers{}, m_BackBufferStates{}, m_BackBufferRtvHandles{}, m_CurrentBackBufferIndex(0)
     {
         // https://github.com/microsoft/DirectXTK/wiki/Line-drawing-and-anti-aliasing#technical-note
         // The ability to create an MSAA DXGI swap chain is only supported for the older "bit-blt" style presentation modes,
@@ -48,6 +48,8 @@ namespace march
         GFX_HR(m_SwapChain.As(&swapChain2));
         GFX_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(MaxFrameLatency)));
         m_FrameLatencyHandle = swapChain2->GetFrameLatencyWaitableObject();
+
+        // D3D12_RESOURCE_STATE_PRESENT = 0，所以 m_BackBufferStates 清零即可
 
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
@@ -105,23 +107,37 @@ namespace march
 
     void GfxSwapChain::Present()
     {
-        // D3D12_RESOURCE_STATE_PRESENT = 0，不用特地过渡过去
-
         GFX_HR(m_SwapChain->Present(0, 0)); // No vsync
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }
 
-    void GfxSwapChain::PrepareBackBuffer()
+    void GfxSwapChain::SetRenderTarget(GfxCommandList* commandList)
     {
-        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
-        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_BackBuffers[m_CurrentBackBufferIndex].Get(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_BackBufferRtvHandles[m_CurrentBackBufferIndex].GetCpuHandle();
+
+        DoBackBufferTransition(commandList, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+        commandList->GetD3D12CommandList()->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
     }
 
-    void GfxSwapChain::PreparePresent()
+    void GfxSwapChain::PreparePresent(GfxCommandList* commandList)
     {
-        ID3D12GraphicsCommandList* cmdList = m_Device->GetGraphicsCommandList()->GetD3D12CommandList();
-        cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_BackBuffers[m_CurrentBackBufferIndex].Get(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+        DoBackBufferTransition(commandList, D3D12_RESOURCE_STATE_PRESENT, false);
+    }
+
+    void GfxSwapChain::DoBackBufferTransition(GfxCommandList* commandList, D3D12_RESOURCE_STATES targetState, bool flush)
+    {
+        D3D12_RESOURCE_STATES& state = m_BackBufferStates[m_CurrentBackBufferIndex];
+
+        if (state != targetState)
+        {
+            ID3D12Resource* resource = m_BackBuffers[m_CurrentBackBufferIndex].Get();
+            commandList->AddResourceBarrier(CD3DX12_RESOURCE_BARRIER::Transition(resource, state, targetState));
+            state = targetState;
+
+            if (flush)
+            {
+                commandList->FlushResourceBarriers();
+            }
+        }
     }
 }
