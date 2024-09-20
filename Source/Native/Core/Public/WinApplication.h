@@ -17,7 +17,7 @@ namespace march
 
     public:
         bool Initialize(HINSTANCE hInstance, int nCmdShow, int clientWidth = 800, int clientHeight = 600);
-        int RunEngine(IEngine* engine);
+        int RunEngine(LPWSTR lpCmdLine, IEngine* engine);
         void Quit(int exitCode = 0);
 
         float GetDeltaTime() const { return m_Timer.GetDeltaTime(); }

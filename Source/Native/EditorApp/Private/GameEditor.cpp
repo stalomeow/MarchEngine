@@ -33,9 +33,13 @@ namespace march
         return false;
     }
 
-    void GameEditor::OnStart()
+    void GameEditor::OnStart(const std::vector<std::string>& args)
     {
-        //m_RenderDoc.Load(); // 越早越好
+        if (std::count(args.begin(), args.end(), "-load-renderdoc") > 0)
+        {
+            m_RenderDoc.Load(); // 越早越好
+        }
+
         m_DotNet = CreateDotNetRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();

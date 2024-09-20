@@ -22,5 +22,5 @@ int WINAPI wWinMain(
     }
 
     GameEditor editor{};
-    return app.RunEngine(&editor);
+    return app.RunEngine(lpCmdLine, &editor);
 }

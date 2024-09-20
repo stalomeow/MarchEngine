@@ -40,9 +40,9 @@ namespace march
 
         API(m_Api)->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None); // 不显示 overlay
 
-        // 开启 API 验证和调试输出
-        API(m_Api)->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
-        API(m_Api)->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
+        //// 开启 API 验证和调试输出
+        //API(m_Api)->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
+        //API(m_Api)->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
 
         API(m_Api)->SetCaptureKeys(nullptr, 0);
     }

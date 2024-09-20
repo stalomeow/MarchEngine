@@ -2,13 +2,15 @@
 
 #include "RenderPipeline.h"
 #include <Windows.h>
+#include <vector>
+#include <string>
 
 namespace march
 {
     class IEngine
     {
     public:
-        virtual void OnStart() {}
+        virtual void OnStart(const std::vector<std::string>& args) {}
         virtual void OnTick() {}
         virtual void OnQuit() {}
 

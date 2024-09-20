@@ -20,7 +20,7 @@ namespace march
     {
     public:
         bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
-        void OnStart() override;
+        void OnStart(const std::vector<std::string>& args) override;
         void OnQuit() override;
         void OnTick() override;
         void OnResized() override;

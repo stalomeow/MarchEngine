@@ -1,6 +1,9 @@
 #include "WinApplication.h"
+#include "StringUtility.h"
 #include <assert.h>
 #include <WindowsX.h>
+#include <vector>
+#include <stdexcept>
 
 namespace march
 {
@@ -68,7 +71,26 @@ namespace march
         return true;
     }
 
-    int WinApplication::RunEngine(IEngine* engine)
+    static std::vector<std::string> ParseCommandLineArgs(LPWSTR lpCmdLine)
+    {
+        int numArgs = 0;
+        LPWSTR* args = CommandLineToArgvW(lpCmdLine, &numArgs);
+        if (args == nullptr)
+        {
+            throw std::runtime_error("Failed to parse command line arguments.");
+        }
+
+        std::vector<std::string> results(numArgs);
+        for (int i = 0; i < numArgs; i++)
+        {
+            results[i] = StringUtility::Utf16ToUtf8(args[i], wcslen(args[i]));
+        }
+
+        LocalFree(args);
+        return results;
+    }
+
+    int WinApplication::RunEngine(LPWSTR lpCmdLine, IEngine* engine)
     {
         m_Engine = engine;
 
@@ -78,7 +100,7 @@ namespace march
 #endif
             MSG msg = { 0 };
             m_Timer.Restart();
-            m_Engine->OnStart();
+            m_Engine->OnStart(ParseCommandLineArgs(lpCmdLine));
 
             while (msg.message != WM_QUIT)
             {
