@@ -6,7 +6,8 @@
 #include <ctime>
 #include <exception>
 #include <vector>
-#include <unordered_map>
+#include <stdint.h>
+#include <mutex>
 
 namespace march
 {
@@ -14,7 +15,8 @@ namespace march
     {
         Info,
         Warn,
-        Error
+        Error,
+        NumLogType
     };
 
     struct LogStackFrame
@@ -89,7 +91,8 @@ namespace march
         static void ClearLogs();
 
         static std::deque<LogEntry> s_Logs;
-        static std::unordered_map<LogType, int> s_LogCounts;
+        static uint32_t s_LogCounts[static_cast<int>(LogType::NumLogType)];
+        static std::mutex s_Mutex;
     };
 }
 

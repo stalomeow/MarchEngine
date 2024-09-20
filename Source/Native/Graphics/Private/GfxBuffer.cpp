@@ -1,7 +1,10 @@
 #include "GfxBuffer.h"
 #include "GfxDevice.h"
 #include "GfxExcept.h"
+#include "GfxFence.h"
 #include "MathHelper.h"
+#include "Debug.h"
+#include <stdexcept>
 
 namespace march
 {
@@ -58,5 +61,106 @@ namespace march
     uint32_t GfxConstantBuffer::GetAlignedSize(uint32_t size)
     {
         return MathHelper::AlignUp(size, Alignment);
+    }
+
+    GfxUploadMemory::GfxUploadMemory(GfxUploadBuffer* buffer, uint32_t offset, uint32_t stride, uint32_t count)
+        : m_Buffer(buffer), m_Offset(offset), m_Stride(stride), m_Count(count)
+    {
+    }
+
+    uint8_t* GfxUploadMemory::GetMappedData(uint32_t index) const
+    {
+        if (index >= m_Count)
+        {
+            throw std::out_of_range("Index out of range");
+        }
+
+        uint8_t* p = m_Buffer->GetMappedData(0);
+        return &p[m_Offset + index * m_Stride];
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS GfxUploadMemory::GetGpuVirtualAddress(uint32_t index) const
+    {
+        using Addr = D3D12_GPU_VIRTUAL_ADDRESS;
+
+        if (index >= m_Count)
+        {
+            throw std::out_of_range("Index out of range");
+        }
+
+        Addr addr = m_Buffer->GetGpuVirtualAddress(0);
+        Addr offset = static_cast<Addr>(m_Offset) + static_cast<Addr>(index) * static_cast<Addr>(m_Stride);
+        return addr + offset;
+    }
+
+    uint32_t GfxUploadMemory::GetD3D12ResourceOffset(uint32_t index) const
+    {
+        return m_Offset + index * m_Stride;
+    }
+
+    ID3D12Resource* GfxUploadMemory::GetD3D12Resource() const
+    {
+        return m_Buffer->GetD3D12Resource();
+    }
+
+    GfxUploadMemoryAllocator::GfxUploadMemoryAllocator(GfxDevice* device)
+        : m_Device(device), m_AllocateOffset(0), m_PageCounter(0)
+        , m_UsedPages{}, m_LargePages{}, m_ReleaseQueue{}
+    {
+    }
+
+    void GfxUploadMemoryAllocator::BeginFrame()
+    {
+    }
+
+    void GfxUploadMemoryAllocator::EndFrame(uint64_t fenceValue)
+    {
+        for (std::unique_ptr<GfxUploadBuffer>& p : m_UsedPages)
+        {
+            m_ReleaseQueue.emplace(fenceValue, std::move(p));
+        }
+
+        m_UsedPages.clear();
+        m_LargePages.clear();
+    }
+
+    GfxUploadMemory GfxUploadMemoryAllocator::Allocate(uint32_t size, uint32_t count, uint32_t alignment)
+    {
+        uint32_t stride = MathHelper::AlignUp(size, alignment);
+        uint32_t totalSize = stride * count;
+
+        if (totalSize > PageSize)
+        {
+            std::string name = "GfxUploadMemoryPage (Large)";
+            m_LargePages.emplace_back(std::make_unique<GfxUploadBuffer>(m_Device, name, stride, count, true));
+
+            DEBUG_LOG_INFO("Create %s; Size: %d", name.c_str(), totalSize);
+            return GfxUploadMemory(m_LargePages.back().get(), 0, stride, count);
+        }
+
+        uint32_t offset = MathHelper::AlignUp(m_AllocateOffset, alignment);
+
+        if (m_UsedPages.empty() || offset + totalSize > PageSize)
+        {
+            GfxFence* fence = m_Device->GetGraphicsFence();
+
+            if (!m_ReleaseQueue.empty() && fence->IsCompleted(m_ReleaseQueue.front().first))
+            {
+                m_UsedPages.emplace_back(std::move(m_ReleaseQueue.front().second));
+                m_ReleaseQueue.pop();
+            }
+            else
+            {
+                std::string name = "GfxUploadMemoryPage" + std::to_string(m_PageCounter++);
+                m_UsedPages.emplace_back(std::make_unique<GfxUploadBuffer>(m_Device, name, PageSize, 1, true));
+
+                DEBUG_LOG_INFO("Create %s; Size: %d", name.c_str(), PageSize);
+            }
+
+            offset = 0;
+        }
+
+        m_AllocateOffset = offset + totalSize;
+        return GfxUploadMemory(m_UsedPages.back().get(), offset, stride, count);
     }
 }

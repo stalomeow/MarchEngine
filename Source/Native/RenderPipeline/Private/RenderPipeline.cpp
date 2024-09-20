@@ -6,7 +6,6 @@
 #include "GfxDescriptorHeap.h"
 #include "GfxExcept.h"
 #include "GfxBuffer.h"
-#include "GfxUploadMemoryAllocator.h"
 #include "GfxCommandList.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>

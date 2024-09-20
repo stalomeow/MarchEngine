@@ -36,9 +36,6 @@
     <ClInclude Include="Public\GfxCommandQueue.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxCommandAllocatorPool.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\GfxCommandList.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -46,9 +43,6 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GfxBuffer.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GfxUploadMemoryAllocator.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\RenderDoc.h">
@@ -95,9 +89,6 @@
     <ClCompile Include="Private\GfxDevice.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxCommandAllocatorPool.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\GfxCommandList.cpp">
       <Filter>Private</Filter>
     </ClCompile>
@@ -105,9 +96,6 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxBuffer.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GfxUploadMemoryAllocator.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\RenderDoc.cpp">

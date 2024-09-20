@@ -5,10 +5,13 @@
 namespace march
 {
     std::deque<LogEntry> Debug::s_Logs{};
-    std::unordered_map<LogType, int> Debug::s_LogCounts{};
+    uint32_t Debug::s_LogCounts[]{};
+    std::mutex Debug::s_Mutex{};
 
     void Debug::AddLog(const std::vector<LogStackFrame>& stackTrace, const std::wstring& message, LogType type)
     {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
         //while (s_Logs.size() > 2000)
         //{
         //    s_LogCounts[s_Logs.front().Type]--;
@@ -20,7 +23,7 @@ namespace march
         entry.Time = time(NULL);
         entry.Message = StringUtility::Utf16ToUtf8(message); // imgui 要求 utf8
         entry.StackTrace = stackTrace;
-        s_LogCounts[entry.Type]++;
+        s_LogCounts[static_cast<int>(entry.Type)]++;
         s_Logs.push_back(entry);
 
 #if defined(DEBUG) || defined(_DEBUG)
@@ -34,6 +37,8 @@ namespace march
 
     void Debug::AddLog(const std::vector<LogStackFrame>& stackTrace, const std::string& message, LogType type)
     {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
         //while (s_Logs.size() > 2000)
         //{
         //    s_LogCounts[s_Logs.front().Type]--;
@@ -45,7 +50,7 @@ namespace march
         entry.Time = time(NULL);
         entry.Message = message; // imgui 要求 utf8
         entry.StackTrace = stackTrace;
-        s_LogCounts[entry.Type]++;
+        s_LogCounts[static_cast<int>(entry.Type)]++;
         s_Logs.push_back(entry);
 
 #if defined(DEBUG) || defined(_DEBUG)
@@ -59,7 +64,9 @@ namespace march
 
     int Debug::GetLogCount(LogType type)
     {
-        return s_LogCounts[type];
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        return static_cast<int>(s_LogCounts[static_cast<int>(type)]);
     }
 
     std::string Debug::GetTimePrefix(time_t t)
@@ -82,7 +89,9 @@ namespace march
 
     void Debug::ClearLogs()
     {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
         s_Logs.clear();
-        s_LogCounts.clear();
+        ZeroMemory(s_LogCounts, sizeof(s_LogCounts));
     }
 }

@@ -2,7 +2,6 @@
 #include "GfxDevice.h"
 #include "GfxBuffer.h"
 #include "GfxCommandList.h"
-#include "GfxUploadMemoryAllocator.h"
 #include <vector>
 #include <wrl.h>
 #include <assert.h>

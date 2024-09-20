@@ -2,9 +2,8 @@
 #include "GfxCommandList.h"
 #include "GfxCommandQueue.h"
 #include "GfxFence.h"
+#include "GfxBuffer.h"
 #include "GfxSwapChain.h"
-#include "GfxCommandAllocatorPool.h"
-#include "GfxUploadMemoryAllocator.h"
 #include "GfxDescriptorHeap.h"
 #include "GfxExcept.h"
 #include "Debug.h"
@@ -79,7 +78,7 @@ namespace march
 
     GfxDevice::~GfxDevice()
     {
-        WaitForIdle();
+        WaitForIdle(); // 防止崩溃
         ProcessReleaseQueue();
 
         assert(m_ReleaseQueue.empty());
@@ -146,13 +145,13 @@ namespace march
             ID3D12Object* object = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
 
-            wchar_t name[256];
-            UINT size = sizeof(name);
-
-            if (SUCCEEDED(object->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
-            {
-                DEBUG_LOG_INFO(L"Release D3D12Object %s", name);
-            }
+            // 释放资源较多时，太卡了！
+            //wchar_t name[256];
+            //UINT size = sizeof(name);
+            //if (SUCCEEDED(object->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
+            //{
+            //    DEBUG_LOG_INFO(L"Release D3D12Object %s", name);
+            //}
 
             // 保证彻底释放
             while (object->Release() > 0) {}
@@ -283,7 +282,7 @@ namespace march
         auto modeList = std::make_unique<DXGI_MODE_DESC[]>(count);
         output->GetDisplayModeList(format, flags, &count, modeList.get());
 
-        for (int i = 0; i < count; i++)
+        for (UINT i = 0; i < count; i++)
         {
             auto& x = modeList[i];
             UINT n = x.RefreshRate.Numerator;

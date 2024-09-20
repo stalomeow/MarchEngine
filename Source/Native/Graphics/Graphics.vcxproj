@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClInclude Include="Public\GfxDescriptorHeap.h" />
     <ClInclude Include="Public\GfxBuffer.h" />
-    <ClInclude Include="Public\GfxCommandAllocatorPool.h" />
     <ClInclude Include="Public\GfxCommandList.h" />
     <ClInclude Include="Public\GfxCommandQueue.h" />
     <ClInclude Include="Public\GfxDevice.h" />
@@ -21,7 +20,6 @@
     <ClInclude Include="Public\GfxFence.h" />
     <ClInclude Include="Public\GfxResource.h" />
     <ClInclude Include="Public\GfxSwapChain.h" />
-    <ClInclude Include="Public\GfxUploadMemoryAllocator.h" />
     <ClInclude Include="Public\GfxMesh.h" />
     <ClInclude Include="Public\GfxTexture.h" />
     <ClInclude Include="Public\PipelineState.h" />
@@ -32,7 +30,6 @@
   <ItemGroup>
     <ClCompile Include="Private\GfxDescriptorHeap.cpp" />
     <ClCompile Include="Private\GfxBuffer.cpp" />
-    <ClCompile Include="Private\GfxCommandAllocatorPool.cpp" />
     <ClCompile Include="Private\GfxCommandList.cpp" />
     <ClCompile Include="Private\GfxCommandQueue.cpp" />
     <ClCompile Include="Private\GfxDevice.cpp" />
@@ -41,7 +38,6 @@
     <ClCompile Include="Private\GfxMesh.cpp" />
     <ClCompile Include="Private\GfxResource.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />
-    <ClCompile Include="Private\GfxUploadMemoryAllocator.cpp" />
     <ClCompile Include="Private\Mesh.binding.cpp" />
     <ClCompile Include="Private\PipelineState.cpp" />
     <ClCompile Include="Private\RenderDoc.cpp" />

@@ -121,7 +121,7 @@ namespace march
             DEBUG_LOG_INFO("Create %s; Size: %d; Type: %s", name.c_str(), PageSize, GetDescriptorHeapTypeName(m_DescriptorType));
         }
 
-        return GfxDescriptorHandle(m_Pages.back().get(), m_Pages.size() - 1, m_NextDescriptorIndex++);
+        return GfxDescriptorHandle(m_Pages.back().get(), static_cast<uint32_t>(m_Pages.size()) - 1, m_NextDescriptorIndex++);
     }
 
     void GfxDescriptorAllocator::Free(const GfxDescriptorHandle& handle)

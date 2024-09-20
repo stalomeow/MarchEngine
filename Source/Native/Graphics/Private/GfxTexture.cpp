@@ -1,7 +1,7 @@
 #include "GfxTexture.h"
 #include "GfxDevice.h"
+#include "GfxBuffer.h"
 #include "GfxCommandList.h"
-#include "GfxUploadMemoryAllocator.h"
 #include "GfxExcept.h"
 #include <stdexcept>
 #include <DirectXColors.h>
