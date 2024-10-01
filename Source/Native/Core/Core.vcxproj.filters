@@ -27,6 +27,15 @@
     <ClCompile Include="Private\WinApplication.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\Component.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Transform.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Transform.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Debug.h">
@@ -39,6 +48,12 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\WinApplication.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Component.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Transform.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

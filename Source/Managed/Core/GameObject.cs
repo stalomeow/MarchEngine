@@ -1,7 +1,6 @@
 using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 using System.Runtime.Serialization;
 
 namespace March.Core
@@ -9,26 +8,11 @@ namespace March.Core
     public sealed class GameObject : MarchObject, IForceInlineSerialization
     {
         [JsonProperty] private bool m_IsActive = false;
-        [JsonProperty(PropertyName = "Rotation", Order = 2)] private Rotator m_Rotation = Rotator.Identity;
         [JsonProperty] internal List<Component> m_Components = [];
 
         [JsonProperty] public string Name { get; set; } = "New GameObject";
 
-        [JsonProperty(Order = 1)] public Vector3 Position { get; set; } = Vector3.Zero;
-
-        public Quaternion Rotation
-        {
-            get => m_Rotation.Value;
-            set => m_Rotation.Value = value;
-        }
-
-        public Vector3 EulerAngles
-        {
-            get => m_Rotation.EulerAngles;
-            set => m_Rotation.EulerAngles = value;
-        }
-
-        [JsonProperty(Order = 3)] public Vector3 Scale { get; set; } = Vector3.One;
+        [JsonProperty] public Transform Transform { get; private set; } = new();
 
         public GameObject()
         {

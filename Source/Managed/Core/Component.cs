@@ -1,123 +1,163 @@
+using March.Core.Binding;
 using March.Core.Serialization;
 using Newtonsoft.Json;
 
 namespace March.Core
 {
-    public abstract class Component : MarchObject, IForceInlineSerialization
+    public abstract partial class Component : NativeMarchObject, IForceInlineSerialization
     {
-        [JsonProperty] private bool m_IsEnabled = false;
-        private GameObject? m_MountingObject = null;
+        private readonly bool m_IsDefaultNativeComponent;
+        private bool m_IsScriptEnabled = false; // 如果为 true 说明调用过 OnEnable()
+        private GameObject? m_GameObject = null;
 
-        protected Component() { }
-
-        internal void Mount(GameObject mountingObject, bool? isEnabled)
+        protected Component() : base(Component_CreateDefault())
         {
-            if (m_MountingObject != null)
-            {
-                throw new InvalidOperationException("Component is already mounted");
-            }
+            m_IsDefaultNativeComponent = true;
+        }
 
-            m_MountingObject = mountingObject;
-            OnMount();
+        protected Component(nint nativePtr) : base(nativePtr)
+        {
+            m_IsDefaultNativeComponent = false;
+        }
 
-            if (isEnabled != null)
+        protected override void Dispose(bool disposing)
+        {
+            if (m_IsDefaultNativeComponent)
             {
-                IsEnabled = isEnabled.Value;
-            }
-            else if (m_IsEnabled)
-            {
-                OnEnable();
-            }
-            else
-            {
-                OnDisable();
+                Component_DeleteDefault(NativePtr);
             }
         }
 
-        internal void Unmount()
+        public GameObject GameObject => m_GameObject!;
+
+        [JsonProperty]
+        private bool IsEnabledRawValue
         {
-            if (m_MountingObject == null)
-            {
-                throw new InvalidOperationException("Component is not mounted");
-            }
-
-            IsEnabled = false;
-            OnUnmount();
-            m_MountingObject = null;
-        }
-
-        internal void TryUpdate()
-        {
-            if (!IsEnabled)
-            {
-                return;
-            }
-
-            OnUpdate();
-        }
-
-        internal void OnDidMoutingObjectActiveStateChanged()
-        {
-            InvokeOnEnableOrDisableCallback(!MountingObject.IsActive && IsEnabled);
+            get => Component_GetIsActive(NativePtr);
+            set => Component_SetIsActive(NativePtr, value);
         }
 
         public bool IsEnabled
         {
-            get => m_IsEnabled;
+            get => IsEnabledRawValue;
             set
             {
-                if (m_IsEnabled == value)
-                {
-                    return;
-                }
-
-                m_IsEnabled = value;
-                InvokeOnEnableOrDisableCallback(MountingObject.IsActive && !value);
+                IsEnabledRawValue = value;
+                InvokeScriptEnabledCallback();
             }
         }
 
-        public bool IsActiveAndEnabled => MountingObject.IsActive && IsEnabled;
+        public bool IsActiveAndEnabled => IsEnabled && GameObject.IsActive;
 
-        public GameObject MountingObject => m_MountingObject!;
-
-        private void InvokeOnEnableOrDisableCallback(bool oldIsActiveAndEnabled)
+        internal void Mount(GameObject gameObject)
         {
-            bool newIsActiveAndEnabled = IsActiveAndEnabled;
-            if (oldIsActiveAndEnabled == newIsActiveAndEnabled)
+            if (m_GameObject != null)
+            {
+                throw new InvalidOperationException("Component has been mounted to a GameObject");
+            }
+
+            m_GameObject = gameObject;
+            OnMount();
+        }
+
+        internal void PostMount()
+        {
+            InvokeScriptEnabledCallback();
+        }
+
+        internal void PreUnmount()
+        {
+            IsEnabled = false;
+        }
+
+        internal void Unmount()
+        {
+            if (m_GameObject == null)
+            {
+                throw new InvalidOperationException("Component has not been mounted to any GameObject");
+            }
+
+            if (m_IsScriptEnabled)
+            {
+                throw new InvalidOperationException("Component is still enabled");
+            }
+
+            OnUnmount();
+            m_GameObject = null;
+        }
+
+        internal void Update()
+        {
+            if (m_IsScriptEnabled)
+            {
+                Update();
+            }
+        }
+
+        internal void OnGameObjectActiveStateChanged()
+        {
+            InvokeScriptEnabledCallback();
+        }
+
+        private void InvokeScriptEnabledCallback()
+        {
+            bool isActiveAndEnabled = IsActiveAndEnabled;
+            if (m_IsScriptEnabled == isActiveAndEnabled)
             {
                 return;
             }
 
-            if (newIsActiveAndEnabled)
+            if (isActiveAndEnabled)
             {
+                m_IsScriptEnabled = true;
                 OnEnable();
             }
             else
             {
+                m_IsScriptEnabled = false;
                 OnDisable();
             }
         }
 
-        protected virtual void OnMount()
-        {
-            Debug.LogInfo($"Component {GetType().FullName} is mounted");
-        }
+        protected virtual void OnMount() => Component_OnMount(NativePtr);
 
-        protected virtual void OnUnmount()
-        {
-            Debug.LogInfo($"Component {GetType().FullName} is unmounted");
-        }
+        protected virtual void OnUnmount() => Component_OnUnmount(NativePtr);
 
-        protected virtual void OnEnable()
-        {
-            Debug.LogInfo($"Component {GetType().FullName} is enabled");
-        }
+        protected virtual void OnEnable() => Component_OnEnable(NativePtr);
 
-        protected virtual void OnDisable()
-        {
-            Debug.LogInfo($"Component {GetType().FullName} is disabled");
-        }
+        protected virtual void OnDisable() => Component_OnDisable(NativePtr);
 
-        protected virtual void OnUpdate() { }
+        protected virtual void OnUpdate() => Component_OnUpdate(NativePtr);
+
+        #region Bindings
+
+        [NativeFunction]
+        private static partial nint Component_CreateDefault();
+
+        [NativeFunction]
+        private static partial void Component_DeleteDefault(nint component);
+
+        [NativeFunction]
+        private static partial bool Component_GetIsActive(nint component);
+
+        [NativeFunction]
+        private static partial void Component_SetIsActive(nint component, bool value);
+
+        [NativeFunction]
+        private static partial void Component_OnMount(nint component);
+
+        [NativeFunction]
+        private static partial void Component_OnUnmount(nint component);
+
+        [NativeFunction]
+        private static partial void Component_OnEnable(nint component);
+
+        [NativeFunction]
+        private static partial void Component_OnDisable(nint component);
+
+        [NativeFunction]
+        private static partial void Component_OnUpdate(nint component);
+
+        #endregion
     }
 }

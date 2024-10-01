@@ -11,17 +11,22 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\Component.binding.cpp" />
     <ClCompile Include="Private\Debug.binding.cpp" />
     <ClCompile Include="Private\Debug.cpp" />
     <ClCompile Include="Private\GameTimer.cpp" />
     <ClCompile Include="Private\IEngine.binding.cpp" />
+    <ClCompile Include="Private\Transform.binding.cpp" />
+    <ClCompile Include="Private\Transform.cpp" />
     <ClCompile Include="Private\WinApplication.binding.cpp" />
     <ClCompile Include="Private\WinApplication.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Public\Component.h" />
     <ClInclude Include="Public\Debug.h" />
     <ClInclude Include="Public\GameTimer.h" />
     <ClInclude Include="Public\IEngine.h" />
+    <ClInclude Include="Public\Transform.h" />
     <ClInclude Include="Public\WinApplication.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

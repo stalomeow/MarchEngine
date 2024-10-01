@@ -467,7 +467,7 @@ namespace March.Core.Rendering
         Pixel = 1,
     };
 
-    public unsafe partial class Shader : MarchNativeObject
+    public unsafe partial class Shader : NativeMarchObject
     {
         [JsonProperty]
         internal string Name { get; set; } = string.Empty;

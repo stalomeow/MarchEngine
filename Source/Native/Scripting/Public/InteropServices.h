@@ -203,4 +203,17 @@ namespace march
     {
         return { v.x, v.y, v.z };
     }
+
+    inline CSharpQuaternion ToCSharpQuaternion(const DirectX::XMFLOAT4& v)
+    {
+        return { v.x, v.y, v.z, v.w };
+    }
+
+    inline CSharpMatrix4x4 ToCSharpMatrix4x4(const DirectX::XMFLOAT4X4& m)
+    {
+        return { m._11, m._12, m._13, m._14,
+                 m._21, m._22, m._23, m._24,
+                 m._31, m._32, m._33, m._34,
+                 m._41, m._42, m._43, m._44 };
+    }
 }

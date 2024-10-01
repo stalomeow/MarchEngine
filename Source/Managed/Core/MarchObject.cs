@@ -2,6 +2,9 @@ using Newtonsoft.Json;
 
 namespace March.Core
 {
+    /// <summary>
+    /// 引擎对象的基类
+    /// </summary>
     [JsonObject(MemberSerialization.OptIn)]
     public abstract class MarchObject
     {
@@ -14,15 +17,15 @@ namespace March.Core
         protected MarchObject() { }
     }
 
-    public abstract class MarchNativeObject(nint nativePtr) : MarchObject, IDisposable
+    public abstract class NativeMarchObject(nint nativePtr) : MarchObject, IDisposable
     {
         [JsonIgnore]
         private bool m_IsDisposed;
 
         [JsonIgnore]
-        public nint NativePtr { get; } = nativePtr;
+        public nint NativePtr { get; private set; } = nativePtr;
 
-        ~MarchNativeObject() => DisposeImpl(disposing: false);
+        ~NativeMarchObject() => DisposeImpl(disposing: false);
 
         public void Dispose()
         {
@@ -35,6 +38,7 @@ namespace March.Core
             if (!m_IsDisposed)
             {
                 Dispose(disposing);
+                NativePtr = nint.Zero;
                 m_IsDisposed = true;
             }
         }

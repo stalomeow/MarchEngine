@@ -14,7 +14,6 @@ namespace March.Core.Rendering
     {
         private nint m_RenderObject;
         private MeshType m_MeshType;
-        private string m_MaterialPath = string.Empty;
         private List<Material?> m_Materials = [];
 
         [JsonProperty]
