@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace March.Core
 {
-    public abstract class Component : EngineObject, IForceInlineSerialization
+    public abstract class Component : MarchObject, IForceInlineSerialization
     {
         [JsonProperty] private bool m_IsEnabled = false;
         private GameObject? m_MountingObject = null;

@@ -308,11 +308,11 @@ namespace March.Editor
             return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool EngineObjectField<T>(string label, string tooltip, ref T? asset) where T : EngineObject
+        public static bool MarchObjectField<T>(string label, string tooltip, ref T? asset) where T : MarchObject
         {
-            EngineObject? obj = asset;
+            MarchObject? obj = asset;
 
-            if (EngineObjectField(label, tooltip, typeof(T), ref obj))
+            if (MarchObjectField(label, tooltip, typeof(T), ref obj))
             {
                 asset = (T?)obj;
                 return true;
@@ -321,31 +321,31 @@ namespace March.Editor
             return false;
         }
 
-        private enum EngineObjectState : int
+        private enum MarchObjectState : int
         {
             Null = 0,
             Persistent = 1,
             Temporary = 2
         };
 
-        public static bool EngineObjectField(string label, string tooltip, Type assetType, ref EngineObject? asset)
+        public static bool MarchObjectField(string label, string tooltip, Type assetType, ref MarchObject? asset)
         {
-            EngineObjectState state;
+            MarchObjectState state;
             string? path;
 
             if (asset == null)
             {
-                state = EngineObjectState.Null;
+                state = MarchObjectState.Null;
                 path = string.Empty;
             }
             else if (asset.PersistentGuid == null)
             {
-                state = EngineObjectState.Temporary;
+                state = MarchObjectState.Temporary;
                 path = string.Empty;
             }
             else
             {
-                state = EngineObjectState.Persistent;
+                state = MarchObjectState.Persistent;
                 path = AssetManager.GetPathByGuid(asset.PersistentGuid);
 
                 if (path == null)
@@ -361,10 +361,10 @@ namespace March.Editor
             using NativeString p = path;
             nint pNewPath = nint.Zero;
 
-            if (EditorGUI_EngineObjectField(l.Data, t.Data, ty.Data, p.Data, &pNewPath, state))
+            if (EditorGUI_MarchObjectField(l.Data, t.Data, ty.Data, p.Data, &pNewPath, state))
             {
                 string newPath = NativeString.GetAndFree(pNewPath);
-                EngineObject? newAsset = AssetManager.Load<EngineObject>(newPath);
+                MarchObject? newAsset = AssetManager.Load<MarchObject>(newPath);
 
                 if (newAsset != asset)
                 {
@@ -763,7 +763,7 @@ namespace March.Editor
         private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
 
         [NativeFunction]
-        private static partial bool EditorGUI_EngineObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentPath, EngineObjectState currentObjectState);
+        private static partial bool EditorGUI_MarchObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentPath, MarchObjectState currentObjectState);
 
         #endregion
     }

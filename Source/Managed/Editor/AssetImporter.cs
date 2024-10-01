@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 
 namespace March.Editor
 {
-    public abstract class AssetImporter : EngineObject
+    public abstract class AssetImporter : MarchObject
     {
         /// <summary>
         /// 资产的路径，相对于 <see cref="Application.DataPath"/>
@@ -57,7 +57,7 @@ namespace March.Editor
         /// 资产的弱引用
         /// </summary>
         [JsonIgnore]
-        private WeakReference<EngineObject>? m_AssetWeakRef;
+        private WeakReference<MarchObject>? m_AssetWeakRef;
 
         protected AssetImporter()
         {
@@ -73,11 +73,11 @@ namespace March.Editor
         /// 导入的资产
         /// </summary>
         [JsonIgnore]
-        public EngineObject Asset
+        public MarchObject Asset
         {
             get
             {
-                EngineObject asset = GetAssetReference(out bool isEmptyObject);
+                MarchObject asset = GetAssetReference(out bool isEmptyObject);
 
                 if (isEmptyObject)
                 {
@@ -96,7 +96,7 @@ namespace March.Editor
         }
 
         internal void Initialize(string assetPath, string assetFullPath, string assetCacheFullPath,
-            string importerFullPath, EngineObject? asset = null)
+            string importerFullPath, MarchObject? asset = null)
         {
             AssetPath = assetPath;
             AssetFullPath = assetFullPath;
@@ -105,7 +105,7 @@ namespace March.Editor
 
             if (asset != null)
             {
-                m_AssetWeakRef = new WeakReference<EngineObject>(asset);
+                m_AssetWeakRef = new WeakReference<MarchObject>(asset);
                 SetAssetMetadata(asset);
             }
 
@@ -133,7 +133,7 @@ namespace March.Editor
         {
             UpdateAndSaveImporter();
 
-            EngineObject asset = GetAssetReference(out _);
+            MarchObject asset = GetAssetReference(out _);
             ReimportAsset(asset);
 
             Debug.LogInfo($"Reimport asset: {AssetPath}");
@@ -153,9 +153,9 @@ namespace March.Editor
             m_AssetLastWriteTimeUtc = File.GetLastWriteTimeUtc(AssetFullPath);
         }
 
-        private EngineObject? GetAssetReference()
+        private MarchObject? GetAssetReference()
         {
-            if (m_AssetWeakRef != null && m_AssetWeakRef.TryGetTarget(out EngineObject? target))
+            if (m_AssetWeakRef != null && m_AssetWeakRef.TryGetTarget(out MarchObject? target))
             {
                 return target;
             }
@@ -163,9 +163,9 @@ namespace March.Editor
             return null;
         }
 
-        private EngineObject GetAssetReference(out bool isEmptyObject)
+        private MarchObject GetAssetReference(out bool isEmptyObject)
         {
-            EngineObject? asset = GetAssetReference();
+            MarchObject? asset = GetAssetReference();
 
             if (asset == null)
             {
@@ -175,7 +175,7 @@ namespace March.Editor
 
                 if (m_AssetWeakRef == null)
                 {
-                    m_AssetWeakRef = new WeakReference<EngineObject>(asset);
+                    m_AssetWeakRef = new WeakReference<MarchObject>(asset);
                 }
                 else
                 {
@@ -190,7 +190,7 @@ namespace March.Editor
             return asset;
         }
 
-        private void SetAssetMetadata(EngineObject asset)
+        private void SetAssetMetadata(MarchObject asset)
         {
             asset.PersistentGuid = AssetGuid;
         }
@@ -198,7 +198,7 @@ namespace March.Editor
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            EngineObject? asset = GetAssetReference();
+            MarchObject? asset = GetAssetReference();
 
             if (asset != null)
             {
@@ -223,29 +223,29 @@ namespace March.Editor
         /// 创建 Asset 实例，只创建实例，不填充数据
         /// </summary>
         /// <returns></returns>
-        protected abstract EngineObject CreateAsset();
+        protected abstract MarchObject CreateAsset();
 
         /// <summary>
         /// 导入资产，使用之前的缓存
         /// </summary>
         /// <param name="asset">覆写到该实例中</param>
-        protected abstract void ImportAsset(EngineObject asset);
+        protected abstract void ImportAsset(MarchObject asset);
 
         /// <summary>
         /// 重新导入资产，不要使用之前的缓存
         /// </summary>
         /// <param name="asset">覆写到该实例中</param>
-        protected abstract void ReimportAsset(EngineObject asset);
+        protected abstract void ReimportAsset(MarchObject asset);
     }
 
     public abstract class DirectAssetImporter : AssetImporter
     {
-        protected sealed override void ImportAsset(EngineObject asset)
+        protected sealed override void ImportAsset(MarchObject asset)
         {
             PersistentManager.Overwrite(AssetFullPath, asset);
         }
 
-        protected sealed override void ReimportAsset(EngineObject asset)
+        protected sealed override void ReimportAsset(MarchObject asset)
         {
             PersistentManager.Overwrite(AssetFullPath, asset);
         }
@@ -269,7 +269,7 @@ namespace March.Editor
             return base.NeedReimportAsset();
         }
 
-        protected sealed override void ImportAsset(EngineObject asset)
+        protected sealed override void ImportAsset(MarchObject asset)
         {
             if (UseCache)
             {
@@ -281,7 +281,7 @@ namespace March.Editor
             }
         }
 
-        protected sealed override void ReimportAsset(EngineObject asset)
+        protected sealed override void ReimportAsset(MarchObject asset)
         {
             bool willSaveAsset = UseCache;
             PopulateAsset(asset, willSaveAsset);
@@ -305,16 +305,16 @@ namespace March.Editor
         /// <param name="asset">已存在的资产实例</param>
         /// <param name="willSaveToFile">
         /// 是否会将 Asset 保存为文件。如果为 <c>true</c>，则可以在此方法中设置序列化使用的临时数据，
-        /// 在 Asset 被保存后会调用 <see cref="OnDidSaveAsset(EngineObject)"/> 清除临时数据
+        /// 在 Asset 被保存后会调用 <see cref="OnDidSaveAsset(MarchObject)"/> 清除临时数据
         /// </param>
         /// <returns></returns>
-        protected abstract void PopulateAsset(EngineObject asset, bool willSaveToFile);
+        protected abstract void PopulateAsset(MarchObject asset, bool willSaveToFile);
 
         /// <summary>
         /// 当 Asset 被保存后调用，可以在此方法中清除序列化使用的临时数据
         /// </summary>
         /// <param name="asset"></param>
-        protected virtual void OnDidSaveAsset(EngineObject asset) { }
+        protected virtual void OnDidSaveAsset(MarchObject asset) { }
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

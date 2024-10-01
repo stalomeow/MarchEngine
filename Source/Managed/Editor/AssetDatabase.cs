@@ -68,12 +68,12 @@ namespace March.Editor
             return s_Guid2PathMap.TryGetValue(guid, out string? path) ? path : null;
         }
 
-        public static EngineObject? Load(string path)
+        public static MarchObject? Load(string path)
         {
-            return Load<EngineObject>(path);
+            return Load<MarchObject>(path);
         }
 
-        public static T? Load<T>(string path) where T : EngineObject?
+        public static T? Load<T>(string path) where T : MarchObject?
         {
             if (IsImporterFilePath(path))
             {
@@ -84,18 +84,18 @@ namespace March.Editor
             return importer?.Asset as T;
         }
 
-        public static EngineObject? LoadByGuid(string guid)
+        public static MarchObject? LoadByGuid(string guid)
         {
-            return LoadByGuid<EngineObject>(guid);
+            return LoadByGuid<MarchObject>(guid);
         }
 
-        public static T? LoadByGuid<T>(string guid) where T : EngineObject?
+        public static T? LoadByGuid<T>(string guid) where T : MarchObject?
         {
             string? path = GetPathByGuid(guid);
             return path == null ? null : Load<T>(path);
         }
 
-        public static void Create(string path, EngineObject asset)
+        public static void Create(string path, MarchObject asset)
         {
             if (asset.PersistentGuid != null || GetAssetImporter(path) != null)
             {
@@ -120,7 +120,7 @@ namespace March.Editor
             return GetAssetImporter(path, null);
         }
 
-        private static AssetImporter? GetAssetImporter(string path, EngineObject? initAsset)
+        private static AssetImporter? GetAssetImporter(string path, MarchObject? initAsset)
         {
             path = path.ValidatePath();
 
@@ -256,12 +256,12 @@ namespace March.Editor
             return AssetDatabase.GetPathByGuid(guid);
         }
 
-        public T? Load<T>(string path) where T : EngineObject?
+        public T? Load<T>(string path) where T : MarchObject?
         {
             return AssetDatabase.Load<T>(path);
         }
 
-        public T? LoadByGuid<T>(string guid) where T : EngineObject?
+        public T? LoadByGuid<T>(string guid) where T : MarchObject?
         {
             return AssetDatabase.LoadByGuid<T>(guid);
         }

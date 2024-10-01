@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
-    public partial class Material : NativeEngineObject
+    public partial class Material : MarchNativeObject
     {
         [JsonIgnore] private Shader? m_Shader = null;
         [JsonProperty] private Dictionary<string, int> m_Ints = [];

@@ -21,6 +21,9 @@
     <ClInclude Include="Public\RenderPipeline.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Camera.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp">

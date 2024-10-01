@@ -1,4 +1,4 @@
 namespace March.Core
 {
-    public sealed class FolderAsset : EngineObject { }
+    public sealed class FolderAsset : MarchObject { }
 }

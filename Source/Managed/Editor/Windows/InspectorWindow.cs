@@ -6,13 +6,13 @@ namespace March.Editor.Windows
     internal static class InspectorWindow
     {
         private static readonly DrawerCache<InspectorDrawer> s_DrawerCache = new(typeof(InspectorDrawerFor<>));
-        private static EngineObject? s_LastTarget;
+        private static MarchObject? s_LastTarget;
         private static InspectorDrawer? s_LastDrawer;
 
         [UnmanagedCallersOnly]
         internal static void Draw()
         {
-            EngineObject? target = Selection.Active;
+            MarchObject? target = Selection.Active;
 
             if (target != s_LastTarget)
             {

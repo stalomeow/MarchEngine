@@ -4,6 +4,6 @@ namespace March.Editor
 {
     public static class Selection
     {
-        public static EngineObject? Active { get; set; }
+        public static MarchObject? Active { get; set; }
     }
 }

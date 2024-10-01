@@ -28,23 +28,23 @@ namespace March.Core.Serialization
             return s_JsonSerializer.ContractResolver.ResolveContract(type);
         }
 
-        public static EngineObject Load(TextReader textReader)
+        public static MarchObject Load(TextReader textReader)
         {
-            return Load<EngineObject>(textReader);
+            return Load<MarchObject>(textReader);
         }
 
-        public static T Load<T>(TextReader textReader) where T : EngineObject
+        public static T Load<T>(TextReader textReader) where T : MarchObject
         {
             using var jsonReader = new JsonTextReader(textReader);
-            return s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException("Failed to Load EngineObject");
+            return s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException($"Failed to Load {nameof(MarchObject)}");
         }
 
-        public static EngineObject Load(string fullPath)
+        public static MarchObject Load(string fullPath)
         {
-            return Load<EngineObject>(fullPath);
+            return Load<MarchObject>(fullPath);
         }
 
-        public static T Load<T>(string fullPath) where T : EngineObject
+        public static T Load<T>(string fullPath) where T : MarchObject
         {
             using var streamReader = new StreamReader(fullPath, Encoding.UTF8);
             return Load<T>(streamReader);
@@ -55,42 +55,42 @@ namespace March.Core.Serialization
             return File.ReadAllText(fullPath, Encoding.UTF8);
         }
 
-        public static EngineObject LoadFromString(string text)
+        public static MarchObject LoadFromString(string text)
         {
-            return LoadFromString<EngineObject>(text);
+            return LoadFromString<MarchObject>(text);
         }
 
-        public static T LoadFromString<T>(string text) where T : EngineObject
+        public static T LoadFromString<T>(string text) where T : MarchObject
         {
             using var stringReader = new StringReader(text);
             return Load<T>(stringReader);
         }
 
-        public static void Overwrite(string fullPath, EngineObject target)
+        public static void Overwrite(string fullPath, MarchObject target)
         {
             using var streamReader = new StreamReader(fullPath, Encoding.UTF8);
             Overwrite(streamReader, target);
         }
 
-        public static void Overwrite(TextReader textReader, EngineObject target)
+        public static void Overwrite(TextReader textReader, MarchObject target)
         {
             using var jsonReader = new JsonTextReader(textReader);
             s_JsonSerializer.Populate(jsonReader, target);
         }
 
-        public static void OverwriteFromString(string text, EngineObject target)
+        public static void OverwriteFromString(string text, MarchObject target)
         {
             using var stringReader = new StringReader(text);
             Overwrite(stringReader, target);
         }
 
-        public static void Save(EngineObject obj, TextWriter textWriter)
+        public static void Save(MarchObject obj, TextWriter textWriter)
         {
             using var jsonWriter = new JsonTextWriter(textWriter);
-            s_JsonSerializer.Serialize(jsonWriter, obj, typeof(EngineObject));
+            s_JsonSerializer.Serialize(jsonWriter, obj, typeof(MarchObject));
         }
 
-        public static void Save(EngineObject obj, string fullPath)
+        public static void Save(MarchObject obj, string fullPath)
         {
             string? directory = Path.GetDirectoryName(fullPath);
 
@@ -103,22 +103,22 @@ namespace March.Core.Serialization
             Save(obj, streamWriter);
         }
 
-        public static string SaveAsString(EngineObject obj)
+        public static string SaveAsString(MarchObject obj)
         {
             using var stringWriter = new StringWriter();
             Save(obj, stringWriter);
             return stringWriter.ToString();
         }
 
-        private sealed class EngineObjectGuidJsonConverter : JsonConverter<EngineObject>
+        private sealed class MarchObjectGuidJsonConverter : JsonConverter<MarchObject>
         {
-            public override EngineObject? ReadJson(JsonReader reader, Type objectType, EngineObject? existingValue, bool hasExistingValue, JsonSerializer serializer)
+            public override MarchObject? ReadJson(JsonReader reader, Type objectType, MarchObject? existingValue, bool hasExistingValue, JsonSerializer serializer)
             {
                 string? guid = reader.Value?.ToString();
                 return guid == null ? null : AssetManager.LoadByGuid(guid);
             }
 
-            public override void WriteJson(JsonWriter writer, EngineObject? value, JsonSerializer serializer)
+            public override void WriteJson(JsonWriter writer, MarchObject? value, JsonSerializer serializer)
             {
                 if (value?.PersistentGuid == null)
                 {
@@ -149,7 +149,7 @@ namespace March.Core.Serialization
                 {
                     if (UseGuidSerialization(prop.PropertyType))
                     {
-                        prop.Converter = new EngineObjectGuidJsonConverter();
+                        prop.Converter = new MarchObjectGuidJsonConverter();
                     }
                     else
                     {
@@ -164,13 +164,13 @@ namespace March.Core.Serialization
 
                             if (def == typeof(IDictionary<,>) && UseGuidSerialization(i.GetGenericArguments()[1]))
                             {
-                                prop.ItemConverter = new EngineObjectGuidJsonConverter();
+                                prop.ItemConverter = new MarchObjectGuidJsonConverter();
                                 break;
                             }
 
                             if (def == typeof(IEnumerable<>) && UseGuidSerialization(i.GetGenericArguments()[0]))
                             {
-                                prop.ItemConverter = new EngineObjectGuidJsonConverter();
+                                prop.ItemConverter = new MarchObjectGuidJsonConverter();
                                 break;
                             }
                         }
@@ -182,7 +182,7 @@ namespace March.Core.Serialization
 
             private static bool UseGuidSerialization(Type type)
             {
-                return type.IsSubclassOf(typeof(EngineObject)) && !typeof(IForceInlineSerialization).IsAssignableFrom(type);
+                return type.IsSubclassOf(typeof(MarchObject)) && !typeof(IForceInlineSerialization).IsAssignableFrom(type);
             }
         }
     }

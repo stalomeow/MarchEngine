@@ -10,7 +10,7 @@ namespace March.Editor.Importers
 
         protected override int Version => base.Version + 1;
 
-        protected override EngineObject CreateAsset()
+        protected override MarchObject CreateAsset()
         {
             return new Material();
         }

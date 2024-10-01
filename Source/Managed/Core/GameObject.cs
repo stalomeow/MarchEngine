@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 
 namespace March.Core
 {
-    public sealed class GameObject : EngineObject, IForceInlineSerialization
+    public sealed class GameObject : MarchObject, IForceInlineSerialization
     {
         [JsonProperty] private bool m_IsActive = false;
         [JsonProperty(PropertyName = "Rotation", Order = 2)] private Rotator m_Rotation = Rotator.Identity;

@@ -71,7 +71,7 @@ namespace march
         static float GetCursorPosX();
         static void SetCursorPosX(float localX);
 
-        enum class EngineObjectState
+        enum class MarchObjectState
         {
             Null = 0,
             Persistent = 1,
@@ -79,7 +79,7 @@ namespace march
         };
 
         static bool BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
-        static bool EngineObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, EngineObjectState currentObjectState);
+        static bool MarchObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, MarchObjectState currentObjectState);
 
     public:
         static constexpr float MinLabelWidth = 140.0f;

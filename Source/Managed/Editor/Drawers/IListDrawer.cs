@@ -82,7 +82,7 @@ namespace March.Editor.Drawers
                 return string.Empty;
             }
 
-            if (type.IsSubclassOf(typeof(EngineObject)))
+            if (type.IsSubclassOf(typeof(MarchObject)))
             {
                 return null;
             }

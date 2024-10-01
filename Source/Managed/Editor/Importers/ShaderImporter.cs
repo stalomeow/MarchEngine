@@ -16,12 +16,12 @@ namespace March.Editor.Importers
 
         protected override bool UseCache => true;
 
-        protected override EngineObject CreateAsset()
+        protected override MarchObject CreateAsset()
         {
             return new Shader();
         }
 
-        protected override void PopulateAsset(EngineObject asset, bool willSaveToFile)
+        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
         {
             string shaderCode = File.ReadAllText(AssetFullPath, Encoding.UTF8);
 
@@ -35,7 +35,7 @@ namespace March.Editor.Importers
             }
         }
 
-        private void CompileShader(EngineObject asset, string shaderCode)
+        private void CompileShader(MarchObject asset, string shaderCode)
         {
             AntlrInputStream inputStream = new(shaderCode);
             ShaderLabLexer lexer = new(inputStream);

@@ -18,7 +18,7 @@ namespace March.Core.Rendering
         Mirror = 2,
     }
 
-    public partial class Texture : NativeEngineObject
+    public partial class Texture : MarchNativeObject
     {
         [JsonProperty]
         private string m_SerializedName = "Texture";

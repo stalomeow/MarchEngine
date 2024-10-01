@@ -13,11 +13,11 @@ namespace March.Editor.Importers
 
         protected override bool UseCache => false;
 
-        protected override EngineObject CreateAsset()
+        protected override MarchObject CreateAsset()
         {
             return new FolderAsset();
         }
 
-        protected override void PopulateAsset(EngineObject asset, bool willSaveToFile) { }
+        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile) { }
     }
 }

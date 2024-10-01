@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace March.Core
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public abstract class EngineObject
+    public abstract class MarchObject
     {
         /// <summary>
         /// 全局唯一 id。如果为 <c>null</c>，则表示该对象未被持久化
@@ -11,10 +11,10 @@ namespace March.Core
         [JsonIgnore]
         public string? PersistentGuid { get; internal set; }
 
-        protected EngineObject() { }
+        protected MarchObject() { }
     }
 
-    public abstract class NativeEngineObject(nint nativePtr) : EngineObject, IDisposable
+    public abstract class MarchNativeObject(nint nativePtr) : MarchObject, IDisposable
     {
         [JsonIgnore]
         private bool m_IsDisposed;
@@ -22,7 +22,7 @@ namespace March.Core
         [JsonIgnore]
         public nint NativePtr { get; } = nativePtr;
 
-        ~NativeEngineObject() => DisposeImpl(disposing: false);
+        ~MarchNativeObject() => DisposeImpl(disposing: false);
 
         public void Dispose()
         {

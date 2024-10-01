@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace March.Core
 {
-    public class Scene : EngineObject, IForceInlineSerialization
+    public class Scene : MarchObject, IForceInlineSerialization
     {
         [JsonProperty] public string Name = "New Scene";
         [JsonProperty] public List<GameObject> RootGameObjects = [];

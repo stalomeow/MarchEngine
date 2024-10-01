@@ -4,7 +4,7 @@ namespace March.Editor
 {
     public abstract class InspectorDrawer : IDrawer
     {
-        public EngineObject? Target { get; internal set; }
+        public MarchObject? Target { get; internal set; }
 
         public virtual void OnCreate() { }
 
@@ -13,7 +13,7 @@ namespace March.Editor
         public abstract void Draw();
     }
 
-    public abstract class InspectorDrawerFor<T> : InspectorDrawer where T : EngineObject
+    public abstract class InspectorDrawerFor<T> : InspectorDrawer where T : MarchObject
     {
         public new T Target => (T)base.Target!;
     }

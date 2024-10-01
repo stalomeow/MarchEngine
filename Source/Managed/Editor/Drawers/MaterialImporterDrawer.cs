@@ -55,7 +55,7 @@ namespace March.Editor.Drawers
                         case ShaderPropertyType.Texture:
                             {
                                 Texture? value = material.GetTexture(shaderProp.Name);
-                                isChanged |= EditorGUI.EngineObjectField(shaderProp.Label, shaderProp.Tooltip, ref value);
+                                isChanged |= EditorGUI.MarchObjectField(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetTexture(shaderProp.Name, value);
                                 break;
                             }

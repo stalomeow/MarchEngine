@@ -279,12 +279,12 @@ NATIVE_EXPORT(CSharpBool) EditorGUI_BeginAssetTreeNode(CSharpString label, CShar
         CSHARP_UNMARSHAL_BOOL(showBackground), CSHARP_UNMARSHAL_BOOL(defaultOpen), CSHARP_UNMARSHAL_BOOL(spanWidth)));
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_EngineObjectField(CSharpString label, CSharpString tooltip, CSharpString type, CSharpString persistentPath, CSharpString* outNewPersistentPath, CSharpInt currentObjectState)
+NATIVE_EXPORT(CSharpBool) EditorGUI_MarchObjectField(CSharpString label, CSharpString tooltip, CSharpString type, CSharpString persistentPath, CSharpString* outNewPersistentPath, CSharpInt currentObjectState)
 {
     std::string persistentPathContext = CSharpString_ToUtf8(persistentPath);
-    EditorGUI::EngineObjectState state = static_cast<EditorGUI::EngineObjectState>(currentObjectState);
+    EditorGUI::MarchObjectState state = static_cast<EditorGUI::MarchObjectState>(currentObjectState);
 
-    if (EditorGUI::EngineObjectField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), CSharpString_ToUtf8(type), persistentPathContext, state))
+    if (EditorGUI::MarchObjectField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), CSharpString_ToUtf8(type), persistentPathContext, state))
     {
         *outNewPersistentPath = CSharpString_FromUtf8(persistentPathContext);
         return CSHARP_MARSHAL_BOOL(true);

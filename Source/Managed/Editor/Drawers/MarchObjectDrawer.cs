@@ -2,7 +2,7 @@ using March.Core;
 
 namespace March.Editor.Drawers
 {
-    internal class EngineObjectDrawer : IPropertyDrawerFor<EngineObject?>
+    internal class MarchObjectDrawer : IPropertyDrawerFor<MarchObject?>
     {
         public bool Draw(string label, string tooltip, in EditorProperty property)
         {
@@ -14,9 +14,9 @@ namespace March.Editor.Drawers
                 return false;
             }
 
-            EngineObject? value = property.GetValue<EngineObject>();
+            MarchObject? value = property.GetValue<MarchObject>();
 
-            if (EditorGUI.EngineObjectField(label, tooltip, type, ref value))
+            if (EditorGUI.MarchObjectField(label, tooltip, type, ref value))
             {
                 property.SetValue(value);
                 return true;

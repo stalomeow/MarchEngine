@@ -19,12 +19,12 @@ namespace March.Editor.Importers
         [JsonProperty("Wrap Mode")]
         public WrapMode Wrap { get; set; }
 
-        protected override EngineObject CreateAsset()
+        protected override MarchObject CreateAsset()
         {
             return new Texture();
         }
 
-        protected override void PopulateAsset(EngineObject asset, bool willSaveToFile)
+        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
         {
             Texture texture = (Texture)asset;
             texture.Filter = Filter;
@@ -41,7 +41,7 @@ namespace March.Editor.Importers
             }
         }
 
-        protected override void OnDidSaveAsset(EngineObject asset)
+        protected override void OnDidSaveAsset(MarchObject asset)
         {
             Texture texture = (Texture)asset;
             texture.SetSerializationData(string.Empty, []);

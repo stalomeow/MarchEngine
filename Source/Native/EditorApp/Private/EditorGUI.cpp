@@ -488,19 +488,19 @@ namespace march
         return result;
     }
 
-    bool EditorGUI::EngineObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, EngineObjectState currentObjectState)
+    bool EditorGUI::MarchObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, MarchObjectState currentObjectState)
     {
         std::string displayValue;
 
         switch (currentObjectState)
         {
-        case EngineObjectState::Null:
+        case MarchObjectState::Null:
             displayValue = "None (" + type + ")";
             break;
-        case EngineObjectState::Persistent:
+        case MarchObjectState::Persistent:
             displayValue = persistentPath;
             break;
-        case EngineObjectState::Temporary:
+        case MarchObjectState::Temporary:
             displayValue = "Runtime Object (" + type + ")";
             break;
         default:
@@ -531,7 +531,7 @@ namespace march
             {
                 const char* newAssetPath = reinterpret_cast<char*>(payload->Data);
 
-                if (currentObjectState != EngineObjectState::Persistent || newAssetPath != persistentPath)
+                if (currentObjectState != MarchObjectState::Persistent || newAssetPath != persistentPath)
                 {
                     persistentPath.assign(newAssetPath);
                     isChanged = true;

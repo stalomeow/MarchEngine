@@ -6,9 +6,9 @@ namespace March.Core
 
         string? GetPathByGuid(string guid);
 
-        T? Load<T>(string path) where T : EngineObject?;
+        T? Load<T>(string path) where T : MarchObject?;
 
-        T? LoadByGuid<T>(string guid) where T : EngineObject?;
+        T? LoadByGuid<T>(string guid) where T : MarchObject?;
     }
 
     file class DefaultAssetManagerImpl : IAssetManagerImpl
@@ -23,12 +23,12 @@ namespace March.Core
             return null;
         }
 
-        public T? Load<T>(string path) where T : EngineObject?
+        public T? Load<T>(string path) where T : MarchObject?
         {
             return null;
         }
 
-        public T? LoadByGuid<T>(string guid) where T : EngineObject?
+        public T? LoadByGuid<T>(string guid) where T : MarchObject?
         {
             return null;
         }
@@ -42,12 +42,12 @@ namespace March.Core
 
         public static string? GetPathByGuid(string guid) => Impl.GetPathByGuid(guid);
 
-        public static EngineObject? Load(string path) => Load<EngineObject>(path);
+        public static MarchObject? Load(string path) => Load<MarchObject>(path);
 
-        public static T? Load<T>(string path) where T : EngineObject? => Impl.Load<T>(path);
+        public static T? Load<T>(string path) where T : MarchObject? => Impl.Load<T>(path);
 
-        public static EngineObject? LoadByGuid(string guid) => LoadByGuid<EngineObject>(guid);
+        public static MarchObject? LoadByGuid(string guid) => LoadByGuid<MarchObject>(guid);
 
-        public static T? LoadByGuid<T>(string guid) where T : EngineObject? => Impl.LoadByGuid<T>(guid);
+        public static T? LoadByGuid<T>(string guid) where T : MarchObject? => Impl.LoadByGuid<T>(guid);
     }
 }
