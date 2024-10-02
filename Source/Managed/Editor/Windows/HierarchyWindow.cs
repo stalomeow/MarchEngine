@@ -13,7 +13,7 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Primitive/Cube", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Cube" };
-                SceneManager.CurrentScene.AddGameObject(go);
+                SceneManager.CurrentScene.AddGameObject(Selection.Active as GameObject, go);
 
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.MeshType = MeshType.Cube;
@@ -24,7 +24,7 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Primitive/Sphere", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Sphere" };
-                SceneManager.CurrentScene.AddGameObject(go);
+                SceneManager.CurrentScene.AddGameObject(Selection.Active as GameObject, go);
 
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.MeshType = MeshType.Sphere;
@@ -35,7 +35,7 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Light", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Directional Light" };
-                SceneManager.CurrentScene.AddGameObject(go);
+                SceneManager.CurrentScene.AddGameObject(Selection.Active as GameObject, go);
 
                 go.AddComponent<Light>();
 
@@ -45,7 +45,7 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Empty", (ref object? arg) =>
             {
                 var go = new GameObject();
-                SceneManager.CurrentScene.AddGameObject(go);
+                SceneManager.CurrentScene.AddGameObject(Selection.Active as GameObject, go);
                 Selection.Active = go;
             });
         }
@@ -64,23 +64,37 @@ namespace March.Editor.Windows
 
             for (int i = 0; i < gameObjects.Count; i++)
             {
-                GameObject go = gameObjects[i];
-
                 using (new EditorGUI.IDScope(i))
                 {
-                    if (EditorGUI.BeginTreeNode(go.Name, selected: (Selection.Active == go), isLeaf: true, spanWidth: true))
-                    {
-                        if (EditorGUI.IsItemClicked())
-                        {
-                            Selection.Active = go;
-                        }
-
-                        EditorGUI.EndTreeNode();
-                    }
+                    DrawGameObjectsRecursive(gameObjects[i]);
                 }
             }
 
             s_ContextMenu.DoWindowContext();
+        }
+
+        private static void DrawGameObjectsRecursive(GameObject go)
+        {
+            bool isSelected = Selection.Active == go;
+            bool isLeaf = go.transform.ChildCount == 0;
+
+            if (EditorGUI.BeginTreeNode(go.Name, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true))
+            {
+                if (EditorGUI.IsItemClicked())
+                {
+                    Selection.Active = go;
+                }
+
+                for (int i = 0; i < go.transform.ChildCount; i++)
+                {
+                    using (new EditorGUI.IDScope(i))
+                    {
+                        DrawGameObjectsRecursive(go.transform.GetChild(i).gameObject);
+                    }
+                }
+
+                EditorGUI.EndTreeNode();
+            }
         }
     }
 }

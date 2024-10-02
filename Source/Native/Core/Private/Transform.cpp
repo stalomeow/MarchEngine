@@ -165,9 +165,9 @@ namespace march
 
         while (trans != nullptr)
         {
-            XMVECTOR translation = LoadLocalPosition();
-            XMVECTOR rotation = LoadLocalRotation();
-            XMVECTOR scale = LoadLocalScale(); // 不能直接用 lossyScale，因为它不准确
+            XMVECTOR translation = trans->LoadLocalPosition();
+            XMVECTOR rotation = trans->LoadLocalRotation();
+            XMVECTOR scale = trans->LoadLocalScale(); // 不能直接用 lossyScale，因为它不准确
             XMMATRIX mat = XMMatrixAffineTransformation(scale, rotationOrigin, rotation, translation);
 
             result = XMMatrixMultiply(result, mat); // DirectX 中使用的是行向量
