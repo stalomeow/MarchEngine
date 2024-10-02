@@ -14,31 +14,27 @@ namespace March.Core.Rendering
 
     public partial class Light : Component
     {
-        private nint m_Light;
+        public Light() : base(Light_New()) { }
 
-        public Light()
+        protected override void Dispose(bool disposing)
         {
-            m_Light = Light_New();
-        }
-
-        ~Light()
-        {
-            Dispose();
+            Light_Delete(NativePtr);
+            base.Dispose(disposing);
         }
 
         [JsonProperty]
         [Tooltip("The type of light.")]
         public LightType Type
         {
-            get => Light_GetType(m_Light);
-            set => Light_SetType(m_Light, value);
+            get => Light_GetType(NativePtr);
+            set => Light_SetType(NativePtr, value);
         }
 
         [JsonProperty]
         public Color Color
         {
-            get => Light_GetColor(m_Light);
-            set => Light_SetColor(m_Light, value);
+            get => Light_GetColor(NativePtr);
+            set => Light_SetColor(NativePtr, value);
         }
 
         [JsonProperty]
@@ -46,77 +42,25 @@ namespace March.Core.Rendering
         [Vector2Drawer(XNotGreaterThanY = true, Min = 0.1f)]
         public Vector2 FalloffRange
         {
-            get => Light_GetFalloffRange(m_Light);
-            set => Light_SetFalloffRange(m_Light, value);
+            get => Light_GetFalloffRange(NativePtr);
+            set => Light_SetFalloffRange(NativePtr, value);
         }
 
         [JsonProperty]
         [FloatDrawer(Min = 0.1f)]
         public float SpotPower
         {
-            get => Light_GetSpotPower(m_Light);
-            set => Light_SetSpotPower(m_Light, value);
+            get => Light_GetSpotPower(NativePtr);
+            set => Light_SetSpotPower(NativePtr, value);
         }
 
-        private void Dispose()
-        {
-            if (m_Light == nint.Zero)
-            {
-                return;
-            }
-
-            Light_Delete(m_Light);
-            m_Light = nint.Zero;
-        }
-
-        protected override void OnMount()
-        {
-            base.OnMount();
-            RenderPipeline.AddLight(m_Light);
-        }
-
-        protected override void OnUnmount()
-        {
-            RenderPipeline.RemoveLight(m_Light);
-            Dispose();
-            GC.SuppressFinalize(this);
-            base.OnUnmount();
-        }
-
-        protected override void OnEnable()
-        {
-            base.OnEnable();
-            Light_SetIsActive(m_Light, true);
-        }
-
-        protected override void OnDisable()
-        {
-            Light_SetIsActive(m_Light, false);
-            base.OnDisable();
-        }
-
-        protected override void OnUpdate()
-        {
-            base.OnUpdate();
-
-            Light_SetPosition(m_Light, MountingObject.Position);
-            Light_SetRotation(m_Light, MountingObject.Rotation);
-        }
+        #region Bindings
 
         [NativeFunction]
         private static partial nint Light_New();
 
         [NativeFunction]
         private static partial void Light_Delete(nint self);
-
-        [NativeFunction]
-        private static partial void Light_SetPosition(nint self, Vector3 value);
-
-        [NativeFunction]
-        private static partial void Light_SetRotation(nint self, Quaternion value);
-
-        [NativeFunction]
-        private static partial void Light_SetIsActive(nint self, bool value);
 
         [NativeFunction]
         private static partial LightType Light_GetType(nint self);
@@ -141,5 +85,7 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void Light_SetSpotPower(nint self, float value);
+
+        #endregion
     }
 }

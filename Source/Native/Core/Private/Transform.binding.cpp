@@ -38,6 +38,26 @@ NATIVE_EXPORT(void) Transform_SetLocalRotation(Transform* transform, CSharpQuate
     TransformInternalUtility::SetLocalRotation(transform, ToXMFLOAT4(value));
 }
 
+NATIVE_EXPORT(void) Transform_SetLocalRotationWithoutSyncEulerAngles(Transform* transform, CSharpQuaternion value)
+{
+    TransformInternalUtility::SetLocalRotationWithoutSyncEulerAngles(transform, ToXMFLOAT4(value));
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_GetLocalEulerAngles(Transform* transform)
+{
+    return ToCSharpVector3(transform->GetLocalEulerAngles());
+}
+
+NATIVE_EXPORT(void) Transform_SetLocalEulerAngles(Transform* transform, CSharpVector3 value)
+{
+    TransformInternalUtility::SetLocalEulerAngles(transform, ToXMFLOAT3(value));
+}
+
+NATIVE_EXPORT(void) Transform_SetLocalEulerAnglesWithoutSyncRotation(Transform* transform, CSharpVector3 value)
+{
+    TransformInternalUtility::SetLocalEulerAnglesWithoutSyncRotation(transform, ToXMFLOAT3(value));
+}
+
 NATIVE_EXPORT(CSharpVector3) Transform_GetLocalScale(Transform* transform)
 {
     return ToCSharpVector3(transform->GetLocalScale());
@@ -66,6 +86,16 @@ NATIVE_EXPORT(CSharpQuaternion) Transform_GetRotation(Transform* transform)
 NATIVE_EXPORT(void) Transform_SetRotation(Transform* transform, CSharpQuaternion value)
 {
     TransformInternalUtility::SetRotation(transform, ToXMFLOAT4(value));
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_GetEulerAngles(Transform* transform)
+{
+    return ToCSharpVector3(transform->GetEulerAngles());
+}
+
+NATIVE_EXPORT(void) Transform_SetEulerAngles(Transform* transform, CSharpVector3 value)
+{
+    TransformInternalUtility::SetEulerAngles(transform, ToXMFLOAT3(value));
 }
 
 NATIVE_EXPORT(CSharpVector3) Transform_GetLossyScale(Transform* transform)

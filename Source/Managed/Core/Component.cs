@@ -1,6 +1,7 @@
 using March.Core.Binding;
 using March.Core.Serialization;
 using Newtonsoft.Json;
+using System.ComponentModel;
 
 namespace March.Core
 {
@@ -28,10 +29,11 @@ namespace March.Core
             }
         }
 
-        public GameObject GameObject => m_GameObject!;
+        public GameObject gameObject => m_GameObject!;
 
-        [JsonProperty]
-        private bool IsEnabledRawValue
+        [JsonProperty(nameof(IsEnabled))]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private bool IsEnabledSerializationOnly
         {
             get => Component_GetIsActive(NativePtr);
             set => Component_SetIsActive(NativePtr, value);
@@ -39,15 +41,15 @@ namespace March.Core
 
         public bool IsEnabled
         {
-            get => IsEnabledRawValue;
+            get => Component_GetIsActive(NativePtr);
             set
             {
-                IsEnabledRawValue = value;
+                Component_SetIsActive(NativePtr, value);
                 InvokeScriptEnabledCallback();
             }
         }
 
-        public bool IsActiveAndEnabled => IsEnabled && GameObject.IsActive;
+        public bool IsActiveAndEnabled => IsEnabled && gameObject.IsActiveInHierarchy;
 
         internal void Mount(GameObject gameObject)
         {
@@ -57,6 +59,7 @@ namespace March.Core
             }
 
             m_GameObject = gameObject;
+            Component_SetTransform(NativePtr, gameObject.transform.NativePtr);
             OnMount();
         }
 
@@ -70,7 +73,7 @@ namespace March.Core
             IsEnabled = false;
         }
 
-        internal void Unmount()
+        internal void UnmountAndDispose()
         {
             if (m_GameObject == null)
             {
@@ -84,13 +87,15 @@ namespace March.Core
 
             OnUnmount();
             m_GameObject = null;
+
+            Dispose();
         }
 
         internal void Update()
         {
             if (m_IsScriptEnabled)
             {
-                Update();
+                OnUpdate();
             }
         }
 
@@ -142,6 +147,9 @@ namespace March.Core
 
         [NativeFunction]
         private static partial void Component_SetIsActive(nint component, bool value);
+
+        [NativeFunction]
+        private static partial void Component_SetTransform(nint component, nint transform);
 
         [NativeFunction]
         private static partial void Component_OnMount(nint component);

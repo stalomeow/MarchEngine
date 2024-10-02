@@ -24,6 +24,11 @@ namespace March.Core
 
                 //string scenePath = Path.Combine(Application.DataPath, @"Assets/TestScene.scene");
                 //SceneManager.CurrentScene = PersistentManager.Load<Scene>(scenePath);
+
+                foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
+                {
+                    gameObject.AwakeRecursive();
+                }
             }
             catch (Exception e)
             {
@@ -40,7 +45,7 @@ namespace March.Core
 
                 foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
                 {
-                    gameObject.Update();
+                    gameObject.UpdateRecursive();
                 }
             }
             catch (Exception e)

@@ -1,4 +1,5 @@
 #include "Transform.h"
+#include <math.h>
 
 using namespace DirectX;
 
@@ -8,6 +9,7 @@ namespace march
         : m_Parent(nullptr)
         , m_LocalPosition(0, 0, 0)
         , m_LocalRotation(0, 0, 0, 1)
+        , m_LocalEulerAngles(0, 0, 0)
         , m_LocalScale(1, 1, 1)
     {
     }
@@ -27,6 +29,11 @@ namespace march
         return m_LocalRotation;
     }
 
+    XMFLOAT3 Transform::GetLocalEulerAngles() const
+    {
+        return m_LocalEulerAngles;
+    }
+
     XMFLOAT3 Transform::GetLocalScale() const
     {
         return m_LocalScale;
@@ -44,6 +51,11 @@ namespace march
         XMFLOAT4 result = {};
         XMStoreFloat4(&result, LoadRotation());
         return result;
+    }
+
+    XMFLOAT3 Transform::GetEulerAngles() const
+    {
+        return QuaternionToEulerAngles(GetRotation());
     }
 
     XMFLOAT3 Transform::GetLossyScale() const
@@ -75,6 +87,11 @@ namespace march
     XMVECTOR Transform::LoadLocalRotation() const
     {
         return XMLoadFloat4(&m_LocalRotation);
+    }
+
+    XMVECTOR Transform::LoadLocalEulerAngles() const
+    {
+        return XMLoadFloat3(&m_LocalEulerAngles);
     }
 
     XMVECTOR Transform::LoadLocalScale() const
@@ -112,6 +129,11 @@ namespace march
         }
 
         return result;
+    }
+
+    XMVECTOR Transform::LoadEulerAngles() const
+    {
+        return XMLoadFloat3(&GetEulerAngles());
     }
 
     XMVECTOR Transform::LoadLossyScale() const
@@ -160,6 +182,112 @@ namespace march
         return XMMatrixInverse(nullptr, LoadLocalToWorldMatrix());
     }
 
+    XMFLOAT4 Transform::EulerAnglesToQuaternion(XMFLOAT3 eulerAngles)
+    {
+        float pitch = XMConvertToRadians(eulerAngles.x);
+        float yaw = XMConvertToRadians(eulerAngles.y);
+        float roll = XMConvertToRadians(eulerAngles.z);
+
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmquaternionrotationrollpitchyaw
+
+        XMFLOAT4 result = {};
+        XMStoreFloat4(&result, XMQuaternionRotationRollPitchYaw(pitch, yaw, roll));
+        return result;
+    }
+
+    XMFLOAT3 Transform::QuaternionToEulerAngles(XMFLOAT4 quaternion)
+    {
+        XMFLOAT4X4 m;
+        XMStoreFloat4x4(&m, XMMatrixTranspose(XMMatrixRotationQuaternion(XMLoadFloat4(&quaternion))));
+
+        // YXZ Order https://www.geometrictools.com/Documentation/EulerAngles.pdf
+        XMFLOAT3 euler(0, 0, 0);
+
+        if (m(1, 2) < 1)
+        {
+            if (m(1, 2) > -1)
+            {
+                euler.x = asinf(-m(1, 2));
+                euler.y = atan2f(m(0, 2), m(2, 2));
+                euler.z = atan2f(m(1, 0), m(1, 1));
+            }
+            else // m(1, 2) == -1
+            {
+                // Not a unique solution: euler.z - euler.y = atan2f(-m(0, 1), m(0, 0))
+                euler.x = XM_PIDIV2;
+                euler.y = -atan2f(-m(0, 1), m(0, 0));
+                euler.z = 0;
+            }
+        }
+        else // m(1, 2) == +1
+        {
+            // Not a unique solution: euler.z + euler.y = atan2f(-m(0, 1), m(0, 0))
+            euler.x = -XM_PIDIV2;
+            euler.y = atan2f(-m(0, 1), m(0, 0));
+            euler.z = 0;
+        }
+
+        euler.x = XMConvertToDegrees(euler.x);
+        euler.y = XMConvertToDegrees(euler.y);
+        euler.z = XMConvertToDegrees(euler.z);
+
+        // 调整角度，让它看起来更符合直觉
+
+        if (euler.y < 0) euler.y += 360;
+        if (euler.z < 0) euler.z += 360;
+
+        if (euler.y >= 180 && euler.z >= 180)
+        {
+            euler.x = 180 - euler.x;
+            euler.y -= 180;
+            euler.z -= 180;
+        }
+
+        if (euler.x < 0) euler.x += 360;
+        if (fabsf(euler.x) < FLT_EPSILON) euler.x = 0;
+        if (fabsf(euler.y) < FLT_EPSILON) euler.y = 0;
+        if (fabsf(euler.z) < FLT_EPSILON) euler.z = 0;
+
+        return euler;
+    }
+
+    void TransformInternalUtility::SetParent(Transform* transform, Transform* parent)
+    {
+        transform->m_Parent = parent;
+    }
+
+    void TransformInternalUtility::SetLocalPosition(Transform* transform, const XMFLOAT3& value)
+    {
+        transform->m_LocalPosition = value;
+    }
+
+    void TransformInternalUtility::SetLocalRotation(Transform* transform, const XMFLOAT4& value)
+    {
+        transform->m_LocalRotation = value;
+        SyncLocalEulerAngles(transform);
+    }
+
+    void TransformInternalUtility::SetLocalRotationWithoutSyncEulerAngles(Transform* transform, const XMFLOAT4& value)
+    {
+        transform->m_LocalRotation = value;
+    }
+
+    void TransformInternalUtility::SetLocalEulerAngles(Transform* transform, const XMFLOAT3& value)
+    {
+        transform->m_LocalRotation = Transform::EulerAnglesToQuaternion(value);
+        transform->m_LocalEulerAngles = value;
+    }
+
+    void TransformInternalUtility::SetLocalEulerAnglesWithoutSyncRotation(Transform* transform, const XMFLOAT3& value)
+    {
+        transform->m_LocalEulerAngles = value;
+    }
+
+    void TransformInternalUtility::SetLocalScale(Transform* transform, const XMFLOAT3& value)
+    {
+        transform->m_LocalScale = value;
+    }
+
     void TransformInternalUtility::SetPosition(Transform* transform, const XMFLOAT3& value)
     {
         const Transform* trans = transform->GetParent();
@@ -191,6 +319,18 @@ namespace march
 
         XMVECTOR result = XMLoadFloat4(&value);
         result = XMQuaternionMultiply(result, XMQuaternionInverse(parentRotation));
-        XMStoreFloat3(&transform->m_LocalPosition, result);
+        XMStoreFloat4(&transform->m_LocalRotation, result);
+        SyncLocalEulerAngles(transform);
+    }
+
+    void TransformInternalUtility::SetEulerAngles(Transform* transform, const XMFLOAT3& value)
+    {
+        SetRotation(transform, Transform::EulerAnglesToQuaternion(value));
+    }
+
+    void TransformInternalUtility::SyncLocalEulerAngles(Transform* transform)
+    {
+        XMFLOAT4 localRotation = transform->m_LocalRotation;
+        transform->m_LocalEulerAngles = Transform::QuaternionToEulerAngles(localRotation);
     }
 }

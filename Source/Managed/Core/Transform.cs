@@ -1,5 +1,6 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
+using System.ComponentModel;
 using System.Numerics;
 using System.Runtime.Serialization;
 
@@ -7,8 +8,8 @@ namespace March.Core
 {
     public partial class Transform : Component
     {
-        [JsonProperty] private Vector3 m_LocalEulerAngles = Vector3.Zero;
-        [JsonProperty] private List<Transform> m_Children = [];
+        [JsonProperty]
+        private List<Transform> m_Children = [];
         private Transform? m_Parent = null;
 
         public Transform() : base(Transform_Create()) { }
@@ -26,11 +27,32 @@ namespace March.Core
             set => Transform_SetLocalPosition(NativePtr, value);
         }
 
-        [JsonProperty]
+        [JsonProperty(nameof(LocalRotation))]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private Quaternion LocalRotationSerializationOnly
+        {
+            get => Transform_GetLocalRotation(NativePtr);
+            set => Transform_SetLocalRotationWithoutSyncEulerAngles(NativePtr, value);
+        }
+
         public Quaternion LocalRotation
         {
             get => Transform_GetLocalRotation(NativePtr);
             set => Transform_SetLocalRotation(NativePtr, value);
+        }
+
+        [JsonProperty(nameof(LocalEulerAngles))]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private Vector3 LocalEulerAnglesSerializationOnly
+        {
+            get => Transform_GetLocalEulerAngles(NativePtr);
+            set => Transform_SetLocalEulerAnglesWithoutSyncRotation(NativePtr, value);
+        }
+
+        public Vector3 LocalEulerAngles
+        {
+            get => Transform_GetLocalEulerAngles(NativePtr);
+            set => Transform_SetLocalEulerAngles(NativePtr, value);
         }
 
         [JsonProperty]
@@ -52,40 +74,54 @@ namespace March.Core
             set => Transform_SetRotation(NativePtr, value);
         }
 
+        public Vector3 EulerAngles
+        {
+            get => Transform_GetEulerAngles(NativePtr);
+            set => Transform_SetEulerAngles(NativePtr, value);
+        }
+
         public Vector3 LossyScale => Transform_GetLossyScale(NativePtr);
 
         public Matrix4x4 LocalToWorldMatrix => Transform_GetLocalToWorldMatrix(NativePtr);
 
         public Matrix4x4 WorldToLocalMatrix => Transform_GetWorldToLocalMatrix(NativePtr);
 
-        public Transform? Parent
-        {
-            get => m_Parent;
-            set
-            {
-                if (m_Parent == value)
-                {
-                    return;
-                }
-
-                m_Parent?.m_Children.Remove(this);
-                m_Parent = value;
-
-                if (m_Parent == null)
-                {
-                    Transform_SetParent(NativePtr, nint.Zero);
-                }
-                else
-                {
-                    m_Parent.m_Children.Add(this);
-                    Transform_SetParent(NativePtr, m_Parent.NativePtr);
-                }
-            }
-        }
+        public Transform? Parent => m_Parent;
 
         public int ChildCount => m_Children.Count;
 
         public Transform GetChild(int index) => m_Children[index];
+
+        public void AddChild(Transform child)
+        {
+            child.m_Parent?.m_Children.Remove(child);
+            child.m_Parent = this;
+            m_Children.Add(child);
+
+            Transform_SetParent(child.NativePtr, NativePtr);
+        }
+
+        public void InsertChild(int index, Transform child)
+        {
+            child.m_Parent?.m_Children.Remove(child);
+            child.m_Parent = this;
+            m_Children.Insert(index, child);
+
+            Transform_SetParent(child.NativePtr, NativePtr);
+        }
+
+        public void Detach()
+        {
+            if (m_Parent == null)
+            {
+                return;
+            }
+
+            m_Parent.m_Children.Remove(this);
+            m_Parent = null;
+
+            Transform_SetParent(NativePtr, nint.Zero);
+        }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -121,6 +157,18 @@ namespace March.Core
         private static partial void Transform_SetLocalRotation(nint transform, Quaternion value);
 
         [NativeFunction]
+        private static partial void Transform_SetLocalRotationWithoutSyncEulerAngles(nint transform, Quaternion value);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_GetLocalEulerAngles(nint transform);
+
+        [NativeFunction]
+        private static partial void Transform_SetLocalEulerAngles(nint transform, Vector3 value);
+
+        [NativeFunction]
+        private static partial void Transform_SetLocalEulerAnglesWithoutSyncRotation(nint transform, Vector3 value);
+
+        [NativeFunction]
         private static partial Vector3 Transform_GetLocalScale(nint transform);
 
         [NativeFunction]
@@ -137,6 +185,12 @@ namespace March.Core
 
         [NativeFunction]
         private static partial void Transform_SetRotation(nint transform, Quaternion value);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_GetEulerAngles(nint transform);
+
+        [NativeFunction]
+        private static partial void Transform_SetEulerAngles(nint transform, Vector3 value);
 
         [NativeFunction]
         private static partial Vector3 Transform_GetLossyScale(nint transform);

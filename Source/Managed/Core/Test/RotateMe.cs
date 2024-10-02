@@ -26,7 +26,9 @@ namespace March.Core.Test
                 RotateAxis.ZAxis => Vector3.UnitZ,
                 _ => throw new ArgumentOutOfRangeException()
             }, float.DegreesToRadians(Time.Delta * Speed));
-            MountingObject.Rotation = rot * MountingObject.Rotation;
+
+            Quaternion localRotation = gameObject.transform.LocalRotation;
+            gameObject.transform.LocalRotation = rot * localRotation;
         }
     }
 }

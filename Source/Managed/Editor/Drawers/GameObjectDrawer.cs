@@ -20,17 +20,12 @@ namespace March.Editor.Drawers
             EditorGUI.SetNextItemWidth(EditorGUI.ContentRegionAvailable.X);
             changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, contract.GetEditorProperty(Target, "Name"));
 
-            EditorGUI.SeparatorText("Transform");
-
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(Target, "Position"));
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(Target, "Rotation"));
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(Target, "Scale"));
-
             EditorGUI.SeparatorText("Components");
+            changed |= DrawComponent(0, Target.transform);
 
             for (int i = 0; i < Target.m_Components.Count; i++)
             {
-                changed |= DrawComponent(i, Target.m_Components[i]);
+                changed |= DrawComponent(i + 1, Target.m_Components[i]);
             }
 
             EditorGUI.Space();

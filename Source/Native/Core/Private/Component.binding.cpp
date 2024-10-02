@@ -23,6 +23,11 @@ NATIVE_EXPORT(void) Component_SetIsActive(Component* component, CSharpBool value
     ComponentInternalUtility::SetIsActive(component, CSHARP_UNMARSHAL_BOOL(value));
 }
 
+NATIVE_EXPORT(void) Component_SetTransform(Component* component, Transform* value)
+{
+    ComponentInternalUtility::SetTransform(component, value);
+}
+
 NATIVE_EXPORT(void) Component_OnMount(Component* component)
 {
     ComponentInternalUtility::InvokeOnMount(component);

@@ -19,6 +19,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp" />
+    <ClCompile Include="Private\Light.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />
     <ClCompile Include="Private\Material.cpp" />
     <ClCompile Include="Private\RenderObject.binding.cpp" />

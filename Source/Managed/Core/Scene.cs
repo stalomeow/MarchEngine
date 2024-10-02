@@ -7,5 +7,11 @@ namespace March.Core
     {
         [JsonProperty] public string Name = "New Scene";
         [JsonProperty] public List<GameObject> RootGameObjects = [];
+
+        public void AddGameObject(GameObject go)
+        {
+            RootGameObjects.Add(go);
+            go.AwakeRecursive();
+        }
     }
 }

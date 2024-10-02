@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Component.h"
 #include <DirectXMath.h>
 
 namespace march
 {
+    class Transform;
+
     struct LightData
     {
         static const int MaxCount = 16;
@@ -21,70 +24,20 @@ namespace march
         Spot = 2,        // 聚光灯
     };
 
-    class Light
+    class Light : public Component
     {
     public:
-        DirectX::XMFLOAT3 GetForward() const
-        {
-            DirectX::XMFLOAT3 forward = { 0.0f, 0.0f, 1.0f };
-            DirectX::XMVECTOR f = DirectX::XMLoadFloat3(&forward);
-            f = DirectX::XMVector3Rotate(f, DirectX::XMLoadFloat4(&Rotation));
-            DirectX::XMStoreFloat3(&forward, f);
-            return forward;
-        }
+        Light();
+        DirectX::XMFLOAT3 GetForward() const;
+        void FillLightData(LightData& data) const;
 
-        void FillLightData(LightData& data) const
-        {
-            if (Type == LightType::Directional)
-            {
-                DirectX::XMFLOAT3 forward = GetForward();
-                data.Position.x = -forward.x;
-                data.Position.y = -forward.y;
-                data.Position.z = -forward.z;
-                data.Position.w = 0;
-            }
-            else
-            {
-                data.Position.x = Position.x;
-                data.Position.y = Position.y;
-                data.Position.z = Position.z;
-                data.Position.w = 1;
-            }
+        LightType Type;
+        DirectX::XMFLOAT4 Color;
+        DirectX::XMFLOAT2 FalloffRange;
+        float SpotPower;
 
-            if (Type == LightType::Spot)
-            {
-                DirectX::XMFLOAT3 forward = GetForward();
-                data.SpotDirection.x = -forward.x;
-                data.SpotDirection.y = -forward.y;
-                data.SpotDirection.z = -forward.z;
-                data.SpotDirection.w = SpotPower;
-            }
-            else
-            {
-                data.SpotDirection.x = 0;
-                data.SpotDirection.y = 0;
-                data.SpotDirection.z = 0;
-                data.SpotDirection.w = 0;
-            }
-
-            data.Color.x = Color.x;
-            data.Color.y = Color.y;
-            data.Color.z = Color.z;
-            data.Color.w = 1;
-
-            data.Falloff.x = FalloffRange.x;
-            data.Falloff.y = FalloffRange.y;
-            data.Falloff.z = 0;
-            data.Falloff.w = 0;
-        }
-
-        DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };
-        DirectX::XMFLOAT4 Rotation = { 0.0f, 0.0f, 0.0f, 1.0f };
-        bool IsActive = false;
-
-        LightType Type = LightType::Directional;
-        DirectX::XMFLOAT4 Color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        DirectX::XMFLOAT2 FalloffRange = { 1.0f, 10.0f };
-        float SpotPower = 64.0f;
+    protected:
+        void OnMount() override;
+        void OnUnmount() override;
     };
 }

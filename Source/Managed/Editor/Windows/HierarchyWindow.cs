@@ -13,36 +13,39 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Primitive/Cube", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Cube" };
+                SceneManager.CurrentScene.AddGameObject(go);
+
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.MeshType = MeshType.Cube;
 
-                SceneManager.CurrentScene.RootGameObjects.Add(go);
                 Selection.Active = go;
             });
 
             s_ContextMenu.AddMenuItem("Create/Primitive/Sphere", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Sphere" };
+                SceneManager.CurrentScene.AddGameObject(go);
+
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.MeshType = MeshType.Sphere;
 
-                SceneManager.CurrentScene.RootGameObjects.Add(go);
                 Selection.Active = go;
             });
 
             s_ContextMenu.AddMenuItem("Create/Light", (ref object? arg) =>
             {
                 var go = new GameObject() { Name = "Directional Light" };
+                SceneManager.CurrentScene.AddGameObject(go);
+
                 go.AddComponent<Light>();
 
-                SceneManager.CurrentScene.RootGameObjects.Add(go);
                 Selection.Active = go;
             });
 
             s_ContextMenu.AddMenuItem("Create/Empty", (ref object? arg) =>
             {
                 var go = new GameObject();
-                SceneManager.CurrentScene.RootGameObjects.Add(go);
+                SceneManager.CurrentScene.AddGameObject(go);
                 Selection.Active = go;
             });
         }

@@ -2,6 +2,7 @@
 
 namespace march
 {
+    class Transform;
     class ComponentInternalUtility;
 
     class Component
@@ -9,7 +10,16 @@ namespace march
         friend ComponentInternalUtility;
 
     public:
+        Component() = default;
+        virtual ~Component() = default;
+
+        Component(const Component&) = delete;
+        Component& operator=(const Component&) = delete;
+        Component(Component&&) = delete;
+        Component& operator=(Component&&) = delete;
+
         bool GetIsActive() const { return m_IsActive; }
+        Transform* GetTransform() const { return m_Transform; }
 
     protected:
         virtual void OnMount() {}
@@ -19,7 +29,8 @@ namespace march
         virtual void OnUpdate() {}
 
     private:
-        bool m_IsActive = true; // C++ 侧 ReadOnly，不能写该属性
+        bool m_IsActive = true;
+        Transform* m_Transform = nullptr;
     };
 
     // C++ 侧提供给 C# 侧的接口，不要用它
@@ -27,6 +38,7 @@ namespace march
     {
     public:
         static void SetIsActive(Component* component, bool value) { component->m_IsActive = value; }
+        static void SetTransform(Component* component, Transform* value) { component->m_Transform = value; }
         static void InvokeOnMount(Component* component) { component->OnMount(); }
         static void InvokeOnUnmount(Component* component) { component->OnUnmount(); }
         static void InvokeOnEnable(Component* component) { component->OnEnable(); }

@@ -7,6 +7,8 @@
 #include "GfxExcept.h"
 #include "GfxBuffer.h"
 #include "GfxCommandList.h"
+#include "Transform.h"
+#include "Material.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
@@ -155,7 +157,7 @@ namespace march
         passConsts.LightCount = m_Lights.size();
         for (int i = 0; i < m_Lights.size(); i++)
         {
-            if (!m_Lights[i]->IsActive)
+            if (!m_Lights[i]->GetIsActive())
             {
                 continue;
             }
@@ -172,7 +174,7 @@ namespace march
         for (int i = 0; i < m_RenderObjects.size(); i++)
         {
             PerObjConstants consts = {};
-            consts.WorldMatrix = m_RenderObjects[i]->GetWorldMatrix();
+            consts.WorldMatrix = m_RenderObjects[i]->GetTransform()->GetLocalToWorldMatrix();
             *reinterpret_cast<PerObjConstants*>(cbPerObj.GetMappedData(i)) = consts;
 
             if (m_RenderObjects[i]->Mat != nullptr)
@@ -223,7 +225,7 @@ namespace march
             {
                 int index = it.second[i];
                 RenderObject* obj = m_RenderObjects[index];
-                if (!obj->IsActive || obj->Mesh == nullptr || obj->Mat == nullptr)
+                if (!obj->GetIsActive() || obj->Mesh == nullptr || obj->Mat == nullptr)
                 {
                     continue;
                 }

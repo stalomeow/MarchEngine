@@ -13,21 +13,6 @@ NATIVE_EXPORT(void) Light_Delete(Light* pLight)
     delete pLight;
 }
 
-NATIVE_EXPORT(void) Light_SetPosition(Light* pLight, CSharpVector3 position)
-{
-    pLight->Position = ToXMFLOAT3(position);
-}
-
-NATIVE_EXPORT(void) Light_SetRotation(Light* pLight, CSharpQuaternion rotation)
-{
-    pLight->Rotation = ToXMFLOAT4(rotation);
-}
-
-NATIVE_EXPORT(void) Light_SetIsActive(Light* pLight, CSharpBool isActive)
-{
-    pLight->IsActive = isActive;
-}
-
 NATIVE_EXPORT(CSharpInt) Light_GetType(Light* pLight)
 {
     return static_cast<CSharpInt>(pLight->Type);
