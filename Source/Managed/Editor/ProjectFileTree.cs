@@ -1,6 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 using March.Core;
+using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor
 {
@@ -37,7 +36,7 @@ namespace March.Editor
                     }
                 }
 
-                foreach((string name, string path) in Files)
+                foreach ((string name, string path) in Files)
                 {
                     bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == path);
                     string assetPath = AssetDatabase.IsAsset(path) ? path : string.Empty;

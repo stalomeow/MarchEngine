@@ -67,6 +67,7 @@
     </Link>
     <PostBuildEvent />
     <CustomBuildStep>
+      <Message>Copy Files</Message>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
@@ -78,9 +79,7 @@ xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\An
 xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
 xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
 xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
-      <Outputs>$(TargetDir)dxil.dll;$(TargetDir)Managed\March.Core.dll;$(TargetDir)Managed\March.Core.pdb;$(TargetDir)Managed\March.Core.runtimeconfig.json;$(TargetDir)Managed\Newtonsoft.Json.dll;$(TargetDir)Managed\March.Editor.dll;$(TargetDir)Managed\March.Editor.pdb;$(TargetDir)Managed\Antlr4.Runtime.Standard.dll;$(TargetDir)Resources\;$(TargetDir)Shaders\;$(TargetDir)Runtime\;%(Outputs)</Outputs>
-      <Inputs>$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb;$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll;$(SolutionDir)Resources\;$(SolutionDir)Source\Shaders\Public\;$(SolutionDir)Runtime\Win64\;%(Inputs)</Inputs>
-      <Message>Copy Files</Message>
+      <Outputs>$(TargetDir)dummy_output;%(Outputs)</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -101,6 +100,7 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </Link>
     <PostBuildEvent />
     <CustomBuildStep>
+      <Message>Copy Files</Message>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
@@ -112,9 +112,7 @@ xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\An
 xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
 xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
 xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
-      <Outputs>$(TargetDir)dxil.dll;$(TargetDir)Managed\March.Core.dll;$(TargetDir)Managed\March.Core.pdb;$(TargetDir)Managed\March.Core.runtimeconfig.json;$(TargetDir)Managed\Newtonsoft.Json.dll;$(TargetDir)Managed\March.Editor.dll;$(TargetDir)Managed\March.Editor.pdb;$(TargetDir)Managed\Antlr4.Runtime.Standard.dll;$(TargetDir)Resources\;$(TargetDir)Shaders\;$(TargetDir)Runtime\;%(Outputs)</Outputs>
-      <Inputs>$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb;$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll;$(SolutionDir)Resources\;$(SolutionDir)Source\Shaders\Public\;$(SolutionDir)Runtime\Win64\;%(Inputs)</Inputs>
-      <Message>Copy Files</Message>
+      <Outputs>$(TargetDir)dummy_output;%(Outputs)</Outputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
