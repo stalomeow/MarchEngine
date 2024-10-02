@@ -1,17 +1,18 @@
 #pragma once
 
+#include "Component.h"
 #include <DirectXMath.h>
 
 namespace march
 {
-    class Camera
+    class Camera : public Component
     {
     public:
-        DirectX::XMMATRIX GetViewMatrix() const;
-        DirectX::XMMATRIX GetProjectionMatrix() const;
+        DirectX::XMFLOAT4X4 GetViewMatrix() const;
+        DirectX::XMFLOAT4X4 GetProjectionMatrix() const;
 
-        DirectX::XMFLOAT4X4 GetViewMatrix1() const;
-        DirectX::XMFLOAT4X4 GetProjectionMatrix1() const;
+        DirectX::XMMATRIX LoadViewMatrix() const;
+        DirectX::XMMATRIX LoadProjectionMatrix() const;
 
     private:
         float m_Fov;

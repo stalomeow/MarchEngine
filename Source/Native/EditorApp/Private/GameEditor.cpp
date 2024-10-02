@@ -7,6 +7,7 @@
 #include "Debug.h"
 #include "StringUtility.h"
 #include "PathHelper.h"
+#include "EditorGUI.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <imgui_stdlib.h>
@@ -203,6 +204,7 @@ namespace march
         static bool showStyleEditor = false;
         static bool showMetrics = false;
 
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         if (ImGui::BeginMainMenuBar())
         {
             if (ImGui::BeginMenu("File"))
@@ -273,6 +275,7 @@ namespace march
 
             ImGui::EndMainMenuBar();
         }
+        ImGui::PopStyleVar();
 
         ImGui::DockSpaceOverViewport();
 
@@ -305,12 +308,9 @@ namespace march
 
             if (ImGui::BeginMenuBar())
             {
-                if (ImGui::Button("Play"))
+                if (ImGui::RadioButton("Play", false))
                 {
-
                 }
-
-                ImGui::Spacing();
 
                 if (ImGui::RadioButton("MSAA", m_RenderPipeline->GetEnableMSAA()))
                 {

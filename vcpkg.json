@@ -11,11 +11,12 @@
     {
       "name": "imgui",
       "features": [
-        "freetype",
         "docking-experimental",
         "dx12-binding",
+        "freetype",
         "win32-binding"
       ]
-    }
+    },
+    "imguizmo"
   ]
 }
