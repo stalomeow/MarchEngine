@@ -44,6 +44,12 @@
     <Import Project="..\Common.Cpp.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <CustomBuildAfterTargets>Build</CustomBuildAfterTargets>
+  </PropertyGroup>
   <PropertyGroup Label="Vcpkg" />
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
@@ -59,7 +65,8 @@
       <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:RenderPipeline.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\RenderPipeline\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
-    <PostBuildEvent>
+    <PostBuildEvent />
+    <CustomBuildStep>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
@@ -71,7 +78,10 @@ xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\An
 xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
 xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
 xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
-    </PostBuildEvent>
+      <Outputs>$(TargetDir)dxil.dll;$(TargetDir)Managed\March.Core.dll;$(TargetDir)Managed\March.Core.pdb;$(TargetDir)Managed\March.Core.runtimeconfig.json;$(TargetDir)Managed\Newtonsoft.Json.dll;$(TargetDir)Managed\March.Editor.dll;$(TargetDir)Managed\March.Editor.pdb;$(TargetDir)Managed\Antlr4.Runtime.Standard.dll;$(TargetDir)Resources\;$(TargetDir)Shaders\;$(TargetDir)Runtime\;%(Outputs)</Outputs>
+      <Inputs>$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb;$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll;$(SolutionDir)Resources\;$(SolutionDir)Source\Shaders\Public\;$(SolutionDir)Runtime\Win64\;%(Inputs)</Inputs>
+      <Message>Copy Files</Message>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -89,7 +99,8 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
       <AdditionalOptions>/WHOLEARCHIVE:Core.lib /WHOLEARCHIVE:Graphics.lib /WHOLEARCHIVE:RenderPipeline.lib /WHOLEARCHIVE:Scripting.lib %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Core\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Graphics\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\RenderPipeline\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Scripting\;$(SolutionDir)Build\NativeOutput\$(Platform)\$(Configuration)\Utility\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
-    <PostBuildEvent>
+    <PostBuildEvent />
+    <CustomBuildStep>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
@@ -101,7 +112,10 @@ xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\An
 xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
 xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
 xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
-    </PostBuildEvent>
+      <Outputs>$(TargetDir)dxil.dll;$(TargetDir)Managed\March.Core.dll;$(TargetDir)Managed\March.Core.pdb;$(TargetDir)Managed\March.Core.runtimeconfig.json;$(TargetDir)Managed\Newtonsoft.Json.dll;$(TargetDir)Managed\March.Editor.dll;$(TargetDir)Managed\March.Editor.pdb;$(TargetDir)Managed\Antlr4.Runtime.Standard.dll;$(TargetDir)Resources\;$(TargetDir)Shaders\;$(TargetDir)Runtime\;%(Outputs)</Outputs>
+      <Inputs>$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb;$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb;$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll;$(SolutionDir)Resources\;$(SolutionDir)Source\Shaders\Public\;$(SolutionDir)Runtime\Win64\;%(Inputs)</Inputs>
+      <Message>Copy Files</Message>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Private\EditorGUI.binding.cpp" />

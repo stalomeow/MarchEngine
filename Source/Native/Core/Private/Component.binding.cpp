@@ -13,14 +13,14 @@ NATIVE_EXPORT(void) Component_DeleteDefault(Component* component)
     delete component;
 }
 
-NATIVE_EXPORT(CSharpBool) Component_GetIsActive(Component* component)
+NATIVE_EXPORT(CSharpBool) Component_GetIsEnabled(Component* component)
 {
-    return CSHARP_MARSHAL_BOOL(component->GetIsActive());
+    return CSHARP_MARSHAL_BOOL(component->GetIsEnabled());
 }
 
-NATIVE_EXPORT(void) Component_SetIsActive(Component* component, CSharpBool value)
+NATIVE_EXPORT(void) Component_SetIsEnabled(Component* component, CSharpBool value)
 {
-    ComponentInternalUtility::SetIsActive(component, CSHARP_UNMARSHAL_BOOL(value));
+    ComponentInternalUtility::SetIsEnabled(component, CSHARP_UNMARSHAL_BOOL(value));
 }
 
 NATIVE_EXPORT(void) Component_SetTransform(Component* component, Transform* value)

@@ -69,6 +69,89 @@ namespace march
         m_DotNet->Invoke(ManagedMethod::Initialize);
     }
 
+    static void SetStyles()
+    {
+        // https://github.com/ocornut/imgui/issues/707
+
+        constexpr auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b)
+            {
+                return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
+            };
+
+        auto& style = ImGui::GetStyle();
+        ImVec4* colors = style.Colors;
+
+        const ImVec4 bgColor = ColorFromBytes(20, 20, 21);
+        const ImVec4 menuColor = ColorFromBytes(34, 34, 35);
+        const ImVec4 lightBgColor = ColorFromBytes(90, 90, 92);
+        const ImVec4 veryLightBgColor = ColorFromBytes(110, 110, 115);
+
+        const ImVec4 panelColor = ColorFromBytes(50, 50, 54);
+        const ImVec4 panelHoverColor = ColorFromBytes(35, 80, 142);
+        const ImVec4 panelActiveColor = ColorFromBytes(0, 95, 170);
+
+        const ImVec4 textColor = ColorFromBytes(230, 230, 230);
+        const ImVec4 textHighlightColor = ColorFromBytes(255, 255, 255);
+        const ImVec4 textDisabledColor = ColorFromBytes(151, 151, 151);
+        const ImVec4 borderColor = ColorFromBytes(58, 58, 58);
+
+        colors[ImGuiCol_Text] = textColor;
+        colors[ImGuiCol_TextDisabled] = textDisabledColor;
+        colors[ImGuiCol_TextSelectedBg] = panelActiveColor;
+        colors[ImGuiCol_WindowBg] = bgColor;
+        colors[ImGuiCol_ChildBg] = bgColor;
+        colors[ImGuiCol_PopupBg] = bgColor;
+        colors[ImGuiCol_Border] = borderColor;
+        colors[ImGuiCol_BorderShadow] = borderColor;
+        colors[ImGuiCol_FrameBg] = panelColor;
+        colors[ImGuiCol_FrameBgHovered] = panelHoverColor;
+        colors[ImGuiCol_FrameBgActive] = panelActiveColor;
+        colors[ImGuiCol_TitleBg] = bgColor;
+        colors[ImGuiCol_TitleBgActive] = bgColor;
+        colors[ImGuiCol_TitleBgCollapsed] = bgColor;
+        colors[ImGuiCol_MenuBarBg] = menuColor;
+        colors[ImGuiCol_ScrollbarBg] = panelColor;
+        colors[ImGuiCol_ScrollbarGrab] = lightBgColor;
+        colors[ImGuiCol_ScrollbarGrabHovered] = veryLightBgColor;
+        colors[ImGuiCol_ScrollbarGrabActive] = veryLightBgColor;
+        colors[ImGuiCol_CheckMark] = textColor;
+        colors[ImGuiCol_SliderGrab] = textColor;
+        colors[ImGuiCol_SliderGrabActive] = textHighlightColor;
+        colors[ImGuiCol_Button] = panelColor;
+        colors[ImGuiCol_ButtonHovered] = panelHoverColor;
+        colors[ImGuiCol_ButtonActive] = panelActiveColor;
+        colors[ImGuiCol_Header] = panelColor;
+        colors[ImGuiCol_HeaderHovered] = panelHoverColor;
+        colors[ImGuiCol_HeaderActive] = panelActiveColor;
+        colors[ImGuiCol_Separator] = borderColor;
+        colors[ImGuiCol_SeparatorHovered] = borderColor;
+        colors[ImGuiCol_SeparatorActive] = borderColor;
+        colors[ImGuiCol_ResizeGrip] = bgColor;
+        colors[ImGuiCol_ResizeGripHovered] = panelHoverColor;
+        colors[ImGuiCol_ResizeGripActive] = panelActiveColor;
+        colors[ImGuiCol_PlotLines] = panelActiveColor;
+        colors[ImGuiCol_PlotLinesHovered] = panelHoverColor;
+        colors[ImGuiCol_PlotHistogram] = panelActiveColor;
+        colors[ImGuiCol_PlotHistogramHovered] = panelHoverColor;
+        colors[ImGuiCol_ModalWindowDimBg] = bgColor;
+        colors[ImGuiCol_DragDropTarget] = panelActiveColor;
+        colors[ImGuiCol_NavHighlight] = bgColor;
+        colors[ImGuiCol_DockingPreview] = panelActiveColor;
+        colors[ImGuiCol_Tab] = bgColor;
+        colors[ImGuiCol_TabActive] = panelActiveColor;
+        colors[ImGuiCol_TabUnfocused] = bgColor;
+        colors[ImGuiCol_TabUnfocusedActive] = panelActiveColor;
+        colors[ImGuiCol_TabHovered] = panelHoverColor;
+
+        style.WindowRounding = 0.0f;
+        style.ChildRounding = 0.0f;
+        style.FrameRounding = 0.0f;
+        style.GrabRounding = 0.0f;
+        style.PopupRounding = 0.0f;
+        style.ScrollbarRounding = 0.0f;
+        style.TabRounding = 0.0f;
+    }
+
     void GameEditor::InitImGui()
     {
         // Setup Dear ImGui context
@@ -88,10 +171,12 @@ namespace march
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
-        // ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
-        ImGui::GetStyle().FrameBorderSize = 1.0f;
-        ImGui::GetStyle().FrameRounding = 2.0f;
-        ImGui::GetStyle().TabRounding = 2.0f;
+        SetStyles();
+
+        //ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+        //ImGui::GetStyle().FrameBorderSize = 1.0f;
+        //ImGui::GetStyle().FrameRounding = 2.0f;
+        //ImGui::GetStyle().TabRounding = 2.0f;
         ImGui::GetStyle().TabBarOverlineSize = 0.0f;
 
         auto device = GetGfxDevice()->GetD3D12Device();

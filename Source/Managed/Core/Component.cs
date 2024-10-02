@@ -1,14 +1,20 @@
 using March.Core.Binding;
 using March.Core.Serialization;
 using Newtonsoft.Json;
-using System.ComponentModel;
 
 namespace March.Core
 {
     public abstract partial class Component : NativeMarchObject, IForceInlineSerialization
     {
+        private enum ScriptState
+        {
+            Unmounted,
+            Disabled,
+            Enabled,
+        }
+
         private readonly bool m_IsDefaultNativeComponent;
-        private bool m_IsScriptEnabled = false; // 如果为 true 说明调用过 OnEnable()
+        private ScriptState m_ScriptState = ScriptState.Unmounted;
         private GameObject? m_GameObject = null;
 
         protected Component() : base(Component_CreateDefault())
@@ -31,20 +37,14 @@ namespace March.Core
 
         public GameObject gameObject => m_GameObject!;
 
-        [JsonProperty(nameof(IsEnabled))]
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        private bool IsEnabledSerializationOnly
-        {
-            get => Component_GetIsActive(NativePtr);
-            set => Component_SetIsActive(NativePtr, value);
-        }
-
+        [InspectorName("Enable")]
+        [JsonProperty(Order = -9999)] // 显示在最前面
         public bool IsEnabled
         {
-            get => Component_GetIsActive(NativePtr);
+            get => Component_GetIsEnabled(NativePtr);
             set
             {
-                Component_SetIsActive(NativePtr, value);
+                Component_SetIsEnabled(NativePtr, value);
                 InvokeScriptEnabledCallback();
             }
         }
@@ -53,12 +53,13 @@ namespace March.Core
 
         internal void Mount(GameObject gameObject)
         {
-            if (m_GameObject != null)
+            if (m_ScriptState != ScriptState.Unmounted)
             {
                 throw new InvalidOperationException("Component has been mounted to a GameObject");
             }
 
             m_GameObject = gameObject;
+            m_ScriptState = ScriptState.Disabled;
             Component_SetTransform(NativePtr, gameObject.transform.NativePtr);
             OnMount();
         }
@@ -75,12 +76,12 @@ namespace March.Core
 
         internal void UnmountAndDispose()
         {
-            if (m_GameObject == null)
+            if (m_ScriptState == ScriptState.Unmounted)
             {
                 throw new InvalidOperationException("Component has not been mounted to any GameObject");
             }
 
-            if (m_IsScriptEnabled)
+            if (m_ScriptState == ScriptState.Enabled)
             {
                 throw new InvalidOperationException("Component is still enabled");
             }
@@ -93,7 +94,7 @@ namespace March.Core
 
         internal void Update()
         {
-            if (m_IsScriptEnabled)
+            if (m_ScriptState == ScriptState.Enabled)
             {
                 OnUpdate();
             }
@@ -106,21 +107,24 @@ namespace March.Core
 
         private void InvokeScriptEnabledCallback()
         {
-            bool isActiveAndEnabled = IsActiveAndEnabled;
-            if (m_IsScriptEnabled == isActiveAndEnabled)
+            if (m_ScriptState == ScriptState.Unmounted)
             {
                 return;
             }
 
-            if (isActiveAndEnabled)
+            bool isActiveAndEnabled = IsActiveAndEnabled;
+
+            switch (m_ScriptState)
             {
-                m_IsScriptEnabled = true;
-                OnEnable();
-            }
-            else
-            {
-                m_IsScriptEnabled = false;
-                OnDisable();
+                case ScriptState.Disabled when isActiveAndEnabled:
+                    m_ScriptState = ScriptState.Enabled;
+                    OnEnable();
+                    break;
+
+                case ScriptState.Enabled when !isActiveAndEnabled:
+                    m_ScriptState = ScriptState.Disabled;
+                    OnDisable();
+                    break;
             }
         }
 
@@ -143,10 +147,10 @@ namespace March.Core
         private static partial void Component_DeleteDefault(nint component);
 
         [NativeFunction]
-        private static partial bool Component_GetIsActive(nint component);
+        private static partial bool Component_GetIsEnabled(nint component);
 
         [NativeFunction]
-        private static partial void Component_SetIsActive(nint component, bool value);
+        private static partial void Component_SetIsEnabled(nint component, bool value);
 
         [NativeFunction]
         private static partial void Component_SetTransform(nint component, nint transform);

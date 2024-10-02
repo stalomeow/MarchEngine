@@ -18,7 +18,7 @@ namespace march
         Component(Component&&) = delete;
         Component& operator=(Component&&) = delete;
 
-        bool GetIsActive() const { return m_IsActive; }
+        bool GetIsEnabled() const { return m_IsEnabled; }
         Transform* GetTransform() const { return m_Transform; }
 
     protected:
@@ -29,7 +29,7 @@ namespace march
         virtual void OnUpdate() {}
 
     private:
-        bool m_IsActive = true;
+        bool m_IsEnabled = true;
         Transform* m_Transform = nullptr;
     };
 
@@ -37,7 +37,7 @@ namespace march
     class ComponentInternalUtility
     {
     public:
-        static void SetIsActive(Component* component, bool value) { component->m_IsActive = value; }
+        static void SetIsEnabled(Component* component, bool value) { component->m_IsEnabled = value; }
         static void SetTransform(Component* component, Transform* value) { component->m_Transform = value; }
         static void InvokeOnMount(Component* component) { component->OnMount(); }
         static void InvokeOnUnmount(Component* component) { component->OnUnmount(); }

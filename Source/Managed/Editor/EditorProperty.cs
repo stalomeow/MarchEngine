@@ -185,7 +185,11 @@ namespace March.Editor
 
         public readonly string DisplayName
         {
-            get => Json.PropertyName ?? Json.UnderlyingName ?? "<unknown>";
+            get
+            {
+                var attr = GetAttribute<InspectorNameAttribute>();
+                return attr?.Name ?? Json.PropertyName ?? Json.UnderlyingName ?? "<unknown>";
+            }
         }
 
         public readonly string Tooltip

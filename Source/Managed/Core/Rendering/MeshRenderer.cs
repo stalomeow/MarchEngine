@@ -1,6 +1,5 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
-using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
@@ -12,12 +11,13 @@ namespace March.Core.Rendering
 
     public partial class MeshRenderer : Component
     {
-        [JsonProperty] private MeshType m_MeshType = MeshType.Cube;
-        [JsonProperty] private List<Material?> m_Materials = [];
+        private MeshType m_MeshType = MeshType.Cube;
+        private List<Material?> m_Materials = [];
 
         public MeshRenderer() : base(RenderObject_New())
         {
             RenderObject_SetMesh(NativePtr, SimpleMesh_New());
+            UpdateMesh();
         }
 
         protected override void Dispose(bool disposing)
@@ -27,6 +27,7 @@ namespace March.Core.Rendering
             base.Dispose(disposing);
         }
 
+        [JsonProperty]
         public MeshType MeshType
         {
             get => m_MeshType;
@@ -42,6 +43,7 @@ namespace March.Core.Rendering
             }
         }
 
+        [JsonProperty]
         public List<Material?> Materials
         {
             get => m_Materials;
@@ -80,12 +82,6 @@ namespace March.Core.Rendering
                 default:
                     throw new NotImplementedException($"Mesh type {MeshType} not implemented");
             }
-        }
-
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
-        {
-            UpdateMesh();
         }
 
         #region RenderObject
