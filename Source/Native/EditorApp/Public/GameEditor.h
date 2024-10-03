@@ -32,8 +32,9 @@ namespace march
 
     private:
         void InitImGui();
-        void DrawImGui();
-        void ResizeRenderPipeline(int width, int height);
+        void DrawImGui(Camera* sceneCamera);
+        void ResizeRenderPipeline(Camera* sceneCamera, int width, int height);
+        void SetSceneViewSrv(Camera* sceneCamera);
         void DrawDebugDescriptorTableAllocator(const std::string& name, GfxDescriptorTableAllocator* allocator);
         void DrawConsoleWindow();
         void CalculateFrameStats();

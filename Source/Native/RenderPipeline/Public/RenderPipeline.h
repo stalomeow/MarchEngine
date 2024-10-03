@@ -2,18 +2,14 @@
 
 #include <directx/d3dx12.h>
 #include "Light.h"
-#include "RenderObject.h"
 #include <dxgi.h>
 #include <dxgi1_4.h>
-#include <wrl.h>
-#include <memory>
-#include <tuple>
-#include <functional>
 #include <vector>
 
 namespace march
 {
-    class GfxRenderTexture;
+    class Camera;
+    class RenderObject;
 
     struct PerObjConstants
     {
@@ -38,19 +34,10 @@ namespace march
     class RenderPipeline
     {
     public:
-        RenderPipeline(int width, int height);
+        RenderPipeline() = default;
         ~RenderPipeline() = default;
 
-        void Resize(int width, int height);
-        void Render();
-
-        bool GetEnableMSAA() const { return m_EnableMSAA; }
-        void SetEnableMSAA(bool value);
-
-        bool GetIsWireframe() const { return m_IsWireframe; }
-        void SetIsWireframe(bool value) { m_IsWireframe = value; }
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetColorShaderResourceView() const;
+        void Render(Camera* camera);
 
         void AddRenderObject(RenderObject* obj) { m_RenderObjects.push_back(obj); }
 
@@ -77,36 +64,7 @@ namespace march
         }
 
     private:
-        void CheckMSAAQuailty();
-        void CreateColorAndDepthStencilTarget(int width, int height);
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetColorRenderTargetView() const;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetDepthStencilTargetView() const;
-
-    private:
-        bool m_EnableMSAA = true;
-        UINT m_MSAAQuality;
-
-        std::unique_ptr<GfxRenderTexture> m_ColorTarget;
-        std::unique_ptr<GfxRenderTexture> m_ResolvedColorTarget;
-        std::unique_ptr<GfxRenderTexture> m_DepthStencilTarget;
-
-        int m_RenderTargetWidth;
-        int m_RenderTargetHeight;
-        D3D12_VIEWPORT m_Viewport;
-        D3D12_RECT m_ScissorRect;
-
-        bool m_IsWireframe = false;
-
-        float m_Theta = 1.5f * DirectX::XM_PI;
-        float m_Phi = DirectX::XM_PIDIV4;
-        float m_Radius = 5.0f;
-
         std::vector<RenderObject*> m_RenderObjects{};
         std::vector<Light*> m_Lights{};
-
-    private:
-        DXGI_FORMAT m_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        UINT m_MSAASampleCount = 4;
     };
-};
+}

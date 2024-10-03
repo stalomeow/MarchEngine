@@ -6,10 +6,12 @@
 #include <DirectXTex.h>
 #include <string>
 #include <stdint.h>
+#include <memory>
 
 namespace march
 {
     class GfxDevice;
+    class GfxTexture2D;
 
     enum class GfxFilterMode
     {
@@ -60,8 +62,8 @@ namespace march
         GfxDescriptorHandle m_SrvDescriptorHandle;
         GfxDescriptorHandle m_SamplerDescriptorHandle;
 
-        static GfxTexture* s_pBlackTexture;
-        static GfxTexture* s_pWhiteTexture;
+        static std::unique_ptr<GfxTexture2D> s_pBlackTexture;
+        static std::unique_ptr<GfxTexture2D> s_pWhiteTexture;
     };
 
     class GfxTexture2D : public GfxTexture

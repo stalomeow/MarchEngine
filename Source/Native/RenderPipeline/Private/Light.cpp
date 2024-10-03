@@ -15,20 +15,11 @@ namespace march
     {
     }
 
-    XMFLOAT3 Light::GetForward() const
-    {
-        XMFLOAT3 forward = { 0.0f, 0.0f, 1.0f };
-        XMVECTOR f = XMLoadFloat3(&forward);
-        f = XMVector3Rotate(f, GetTransform()->LoadRotation());
-        XMStoreFloat3(&forward, f);
-        return forward;
-    }
-
     void Light::FillLightData(LightData& data) const
     {
         if (Type == LightType::Directional)
         {
-            XMFLOAT3 forward = GetForward();
+            XMFLOAT3 forward = GetTransform()->GetForward();
             data.Position.x = -forward.x;
             data.Position.y = -forward.y;
             data.Position.z = -forward.z;
@@ -44,7 +35,7 @@ namespace march
 
         if (Type == LightType::Spot)
         {
-            XMFLOAT3 forward = GetForward();
+            XMFLOAT3 forward = GetTransform()->GetForward();
             data.SpotDirection.x = -forward.x;
             data.SpotDirection.y = -forward.y;
             data.SpotDirection.z = -forward.z;

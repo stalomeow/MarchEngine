@@ -8,5 +8,7 @@ namespace March.Core.Serialization
         public float Min { get; set; } = float.MinValue;
 
         public float Max { get; set; } = float.MaxValue;
+
+        public bool Slider { get; set; } = false;
     }
 }

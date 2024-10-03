@@ -95,8 +95,8 @@ namespace march
         device->CreateSampler(&samplerDesc, m_SamplerDescriptorHandle.GetCpuHandle());
     }
 
-    GfxTexture* GfxTexture::s_pBlackTexture = nullptr;
-    GfxTexture* GfxTexture::s_pWhiteTexture = nullptr;
+    std::unique_ptr<GfxTexture2D> GfxTexture::s_pBlackTexture = nullptr;
+    std::unique_ptr<GfxTexture2D> GfxTexture::s_pWhiteTexture = nullptr;
 
     GfxTexture* GfxTexture::GetDefaultBlack()
     {
@@ -115,13 +115,12 @@ namespace march
 
         if (s_pBlackTexture == nullptr)
         {
-            auto tex = new GfxTexture2D(GetGfxDevice());
-            tex->LoadFromDDS("DefaultBlackTexture", ddsData, sizeof(ddsData));
-            tex->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
-            s_pBlackTexture = tex;
+            s_pBlackTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            s_pBlackTexture->LoadFromDDS("DefaultBlackTexture", ddsData, sizeof(ddsData));
+            s_pBlackTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
-        return s_pBlackTexture;
+        return s_pBlackTexture.get();
     }
 
     GfxTexture* GfxTexture::GetDefaultWhite()
@@ -141,13 +140,12 @@ namespace march
 
         if (s_pWhiteTexture == nullptr)
         {
-            auto tex = new GfxTexture2D(GetGfxDevice());
-            tex->LoadFromDDS("DefaultWhiteTexture", ddsData, sizeof(ddsData));
-            tex->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
-            s_pWhiteTexture = tex;
+            s_pWhiteTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            s_pWhiteTexture->LoadFromDDS("DefaultWhiteTexture", ddsData, sizeof(ddsData));
+            s_pWhiteTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
-        return s_pWhiteTexture;
+        return s_pWhiteTexture.get();
     }
 
     GfxTexture2D::GfxTexture2D(GfxDevice* device) : GfxTexture(device), m_MetaData{}

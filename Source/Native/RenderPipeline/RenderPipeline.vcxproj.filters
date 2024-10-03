@@ -24,6 +24,9 @@
     <ClInclude Include="Public\Camera.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Display.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp">
@@ -48,6 +51,15 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\RenderObject.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Camera.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Display.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Camera.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

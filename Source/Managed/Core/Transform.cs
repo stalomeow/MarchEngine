@@ -86,6 +86,54 @@ namespace March.Core
 
         public Matrix4x4 WorldToLocalMatrix => Transform_GetWorldToLocalMatrix(NativePtr);
 
+        public Vector3 Forward => Transform_GetForward(NativePtr);
+
+        public Vector3 Right => Transform_GetRight(NativePtr);
+
+        public Vector3 Up => Transform_GetUp(NativePtr);
+
+        /// <summary>
+        /// 变换一个向量，受 rotation 和 scale 影响
+        /// </summary>
+        /// <param name="vector"></param>
+        /// <returns></returns>
+        public Vector3 TransformVector(Vector3 vector) => Transform_TransformVector(NativePtr, vector);
+
+        /// <summary>
+        /// 变换一个方向，只受 rotation 影响
+        /// </summary>
+        /// <param name="direction"></param>
+        /// <returns></returns>
+        public Vector3 TransformDirection(Vector3 direction) => Transform_TransformDirection(NativePtr, direction);
+
+        /// <summary>
+        /// 变换一个点，受 rotation、scale 和 position 影响
+        /// </summary>
+        /// <param name="point"></param>
+        /// <returns></returns>
+        public Vector3 TransformPoint(Vector3 point) => Transform_TransformPoint(NativePtr, point);
+
+        /// <summary>
+        /// 逆变换一个向量，受 rotation 和 scale 影响
+        /// </summary>
+        /// <param name="vector"></param>
+        /// <returns></returns>
+        public Vector3 InverseTransformVector(Vector3 vector) => Transform_InverseTransformVector(NativePtr, vector);
+
+        /// <summary>
+        /// 逆变换一个方向，只受 rotation 影响
+        /// </summary>
+        /// <param name="direction"></param>
+        /// <returns></returns>
+        public Vector3 InverseTransformDirection(Vector3 direction) => Transform_InverseTransformDirection(NativePtr, direction);
+
+        /// <summary>
+        /// 逆变换一个点，受 rotation、scale 和 position 影响
+        /// </summary>
+        /// <param name="point"></param>
+        /// <returns></returns>
+        public Vector3 InverseTransformPoint(Vector3 point) => Transform_InverseTransformPoint(NativePtr, point);
+
         public Transform? Parent => m_Parent;
 
         public int ChildCount => m_Children.Count;
@@ -200,6 +248,33 @@ namespace March.Core
 
         [NativeFunction]
         private static partial Matrix4x4 Transform_GetWorldToLocalMatrix(nint transform);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_GetForward(nint transform);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_GetRight(nint transform);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_GetUp(nint transform);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_TransformVector(nint transform, Vector3 vector);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_TransformDirection(nint transform, Vector3 direction);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_TransformPoint(nint transform, Vector3 point);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_InverseTransformVector(nint transform, Vector3 vector);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_InverseTransformDirection(nint transform, Vector3 direction);
+
+        [NativeFunction]
+        private static partial Vector3 Transform_InverseTransformPoint(nint transform, Vector3 point);
 
         #endregion
     }

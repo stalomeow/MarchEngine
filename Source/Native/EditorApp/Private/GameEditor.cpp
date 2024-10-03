@@ -8,6 +8,9 @@
 #include "StringUtility.h"
 #include "PathHelper.h"
 #include "EditorGUI.h"
+#include "Camera.h"
+#include "Display.h"
+#include "GfxTexture.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <imgui_stdlib.h>
@@ -61,13 +64,16 @@ namespace march
         desc.SamplerTableDynamicDescriptorCapacity = 1024;
         InitGfxDevice(desc);
 
-        m_RenderPipeline = std::make_unique<RenderPipeline>(width, height);
+        Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // temp
+        Display::CreateEditorSceneDisplay(GetGfxDevice(), static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        m_RenderPipeline = std::make_unique<RenderPipeline>();
         m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
-        m_StaticDescriptorViewTable.Copy(1, m_RenderPipeline->GetColorShaderResourceView());
+        //m_StaticDescriptorViewTable.Copy(1, m_RenderPipeline->GetColorShaderResourceView());
 
         InitImGui();
 
         m_DotNet->Invoke(ManagedMethod::Initialize);
+        m_DotNet->Invoke(ManagedMethod::EditorInitialize);
     }
 
     static void SetStyles()
@@ -194,7 +200,7 @@ namespace march
         ImGui::DestroyContext();
     }
 
-    void GameEditor::DrawImGui()
+    void GameEditor::DrawImGui(Camera* sceneCamera)
     {
         // Start the Dear ImGui frame
         ImGui_ImplDX12_NewFrame();
@@ -312,16 +318,19 @@ namespace march
                 {
                 }
 
-                if (ImGui::RadioButton("MSAA", m_RenderPipeline->GetEnableMSAA()))
+                if (ImGui::RadioButton("MSAA", sceneCamera->GetEnableMSAA()))
                 {
-                    m_RenderPipeline->SetEnableMSAA(!m_RenderPipeline->GetEnableMSAA());
+                    // 不等 gpu idle 也行，但是切换 msaa 会有一帧的延迟，画面会闪一下
+                    GetGfxDevice()->WaitForIdle();
+                    sceneCamera->SetEnableMSAA(!sceneCamera->GetEnableMSAA());
+                    SetSceneViewSrv(sceneCamera);
                 }
 
                 ImGui::Spacing();
 
-                if (ImGui::RadioButton("Wireframe", m_RenderPipeline->GetIsWireframe()))
+                if (ImGui::RadioButton("Wireframe", sceneCamera->GetEnableWireframe()))
                 {
-                    m_RenderPipeline->SetIsWireframe(!m_RenderPipeline->GetIsWireframe());
+                    CameraInternalUtility::SetEnableWireframe(sceneCamera, !sceneCamera->GetEnableWireframe());
                 }
 
                 ImGui::EndMenuBar();
@@ -333,7 +342,7 @@ namespace march
             {
                 m_LastSceneViewWidth = contextSize.x;
                 m_LastSceneViewHeight = contextSize.y;
-                ResizeRenderPipeline(m_LastSceneViewWidth, m_LastSceneViewHeight);
+                ResizeRenderPipeline(sceneCamera, m_LastSceneViewWidth, m_LastSceneViewHeight);
             }
 
             auto srvHandle = m_StaticDescriptorViewTable.GetGpuHandle(1);
@@ -597,12 +606,26 @@ namespace march
         CalculateFrameStats();
 
         m_DotNet->Invoke(ManagedMethod::Tick);
-        DrawImGui();
-        m_RenderPipeline->Render();
 
-        // Render Dear ImGui graphics
-        GetGfxDevice()->SetBackBufferAsRenderTarget();
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList());
+        Camera* sceneCamera = nullptr;
+        for (const auto c : Camera::GetAllCameras())
+        {
+            if (c->GetIsEditorSceneCamera())
+            {
+                sceneCamera = c;
+                break;
+            }
+        }
+
+        if (sceneCamera != nullptr)
+        {
+            DrawImGui(sceneCamera);
+            m_RenderPipeline->Render(sceneCamera);
+
+            // Render Dear ImGui graphics
+            GetGfxDevice()->SetBackBufferAsRenderTarget();
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList());
+        }
 
         GetGfxDevice()->EndFrame();
     }
@@ -613,10 +636,25 @@ namespace march
         GetGfxDevice()->ResizeBackBuffer(width, height);
     }
 
-    void GameEditor::ResizeRenderPipeline(int width, int height)
+    void GameEditor::ResizeRenderPipeline(Camera* sceneCamera, int width, int height)
     {
-        m_RenderPipeline->Resize(width, height);
-        m_StaticDescriptorViewTable.Copy(1, m_RenderPipeline->GetColorShaderResourceView());
+        GetGfxDevice()->WaitForIdle();
+        sceneCamera->GetTargetDisplay()->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        SetSceneViewSrv(sceneCamera);
+    }
+
+    void GameEditor::SetSceneViewSrv(Camera* sceneCamera)
+    {
+        Display* display = sceneCamera->GetTargetDisplay();
+
+        if (display->GetEnableMSAA())
+        {
+            m_StaticDescriptorViewTable.Copy(1, display->GetResolvedColorBuffer()->GetSrvCpuDescriptorHandle());
+        }
+        else
+        {
+            m_StaticDescriptorViewTable.Copy(1, display->GetColorBuffer()->GetSrvCpuDescriptorHandle());
+        }
     }
 
     std::string GameEditor::GetFontPath()

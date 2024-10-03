@@ -28,7 +28,6 @@ namespace march
     {
     public:
         Light();
-        DirectX::XMFLOAT3 GetForward() const;
         void FillLightData(LightData& data) const;
 
         LightType Type;

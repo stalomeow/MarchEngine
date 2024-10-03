@@ -8,6 +8,7 @@ namespace march
     {
         Initialize,
         Tick,
+        EditorInitialize,
         DrawInspectorWindow,
         DrawProjectWindow,
         DrawHierarchyWindow,

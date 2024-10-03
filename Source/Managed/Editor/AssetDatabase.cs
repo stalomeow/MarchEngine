@@ -4,7 +4,6 @@ using March.Editor.Importers;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace March.Editor
@@ -19,8 +18,6 @@ namespace March.Editor
         private static readonly Dictionary<string, string> s_Guid2PathMap = new();
         private static readonly Dictionary<string, AssetImporter> s_Path2Importers = new();
 
-        [ModuleInitializer]
-        [SuppressMessage("Usage", "CA2255:The 'ModuleInitializer' attribute should not be used in libraries", Justification = "<Pending>")]
         internal static void InitAssetDatabase()
         {
             AssetManager.Impl = new EditorAssetManagerImpl();

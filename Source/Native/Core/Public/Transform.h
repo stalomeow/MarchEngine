@@ -26,6 +26,9 @@ namespace march
         DirectX::XMFLOAT3 GetLossyScale() const;
         DirectX::XMFLOAT4X4 GetLocalToWorldMatrix() const;
         DirectX::XMFLOAT4X4 GetWorldToLocalMatrix() const;
+        DirectX::XMFLOAT3 GetForward() const;
+        DirectX::XMFLOAT3 GetRight() const;
+        DirectX::XMFLOAT3 GetUp() const;
 
         DirectX::XMVECTOR LoadLocalPosition() const;
         DirectX::XMVECTOR LoadLocalRotation() const;
@@ -37,6 +40,27 @@ namespace march
         DirectX::XMVECTOR LoadLossyScale() const;
         DirectX::XMMATRIX LoadLocalToWorldMatrix() const;
         DirectX::XMMATRIX LoadWorldToLocalMatrix() const;
+        DirectX::XMVECTOR LoadForward() const;
+        DirectX::XMVECTOR LoadRight() const;
+        DirectX::XMVECTOR LoadUp() const;
+
+        // 变换一个向量，受 rotation 和 scale 影响
+        DirectX::XMVECTOR XM_CALLCONV TransformVector(DirectX::FXMVECTOR vector) const;
+
+        // 变换一个方向，只受 rotation 影响
+        DirectX::XMVECTOR XM_CALLCONV TransformDirection(DirectX::FXMVECTOR direction) const;
+
+        // 变换一个点，受 rotation、scale 和 position 影响
+        DirectX::XMVECTOR XM_CALLCONV TransformPoint(DirectX::FXMVECTOR point) const;
+
+        // 逆变换一个向量，受 rotation 和 scale 影响
+        DirectX::XMVECTOR XM_CALLCONV InverseTransformVector(DirectX::FXMVECTOR vector) const;
+
+        // 逆变换一个方向，只受 rotation 影响
+        DirectX::XMVECTOR XM_CALLCONV InverseTransformDirection(DirectX::FXMVECTOR direction) const;
+
+        // 逆变换一个点，受 rotation、scale 和 position 影响
+        DirectX::XMVECTOR XM_CALLCONV InverseTransformPoint(DirectX::FXMVECTOR point) const;
 
         static DirectX::XMFLOAT4 EulerAnglesToQuaternion(DirectX::XMFLOAT3 eulerAngles);
         static DirectX::XMFLOAT3 QuaternionToEulerAngles(DirectX::XMFLOAT4 quaternion);

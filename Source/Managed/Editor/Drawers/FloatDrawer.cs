@@ -14,6 +14,10 @@ namespace March.Editor.Drawers
             {
                 changed = EditorGUI.FloatField(label, tooltip, ref value);
             }
+            else if (attr.Slider)
+            {
+                changed = EditorGUI.FloatSliderField(label, tooltip, ref value, attr.Min, attr.Max);
+            }
             else
             {
                 changed = EditorGUI.FloatField(label, tooltip, ref value, attr.DragSpeed, attr.Min, attr.Max);

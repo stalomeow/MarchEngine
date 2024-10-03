@@ -79,6 +79,27 @@ namespace march
         return result;
     }
 
+    XMFLOAT3 Transform::GetForward() const
+    {
+        XMFLOAT3 result = {};
+        XMStoreFloat3(&result, LoadForward());
+        return result;
+    }
+
+    XMFLOAT3 Transform::GetRight() const
+    {
+        XMFLOAT3 result = {};
+        XMStoreFloat3(&result, LoadRight());
+        return result;
+    }
+
+    XMFLOAT3 Transform::GetUp() const
+    {
+        XMFLOAT3 result = {};
+        XMStoreFloat3(&result, LoadUp());
+        return result;
+    }
+
     XMVECTOR Transform::LoadLocalPosition() const
     {
         return XMLoadFloat3(&m_LocalPosition);
@@ -180,6 +201,63 @@ namespace march
     XMMATRIX Transform::LoadWorldToLocalMatrix() const
     {
         return XMMatrixInverse(nullptr, LoadLocalToWorldMatrix());
+    }
+
+    XMVECTOR Transform::LoadForward() const
+    {
+        return TransformDirection(XMVectorSet(0, 0, 1, 0));
+    }
+
+    XMVECTOR Transform::LoadRight() const
+    {
+        return TransformDirection(XMVectorSet(1, 0, 0, 0));
+    }
+
+    XMVECTOR Transform::LoadUp() const
+    {
+        return TransformDirection(XMVectorSet(0, 1, 0, 0));
+    }
+
+    XMVECTOR XM_CALLCONV Transform::TransformVector(FXMVECTOR vector) const
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transformnormal
+        // XMVector3TransformNormal performs transformations using the input matrix rows 0, 1,and 2
+        // for rotation and scaling, and ignores row 3.
+        return XMVector3TransformNormal(vector, LoadLocalToWorldMatrix());
+    }
+
+    XMVECTOR XM_CALLCONV Transform::TransformDirection(FXMVECTOR direction) const
+    {
+        return XMVector3Rotate(direction, LoadRotation());
+    }
+
+    XMVECTOR XM_CALLCONV Transform::TransformPoint(FXMVECTOR point) const
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transform
+        // Vector3Transform ignores the w component of the input vector, and uses a value of 1 instead.
+        // The w component of the returned vector may be non-homogeneous (!= 1.0).
+        return XMVector3Transform(point, LoadLocalToWorldMatrix());
+    }
+
+    XMVECTOR XM_CALLCONV Transform::InverseTransformVector(FXMVECTOR vector) const
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transformnormal
+        // XMVector3TransformNormal performs transformations using the input matrix rows 0, 1,and 2
+        // for rotation and scaling, and ignores row 3.
+        return XMVector3TransformNormal(vector, LoadWorldToLocalMatrix());
+    }
+
+    XMVECTOR XM_CALLCONV Transform::InverseTransformDirection(FXMVECTOR direction) const
+    {
+        return XMVector3InverseRotate(direction, LoadRotation());
+    }
+
+    XMVECTOR XM_CALLCONV Transform::InverseTransformPoint(FXMVECTOR point) const
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transform
+        // Vector3Transform ignores the w component of the input vector, and uses a value of 1 instead.
+        // The w component of the returned vector may be non-homogeneous (!= 1.0).
+        return XMVector3Transform(point, LoadWorldToLocalMatrix());
     }
 
     XMFLOAT4 Transform::EulerAnglesToQuaternion(XMFLOAT3 eulerAngles)

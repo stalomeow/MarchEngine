@@ -12,12 +12,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Camera.h" />
+    <ClInclude Include="Public\Display.h" />
     <ClInclude Include="Public\Light.h" />
     <ClInclude Include="Public\Material.h" />
     <ClInclude Include="Public\RenderObject.h" />
     <ClInclude Include="Public\RenderPipeline.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\Camera.binding.cpp" />
+    <ClCompile Include="Private\Camera.cpp" />
+    <ClCompile Include="Private\Display.cpp" />
     <ClCompile Include="Private\Light.binding.cpp" />
     <ClCompile Include="Private\Light.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />

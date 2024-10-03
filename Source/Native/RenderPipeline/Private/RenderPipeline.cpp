@@ -9,98 +9,19 @@
 #include "GfxCommandList.h"
 #include "Transform.h"
 #include "Material.h"
+#include "Camera.h"
+#include "RenderObject.h"
+#include "Display.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
 #include <array>
 #include <fstream>
 
-using Microsoft::WRL::ComPtr;
+using namespace DirectX;
 
 namespace march
 {
-    RenderPipeline::RenderPipeline(int width, int height)
-    {
-        CheckMSAAQuailty();
-        Resize(width, height);
-    }
-
-    void RenderPipeline::CheckMSAAQuailty()
-    {
-        auto device = GetGfxDevice()->GetD3D12Device();
-
-        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels = {};
-        msQualityLevels.Format = GetGfxDevice()->GetBackBufferFormat();
-        msQualityLevels.SampleCount = m_MSAASampleCount;
-        msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-        GFX_HR(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
-            &msQualityLevels, sizeof(msQualityLevels)));
-
-        m_MSAAQuality = msQualityLevels.NumQualityLevels - 1;
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorRenderTargetView() const
-    {
-        return m_ColorTarget->GetRtvDsvCpuDescriptorHandle();
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetColorShaderResourceView() const
-    {
-        return m_ResolvedColorTarget->GetSrvCpuDescriptorHandle();
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE RenderPipeline::GetDepthStencilTargetView() const
-    {
-        return m_DepthStencilTarget->GetRtvDsvCpuDescriptorHandle();
-    }
-
-    void RenderPipeline::SetEnableMSAA(bool value)
-    {
-        m_EnableMSAA = value;
-
-        GetGfxDevice()->WaitForIdle();
-        CreateColorAndDepthStencilTarget(m_RenderTargetWidth, m_RenderTargetHeight);
-    }
-
-    void RenderPipeline::CreateColorAndDepthStencilTarget(int width, int height)
-    {
-        GfxDevice* device = GetGfxDevice();
-
-        m_ColorTarget = std::make_unique<GfxRenderTexture>(device, "ColorTarget",
-            device->GetBackBufferFormat(), width, height,
-            m_EnableMSAA ? m_MSAASampleCount : 1,
-            m_EnableMSAA ? m_MSAAQuality : 0);
-
-        m_DepthStencilTarget = std::make_unique<GfxRenderTexture>(device, "DepthStencilTarget",
-            m_DepthStencilFormat, width, height,
-            m_EnableMSAA ? m_MSAASampleCount : 1,
-            m_EnableMSAA ? m_MSAAQuality : 0);
-    }
-
-    void RenderPipeline::Resize(int width, int height)
-    {
-        GetGfxDevice()->WaitForIdle();
-
-        width = max(width, 10);
-        height = max(height, 10);
-
-        CreateColorAndDepthStencilTarget(width, height);
-        m_ResolvedColorTarget = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "ResolvedColorTarget",
-            GetGfxDevice()->GetBackBufferFormat(), width, height);
-
-        m_RenderTargetWidth = width;
-        m_RenderTargetHeight = height;
-
-        m_Viewport.TopLeftX = 0;
-        m_Viewport.TopLeftY = 0;
-        m_Viewport.Width = static_cast<float>(width);
-        m_Viewport.Height = static_cast<float>(height);
-        m_Viewport.MinDepth = 0.0f;
-        m_Viewport.MaxDepth = 1.0f;
-
-        m_ScissorRect = { 0, 0, width, height };
-    }
-
     static void BindCbv(const GfxDescriptorTable& table, const ShaderPass* pass,
         const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address)
     {
@@ -119,40 +40,40 @@ namespace march
         device->CreateConstantBufferView(&desc, table.GetCpuHandle(it->second.DescriptorTableIndex));
     }
 
-    void RenderPipeline::Render()
+    void RenderPipeline::Render(Camera* camera)
     {
         if (m_RenderObjects.empty())
         {
             return;
         }
 
+        Display* display = camera->GetTargetDisplay();
+        XMMATRIX view = camera->LoadViewMatrix();
+        XMMATRIX proj = camera->LoadProjectionMatrix();
+        XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+
+        D3D12_VIEWPORT viewport = {};
+        viewport.TopLeftX = 0;
+        viewport.TopLeftY = 0;
+        viewport.Width = static_cast<float>(display->GetPixelWidth());
+        viewport.Height = static_cast<float>(display->GetPixelHeight());
+        viewport.MinDepth = 0.0f;
+        viewport.MaxDepth = 1.0f;
+
+        D3D12_RECT scissorRect = {};
+        scissorRect.left = 0;
+        scissorRect.top = 0;
+        scissorRect.right = static_cast<LONG>(display->GetPixelWidth());
+        scissorRect.bottom = static_cast<LONG>(display->GetPixelHeight());
+
         PerPassConstants passConsts = {};
-
-        // Convert Spherical to Cartesian coordinates.
-        float x = m_Radius * sinf(m_Phi) * cosf(m_Theta);
-        float z = m_Radius * sinf(m_Phi) * sinf(m_Theta);
-        float y = m_Radius * cosf(m_Phi);
-
-        // Build the view matrix.
-        DirectX::XMVECTOR pos = DirectX::XMVectorSet(x, y, z, 1.0f);
-        DirectX::XMVECTOR target = DirectX::XMVectorZero();
-        DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-        DirectX::XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, up);
-        DirectX::XMStoreFloat4x4(&passConsts.ViewMatrix, view);
-        DirectX::XMStoreFloat4x4(&passConsts.InvViewMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(view), view));
-
-        // The window resized, so update the aspect ratio and recompute the projection matrix.
-        float asp = static_cast<float>(m_RenderTargetWidth) / static_cast<float>(m_RenderTargetHeight);
-        DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(0.25f * DirectX::XM_PI, asp, 1.0f, 1000.0f);
-        DirectX::XMStoreFloat4x4(&passConsts.ProjectionMatrix, proj);
-        DirectX::XMStoreFloat4x4(&passConsts.InvProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(proj), proj));
-
-        DirectX::XMMATRIX viewProj = DirectX::XMMatrixMultiply(view, proj);
-        DirectX::XMStoreFloat4x4(&passConsts.ViewProjectionMatrix, viewProj);
-        DirectX::XMStoreFloat4x4(&passConsts.InvViewProjectionMatrix, DirectX::XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
-
-        DirectX::XMStoreFloat4(&passConsts.CameraPositionWS, pos);
+        XMStoreFloat4x4(&passConsts.ViewMatrix, view);
+        XMStoreFloat4x4(&passConsts.InvViewMatrix, XMMatrixInverse(&XMMatrixDeterminant(view), view));
+        XMStoreFloat4x4(&passConsts.ProjectionMatrix, proj);
+        XMStoreFloat4x4(&passConsts.InvProjectionMatrix, XMMatrixInverse(&XMMatrixDeterminant(proj), proj));
+        XMStoreFloat4x4(&passConsts.ViewProjectionMatrix, viewProj);
+        XMStoreFloat4x4(&passConsts.InvViewProjectionMatrix, XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
+        XMStoreFloat4(&passConsts.CameraPositionWS, camera->GetTransform()->LoadPosition());
 
         passConsts.LightCount = m_Lights.size();
         for (int i = 0; i < m_Lights.size(); i++)
@@ -187,35 +108,28 @@ namespace march
 
         RenderPipelineDesc rpDesc = {};
         rpDesc.NumRenderTargets = 1;
-        rpDesc.RTVFormats[0] = GetGfxDevice()->GetBackBufferFormat();
-        rpDesc.DSVFormat = m_DepthStencilFormat;
-        rpDesc.Wireframe = m_IsWireframe;
-
-        if (m_EnableMSAA)
-        {
-            rpDesc.SampleDesc.Count = m_MSAASampleCount;
-            rpDesc.SampleDesc.Quality = m_MSAAQuality;
-        }
-        else
-        {
-            rpDesc.SampleDesc.Count = 1;
-            rpDesc.SampleDesc.Quality = 0;
-        }
+        rpDesc.RTVFormats[0] = display->GetColorFormat();
+        rpDesc.DSVFormat = display->GetDepthStencilFormat();
+        rpDesc.Wireframe = camera->GetEnableWireframe();
+        rpDesc.SampleDesc.Count = display->GetCurrentMSAASampleCount();
+        rpDesc.SampleDesc.Quality = display->GetCurrentMSAAQuality();
 
         GfxCommandList* cmd = GetGfxDevice()->GetGraphicsCommandList();
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv = display->GetColorBuffer()->GetRtvDsvCpuDescriptorHandle();
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = display->GetDepthStencilBuffer()->GetRtvDsvCpuDescriptorHandle();
 
-        cmd->ResourceBarrier(m_ColorTarget.get(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
+        cmd->ResourceBarrier(display->GetColorBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET, true);
 
         // Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-        cmd->GetD3D12CommandList()->RSSetViewports(1, &m_Viewport);
-        cmd->GetD3D12CommandList()->RSSetScissorRects(1, &m_ScissorRect);
+        cmd->GetD3D12CommandList()->RSSetViewports(1, &viewport);
+        cmd->GetD3D12CommandList()->RSSetScissorRects(1, &scissorRect);
 
         // Clear the back buffer and depth buffer.
-        cmd->GetD3D12CommandList()->ClearRenderTargetView(GetColorRenderTargetView(), DirectX::Colors::Black, 0, nullptr);
-        cmd->GetD3D12CommandList()->ClearDepthStencilView(GetDepthStencilTargetView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+        cmd->GetD3D12CommandList()->ClearRenderTargetView(rtv, Colors::Black, 0, nullptr);
+        cmd->GetD3D12CommandList()->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
         // Specify the buffers we are going to render to.
-        cmd->GetD3D12CommandList()->OMSetRenderTargets(1, &GetColorRenderTargetView(), true, &GetDepthStencilTargetView());
+        cmd->GetD3D12CommandList()->OMSetRenderTargets(1, &rtv, true, &dsv);
 
         for (auto& it : objs)
         {
@@ -291,23 +205,24 @@ namespace march
             }
         }
 
-        if (m_EnableMSAA)
+        if (display->GetEnableMSAA())
         {
-            cmd->ResourceBarrier(m_ColorTarget.get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-            cmd->ResourceBarrier(m_ResolvedColorTarget.get(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
+            cmd->ResourceBarrier(display->GetColorBuffer(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+            //cmd->ResourceBarrier(display->GetDepthStencilBuffer(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+            cmd->ResourceBarrier(display->GetResolvedColorBuffer(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
+            //cmd->ResourceBarrier(display->GetResolvedDepthStencilBuffer(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
             cmd->FlushResourceBarriers();
 
-            cmd->GetD3D12CommandList()->ResolveSubresource(m_ResolvedColorTarget->GetD3D12Resource(), 0, m_ColorTarget->GetD3D12Resource(), 0, GetGfxDevice()->GetBackBufferFormat());
+            cmd->GetD3D12CommandList()->ResolveSubresource(display->GetResolvedColorBuffer()->GetD3D12Resource(),
+                0, display->GetColorBuffer()->GetD3D12Resource(), 0, display->GetColorFormat());
+            /*cmd->GetD3D12CommandList()->ResolveSubresource(display->GetResolvedDepthStencilBuffer()->GetD3D12Resource(),
+                0, display->GetDepthStencilBuffer()->GetD3D12Resource(), 0, display->GetDepthStencilFormat());*/
+
+            cmd->ResourceBarrier(display->GetResolvedColorBuffer(), D3D12_RESOURCE_STATE_GENERIC_READ, true);
         }
         else
         {
-            cmd->ResourceBarrier(m_ColorTarget.get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
-            cmd->ResourceBarrier(m_ResolvedColorTarget.get(), D3D12_RESOURCE_STATE_COPY_DEST);
-            cmd->FlushResourceBarriers();
-
-            cmd->GetD3D12CommandList()->CopyResource(m_ResolvedColorTarget->GetD3D12Resource(), m_ColorTarget->GetD3D12Resource());
+            cmd->ResourceBarrier(display->GetColorBuffer(), D3D12_RESOURCE_STATE_GENERIC_READ, true);
         }
-
-        cmd->ResourceBarrier(m_ResolvedColorTarget.get(), D3D12_RESOURCE_STATE_GENERIC_READ, true);
     }
 }

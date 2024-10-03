@@ -2,6 +2,7 @@
 #include "InteropServices.h"
 
 using namespace march;
+using namespace DirectX;
 
 NATIVE_EXPORT(Transform*) Transform_Create()
 {
@@ -111,4 +112,61 @@ NATIVE_EXPORT(CSharpMatrix4x4) Transform_GetLocalToWorldMatrix(Transform* transf
 NATIVE_EXPORT(CSharpMatrix4x4) Transform_GetWorldToLocalMatrix(Transform* transform)
 {
     return ToCSharpMatrix4x4(transform->GetWorldToLocalMatrix());
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_GetForward(Transform* transform)
+{
+    return ToCSharpVector3(transform->GetForward());
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_GetRight(Transform* transform)
+{
+    return ToCSharpVector3(transform->GetRight());
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_GetUp(Transform* transform)
+{
+    return ToCSharpVector3(transform->GetUp());
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_TransformVector(Transform* transform, CSharpVector3 vector)
+{
+    XMFLOAT3 float3 = ToXMFLOAT3(vector);
+    XMStoreFloat3(&float3, transform->TransformVector(XMLoadFloat3(&float3)));
+    return ToCSharpVector3(float3);
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_TransformDirection(Transform* transform, CSharpVector3 direction)
+{
+    XMFLOAT3 float3 = ToXMFLOAT3(direction);
+    XMStoreFloat3(&float3, transform->TransformDirection(XMLoadFloat3(&float3)));
+    return ToCSharpVector3(float3);
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_TransformPoint(Transform* transform, CSharpVector3 point)
+{
+    XMFLOAT3 float3 = ToXMFLOAT3(point);
+    XMStoreFloat3(&float3, transform->TransformPoint(XMLoadFloat3(&float3)));
+    return ToCSharpVector3(float3);
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_InverseTransformVector(Transform* transform, CSharpVector3 vector)
+{
+    XMFLOAT3 float3 = ToXMFLOAT3(vector);
+    XMStoreFloat3(&float3, transform->InverseTransformVector(XMLoadFloat3(&float3)));
+    return ToCSharpVector3(float3);
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_InverseTransformDirection(Transform* transform, CSharpVector3 direction)
+{
+    XMFLOAT3 float3 = ToXMFLOAT3(direction);
+    XMStoreFloat3(&float3, transform->InverseTransformDirection(XMLoadFloat3(&float3)));
+    return ToCSharpVector3(float3);
+}
+
+NATIVE_EXPORT(CSharpVector3) Transform_InverseTransformPoint(Transform* transform, CSharpVector3 point)
+{
+    XMFLOAT3 float3 = ToXMFLOAT3(point);
+    XMStoreFloat3(&float3, transform->InverseTransformPoint(XMLoadFloat3(&float3)));
+    return ToCSharpVector3(float3);
 }
