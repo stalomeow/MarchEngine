@@ -157,7 +157,7 @@ namespace march
         passConsts.LightCount = m_Lights.size();
         for (int i = 0; i < m_Lights.size(); i++)
         {
-            if (!m_Lights[i]->GetIsEnabled())
+            if (!m_Lights[i]->GetIsActiveAndEnabled())
             {
                 continue;
             }
@@ -225,7 +225,7 @@ namespace march
             {
                 int index = it.second[i];
                 RenderObject* obj = m_RenderObjects[index];
-                if (!obj->GetIsEnabled() || obj->Mesh == nullptr || obj->Mat == nullptr)
+                if (!obj->GetIsActiveAndEnabled() || obj->Mesh == nullptr || obj->Mat == nullptr)
                 {
                     continue;
                 }

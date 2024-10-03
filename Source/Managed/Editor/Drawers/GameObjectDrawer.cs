@@ -15,7 +15,13 @@ namespace March.Editor.Drawers
             var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(typeof(GameObject));
             var changed = false;
 
-            changed |= EditorGUI.PropertyField("##GameObjectIsActive", string.Empty, contract.GetEditorProperty(Target, "m_IsActive"));
+            bool isActiveSelf = Target.IsActiveSelf;
+            if (EditorGUI.Checkbox("##GameObjectIsActive", string.Empty, ref isActiveSelf))
+            {
+                Target.IsActiveSelf = isActiveSelf;
+                changed = true;
+            }
+
             EditorGUI.SameLine();
             EditorGUI.SetNextItemWidth(EditorGUI.ContentRegionAvailable.X);
             changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, contract.GetEditorProperty(Target, "Name"));

@@ -9,11 +9,27 @@ namespace March.Editor
 {
     public static unsafe partial class EditorGUI
     {
-        public enum MouseButton
+        public enum MouseButton : int
         {
             Left = 0,
             Right = 1,
             Middle = 2,
+        }
+
+        public enum ItemClickOptions : int
+        {
+            None = 0,
+            IgnorePopup = 1 << 0,
+            TreeNodeItem = 1 << 1,
+            TreeNodeIsOpen = 1 << 2,
+            TreeNodeIsLeaf = 1 << 3,
+        }
+
+        public enum ItemClickResult : int
+        {
+            False = 0,
+            TreeNodeArrow = 1,
+            True = 2,
         }
 
         public static void PrefixLabel(string label, string tooltip)
@@ -252,9 +268,31 @@ namespace March.Editor
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool IsItemClicked(MouseButton button = MouseButton.Left, bool ignorePopup = false)
+        public static ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options)
         {
-            return EditorGUI_IsItemClicked((int)button, ignorePopup);
+            return EditorGUI_IsItemClicked((int)button, options);
+        }
+
+        public static ItemClickResult IsTreeNodeClicked(bool isOpen, bool isLeaf)
+        {
+            ItemClickOptions options = ItemClickOptions.TreeNodeItem;
+            if (isOpen) options |= ItemClickOptions.TreeNodeIsOpen;
+            if (isLeaf) options |= ItemClickOptions.TreeNodeIsLeaf;
+
+            ItemClickResult result1 = IsItemClicked(MouseButton.Left, options);
+            ItemClickResult result2 = IsItemClicked(MouseButton.Right, options | ItemClickOptions.IgnorePopup); // 在 item 上打开 context menu 也算 click
+            return (ItemClickResult)Math.Max((int)result1, (int)result2);
+        }
+
+        public static bool IsWindowClicked(MouseButton button, bool ignorePopup)
+        {
+            return EditorGUI_IsWindowClicked((int)button, ignorePopup);
+        }
+
+        public static bool IsWindowClicked()
+        {
+            return IsWindowClicked(MouseButton.Left, ignorePopup: false)
+                || IsWindowClicked(MouseButton.Right, ignorePopup: true); // 在 window 上打开 context menu 也算 click
         }
 
         internal static bool BeginPopupContextItem(string id = "")
@@ -727,7 +765,10 @@ namespace March.Editor
         public static partial void EndTreeNode();
 
         [NativeFunction]
-        private static partial bool EditorGUI_IsItemClicked(int button, bool ignorePopup);
+        private static partial ItemClickResult EditorGUI_IsItemClicked(int button, ItemClickOptions options);
+
+        [NativeFunction]
+        private static partial bool EditorGUI_IsWindowClicked(int button, bool ignorePopup);
 
         [NativeFunction(Name = "EditorGUI_BeginPopupContextWindow")]
         internal static partial bool BeginPopupContextWindow();

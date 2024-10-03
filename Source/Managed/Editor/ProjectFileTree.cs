@@ -23,8 +23,7 @@ namespace March.Editor
                     string assetPath = AssetDatabase.IsAsset(node.FolderPath) ? node.FolderPath : string.Empty;
                     bool open = EditorGUI.BeginAssetTreeNode(name, assetPath, openOnArrow: true, openOnDoubleClick: true, selected: selected, spanWidth: true);
 
-                    if (EditorGUI.IsItemClicked(EditorGUI.MouseButton.Left) ||
-                        EditorGUI.IsItemClicked(EditorGUI.MouseButton.Right, ignorePopup: true)) // context menu 打开时，选中
+                    if (EditorGUI.IsTreeNodeClicked(open, isLeaf: false) == EditorGUI.ItemClickResult.True)
                     {
                         Selection.Active = AssetDatabase.GetAssetImporter(node.FolderPath);
                     }
@@ -42,8 +41,7 @@ namespace March.Editor
                     string assetPath = AssetDatabase.IsAsset(path) ? path : string.Empty;
                     bool open = EditorGUI.BeginAssetTreeNode(name, assetPath, isLeaf: true, selected: selected, spanWidth: true);
 
-                    if (EditorGUI.IsItemClicked(EditorGUI.MouseButton.Left) ||
-                        EditorGUI.IsItemClicked(EditorGUI.MouseButton.Right, ignorePopup: true)) // context menu 打开时，选中
+                    if (EditorGUI.IsTreeNodeClicked(open, isLeaf: true) == EditorGUI.ItemClickResult.True)
                     {
                         Selection.Active = AssetDatabase.GetAssetImporter(path);
                     }

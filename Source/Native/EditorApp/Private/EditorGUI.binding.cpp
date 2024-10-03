@@ -216,9 +216,14 @@ NATIVE_EXPORT(void) EditorGUI_EndTreeNode()
     EditorGUI::EndTreeNode();
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_IsItemClicked(CSharpInt buttton, CSharpBool ignorePopup)
+NATIVE_EXPORT(CSharpInt) EditorGUI_IsItemClicked(CSharpInt button, CSharpInt options)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::IsItemClicked(static_cast<ImGuiMouseButton>(buttton), CSHARP_UNMARSHAL_BOOL(ignorePopup)));
+    return static_cast<CSharpInt>(EditorGUI::IsItemClicked(static_cast<ImGuiMouseButton>(button), static_cast<EditorGUI::ItemClickOptions>(options)));
+}
+
+NATIVE_EXPORT(CSharpBool) EditorGUI_IsWindowClicked(CSharpInt button, CSharpBool ignorePopup)
+{
+    return CSHARP_MARSHAL_BOOL(EditorGUI::IsWindowClicked(static_cast<ImGuiMouseButton>(button), CSHARP_UNMARSHAL_BOOL(ignorePopup)));
 }
 
 NATIVE_EXPORT(CSharpBool) EditorGUI_BeginPopupContextWindow()
