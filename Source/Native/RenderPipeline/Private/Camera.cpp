@@ -18,15 +18,22 @@ namespace march
         , m_EnableWireframe(false)
         , m_IsEditorSceneCamera(false)
     {
+    }
+
+    void Camera::OnEnable()
+    {
+        Component::OnEnable();
         s_AllCameras.push_back(this);
     }
 
-    Camera::~Camera()
+    void Camera::OnDisable()
     {
         if (auto it = std::find(s_AllCameras.begin(), s_AllCameras.end(), this); it != s_AllCameras.end())
         {
             s_AllCameras.erase(it);
         }
+
+        Component::OnDisable();
     }
 
     Display* Camera::GetTargetDisplay() const

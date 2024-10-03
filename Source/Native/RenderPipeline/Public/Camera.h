@@ -16,7 +16,6 @@ namespace march
 
     public:
         Camera();
-        virtual ~Camera();
 
         Display* GetTargetDisplay() const;
         uint32_t GetPixelWidth() const;
@@ -39,6 +38,10 @@ namespace march
         DirectX::XMMATRIX LoadProjectionMatrix() const;
 
         static const std::vector<Camera*>& GetAllCameras();
+
+    protected:
+        void OnEnable() override;
+        void OnDisable() override;
 
     private:
         float m_FovY; // in radians
