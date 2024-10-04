@@ -20,11 +20,11 @@ namespace March.Core.Rendering
             UpdateMesh();
         }
 
-        protected override void Dispose(bool disposing)
+        protected override void DisposeNative()
         {
             SimpleMesh_Delete(RenderObject_GetMesh(NativePtr));
             RenderObject_Delete(NativePtr);
-            base.Dispose(disposing);
+            base.DisposeNative();
         }
 
         [JsonProperty]

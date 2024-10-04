@@ -5,17 +5,16 @@ namespace March.Editor.Windows
 {
     internal static class SceneWindow
     {
-        private static GameObject? s_EditorSceneCamera;
+        private static readonly Scene s_DummyScene = new();
 
         internal static void InitSceneWindow()
         {
-            s_EditorSceneCamera = new GameObject();
-            s_EditorSceneCamera.AwakeRecursive();
+            GameObject go = s_DummyScene.CreateGameObject("EditorSceneCamera");
 
-            s_EditorSceneCamera.transform.Position = new Vector3(0, 5, -5);
-            s_EditorSceneCamera.transform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI / 4.0f);
+            go.transform.Position = new Vector3(0, 5, -5);
+            go.transform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI / 4.0f);
 
-            Camera camera = s_EditorSceneCamera.AddComponent<Camera>();
+            Camera camera = go.AddComponent<Camera>();
             camera.IsEditorSceneCamera = true;
         }
     }

@@ -7,20 +7,37 @@ namespace March.Core
     public abstract partial class Component : NativeMarchObject, IForceInlineSerialization
     {
         private readonly bool m_IsDefaultNativeComponent;
+        private GameObject? m_GameObject;
+        private bool m_IsMounted;
+
+        [JsonProperty]
+        [HideInInspector]
         private bool m_IsEnabled = true;
-        private GameObject? m_GameObject = null;
 
-        protected Component() : base(Component_CreateDefault())
+        protected Component() : base(Component_CreateDefault()) => m_IsDefaultNativeComponent = true;
+
+        /// <summary>
+        /// 初始化一个自定义的 Native Component
+        /// </summary>
+        /// <param name="nativePtr"></param>
+        /// <remarks>如果使用这个构造方法，必须重写 <see cref="DisposeNative"/> 释放非托管资源</remarks>
+        protected Component(nint nativePtr) : base(nativePtr) => m_IsDefaultNativeComponent = false;
+
+        protected sealed override void Dispose(bool disposing)
         {
-            m_IsDefaultNativeComponent = true;
+            IsEnabled = false;
+
+            if (m_IsMounted)
+            {
+                m_IsMounted = false;
+                OnUnmount();
+            }
+
+            m_GameObject?.m_Components.Remove(this);
+            DisposeNative();
         }
 
-        protected Component(nint nativePtr) : base(nativePtr)
-        {
-            m_IsDefaultNativeComponent = false;
-        }
-
-        protected override void Dispose(bool disposing)
+        protected virtual void DisposeNative()
         {
             if (m_IsDefaultNativeComponent)
             {
@@ -28,102 +45,85 @@ namespace March.Core
             }
         }
 
-        public GameObject gameObject => m_GameObject!;
-
-        [InspectorName("Enable")]
-        [JsonProperty(Order = -9999)] // 显示在最前面
         public bool IsEnabled
         {
             get => m_IsEnabled;
             set
             {
                 m_IsEnabled = value;
-                InvokeScriptEnabledCallback();
+                TryEnableOrDisable();
             }
         }
 
         public bool IsActiveAndEnabled => Component_GetIsActiveAndEnabled(NativePtr);
 
-        internal void Mount(GameObject gameObject)
-        {
-            if (m_GameObject != null)
-            {
-                throw new InvalidOperationException("Component has been mounted to a GameObject");
-            }
+        public GameObject gameObject => m_GameObject!;
 
-            m_GameObject = gameObject;
-            Component_SetTransform(NativePtr, gameObject.transform.NativePtr);
-            OnMount();
+        /// <summary>
+        /// 在创建组件后立刻调用，初始化一些必要的字段
+        /// </summary>
+        /// <param name="go"></param>
+        internal void Initialize(GameObject go)
+        {
+            m_GameObject = go;
+            m_IsMounted = false;
+
+            Component_SetTransform(NativePtr, go.transform.NativePtr);
         }
 
-        internal void PostMount()
+        internal void TryMount()
         {
-            InvokeScriptEnabledCallback();
-        }
-
-        internal void PreUnmount()
-        {
-            IsEnabled = false;
-        }
-
-        internal void UnmountAndDispose()
-        {
-            if (m_GameObject == null)
+            if (!m_IsMounted && gameObject.IsActiveInHierarchy)
             {
-                throw new InvalidOperationException("Component has not been mounted to any GameObject");
-            }
-
-            if (IsEnabled)
-            {
-                throw new InvalidOperationException($"Component is still enabled; call {nameof(PreUnmount)} please");
-            }
-
-            OnUnmount();
-            m_GameObject = null;
-
-            Dispose();
-        }
-
-        internal void Update()
-        {
-            if (IsActiveAndEnabled)
-            {
-                OnUpdate();
+                m_IsMounted = true;
+                OnMount();
             }
         }
 
-        internal void OnGameObjectActiveStateChanged()
+        internal void TryEnableOrDisable()
         {
-            InvokeScriptEnabledCallback();
-        }
-
-        private void InvokeScriptEnabledCallback()
-        {
-            if (m_GameObject == null)
+            if (!m_IsMounted)
             {
                 return;
             }
 
             bool willActiveAndEnabled = IsEnabled && gameObject.IsActiveInHierarchy;
-            if (willActiveAndEnabled == IsActiveAndEnabled)
-            {
-                return;
-            }
 
-            if (willActiveAndEnabled)
+            if (willActiveAndEnabled != IsActiveAndEnabled)
             {
-                Component_SetIsActiveAndEnabled(NativePtr, true);
-                OnEnable();
-            }
-            else
-            {
-                Component_SetIsActiveAndEnabled(NativePtr, false);
-                OnDisable();
+                Component_SetIsActiveAndEnabled(NativePtr, willActiveAndEnabled);
+
+                if (willActiveAndEnabled)
+                {
+                    OnEnable();
+                }
+                else
+                {
+                    OnDisable();
+                }
             }
         }
 
+        internal void TryUpdate()
+        {
+            if (m_IsMounted && IsActiveAndEnabled)
+            {
+                OnUpdate();
+            }
+        }
+
+        /// <summary>
+        /// 在组件被挂载且 <see cref="GameObject"/> 处于激活状态时被调用，只被调用一次；
+        /// 即使 <see cref="Component"/> 没有被启用，这个方法也会被调用
+        /// </summary>
+        /// <remarks>这个方法在 <see cref="OnEnable"/> 前被调用，可以当成构造方法使用</remarks>
         protected virtual void OnMount() => Component_OnMount(NativePtr);
 
+        /// <summary>
+        /// 在组件被移除时调用；如果 <see cref="OnMount"/> 没有被调用过，这个方法也不会被调用；
+        /// 即使 <see cref="GameObject"/> 没有被激活、<see cref="Component"/> 没有被启用，这个方法也会被调用
+        /// </summary>
+        /// <remarks>这个方法在 <see cref="OnDisable"/> 后被调用，可以当成析构方法使用</remarks>
         protected virtual void OnUnmount() => Component_OnUnmount(NativePtr);
 
         protected virtual void OnEnable() => Component_OnEnable(NativePtr);

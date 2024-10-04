@@ -68,11 +68,11 @@ NATIVE_EXPORT(void) EditorGUI_SeparatorText(CSharpString label)
     EditorGUI::SeparatorText(CSharpString_ToUtf8(label));
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_TextField(CSharpString label, CSharpString tooltip, CSharpString text, CSharpString* outNewText)
+NATIVE_EXPORT(CSharpBool) EditorGUI_TextField(CSharpString label, CSharpString tooltip, CSharpString text, CSharpString* outNewText, CSharpString charBlacklist)
 {
     std::string textContext = CSharpString_ToUtf8(text);
 
-    if (EditorGUI::TextField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), textContext))
+    if (EditorGUI::TextField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), textContext, CSharpString_ToUtf8(charBlacklist)))
     {
         *outNewText = CSharpString_FromUtf8(textContext);
         return CSHARP_MARSHAL_BOOL(true);
@@ -297,4 +297,9 @@ NATIVE_EXPORT(CSharpBool) EditorGUI_MarchObjectField(CSharpString label, CSharpS
 
     *outNewPersistentPath = nullptr;
     return CSHARP_MARSHAL_BOOL(false);
+}
+
+NATIVE_EXPORT(CSharpFloat) EditorGUI_GetCollapsingHeaderOuterExtend()
+{
+    return EditorGUI::GetCollapsingHeaderOuterExtend();
 }

@@ -2,18 +2,49 @@ using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
 
 namespace March.Core
 {
     public sealed class GameObject : MarchObject, IForceInlineSerialization
     {
+        private const string k_NameCharBlacklist = "/\\:;*?\"<>|";
+
+        [JsonProperty]
+        [StringDrawer(CharBlacklist = k_NameCharBlacklist)]
+        private string m_Name = "New GameObject";
+
         [JsonProperty] private bool m_IsActive = true;
         [JsonProperty] private Transform m_Transform = new();
         [JsonProperty] internal List<Component> m_Components = [];
+        private bool m_IsAwaked = false;
 
-        [JsonProperty] public string Name { get; set; } = "New GameObject";
+        internal GameObject()
+        {
+            m_Transform.Initialize(this);
+        }
 
-        public Transform transform => m_Transform;
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            m_Transform.Initialize(this);
+
+            foreach (var component in m_Components)
+            {
+                component.Initialize(this);
+            }
+        }
+
+        public string Name
+        {
+            get => m_Name;
+            set
+            {
+                string regex = $"[{Regex.Escape(k_NameCharBlacklist)}]";
+                m_Name = Regex.Replace(value, regex, string.Empty);
+            }
+        }
 
         public bool IsActiveSelf
         {
@@ -26,7 +57,12 @@ namespace March.Core
                 }
 
                 m_IsActive = value;
-                NotifyActiveStateChangedRecursive();
+
+                if (m_IsAwaked)
+                {
+                    TryMountExistingComponentsRecursive();
+                    TryEnableOrDisableExistingComponentsRecursive();
+                }
             }
         }
 
@@ -44,6 +80,8 @@ namespace March.Core
             }
         }
 
+        public Transform transform => m_Transform;
+
         public T AddComponent<T>() where T : Component, new()
         {
             if (typeof(T) == typeof(Transform))
@@ -52,9 +90,7 @@ namespace March.Core
             }
 
             var component = new T();
-            m_Components.Add(component);
-            component.Mount(this);
-            component.PostMount();
+            AddComponentImpl(component);
             return component;
         }
 
@@ -75,10 +111,20 @@ namespace March.Core
                 throw new NotSupportedException("Failed to create component");
             }
 
-            m_Components.Add(component);
-            component.Mount(this);
-            component.PostMount();
+            AddComponentImpl(component);
             return component;
+        }
+
+        private void AddComponentImpl(Component component)
+        {
+            component.Initialize(this);
+            m_Components.Add(component);
+
+            if (m_IsAwaked)
+            {
+                component.TryMount();
+                component.TryEnableOrDisable();
+            }
         }
 
         public T? GetComponent<T>() where T : Component
@@ -105,66 +151,60 @@ namespace March.Core
             return component != null;
         }
 
-        // TODO check is active
-
         internal void AwakeRecursive()
         {
-            MountExistingComponentsRecursive();
-            PostMountExistingComponentsRecursive();
+            if (m_IsAwaked)
+            {
+                throw new InvalidOperationException("GameObject is already awaked");
+            }
+
+            m_IsAwaked = true;
+            TryMountExistingComponentsRecursive();
+            TryEnableOrDisableExistingComponentsRecursive();
         }
 
-        private void MountExistingComponentsRecursive()
+        private void TryMountExistingComponentsRecursive()
         {
-            m_Transform.Mount(this);
+            m_Transform.TryMount();
 
             foreach (var component in m_Components)
             {
-                component.Mount(this);
+                component.TryMount();
             }
 
             for (int i = 0; i < m_Transform.ChildCount; i++)
             {
-                m_Transform.GetChild(i).gameObject.MountExistingComponentsRecursive();
+                m_Transform.GetChild(i).gameObject.TryMountExistingComponentsRecursive();
             }
         }
 
-        private void PostMountExistingComponentsRecursive()
+        private void TryEnableOrDisableExistingComponentsRecursive()
         {
-            m_Transform.PostMount();
+            m_Transform.TryEnableOrDisable();
 
             foreach (var component in m_Components)
             {
-                component.PostMount();
+                component.TryEnableOrDisable();
             }
 
             for (int i = 0; i < m_Transform.ChildCount; i++)
             {
-                m_Transform.GetChild(i).gameObject.PostMountExistingComponentsRecursive();
-            }
-        }
-
-        private void NotifyActiveStateChangedRecursive()
-        {
-            m_Transform.OnGameObjectActiveStateChanged();
-
-            foreach (var component in m_Components)
-            {
-                component.OnGameObjectActiveStateChanged();
-            }
-
-            for (int i = 0; i < m_Transform.ChildCount; i++)
-            {
-                m_Transform.GetChild(i).gameObject.NotifyActiveStateChangedRecursive();
+                m_Transform.GetChild(i).gameObject.TryEnableOrDisableExistingComponentsRecursive();
             }
         }
 
         internal void UpdateRecursive()
         {
-            m_Transform.Update();
+            if (!m_IsAwaked)
+            {
+                return;
+            }
+
+            m_Transform.TryUpdate();
 
             foreach (var component in m_Components)
             {
-                component.Update();
+                component.TryUpdate();
             }
 
             for (int i = 0; i < m_Transform.ChildCount; i++)

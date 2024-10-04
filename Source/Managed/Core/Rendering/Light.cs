@@ -16,10 +16,10 @@ namespace March.Core.Rendering
     {
         public Light() : base(Light_New()) { }
 
-        protected override void Dispose(bool disposing)
+        protected override void DisposeNative()
         {
             Light_Delete(NativePtr);
-            base.Dispose(disposing);
+            base.DisposeNative();
         }
 
         [JsonProperty]

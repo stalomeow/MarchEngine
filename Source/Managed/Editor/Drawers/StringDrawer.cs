@@ -1,3 +1,5 @@
+using March.Core.Serialization;
+
 namespace March.Editor.Drawers
 {
     internal class StringDrawer : IPropertyDrawerFor<string>
@@ -6,6 +8,7 @@ namespace March.Editor.Drawers
         {
             bool changed = false;
             string? value = property.GetValue<string>();
+            var attr = property.GetAttribute<StringDrawerAttribute>();
 
             if (value == null)
             {
@@ -14,7 +17,8 @@ namespace March.Editor.Drawers
                 changed = true;
             }
 
-            if (EditorGUI.TextField(label, tooltip, ref value))
+            string charBlacklist = attr?.CharBlacklist ?? string.Empty;
+            if (EditorGUI.TextField(label, tooltip, ref value, charBlacklist))
             {
                 property.SetValue(value);
                 changed = true;

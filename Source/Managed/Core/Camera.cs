@@ -9,10 +9,10 @@ namespace March.Core
     {
         public Camera() : base(Camera_New()) { }
 
-        protected override void Dispose(bool disposing)
+        protected override void DisposeNative()
         {
             Camera_Delete(NativePtr);
-            base.Dispose(disposing);
+            base.DisposeNative();
         }
 
         public float PixelWidth => Camera_GetPixelWidth(NativePtr);

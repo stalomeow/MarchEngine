@@ -28,7 +28,7 @@ namespace march
         static bool CenterButton(const std::string& label, float width = 0.0f);
         static void Space();
         static void SeparatorText(const std::string& label);
-        static bool TextField(const std::string& label, const std::string& tooltip, std::string& text);
+        static bool TextField(const std::string& label, const std::string& tooltip, std::string& text, const std::string& charBlacklist);
         static bool Checkbox(const std::string& label, const std::string& tooltip, bool& value);
         static void BeginDisabled(bool disabled = true);
         static void EndDisabled();
@@ -99,6 +99,8 @@ namespace march
 
         static bool BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
         static bool MarchObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, MarchObjectState currentObjectState);
+
+        static float GetCollapsingHeaderOuterExtend();
 
     public:
         static constexpr float MinLabelWidth = 140.0f;

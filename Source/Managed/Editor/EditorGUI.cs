@@ -173,14 +173,15 @@ namespace March.Editor
             EditorGUI_SeparatorText(l.Data);
         }
 
-        public static bool TextField(string label, string tooltip, ref string text)
+        public static bool TextField(string label, string tooltip, ref string text, string charBlacklist = "")
         {
             using NativeString l = label;
             using NativeString tp = tooltip;
             using NativeString te = text;
+            using NativeString cb = charBlacklist;
             nint newText = nint.Zero;
 
-            if (EditorGUI_TextField(l.Data, tp.Data, te.Data, &newText))
+            if (EditorGUI_TextField(l.Data, tp.Data, te.Data, &newText, cb.Data))
             {
                 text = NativeString.GetAndFree(newText);
                 return true;
@@ -424,6 +425,8 @@ namespace March.Editor
 
             return false;
         }
+
+        public static float CollapsingHeaderOuterExtend => EditorGUI_GetCollapsingHeaderOuterExtend();
 
         #region PropertyField
 
@@ -681,7 +684,7 @@ namespace March.Editor
         private static partial void EditorGUI_SeparatorText(nint label);
 
         [NativeFunction]
-        private static partial bool EditorGUI_TextField(nint label, nint tooltip, nint text, nint* outNewText);
+        private static partial bool EditorGUI_TextField(nint label, nint tooltip, nint text, nint* outNewText, nint charBlacklist);
 
         [NativeFunction]
         private static partial bool EditorGUI_Checkbox(nint label, nint tooltip, bool* v);
@@ -805,6 +808,9 @@ namespace March.Editor
 
         [NativeFunction]
         private static partial bool EditorGUI_MarchObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentPath, MarchObjectState currentObjectState);
+
+        [NativeFunction]
+        private static partial float EditorGUI_GetCollapsingHeaderOuterExtend();
 
         #endregion
     }

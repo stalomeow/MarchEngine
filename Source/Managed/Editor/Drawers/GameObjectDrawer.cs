@@ -1,6 +1,7 @@
 using March.Core;
 using March.Core.Serialization;
 using Newtonsoft.Json.Serialization;
+using System.Reflection;
 
 namespace March.Editor.Drawers
 {
@@ -16,6 +17,7 @@ namespace March.Editor.Drawers
             var changed = false;
 
             bool isActiveSelf = Target.IsActiveSelf;
+            EditorGUI.CursorPosX -= EditorGUI.CollapsingHeaderOuterExtend;
             if (EditorGUI.Checkbox("##GameObjectIsActive", string.Empty, ref isActiveSelf))
             {
                 Target.IsActiveSelf = isActiveSelf;
@@ -23,8 +25,10 @@ namespace March.Editor.Drawers
             }
 
             EditorGUI.SameLine();
-            EditorGUI.SetNextItemWidth(EditorGUI.ContentRegionAvailable.X);
-            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, contract.GetEditorProperty(Target, "Name"));
+
+            EditorGUI.CursorPosX -= EditorGUI.CollapsingHeaderOuterExtend;
+            EditorGUI.SetNextItemWidth(EditorGUI.ContentRegionAvailable.X + EditorGUI.CollapsingHeaderOuterExtend);
+            changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, contract.GetEditorProperty(Target, "m_Name"));
 
             EditorGUI.SeparatorText("Components");
             changed |= DrawComponent(0, Target.transform);
@@ -64,27 +68,40 @@ namespace March.Editor.Drawers
                 return false;
             }
 
-            if (!EditorGUI.CollapsingHeader(componentType.Name, defaultOpen: true))
-            {
-                return false;
-            }
-
-            var changed = false;
-
             using (new EditorGUI.IDScope(index))
             {
-                if (s_ComponentDrawerCache.TryGetSharedInstance(componentType, out IComponentDrawer? drawer))
-                {
-                    changed |= drawer.Draw(component, componentContract);
-                }
-                else
-                {
-                    changed |= EditorGUI.ObjectPropertyFields(component, componentContract);
-                }
-            }
+                bool isChanged = false;
+                bool isEnabled = component.IsEnabled;
 
-            EditorGUI.Space();
-            return changed;
+                EditorGUI.CursorPosX -= EditorGUI.CollapsingHeaderOuterExtend;
+
+                using (new EditorGUI.DisabledScope(componentType.GetCustomAttribute<DisableComponentEnabledCheckboxAttribute>() != null))
+                {
+                    if (EditorGUI.Checkbox("##ComponentEnabled", string.Empty, ref isEnabled))
+                    {
+                        isChanged = true;
+                        component.IsEnabled = isEnabled;
+                    }
+                }
+
+                EditorGUI.SameLine();
+
+                if (EditorGUI.CollapsingHeader(componentType.Name, defaultOpen: true))
+                {
+                    if (s_ComponentDrawerCache.TryGetSharedInstance(componentType, out IComponentDrawer? drawer))
+                    {
+                        isChanged |= drawer.Draw(component, componentContract);
+                    }
+                    else
+                    {
+                        isChanged |= EditorGUI.ObjectPropertyFields(component, componentContract);
+                    }
+
+                    EditorGUI.Space();
+                }
+
+                return isChanged;
+            }
         }
 
         private static void RebuildAddComponentPopup()

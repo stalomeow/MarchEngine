@@ -1,4 +1,5 @@
 using March.Core.Binding;
+using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.ComponentModel;
 using System.Numerics;
@@ -6,6 +7,7 @@ using System.Runtime.Serialization;
 
 namespace March.Core
 {
+    [DisableComponentEnabledCheckbox]
     public partial class Transform : Component
     {
         [JsonProperty]
@@ -14,10 +16,10 @@ namespace March.Core
 
         public Transform() : base(Transform_Create()) { }
 
-        protected override void Dispose(bool disposing)
+        protected override void DisposeNative()
         {
             Transform_Delete(NativePtr);
-            base.Dispose(disposing);
+            base.DisposeNative();
         }
 
         [JsonProperty]
@@ -142,19 +144,25 @@ namespace March.Core
 
         public void AddChild(Transform child)
         {
-            child.m_Parent?.m_Children.Remove(child);
-            child.m_Parent = this;
-            m_Children.Add(child);
+            if (child.m_Parent != null)
+            {
+                throw new InvalidOperationException("The transform already has a parent.");
+            }
 
+            m_Children.Add(child);
+            child.m_Parent = this;
             Transform_SetParent(child.NativePtr, NativePtr);
         }
 
         public void InsertChild(int index, Transform child)
         {
-            child.m_Parent?.m_Children.Remove(child);
-            child.m_Parent = this;
-            m_Children.Insert(index, child);
+            if (child.m_Parent != null)
+            {
+                throw new InvalidOperationException("The transform already has a parent.");
+            }
 
+            m_Children.Insert(index, child);
+            child.m_Parent = this;
             Transform_SetParent(child.NativePtr, NativePtr);
         }
 
@@ -167,7 +175,6 @@ namespace March.Core
 
             m_Parent.m_Children.Remove(this);
             m_Parent = null;
-
             Transform_SetParent(NativePtr, nint.Zero);
         }
 

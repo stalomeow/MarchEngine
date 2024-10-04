@@ -14,6 +14,16 @@ namespace march
         {
             return label.size() >= 2 && label[0] == '#' && label[1] == '#';
         }
+
+        void SetNextItemWidthIfNot(float width)
+        {
+            ImGuiContext* context = ImGui::GetCurrentContext();
+
+            if ((context->NextItemData.Flags & ImGuiNextItemDataFlags_HasWidth) != ImGuiNextItemDataFlags_HasWidth)
+            {
+                ImGui::SetNextItemWidth(-1);
+            }
+        }
     }
 
     void EditorGUI::PrefixLabel(const std::string& label, const std::string& tooltip)
@@ -41,7 +51,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::DragInt(label.c_str(), v, speed, min, max);
         }
 
@@ -53,7 +63,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::DragFloat(label.c_str(), v, speed, min, max);
         }
 
@@ -65,7 +75,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::DragFloat2(label.c_str(), v, speed, min, max);
         }
 
@@ -77,7 +87,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::DragFloat3(label.c_str(), v, speed, min, max);
         }
 
@@ -89,7 +99,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::DragFloat4(label.c_str(), v, speed, min, max);
         }
 
@@ -101,7 +111,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::ColorEdit4(label.c_str(), v, ImGuiColorEditFlags_Float);
         }
 
@@ -113,7 +123,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::SliderFloat(label.c_str(), v, min, max);
         }
 
@@ -130,7 +140,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::Combo(label.c_str(), currentItem, itemsSeparatedByZeros.c_str());
         }
 
@@ -162,24 +172,33 @@ namespace march
         ImGui::SeparatorText(label.c_str());
     }
 
-    bool EditorGUI::TextField(const std::string& label, const std::string& tooltip, std::string& text)
+    static int TextFieldCharFilter(ImGuiInputTextCallbackData* data)
     {
+        std::string* blacklist = static_cast<std::string*>(data->UserData);
+        return blacklist->find(data->EventChar) == std::string::npos ? 0 : 1;
+    }
+
+    bool EditorGUI::TextField(const std::string& label, const std::string& tooltip, std::string& text, const std::string& charBlacklist)
+    {
+        ImGuiInputTextFlags flags = ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_CallbackCharFilter;
+        void* filterUserData = const_cast<std::string*>(&charBlacklist);
+
         if (IsHiddenLabel(label))
         {
             // https://github.com/ocornut/imgui/issues/623
-            ImGui::SetNextItemWidth(-1);
-            return ImGui::InputText(label.c_str(), &text);
+            SetNextItemWidthIfNot(-1);
+            return ImGui::InputText(label.c_str(), &text, flags, TextFieldCharFilter, filterUserData);
         }
 
         PrefixLabel(label, tooltip);
-        return ImGui::InputText(("##" + label).c_str(), &text);
+        return ImGui::InputText(("##" + label).c_str(), &text, flags, TextFieldCharFilter, filterUserData);
     }
 
     bool EditorGUI::Checkbox(const std::string& label, const std::string& tooltip, bool& value)
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::Checkbox(label.c_str(), &value);
         }
 
@@ -201,7 +220,7 @@ namespace march
     {
         if (IsHiddenLabel(label1))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             ImGui::LabelText(label1.c_str(), "%s", label2.c_str());
             return;
         }
@@ -370,7 +389,7 @@ namespace march
     {
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             return ImGui::DragFloatRange2(label.c_str(), &currentMin, &currentMax, speed, min, max);
         }
 
@@ -564,7 +583,7 @@ namespace march
 
         if (IsHiddenLabel(label))
         {
-            ImGui::SetNextItemWidth(-1);
+            SetNextItemWidthIfNot(-1);
             ImGui::LabelText(label.c_str(), "%s", displayValue.c_str());
         }
         else
@@ -595,5 +614,17 @@ namespace march
         }
 
         return isChanged;
+    }
+
+    float EditorGUI::GetCollapsingHeaderOuterExtend()
+    {
+        // https://github.com/ocornut/imgui/blob/master/imgui_widgets.cpp
+        // bool ImGui::TreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const char* label, const char* label_end)
+        // ...
+        // const float outer_extend = IM_TRUNC(window->WindowPadding.x * 0.5f); // Framed header expand a little outside of current limits
+        // ...
+
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        return IM_TRUNC(window->WindowPadding.x * 0.5f);
     }
 }
