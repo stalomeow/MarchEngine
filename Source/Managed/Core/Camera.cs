@@ -15,9 +15,9 @@ namespace March.Core
             base.DisposeNative();
         }
 
-        public float PixelWidth => Camera_GetPixelWidth(NativePtr);
+        public int PixelWidth => Camera_GetPixelWidth(NativePtr);
 
-        public float PixelHeight => Camera_GetPixelHeight(NativePtr);
+        public int PixelHeight => Camera_GetPixelHeight(NativePtr);
 
         public float AspectRatio => Camera_GetAspectRatio(NativePtr);
 

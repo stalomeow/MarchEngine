@@ -1,109 +1,107 @@
 #include "Camera.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(Camera*) Camera_New()
+NATIVE_EXPORT_AUTO Camera_New()
 {
-    return new Camera();
+    return_cs(new Camera());
 }
 
-NATIVE_EXPORT(void) Camera_Delete(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_Delete(cs<Camera*> camera)
 {
     delete camera;
 }
 
-NATIVE_EXPORT(CSharpInt) Camera_GetPixelWidth(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetPixelWidth(cs<Camera*> camera)
 {
-    return static_cast<CSharpInt>(camera->GetPixelWidth());
+    return_cs(static_cast<int32_t>(camera->GetPixelWidth()));
 }
 
-NATIVE_EXPORT(CSharpInt) Camera_GetPixelHeight(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetPixelHeight(cs<Camera*> camera)
 {
-    return static_cast<CSharpInt>(camera->GetPixelHeight());
+    return_cs(static_cast<int32_t>(camera->GetPixelHeight()));
 }
 
-NATIVE_EXPORT(CSharpFloat) Camera_GetAspectRatio(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetAspectRatio(cs<Camera*> camera)
 {
-    return camera->GetAspectRatio();
+    return_cs(camera->GetAspectRatio());
 }
 
-NATIVE_EXPORT(CSharpBool) Camera_GetEnableMSAA(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetEnableMSAA(cs<Camera*> camera)
 {
-    return CSHARP_MARSHAL_BOOL(camera->GetEnableMSAA());
+    return_cs(camera->GetEnableMSAA());
 }
 
-NATIVE_EXPORT(void) Camera_SetEnableMSAA(Camera* camera, CSharpBool value)
+NATIVE_EXPORT_AUTO Camera_SetEnableMSAA(cs<Camera*> camera, cs_bool value)
 {
-    camera->SetEnableMSAA(CSHARP_UNMARSHAL_BOOL(value));
+    camera->SetEnableMSAA(value);
 }
 
-NATIVE_EXPORT(CSharpFloat) Camera_GetVerticalFieldOfView(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetVerticalFieldOfView(cs<Camera*> camera)
 {
-    return camera->GetVerticalFieldOfView();
+    return_cs(camera->GetVerticalFieldOfView());
 }
 
-NATIVE_EXPORT(void) Camera_SetVerticalFieldOfView(Camera* camera, CSharpFloat value)
+NATIVE_EXPORT_AUTO Camera_SetVerticalFieldOfView(cs<Camera*> camera, cs_float value)
 {
     CameraInternalUtility::SetVerticalFieldOfView(camera, value);
 }
 
-NATIVE_EXPORT(CSharpFloat) Camera_GetHorizontalFieldOfView(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetHorizontalFieldOfView(cs<Camera*> camera)
 {
-    return camera->GetHorizontalFieldOfView();
+    return_cs(camera->GetHorizontalFieldOfView());
 }
 
-NATIVE_EXPORT(void) Camera_SetHorizontalFieldOfView(Camera* camera, CSharpFloat value)
+NATIVE_EXPORT_AUTO Camera_SetHorizontalFieldOfView(cs<Camera*> camera, cs_float value)
 {
     CameraInternalUtility::SetHorizontalFieldOfView(camera, value);
 }
 
-NATIVE_EXPORT(CSharpFloat) Camera_GetNearClipPlane(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetNearClipPlane(cs<Camera*> camera)
 {
-    return camera->GetNearClipPlane();
+    return_cs(camera->GetNearClipPlane());
 }
 
-NATIVE_EXPORT(void) Camera_SetNearClipPlane(Camera* camera, CSharpFloat value)
+NATIVE_EXPORT_AUTO Camera_SetNearClipPlane(cs<Camera*> camera, cs_float value)
 {
     CameraInternalUtility::SetNearClipPlane(camera, value);
 }
 
-NATIVE_EXPORT(CSharpFloat) Camera_GetFarClipPlane(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetFarClipPlane(cs<Camera*> camera)
 {
-    return camera->GetFarClipPlane();
+    return_cs(camera->GetFarClipPlane());
 }
 
-NATIVE_EXPORT(void) Camera_SetFarClipPlane(Camera* camera, CSharpFloat value)
+NATIVE_EXPORT_AUTO Camera_SetFarClipPlane(cs<Camera*> camera, cs_float value)
 {
     CameraInternalUtility::SetFarClipPlane(camera, value);
 }
 
-NATIVE_EXPORT(CSharpBool) Camera_GetEnableWireframe(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetEnableWireframe(cs<Camera*> camera)
 {
-    return CSHARP_MARSHAL_BOOL(camera->GetEnableWireframe());
+    return_cs(camera->GetEnableWireframe());
 }
 
-NATIVE_EXPORT(void) Camera_SetEnableWireframe(Camera* camera, CSharpBool value)
+NATIVE_EXPORT_AUTO Camera_SetEnableWireframe(cs<Camera*> camera, cs_bool value)
 {
-    CameraInternalUtility::SetEnableWireframe(camera, CSHARP_UNMARSHAL_BOOL(value));
+    CameraInternalUtility::SetEnableWireframe(camera, value);
 }
 
-NATIVE_EXPORT(CSharpBool) Camera_GetIsEditorSceneCamera(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetIsEditorSceneCamera(cs<Camera*> camera)
 {
-    return CSHARP_MARSHAL_BOOL(camera->GetIsEditorSceneCamera());
+    return_cs(camera->GetIsEditorSceneCamera());
 }
 
-NATIVE_EXPORT(void) Camera_SetIsEditorSceneCamera(Camera* camera, CSharpBool value)
+NATIVE_EXPORT_AUTO Camera_SetIsEditorSceneCamera(cs<Camera*> camera, cs_bool value)
 {
-    CameraInternalUtility::SetIsEditorSceneCamera(camera, CSHARP_UNMARSHAL_BOOL(value));
+    CameraInternalUtility::SetIsEditorSceneCamera(camera, value);
 }
 
-NATIVE_EXPORT(CSharpMatrix4x4) Camera_GetViewMatrix(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetViewMatrix(cs<Camera*> camera)
 {
-    return ToCSharpMatrix4x4(camera->GetViewMatrix());
+    return_cs(camera->GetViewMatrix());
 }
 
-NATIVE_EXPORT(CSharpMatrix4x4) Camera_GetProjectionMatrix(Camera* camera)
+NATIVE_EXPORT_AUTO Camera_GetProjectionMatrix(cs<Camera*> camera)
 {
-    return ToCSharpMatrix4x4(camera->GetProjectionMatrix());
+    return_cs(camera->GetProjectionMatrix());
 }

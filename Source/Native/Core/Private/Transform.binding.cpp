@@ -1,172 +1,169 @@
 #include "Transform.h"
 #include "InteropServices.h"
 
-using namespace march;
-using namespace DirectX;
-
-NATIVE_EXPORT(Transform*) Transform_Create()
+NATIVE_EXPORT_AUTO Transform_Create()
 {
-    return new Transform();
+    return to_cs(new Transform());
 }
 
-NATIVE_EXPORT(void) Transform_Delete(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_Delete(cs<Transform*> transform)
 {
     delete transform;
 }
 
-NATIVE_EXPORT(void) Transform_SetParent(Transform* transform, Transform* parent)
+NATIVE_EXPORT_AUTO Transform_SetParent(cs<Transform*> transform, cs<Transform*> parent)
 {
     TransformInternalUtility::SetParent(transform, parent);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetLocalPosition(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetLocalPosition(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetLocalPosition());
+    return to_cs(transform->GetLocalPosition());
 }
 
-NATIVE_EXPORT(void) Transform_SetLocalPosition(Transform* transform, CSharpVector3 value)
+NATIVE_EXPORT_AUTO Transform_SetLocalPosition(cs<Transform*> transform, cs_vector3 value)
 {
-    TransformInternalUtility::SetLocalPosition(transform, ToXMFLOAT3(value));
+    TransformInternalUtility::SetLocalPosition(transform, value);
 }
 
-NATIVE_EXPORT(CSharpQuaternion) Transform_GetLocalRotation(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetLocalRotation(cs<Transform*> transform)
 {
-    return ToCSharpQuaternion(transform->GetLocalRotation());
+    return to_cs(transform->GetLocalRotation());
 }
 
-NATIVE_EXPORT(void) Transform_SetLocalRotation(Transform* transform, CSharpQuaternion value)
+NATIVE_EXPORT_AUTO Transform_SetLocalRotation(cs<Transform*> transform, cs_vector4 value)
 {
-    TransformInternalUtility::SetLocalRotation(transform, ToXMFLOAT4(value));
+    TransformInternalUtility::SetLocalRotation(transform, value);
 }
 
-NATIVE_EXPORT(void) Transform_SetLocalRotationWithoutSyncEulerAngles(Transform* transform, CSharpQuaternion value)
+NATIVE_EXPORT_AUTO Transform_SetLocalRotationWithoutSyncEulerAngles(cs<Transform*> transform, cs_vector4 value)
 {
-    TransformInternalUtility::SetLocalRotationWithoutSyncEulerAngles(transform, ToXMFLOAT4(value));
+    TransformInternalUtility::SetLocalRotationWithoutSyncEulerAngles(transform, value);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetLocalEulerAngles(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetLocalEulerAngles(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetLocalEulerAngles());
+    return to_cs(transform->GetLocalEulerAngles());
 }
 
-NATIVE_EXPORT(void) Transform_SetLocalEulerAngles(Transform* transform, CSharpVector3 value)
+NATIVE_EXPORT_AUTO Transform_SetLocalEulerAngles(cs<Transform*> transform, cs_vector3 value)
 {
-    TransformInternalUtility::SetLocalEulerAngles(transform, ToXMFLOAT3(value));
+    TransformInternalUtility::SetLocalEulerAngles(transform, value);
 }
 
-NATIVE_EXPORT(void) Transform_SetLocalEulerAnglesWithoutSyncRotation(Transform* transform, CSharpVector3 value)
+NATIVE_EXPORT_AUTO Transform_SetLocalEulerAnglesWithoutSyncRotation(cs<Transform*> transform, cs_vector3 value)
 {
-    TransformInternalUtility::SetLocalEulerAnglesWithoutSyncRotation(transform, ToXMFLOAT3(value));
+    TransformInternalUtility::SetLocalEulerAnglesWithoutSyncRotation(transform, value);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetLocalScale(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetLocalScale(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetLocalScale());
+    return to_cs(transform->GetLocalScale());
 }
 
-NATIVE_EXPORT(void) Transform_SetLocalScale(Transform* transform, CSharpVector3 value)
+NATIVE_EXPORT_AUTO Transform_SetLocalScale(cs<Transform*> transform, cs_vector3 value)
 {
-    TransformInternalUtility::SetLocalScale(transform, ToXMFLOAT3(value));
+    TransformInternalUtility::SetLocalScale(transform, value);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetPosition(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetPosition(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetPosition());
+    return to_cs(transform->GetPosition());
 }
 
-NATIVE_EXPORT(void) Transform_SetPosition(Transform* transform, CSharpVector3 value)
+NATIVE_EXPORT_AUTO Transform_SetPosition(cs<Transform*> transform, cs_vector3 value)
 {
-    TransformInternalUtility::SetPosition(transform, ToXMFLOAT3(value));
+    TransformInternalUtility::SetPosition(transform, value);
 }
 
-NATIVE_EXPORT(CSharpQuaternion) Transform_GetRotation(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetRotation(cs<Transform*> transform)
 {
-    return ToCSharpQuaternion(transform->GetRotation());
+    return to_cs(transform->GetRotation());
 }
 
-NATIVE_EXPORT(void) Transform_SetRotation(Transform* transform, CSharpQuaternion value)
+NATIVE_EXPORT_AUTO Transform_SetRotation(cs<Transform*> transform, cs_quaternion value)
 {
-    TransformInternalUtility::SetRotation(transform, ToXMFLOAT4(value));
+    TransformInternalUtility::SetRotation(transform, value);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetEulerAngles(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetEulerAngles(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetEulerAngles());
+    return to_cs(transform->GetEulerAngles());
 }
 
-NATIVE_EXPORT(void) Transform_SetEulerAngles(Transform* transform, CSharpVector3 value)
+NATIVE_EXPORT_AUTO Transform_SetEulerAngles(cs<Transform*> transform, cs_vector3 value)
 {
-    TransformInternalUtility::SetEulerAngles(transform, ToXMFLOAT3(value));
+    TransformInternalUtility::SetEulerAngles(transform, value);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetLossyScale(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetLossyScale(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetLossyScale());
+    return to_cs(transform->GetLossyScale());
 }
 
-NATIVE_EXPORT(CSharpMatrix4x4) Transform_GetLocalToWorldMatrix(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetLocalToWorldMatrix(cs<Transform*> transform)
 {
-    return ToCSharpMatrix4x4(transform->GetLocalToWorldMatrix());
+    return to_cs(transform->GetLocalToWorldMatrix());
 }
 
-NATIVE_EXPORT(CSharpMatrix4x4) Transform_GetWorldToLocalMatrix(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetWorldToLocalMatrix(cs<Transform*> transform)
 {
-    return ToCSharpMatrix4x4(transform->GetWorldToLocalMatrix());
+    return to_cs(transform->GetWorldToLocalMatrix());
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetForward(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetForward(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetForward());
+    return to_cs(transform->GetForward());
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetRight(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetRight(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetRight());
+    return to_cs(transform->GetRight());
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_GetUp(Transform* transform)
+NATIVE_EXPORT_AUTO Transform_GetUp(cs<Transform*> transform)
 {
-    return ToCSharpVector3(transform->GetUp());
+    return to_cs(transform->GetUp());
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_TransformVector(Transform* transform, CSharpVector3 vector)
+NATIVE_EXPORT_AUTO Transform_TransformVector(cs<Transform*> transform, cs_vector3 vector)
 {
-    XMFLOAT3 float3 = ToXMFLOAT3(vector);
-    XMStoreFloat3(&float3, transform->TransformVector(XMLoadFloat3(&float3)));
-    return ToCSharpVector3(float3);
+    XMFLOAT3 float3 = vector;
+    XMStoreFloat3(&float3, transform->TransformVector(XMLoadFloat3(&vector)));
+    return to_cs(float3);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_TransformDirection(Transform* transform, CSharpVector3 direction)
+NATIVE_EXPORT_AUTO Transform_TransformDirection(cs<Transform*> transform, cs_vector3 direction)
 {
-    XMFLOAT3 float3 = ToXMFLOAT3(direction);
+    XMFLOAT3 float3 = direction;
     XMStoreFloat3(&float3, transform->TransformDirection(XMLoadFloat3(&float3)));
-    return ToCSharpVector3(float3);
+    return to_cs(float3);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_TransformPoint(Transform* transform, CSharpVector3 point)
+NATIVE_EXPORT_AUTO Transform_TransformPoint(cs<Transform*> transform, cs_vector3 point)
 {
-    XMFLOAT3 float3 = ToXMFLOAT3(point);
+    XMFLOAT3 float3 = point;
     XMStoreFloat3(&float3, transform->TransformPoint(XMLoadFloat3(&float3)));
-    return ToCSharpVector3(float3);
+    return to_cs(float3);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_InverseTransformVector(Transform* transform, CSharpVector3 vector)
+NATIVE_EXPORT_AUTO Transform_InverseTransformVector(cs<Transform*> transform, cs_vector3 vector)
 {
-    XMFLOAT3 float3 = ToXMFLOAT3(vector);
+    XMFLOAT3 float3 = vector;
     XMStoreFloat3(&float3, transform->InverseTransformVector(XMLoadFloat3(&float3)));
-    return ToCSharpVector3(float3);
+    return to_cs(float3);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_InverseTransformDirection(Transform* transform, CSharpVector3 direction)
+NATIVE_EXPORT_AUTO Transform_InverseTransformDirection(cs<Transform*> transform, cs_vector3 direction)
 {
-    XMFLOAT3 float3 = ToXMFLOAT3(direction);
+    XMFLOAT3 float3 = direction;
     XMStoreFloat3(&float3, transform->InverseTransformDirection(XMLoadFloat3(&float3)));
-    return ToCSharpVector3(float3);
+    return to_cs(float3);
 }
 
-NATIVE_EXPORT(CSharpVector3) Transform_InverseTransformPoint(Transform* transform, CSharpVector3 point)
+NATIVE_EXPORT_AUTO Transform_InverseTransformPoint(cs<Transform*> transform, cs_vector3 point)
 {
-    XMFLOAT3 float3 = ToXMFLOAT3(point);
+    XMFLOAT3 float3 = point;
     XMStoreFloat3(&float3, transform->InverseTransformPoint(XMLoadFloat3(&float3)));
-    return ToCSharpVector3(float3);
+    return to_cs(float3);
 }

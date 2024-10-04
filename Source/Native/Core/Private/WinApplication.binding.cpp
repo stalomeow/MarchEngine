@@ -1,29 +1,27 @@
 #include "WinApplication.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(CSharpFloat) Application_GetDeltaTime()
+NATIVE_EXPORT_AUTO Application_GetDeltaTime()
 {
-    return GetApp().GetDeltaTime();
+    return to_cs(GetApp().GetDeltaTime());
 }
 
-NATIVE_EXPORT(CSharpFloat) Application_GetElapsedTime()
+NATIVE_EXPORT_AUTO Application_GetElapsedTime()
 {
-    return GetApp().GetElapsedTime();
+    return to_cs(GetApp().GetElapsedTime());
 }
 
-NATIVE_EXPORT(CSharpULong) Application_GetFrameCount()
+NATIVE_EXPORT_AUTO Application_GetFrameCount()
 {
-    return GetApp().GetFrameCount();
+    return to_cs(GetApp().GetFrameCount());
 }
 
-NATIVE_EXPORT(IEngine*) Application_GetEngine()
+NATIVE_EXPORT_AUTO Application_GetEngine()
 {
-    return GetApp().GetEngine();
+    return to_cs(GetApp().GetEngine());
 }
 
-NATIVE_EXPORT(CSharpString) Application_GetDataPath()
+NATIVE_EXPORT_AUTO Application_GetDataPath()
 {
-    return CSharpString_FromUtf8(GetApp().GetDataPath());
+    return to_cs(GetApp().GetDataPath());
 }

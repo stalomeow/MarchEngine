@@ -11,7 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Public\DotNetMarshal.h" />
     <ClInclude Include="Public\DotNetRuntime.h" />
+    <ClInclude Include="Public\DotNetTypeTraits.h" />
     <ClInclude Include="Public\InteropServices.h" />
     <ClInclude Include="ThirdParty\coreclr_delegates.h" />
     <ClInclude Include="ThirdParty\hostfxr.h" />

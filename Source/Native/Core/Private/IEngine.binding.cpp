@@ -1,9 +1,7 @@
 #include "IEngine.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(RenderPipeline*) IEngine_GetRenderPipeline(IEngine* pEngine)
+NATIVE_EXPORT_AUTO IEngine_GetRenderPipeline(cs<IEngine*> pEngine)
 {
-    return pEngine->GetRenderPipeline();
+    return_cs(pEngine->GetRenderPipeline());
 }

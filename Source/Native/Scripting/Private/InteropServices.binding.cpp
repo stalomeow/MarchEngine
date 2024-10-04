@@ -1,60 +1,40 @@
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(CSharpString) MarshalString(CSharpChar* p, CSharpInt len)
+NATIVE_EXPORT_AUTO MarshalString(cs<cs_char_t*> p, cs_int len)
 {
-    return CSharpString_FromUtf16(p, len);
+    return to_cs(cs_wstring::marshal::create(p, len));
 }
 
-NATIVE_EXPORT(void) UnmarshalString(CSharpString s, CSharpChar** ppOutData, CSharpInt* pOutLen)
+NATIVE_EXPORT_AUTO UnmarshalString(cs_wstring s, cs<cs_char_t**> ppOutData, cs<cs_int_t*> pOutLen)
 {
-    static CSharpChar empty = CSHARP_TEXT('\0');
-
-    if (s == nullptr)
-    {
-        *ppOutData = &empty; // '\0' 结尾的空字符串
-        *pOutLen = 0;
-    }
-    else
-    {
-        *ppOutData = &s->FirstChar;
-        *pOutLen = s->Length;
-    }
+    *ppOutData = &s.Data->FirstChar;
+    *pOutLen = s.Data->Length;
 }
 
-NATIVE_EXPORT(void) FreeString(CSharpString s)
+NATIVE_EXPORT_AUTO FreeString(cs_wstring s)
 {
-    CSharpString_Free(s);
+    cs_wstring::marshal::destroy(s.Data);
 }
 
-NATIVE_EXPORT(CSharpArray) NewArray(CSharpInt byteCount)
+NATIVE_EXPORT_AUTO NewArray(cs_int byteCount)
 {
-    return CSharpArray_New<CSharpByte>(byteCount);
+    return to_cs(cs<cs_byte_t[]>::marshal::create(byteCount));
 }
 
-NATIVE_EXPORT(CSharpArray) MarshalArray(CSharpByte* p, CSharpInt byteCount)
+NATIVE_EXPORT_AUTO MarshalArray(cs<cs_byte_t*> p, cs_int byteCount)
 {
-    CSharpArray array = CSharpArray_New<CSharpByte>(byteCount);
-    CSharpArray_CopyFrom(array, p);
-    return array;
+    cs<cs_byte_t[]> result(byteCount);
+    memcpy(&result.Data->FirstByte, p, static_cast<size_t>(byteCount));
+    return to_cs(result);
 }
 
-NATIVE_EXPORT(void) UnmarshalArray(CSharpArray array, CSharpByte** ppOutData, CSharpInt* pOutByteCount)
+NATIVE_EXPORT_AUTO UnmarshalArray(cs<cs_byte_t[]> array, cs<cs_byte_t**> ppOutData, cs<cs_int_t*> pOutByteCount)
 {
-    if (array == nullptr)
-    {
-        *ppOutData = nullptr;
-        *pOutByteCount = 0;
-    }
-    else
-    {
-        *ppOutData = &array->FirstByte;
-        *pOutByteCount = array->Length;
-    }
+    *ppOutData = &array.Data->FirstByte;
+    *pOutByteCount = array.Data->ByteCount;
 }
 
-NATIVE_EXPORT(void) FreeArray(CSharpArray array)
+NATIVE_EXPORT_AUTO FreeArray(cs<cs_byte_t[]> array)
 {
-    CSharpArray_Free(array);
+    cs<cs_byte_t[]>::marshal::destroy(array.Data);
 }

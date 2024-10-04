@@ -24,6 +24,12 @@
     <ClInclude Include="Public\InteropServices.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\DotNetTypeTraits.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\DotNetMarshal.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\DotNetRuntime.cpp">

@@ -1,47 +1,45 @@
 #include "Debug.h"
 #include "InteropServices.h"
 
-using namespace march;
-
 struct CSharpLogStackFrame
 {
-    CSharpString MethodName;
-    CSharpString Filename;
-    CSharpInt Line;
+    cs_string MethodName;
+    cs_string Filename;
+    cs_int Line;
 };
 
-NATIVE_EXPORT(void) Debug_Info(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount)
+NATIVE_EXPORT_AUTO Debug_Info(cs_string message, CSharpLogStackFrame* pFrames, cs_int framCount)
 {
     std::vector<LogStackFrame> stackTrace;
 
-    for (CSharpInt i = 0; i < framCount; i++)
+    for (cs_int_t i = 0; i < framCount; i++)
     {
-        stackTrace.push_back({ CSharpString_ToUtf8(pFrames[i].MethodName), CSharpString_ToUtf8(pFrames[i].Filename), pFrames[i].Line });
+        stackTrace.push_back({ pFrames[i].MethodName, pFrames[i].Filename, pFrames[i].Line });
     }
 
-    Debug::AddLog(stackTrace, CSharpString_ToUtf8(message), LogType::Info);
+    Debug::AddLog(stackTrace, message, LogType::Info);
 }
 
-NATIVE_EXPORT(void) Debug_Warn(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount)
+NATIVE_EXPORT_AUTO Debug_Warn(cs_string message, CSharpLogStackFrame* pFrames, cs_int framCount)
 {
     std::vector<LogStackFrame> stackTrace;
 
-    for (CSharpInt i = 0; i < framCount; i++)
+    for (cs_int_t i = 0; i < framCount; i++)
     {
-        stackTrace.push_back({ CSharpString_ToUtf8(pFrames[i].MethodName), CSharpString_ToUtf8(pFrames[i].Filename), pFrames[i].Line });
+        stackTrace.push_back({ pFrames[i].MethodName, pFrames[i].Filename, pFrames[i].Line });
     }
 
-    Debug::AddLog(stackTrace, CSharpString_ToUtf8(message), LogType::Warn);
+    Debug::AddLog(stackTrace, message, LogType::Warn);
 }
 
-NATIVE_EXPORT(void) Debug_Error(CSharpString message, CSharpLogStackFrame* pFrames, CSharpInt framCount)
+NATIVE_EXPORT_AUTO Debug_Error(cs_string message, CSharpLogStackFrame* pFrames, cs_int framCount)
 {
     std::vector<LogStackFrame> stackTrace;
 
-    for (CSharpInt i = 0; i < framCount; i++)
+    for (cs_int_t i = 0; i < framCount; i++)
     {
-        stackTrace.push_back({ CSharpString_ToUtf8(pFrames[i].MethodName), CSharpString_ToUtf8(pFrames[i].Filename), pFrames[i].Line });
+        stackTrace.push_back({ pFrames[i].MethodName, pFrames[i].Filename, pFrames[i].Line });
     }
 
-    Debug::AddLog(stackTrace, CSharpString_ToUtf8(message), LogType::Error);
+    Debug::AddLog(stackTrace, message, LogType::Error);
 }
