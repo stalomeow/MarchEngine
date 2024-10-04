@@ -30,9 +30,41 @@ namespace March.Core
             return go;
         }
 
-        public GameObject Find(string path)
+        public GameObject? Find(string path)
         {
-            return null!;
+            GameObject? current = null;
+
+            foreach (string name in path.Split('/', StringSplitOptions.None))
+            {
+                bool success = false;
+
+                if (current == null)
+                {
+                    current = RootGameObjects.Find(go => go.Name == name);
+                    success = current != null;
+                }
+                else
+                {
+                    for (int i = 0; i < current.transform.ChildCount; i++)
+                    {
+                        GameObject child = current.transform.GetChild(i).gameObject;
+
+                        if (child.Name == name)
+                        {
+                            current = child;
+                            success = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!success)
+                {
+                    return null;
+                }
+            }
+
+            return current;
         }
     }
 }
