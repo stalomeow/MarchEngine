@@ -8,6 +8,7 @@
 #include "GfxExcept.h"
 #include "Debug.h"
 #include <assert.h>
+#include <dxgidebug.h>
 
 using namespace Microsoft::WRL;
 
@@ -26,7 +27,7 @@ namespace march
         // 开启调试层
         if (desc.EnableDebugLayer)
         {
-            ComPtr<ID3D12Debug> debugController;
+            ComPtr<ID3D12Debug> debugController = nullptr;
             GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
             debugController->EnableDebugLayer();
             DEBUG_LOG_INFO("D3D12 Debug Layer Enabled");
@@ -307,6 +308,13 @@ namespace march
         }
     }
 
+    void GfxUtility::ReportLiveObjects()
+    {
+        ComPtr<IDXGIDebug1> debug = nullptr;
+        GFX_HR(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)));
+        GFX_HR(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+    }
+
     static void __stdcall D3D12DebugMessageCallback(
         D3D12_MESSAGE_CATEGORY Category,
         D3D12_MESSAGE_SEVERITY Severity,
@@ -346,5 +354,10 @@ namespace march
     void InitGfxDevice(const GfxDeviceDesc& desc)
     {
         g_GfxDevice = std::make_unique<GfxDevice>(desc);
+    }
+
+    void DestroyGfxDevice()
+    {
+        g_GfxDevice.reset();
     }
 }

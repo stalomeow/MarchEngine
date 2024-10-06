@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO Transform_Create()
 {
-    retcs new Transform();
+    retcs DBG_NEW Transform();
 }
 
 NATIVE_EXPORT_AUTO Transform_Delete(cs<Transform*> transform)

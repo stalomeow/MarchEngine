@@ -1,5 +1,6 @@
 #include "Debug.h"
 #include "InteropServices.h"
+#include <utility>
 
 struct CSharpLogStackFrame
 {
@@ -17,7 +18,7 @@ NATIVE_EXPORT_AUTO Debug_Info(cs_string message, cs<CSharpLogStackFrame*> pFrame
         stackTrace.push_back({ pFrames[i].MethodName, pFrames[i].Filename, pFrames[i].Line });
     }
 
-    Debug::AddLog(stackTrace, message, LogType::Info);
+    Debug::AddLog(std::move(stackTrace), message, LogType::Info);
 }
 
 NATIVE_EXPORT_AUTO Debug_Warn(cs_string message, cs<CSharpLogStackFrame*> pFrames, cs_int frameCount)
@@ -29,7 +30,7 @@ NATIVE_EXPORT_AUTO Debug_Warn(cs_string message, cs<CSharpLogStackFrame*> pFrame
         stackTrace.push_back({ pFrames[i].MethodName, pFrames[i].Filename, pFrames[i].Line });
     }
 
-    Debug::AddLog(stackTrace, message, LogType::Warn);
+    Debug::AddLog(std::move(stackTrace), message, LogType::Warn);
 }
 
 NATIVE_EXPORT_AUTO Debug_Error(cs_string message, cs<CSharpLogStackFrame*> pFrames, cs_int frameCount)
@@ -41,5 +42,5 @@ NATIVE_EXPORT_AUTO Debug_Error(cs_string message, cs<CSharpLogStackFrame*> pFram
         stackTrace.push_back({ pFrames[i].MethodName, pFrames[i].Filename, pFrames[i].Line });
     }
 
-    Debug::AddLog(stackTrace, message, LogType::Error);
+    Debug::AddLog(std::move(stackTrace), message, LogType::Error);
 }

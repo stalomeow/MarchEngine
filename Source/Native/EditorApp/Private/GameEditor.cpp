@@ -198,6 +198,11 @@ namespace march
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
+
+        //Display::DestroyMainDisplay();
+        //Display::DestroyEditorSceneDisplay();
+        //DestroyGfxDevice();
+        //GfxUtility::ReportLiveObjects();
     }
 
     void GameEditor::DrawImGui(Camera* sceneCamera)

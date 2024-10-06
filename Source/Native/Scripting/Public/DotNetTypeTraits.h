@@ -8,8 +8,8 @@ namespace march
 {
     // https://learn.microsoft.com/en-us/dotnet/standard/native-interop/best-practices#common-windows-data-types
 
-    template<typename T>
-    constexpr bool is_blittable_v = std::is_pointer_v<T>;
+    template<typename T, typename = void>
+    constexpr bool is_blittable_v = false;
 
     template<> constexpr bool is_blittable_v<int8_t> = true;
     template<> constexpr bool is_blittable_v<int16_t> = true;
@@ -25,6 +25,17 @@ namespace march
     // https://learn.microsoft.com/en-us/cpp/cpp/fundamental-types-cpp?view=msvc-170#sizes-of-built-in-types
     template<> constexpr bool is_blittable_v<bool> = std::bool_constant<sizeof(bool) == 1>::value;
     template<> constexpr bool is_blittable_v<wchar_t> = std::bool_constant<sizeof(wchar_t) == 2>::value;
+
+    // 指针
+    template<typename T>
+    constexpr bool is_blittable_v<T, std::enable_if_t<std::is_pointer_v<T>>> = true;
+
+    // 普通 struct
+    template<typename T>
+    constexpr bool is_blittable_v<T, std::enable_if_t<std::is_class_v<T>
+        && std::is_pod_v<T>
+        && std::is_standard_layout_v<T>
+        && std::is_trivially_copyable_v<T>>> = true;
 
     // 检查 NativeType 是否 blittable
     template<typename T>

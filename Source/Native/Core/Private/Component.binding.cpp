@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO Component_CreateDefault()
 {
-    retcs new Component();
+    retcs DBG_NEW Component();
 }
 
 NATIVE_EXPORT_AUTO Component_DeleteDefault(cs<Component*> component)

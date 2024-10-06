@@ -2,6 +2,7 @@
 #include "GfxDevice.h"
 #include "GfxBuffer.h"
 #include "GfxCommandList.h"
+#include "Debug.h"
 #include <vector>
 #include <wrl.h>
 #include <assert.h>
@@ -435,7 +436,7 @@ namespace march
 
     GfxMesh* CreateSimpleGfxMesh(GfxDevice* device)
     {
-        return new GfxSimpleMesh(device);
+        return DBG_NEW GfxSimpleMesh(device);
     }
 
     void ReleaseSimpleGfxMesh(GfxMesh* mesh)

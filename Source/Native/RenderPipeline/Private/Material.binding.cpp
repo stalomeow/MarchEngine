@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO Material_New()
 {
-    retcs new Material();
+    retcs DBG_NEW Material();
 }
 
 NATIVE_EXPORT_AUTO Material_Delete(cs<Material*> pMaterial)

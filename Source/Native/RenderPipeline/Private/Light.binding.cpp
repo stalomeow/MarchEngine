@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO Light_New()
 {
-    retcs new Light();
+    retcs DBG_NEW Light();
 }
 
 NATIVE_EXPORT_AUTO Light_Delete(cs<Light*> pLight)

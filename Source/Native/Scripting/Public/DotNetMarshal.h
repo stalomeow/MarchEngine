@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DotNetTypeTraits.h"
+#include "Debug.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <string>
@@ -20,8 +21,8 @@ namespace march
 
         T data;
 
-        void assign(const T& value) { data = value; }
-        void assign(T&& value) { data = std::move(value); }
+        constexpr void assign(const T& value) { data = value; }
+        constexpr void assign(T&& value) { data = std::move(value); }
 
         constexpr T* operator &() { return &data; }
         constexpr const T* operator &() const { return &data; }
@@ -54,8 +55,8 @@ namespace march
 
         managed_type data;
 
-        void assign(const T& value) { data = static_cast<managed_type>(value); }
-        void assign(T&& value) { data = static_cast<managed_type>(value); }
+        constexpr void assign(const T& value) { data = static_cast<managed_type>(value); }
+        constexpr void assign(T&& value) { data = static_cast<managed_type>(value); }
 
         constexpr operator T () const { return static_cast<T>(data); }
     };
@@ -71,19 +72,19 @@ namespace march
 
         managed_type data;
 
-        void assign(const DirectX::XMFLOAT2& value)
+        constexpr void assign(const DirectX::XMFLOAT2& value)
         {
             data.x = value.x;
             data.y = value.y;
         }
 
-        void assign(DirectX::XMFLOAT2&& value)
+        constexpr void assign(DirectX::XMFLOAT2&& value)
         {
             data.x = value.x;
             data.y = value.y;
         }
 
-        operator DirectX::XMFLOAT2() const
+        constexpr operator DirectX::XMFLOAT2() const
         {
             return { data.x, data.y };
         }
@@ -101,21 +102,21 @@ namespace march
 
         managed_type data;
 
-        void assign(const DirectX::XMFLOAT3& value)
+        constexpr void assign(const DirectX::XMFLOAT3& value)
         {
             data.x = value.x;
             data.y = value.y;
             data.z = value.z;
         }
 
-        void assign(DirectX::XMFLOAT3&& value)
+        constexpr void assign(DirectX::XMFLOAT3&& value)
         {
             data.x = value.x;
             data.y = value.y;
             data.z = value.z;
         }
 
-        operator DirectX::XMFLOAT3() const
+        constexpr operator DirectX::XMFLOAT3() const
         {
             return { data.x, data.y, data.z };
         }
@@ -134,7 +135,7 @@ namespace march
 
         managed_type data;
 
-        void assign(const DirectX::XMFLOAT4& value)
+        constexpr void assign(const DirectX::XMFLOAT4& value)
         {
             data.x = value.x;
             data.y = value.y;
@@ -142,7 +143,7 @@ namespace march
             data.w = value.w;
         }
 
-        void assign(DirectX::XMFLOAT4&& value)
+        constexpr void assign(DirectX::XMFLOAT4&& value)
         {
             data.x = value.x;
             data.y = value.y;
@@ -150,7 +151,7 @@ namespace march
             data.w = value.w;
         }
 
-        operator DirectX::XMFLOAT4() const
+        constexpr operator DirectX::XMFLOAT4() const
         {
             return { data.x, data.y, data.z, data.w };
         }
@@ -222,17 +223,17 @@ namespace march
 
         static managed_type create_data()
         {
-            return new typename std::remove_pointer_t<managed_type>();
+            return DBG_NEW typename std::remove_pointer_t<managed_type>();
         }
 
         static managed_type create_data(const std::string& value)
         {
-            return new typename std::remove_pointer_t<managed_type>(value);
+            return DBG_NEW typename std::remove_pointer_t<managed_type>(value);
         }
 
         static managed_type create_data(std::string&& value)
         {
-            return new typename std::remove_pointer_t<managed_type>(value);
+            return DBG_NEW typename std::remove_pointer_t<managed_type>(value);
         }
 
         static void destroy(cs value)
@@ -306,6 +307,41 @@ namespace march
         }
     };
 
+    template<typename T>
+    constexpr bool is_cs_type_v = false;
+
+    template<typename T>
+    constexpr bool is_cs_type_v<cs<T>> = true;
+
+    template<typename T>
+    struct is_cs_type : std::bool_constant<is_cs_type_v<T>> {};
+
+    template<typename T>
+    constexpr bool is_valid_cs_type_v = is_cs_type_v<T> && is_blittable_v<T>;
+
+    template<typename T>
+    struct is_valid_cs_type : std::bool_constant<is_valid_cs_type_v<T>> {};
+
+    struct cs_t_convert final
+    {
+        template<typename T>
+        constexpr auto operator <<(T&& value)
+        {
+            using type = typename std::remove_cv_t<std::remove_reference_t<T>>;
+
+            if constexpr (is_cs_type_v<type>)
+            {
+                return value.data;
+            }
+            else
+            {
+                cs<type> result{};
+                result.assign(std::forward<T>(value));
+                return result.data;
+            }
+        }
+    };
+
     using cs_void = cs<void>;
     using cs_byte = cs<uint8_t>;
     using cs_sbyte = cs<int8_t>;
@@ -354,50 +390,27 @@ namespace march
     template<typename T>
     using cs_array_t = typename cs_array<T>::managed_type;
 
-    static_assert(std::is_pod_v<cs_void>, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_byte> && sizeof(cs_byte) == 1, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_sbyte> && sizeof(cs_sbyte) == 1, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_ushort> && sizeof(cs_ushort) == 2, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_short> && sizeof(cs_short) == 2, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_uint> && sizeof(cs_uint) == 4, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_int> && sizeof(cs_int) == 4, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_ulong> && sizeof(cs_ulong) == 8, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_long> && sizeof(cs_long) == 8, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_char> && sizeof(cs_char) == 2, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_float> && sizeof(cs_float) == 4, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_double> && sizeof(cs_double) == 8, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_bool> && sizeof(cs_bool) == 1, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_string>, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_vec2> && sizeof(cs_vec2) == 8, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_vec3> && sizeof(cs_vec3) == 12, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_vec4> && sizeof(cs_vec4) == 16, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_mat4> && sizeof(cs_mat4) == 64, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_quat> && sizeof(cs_quat) == 16, "Type must be a POD type");
-    static_assert(std::is_pod_v<cs_color> && sizeof(cs_color) == 16, "Type must be a POD type");
-
     template<typename T>
-    constexpr bool is_cs_type_v = false;
+    using cs_t = typename cs<T>::managed_type;
 
-    template<typename T>
-    constexpr bool is_cs_type_v<cs<T>> = true;
-
-    struct cs_convert final
-    {
-        template<typename T>
-        constexpr auto operator <<(T&& value)
-        {
-            using pure_t = typename std::remove_cv_t<std::remove_reference_t<T>>;
-
-            if constexpr (is_cs_type_v<pure_t>)
-            {
-                return value.data;
-            }
-            else
-            {
-                cs<pure_t> result{};
-                result.assign(std::forward<T>(value));
-                return result.data;
-            }
-        }
-    };
+    static_assert(is_valid_cs_type_v<cs_void>);
+    static_assert(is_valid_cs_type_v<cs_byte>);
+    static_assert(is_valid_cs_type_v<cs_sbyte>);
+    static_assert(is_valid_cs_type_v<cs_ushort>);
+    static_assert(is_valid_cs_type_v<cs_short>);
+    static_assert(is_valid_cs_type_v<cs_uint>);
+    static_assert(is_valid_cs_type_v<cs_int>);
+    static_assert(is_valid_cs_type_v<cs_ulong>);
+    static_assert(is_valid_cs_type_v<cs_long>);
+    static_assert(is_valid_cs_type_v<cs_char>);
+    static_assert(is_valid_cs_type_v<cs_float>);
+    static_assert(is_valid_cs_type_v<cs_double>);
+    static_assert(is_valid_cs_type_v<cs_bool>);
+    static_assert(is_valid_cs_type_v<cs_string>);
+    static_assert(is_valid_cs_type_v<cs_vec2>);
+    static_assert(is_valid_cs_type_v<cs_vec3>);
+    static_assert(is_valid_cs_type_v<cs_vec4>);
+    static_assert(is_valid_cs_type_v<cs_mat4>);
+    static_assert(is_valid_cs_type_v<cs_quat>);
+    static_assert(is_valid_cs_type_v<cs_color>);
 }

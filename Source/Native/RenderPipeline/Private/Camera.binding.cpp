@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO Camera_New()
 {
-    retcs new Camera();
+    retcs DBG_NEW Camera();
 }
 
 NATIVE_EXPORT_AUTO Camera_Delete(cs<Camera*> camera)

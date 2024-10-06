@@ -146,6 +146,11 @@ namespace march
         s_MainDisplay = std::make_unique<Display>(device, "Main", width, height);
     }
 
+    void Display::DestroyMainDisplay()
+    {
+        s_MainDisplay.reset();
+    }
+
     Display* Display::GetEditorSceneDisplay()
     {
         return s_EditorSceneDisplay.get();
@@ -154,5 +159,10 @@ namespace march
     void Display::CreateEditorSceneDisplay(GfxDevice* device, uint32_t width, uint32_t height)
     {
         s_EditorSceneDisplay = std::make_unique<Display>(device, "EditorScene", width, height);
+    }
+
+    void Display::DestroyEditorSceneDisplay()
+    {
+        s_EditorSceneDisplay.reset();
     }
 }

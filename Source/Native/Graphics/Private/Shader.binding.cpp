@@ -104,7 +104,7 @@ struct CSharpShaderPass
 
 NATIVE_EXPORT_AUTO Shader_New()
 {
-    retcs new Shader();
+    retcs DBG_NEW Shader();
 }
 
 NATIVE_EXPORT_AUTO Shader_Delete(cs<Shader*> pShader)

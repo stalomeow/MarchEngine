@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO RenderObject_New()
 {
-    retcs new RenderObject();
+    retcs DBG_NEW RenderObject();
 }
 
 NATIVE_EXPORT_AUTO RenderObject_Delete(RenderObject* pObject)

@@ -92,6 +92,13 @@ namespace march
         std::queue<std::pair<uint64_t, ID3D12Object*>> m_ReleaseQueue;
     };
 
+    class GfxUtility
+    {
+    public:
+        static void ReportLiveObjects();
+    };
+
     GfxDevice* GetGfxDevice();
     void InitGfxDevice(const GfxDeviceDesc& desc);
+    void DestroyGfxDevice();
 }

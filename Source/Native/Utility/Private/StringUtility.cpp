@@ -17,7 +17,7 @@ namespace march::StringUtility
 
         std::string result(len, 0);
         WideCharToMultiByte(static_cast<UINT>(codePage), 0, s, size, result.data(), len, nullptr, nullptr);
-        return std::move(result);
+        return result;
     }
 
     std::string Utf16ToUtf8(const wchar_t* s, int32_t size)
@@ -50,7 +50,7 @@ namespace march::StringUtility
 
         std::wstring result(len, 0);
         MultiByteToWideChar(CP_UTF8, 0, s, size, result.data(), len);
-        return std::move(result);
+        return result;
     }
 
     std::wstring Utf8ToUtf16(const std::string& s)

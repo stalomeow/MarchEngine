@@ -33,9 +33,11 @@ namespace march
 
         static Display* GetMainDisplay();
         static void CreateMainDisplay(GfxDevice* device, uint32_t width, uint32_t height);
+        static void DestroyMainDisplay();
 
         static Display* GetEditorSceneDisplay();
         static void CreateEditorSceneDisplay(GfxDevice* device, uint32_t width, uint32_t height);
+        static void DestroyEditorSceneDisplay();
 
     private:
         void CreateBuffers(uint32_t width, uint32_t height);

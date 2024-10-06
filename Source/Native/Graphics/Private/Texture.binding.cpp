@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO Texture_New()
 {
-    retcs new GfxTexture2D(GetGfxDevice());
+    retcs DBG_NEW GfxTexture2D(GetGfxDevice());
 }
 
 NATIVE_EXPORT_AUTO Texture_Delete(cs<GfxTexture*> pTexture)

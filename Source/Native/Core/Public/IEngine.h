@@ -10,6 +10,8 @@ namespace march
     class IEngine
     {
     public:
+        virtual ~IEngine() = default;
+
         virtual void OnStart(const std::vector<std::string>& args) {}
         virtual void OnTick() {}
         virtual void OnQuit() {}

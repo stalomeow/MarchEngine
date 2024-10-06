@@ -52,20 +52,21 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 {{
     unsafe partial {(classSymbol.IsReferenceType ? "class" : "struct")} {classSymbol.Name}");
 
-            if (classSymbol.TypeParameters.Length > 0)
-            {
-                source.Append("<");
-                for (int i = 0; i < classSymbol.TypeParameters.Length; i++)
-                {
-                    if (i > 0)
-                    {
-                        source.Append(", ");
-                    }
+            // 不再支持泛型
+            //if (classSymbol.TypeParameters.Length > 0)
+            //{
+            //    source.Append("<");
+            //    for (int i = 0; i < classSymbol.TypeParameters.Length; i++)
+            //    {
+            //        if (i > 0)
+            //        {
+            //            source.Append(", ");
+            //        }
 
-                    source.Append(classSymbol.TypeParameters[i].Name);
-                }
-                source.Append(">");
-            }
+            //        source.Append(classSymbol.TypeParameters[i].Name);
+            //    }
+            //    source.Append(">");
+            //}
 
             source.AppendLine("\n    {");
 
@@ -155,7 +156,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
                 if (!paramWrapperTypes.TryGetValue(paramType, out string wrapperType))
                 {
-                    wrapperType = $"__CS_Param_Wrapper{paramWrapperTypes.Count}";
+                    wrapperType = $"__ParameterType{paramWrapperTypes.Count}_Wrapper";
                     paramWrapperTypes.Add(paramType, wrapperType);
                 }
 
@@ -182,11 +183,13 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
         {
             foreach (KeyValuePair<string, string> type in types)
             {
-                source.AppendLine($"private unsafe struct {type.Value}");
-                source.AppendLine($"{{");
-                source.AppendLine($"    public {type.Key} data;");
-                source.AppendLine($"    public static implicit operator {type.Value}({type.Key} value) => new {type.Value} {{ data = value }};");
-                source.AppendLine($"}}");
+                source.AppendLine($"    [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]");
+                source.AppendLine($"    [global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]");
+                source.AppendLine($"    private unsafe ref struct {type.Value}");
+                source.AppendLine($"    {{");
+                source.AppendLine($"        public {type.Key} Data;");
+                source.AppendLine($"        public static implicit operator {type.Value}({type.Key} value) => new {type.Value} {{ Data = value }};");
+                source.AppendLine($"    }}");
                 source.AppendLine();
             }
         }
