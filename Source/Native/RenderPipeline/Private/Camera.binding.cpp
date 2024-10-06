@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO Camera_New()
 {
-    return_cs(new Camera());
+    retcs new Camera();
 }
 
 NATIVE_EXPORT_AUTO Camera_Delete(cs<Camera*> camera)
@@ -13,22 +13,22 @@ NATIVE_EXPORT_AUTO Camera_Delete(cs<Camera*> camera)
 
 NATIVE_EXPORT_AUTO Camera_GetPixelWidth(cs<Camera*> camera)
 {
-    return_cs(static_cast<int32_t>(camera->GetPixelWidth()));
+    retcs static_cast<int32_t>(camera->GetPixelWidth());
 }
 
 NATIVE_EXPORT_AUTO Camera_GetPixelHeight(cs<Camera*> camera)
 {
-    return_cs(static_cast<int32_t>(camera->GetPixelHeight()));
+    retcs static_cast<int32_t>(camera->GetPixelHeight());
 }
 
 NATIVE_EXPORT_AUTO Camera_GetAspectRatio(cs<Camera*> camera)
 {
-    return_cs(camera->GetAspectRatio());
+    retcs camera->GetAspectRatio();
 }
 
 NATIVE_EXPORT_AUTO Camera_GetEnableMSAA(cs<Camera*> camera)
 {
-    return_cs(camera->GetEnableMSAA());
+    retcs camera->GetEnableMSAA();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetEnableMSAA(cs<Camera*> camera, cs_bool value)
@@ -38,7 +38,7 @@ NATIVE_EXPORT_AUTO Camera_SetEnableMSAA(cs<Camera*> camera, cs_bool value)
 
 NATIVE_EXPORT_AUTO Camera_GetVerticalFieldOfView(cs<Camera*> camera)
 {
-    return_cs(camera->GetVerticalFieldOfView());
+    retcs camera->GetVerticalFieldOfView();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetVerticalFieldOfView(cs<Camera*> camera, cs_float value)
@@ -48,7 +48,7 @@ NATIVE_EXPORT_AUTO Camera_SetVerticalFieldOfView(cs<Camera*> camera, cs_float va
 
 NATIVE_EXPORT_AUTO Camera_GetHorizontalFieldOfView(cs<Camera*> camera)
 {
-    return_cs(camera->GetHorizontalFieldOfView());
+    retcs camera->GetHorizontalFieldOfView();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetHorizontalFieldOfView(cs<Camera*> camera, cs_float value)
@@ -58,7 +58,7 @@ NATIVE_EXPORT_AUTO Camera_SetHorizontalFieldOfView(cs<Camera*> camera, cs_float 
 
 NATIVE_EXPORT_AUTO Camera_GetNearClipPlane(cs<Camera*> camera)
 {
-    return_cs(camera->GetNearClipPlane());
+    retcs camera->GetNearClipPlane();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetNearClipPlane(cs<Camera*> camera, cs_float value)
@@ -68,7 +68,7 @@ NATIVE_EXPORT_AUTO Camera_SetNearClipPlane(cs<Camera*> camera, cs_float value)
 
 NATIVE_EXPORT_AUTO Camera_GetFarClipPlane(cs<Camera*> camera)
 {
-    return_cs(camera->GetFarClipPlane());
+    retcs camera->GetFarClipPlane();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetFarClipPlane(cs<Camera*> camera, cs_float value)
@@ -78,7 +78,7 @@ NATIVE_EXPORT_AUTO Camera_SetFarClipPlane(cs<Camera*> camera, cs_float value)
 
 NATIVE_EXPORT_AUTO Camera_GetEnableWireframe(cs<Camera*> camera)
 {
-    return_cs(camera->GetEnableWireframe());
+    retcs camera->GetEnableWireframe();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetEnableWireframe(cs<Camera*> camera, cs_bool value)
@@ -88,7 +88,7 @@ NATIVE_EXPORT_AUTO Camera_SetEnableWireframe(cs<Camera*> camera, cs_bool value)
 
 NATIVE_EXPORT_AUTO Camera_GetIsEditorSceneCamera(cs<Camera*> camera)
 {
-    return_cs(camera->GetIsEditorSceneCamera());
+    retcs camera->GetIsEditorSceneCamera();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetIsEditorSceneCamera(cs<Camera*> camera, cs_bool value)
@@ -98,10 +98,10 @@ NATIVE_EXPORT_AUTO Camera_SetIsEditorSceneCamera(cs<Camera*> camera, cs_bool val
 
 NATIVE_EXPORT_AUTO Camera_GetViewMatrix(cs<Camera*> camera)
 {
-    return_cs(camera->GetViewMatrix());
+    retcs camera->GetViewMatrix();
 }
 
 NATIVE_EXPORT_AUTO Camera_GetProjectionMatrix(cs<Camera*> camera)
 {
-    return_cs(camera->GetProjectionMatrix());
+    retcs camera->GetProjectionMatrix();
 }

@@ -1,24 +1,22 @@
 #include "RenderPipeline.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(void) RenderPipeline_AddRenderObject(RenderPipeline* pPipeline, RenderObject* pObject)
+NATIVE_EXPORT_AUTO RenderPipeline_AddRenderObject(cs<RenderPipeline*> pPipeline, cs<RenderObject*> pObject)
 {
     pPipeline->AddRenderObject(pObject);
 }
 
-NATIVE_EXPORT(void) RenderPipeline_RemoveRenderObject(RenderPipeline* pPipeline, RenderObject* pObject)
+NATIVE_EXPORT_AUTO RenderPipeline_RemoveRenderObject(cs<RenderPipeline*> pPipeline, cs<RenderObject*> pObject)
 {
     pPipeline->RemoveRenderObject(pObject);
 }
 
-NATIVE_EXPORT(void) RenderPipeline_AddLight(RenderPipeline* pPipeline, Light* pLight)
+NATIVE_EXPORT_AUTO RenderPipeline_AddLight(cs<RenderPipeline*> pPipeline, cs<Light*> pLight)
 {
     pPipeline->AddLight(pLight);
 }
 
-NATIVE_EXPORT(void) RenderPipeline_RemoveLight(RenderPipeline* pPipeline, Light* pLight)
+NATIVE_EXPORT_AUTO RenderPipeline_RemoveLight(cs<RenderPipeline*> pPipeline, cs<Light*> pLight)
 {
     pPipeline->RemoveLight(pLight);
 }

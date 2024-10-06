@@ -3,25 +3,25 @@
 
 NATIVE_EXPORT_AUTO Application_GetDeltaTime()
 {
-    return to_cs(GetApp().GetDeltaTime());
+    retcs GetApp().GetDeltaTime();
 }
 
 NATIVE_EXPORT_AUTO Application_GetElapsedTime()
 {
-    return to_cs(GetApp().GetElapsedTime());
+    retcs GetApp().GetElapsedTime();
 }
 
 NATIVE_EXPORT_AUTO Application_GetFrameCount()
 {
-    return to_cs(GetApp().GetFrameCount());
+    retcs GetApp().GetFrameCount();
 }
 
 NATIVE_EXPORT_AUTO Application_GetEngine()
 {
-    return to_cs(GetApp().GetEngine());
+    retcs GetApp().GetEngine();
 }
 
 NATIVE_EXPORT_AUTO Application_GetDataPath()
 {
-    return to_cs(GetApp().GetDataPath());
+    retcs GetApp().GetDataPath();
 }

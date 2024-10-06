@@ -4,12 +4,11 @@
 #include <stdexcept>
 #include <utility>
 #include <stdint.h>
-#include <Windows.h>
 
 namespace march::StringUtility
 {
     // size does not include the null terminator
-    std::string Utf16ToBytes(const wchar_t* s, int32_t size, UINT codePage);
+    std::string Utf16ToBytes(const wchar_t* s, int32_t size, uint32_t codePage);
 
     // size does not include the null terminator
     std::string Utf16ToUtf8(const wchar_t* s, int32_t size);

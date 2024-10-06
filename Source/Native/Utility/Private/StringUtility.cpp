@@ -1,8 +1,9 @@
 #include "StringUtility.h"
+#include <Windows.h>
 
 namespace march::StringUtility
 {
-    std::string Utf16ToBytes(const wchar_t* s, int32_t size, UINT codePage)
+    std::string Utf16ToBytes(const wchar_t* s, int32_t size, uint32_t codePage)
     {
         // https://learn.microsoft.com/en-us/cpp/cpp/char-wchar-t-char16-t-char32-t?view=msvc-170
         // The wchar_t type is an implementation-defined wide character type.
@@ -11,11 +12,11 @@ namespace march::StringUtility
 
         // https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-widechartomultibyte
 
-        int len = WideCharToMultiByte(codePage, 0, s, size, nullptr, 0, nullptr, nullptr);
+        int len = WideCharToMultiByte(static_cast<UINT>(codePage), 0, s, size, nullptr, 0, nullptr, nullptr);
         if (len == 0) { return ""; }
 
         std::string result(len, 0);
-        WideCharToMultiByte(codePage, 0, s, size, result.data(), len, nullptr, nullptr);
+        WideCharToMultiByte(static_cast<UINT>(codePage), 0, s, size, result.data(), len, nullptr, nullptr);
         return std::move(result);
     }
 

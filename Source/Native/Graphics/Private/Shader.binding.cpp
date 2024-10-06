@@ -1,342 +1,332 @@
 #include "Shader.h"
 #include "InteropServices.h"
 
-using namespace march;
-
 struct CSharpShaderProperty
 {
-    CSharpString Name;
-    CSharpInt Type;
+    cs_string Name;
+    cs<ShaderPropertyType> Type;
 
-    CSharpFloat DefaultFloat;
-    CSharpInt DefaultInt;
-    CSharpColor DefaultColor;
-    CSharpVector4 DefaultVector;
-    CSharpInt DefaultTexture;
+    cs_float DefaultFloat;
+    cs_int DefaultInt;
+    cs_color DefaultColor;
+    cs_vec4 DefaultVector;
+    cs<ShaderDefaultTexture> DefaultTexture;
 };
 
 struct CSharpShaderPassConstantBuffer
 {
-    CSharpString Name;
-    CSharpUInt ShaderRegister;
-    CSharpUInt RegisterSpace;
-    CSharpUInt Size;
+    cs_string Name;
+    cs_uint ShaderRegister;
+    cs_uint RegisterSpace;
+    cs_uint Size;
 };
 
 struct CSharpShaderPassSampler
 {
-    CSharpString Name;
-    CSharpUInt ShaderRegister;
-    CSharpUInt RegisterSpace;
+    cs_string Name;
+    cs_uint ShaderRegister;
+    cs_uint RegisterSpace;
 };
 
 struct CSharpShaderPassMaterialProperty
 {
-    CSharpString Name;
-    CSharpUInt Offset;
-    CSharpUInt Size;
+    cs_string Name;
+    cs_uint Offset;
+    cs_uint Size;
 };
 
 struct CSharpShaderPassTextureProperty
 {
-    CSharpString Name;
-    CSharpUInt ShaderRegisterTexture;
-    CSharpUInt RegisterSpaceTexture;
-    CSharpBool HasSampler;
-    CSharpUInt ShaderRegisterSampler;
-    CSharpUInt RegisterSpaceSampler;
+    cs_string Name;
+    cs_uint ShaderRegisterTexture;
+    cs_uint RegisterSpaceTexture;
+    cs_bool HasSampler;
+    cs_uint ShaderRegisterSampler;
+    cs_uint RegisterSpaceSampler;
 };
 
 struct CSharpShaderPassBlendFormula
 {
-    CSharpInt Src;
-    CSharpInt Dest;
-    CSharpInt Op;
+    cs<ShaderPassBlend> Src;
+    cs<ShaderPassBlend> Dest;
+    cs<ShaderPassBlendOp> Op;
 };
 
 struct CSharpShaderPassBlendState
 {
-    CSharpBool Enable;
-    CSharpInt WriteMask;
+    cs_bool Enable;
+    cs<ShaderPassColorWriteMask> WriteMask;
     CSharpShaderPassBlendFormula Rgb;
     CSharpShaderPassBlendFormula Alpha;
 };
 
 struct CSharpShaderPassDepthState
 {
-    CSharpBool Enable;
-    CSharpBool Write;
-    CSharpInt Compare;
+    cs_bool Enable;
+    cs_bool Write;
+    cs<ShaderPassCompareFunc> Compare;
 };
 
 struct CSharpShaderPassStencilAction
 {
-    CSharpInt Compare;
-    CSharpInt PassOp;
-    CSharpInt FailOp;
-    CSharpInt DepthFailOp;
+    cs<ShaderPassCompareFunc> Compare;
+    cs<ShaderPassStencilOp> PassOp;
+    cs<ShaderPassStencilOp> FailOp;
+    cs<ShaderPassStencilOp> DepthFailOp;
 };
 
 struct CSharpShaderPassStencilState
 {
-    CSharpBool Enable;
-    CSharpByte ReadMask;
-    CSharpByte WriteMask;
+    cs_bool Enable;
+    march::cs_byte ReadMask;
+    march::cs_byte WriteMask;
     CSharpShaderPassStencilAction FrontFace;
     CSharpShaderPassStencilAction BackFace;
 };
 
 struct CSharpShaderPass
 {
-    CSharpString Name;
+    cs_string Name;
 
-    CSharpArray VertexShader;
-    CSharpArray PixelShader;
+    cs<march::cs_byte[]> VertexShader;
+    cs<march::cs_byte[]> PixelShader;
 
-    CSharpArray ConstantBuffers;
-    CSharpArray Samplers;
-    CSharpArray MaterialProperties;
-    CSharpArray TextureProperties;
+    cs<CSharpShaderPassConstantBuffer[]> ConstantBuffers;
+    cs<CSharpShaderPassSampler[]> Samplers;
+    cs<CSharpShaderPassMaterialProperty[]> MaterialProperties;
+    cs<CSharpShaderPassTextureProperty[]> TextureProperties;
 
-    CSharpInt Cull;
-    CSharpArray Blends;
+    cs<ShaderPassCullMode> Cull;
+    cs<CSharpShaderPassBlendState[]> Blends;
     CSharpShaderPassDepthState DepthState;
     CSharpShaderPassStencilState StencilState;
 };
 
-NATIVE_EXPORT(Shader*) Shader_New()
+NATIVE_EXPORT_AUTO Shader_New()
 {
-    return new Shader();
+    retcs new Shader();
 }
 
-NATIVE_EXPORT(void) Shader_Delete(Shader* pShader)
+NATIVE_EXPORT_AUTO Shader_Delete(cs<Shader*> pShader)
 {
     delete pShader;
 }
 
-NATIVE_EXPORT(void) Shader_ClearProperties(Shader* pShader)
+NATIVE_EXPORT_AUTO Shader_ClearProperties(cs<Shader*> pShader)
 {
     pShader->Version++;
     pShader->Properties.clear();
 }
 
-NATIVE_EXPORT(void) Shader_SetProperty(Shader* pShader, CSharpShaderProperty* prop)
+NATIVE_EXPORT_AUTO Shader_SetProperty(cs<Shader*> pShader, cs<CSharpShaderProperty*> prop)
 {
     pShader->Version++;
-    pShader->Properties[CSharpString_ToUtf8(prop->Name)] =
+    pShader->Properties[prop->Name] =
     {
-        static_cast<ShaderPropertyType>(prop->Type),
+        prop->Type,
         prop->DefaultFloat,
         prop->DefaultInt,
-        ToXMFLOAT4(prop->DefaultColor),
-        ToXMFLOAT4(prop->DefaultVector),
-        static_cast<ShaderDefaultTexture>(prop->DefaultTexture)
+        prop->DefaultColor,
+        prop->DefaultVector,
+        prop->DefaultTexture,
     };
 }
 
-NATIVE_EXPORT(CSharpInt) Shader_GetPassCount(Shader* pShader)
+NATIVE_EXPORT_AUTO Shader_GetPassCount(cs<Shader*> pShader)
 {
-    return static_cast<CSharpInt>(pShader->Passes.size());
+    retcs static_cast<int32_t>(pShader->Passes.size());
 }
 
-NATIVE_EXPORT(void) Shader_GetPasses(Shader* pShader, CSharpArray passes)
+NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> passes)
 {
-    for (int i = 0; i < pShader->Passes.size(); i++)
+    for (int32_t i = 0; i < pShader->Passes.size(); i++)
     {
         ShaderPass* pass = pShader->Passes[i].get();
-        auto& cs = CSharpArray_Get<CSharpShaderPass>(passes, i);
+        CSharpShaderPass& dest = passes[i];
 
-        cs.Name = CSharpString_FromUtf8(pass->Name);
+        dest.Name.assign(pass->Name);
 
-        cs.VertexShader = CSharpArray_New<CSharpByte>(pass->VertexShader->GetBufferSize());
-        CSharpArray_CopyFrom(cs.VertexShader, pass->VertexShader->GetBufferPointer());
+        dest.VertexShader.assign(static_cast<int32_t>(pass->VertexShader->GetBufferSize()),
+            reinterpret_cast<march::cs_byte*>(pass->VertexShader->GetBufferPointer()));
+        dest.PixelShader.assign(static_cast<int32_t>(pass->PixelShader->GetBufferSize()),
+            reinterpret_cast<march::cs_byte*>(pass->PixelShader->GetBufferPointer()));
 
-        cs.PixelShader = CSharpArray_New<CSharpByte>(pass->PixelShader->GetBufferSize());
-        CSharpArray_CopyFrom(cs.PixelShader, pass->PixelShader->GetBufferPointer());
-
-        cs.ConstantBuffers = CSharpArray_New<CSharpShaderPassConstantBuffer>(pass->ConstantBuffers.size());
-        int cbIndex = 0;
+        dest.ConstantBuffers.assign(static_cast<int32_t>(pass->ConstantBuffers.size()));
+        int32_t cbIndex = 0;
         for (auto& kvp : pass->ConstantBuffers)
         {
-            auto& cb = CSharpArray_Get<CSharpShaderPassConstantBuffer>(cs.ConstantBuffers, cbIndex++);
-            cb.Name = CSharpString_FromUtf8(kvp.first);
-            cb.ShaderRegister = kvp.second.ShaderRegister;
-            cb.RegisterSpace = kvp.second.RegisterSpace;
-            cb.Size = kvp.second.Size;
+            auto& cb = dest.ConstantBuffers[cbIndex++];
+            cb.Name.assign(kvp.first);
+            cb.ShaderRegister.assign(kvp.second.ShaderRegister);
+            cb.RegisterSpace.assign(kvp.second.RegisterSpace);
+            cb.Size.assign(kvp.second.Size);
         }
 
-        cs.Samplers = CSharpArray_New<CSharpShaderPassSampler>(pass->Samplers.size());
-        int samplerIndex = 0;
+        dest.Samplers.assign(static_cast<int32_t>(pass->Samplers.size()));
+        int32_t samplerIndex = 0;
         for (auto& kvp : pass->Samplers)
         {
-            auto& sampler = CSharpArray_Get<CSharpShaderPassSampler>(cs.Samplers, samplerIndex++);
-            sampler.Name = CSharpString_FromUtf8(kvp.first);
-            sampler.ShaderRegister = kvp.second.ShaderRegister;
-            sampler.RegisterSpace = kvp.second.RegisterSpace;
+            auto& sampler = dest.Samplers[samplerIndex++];
+            sampler.Name.assign(kvp.first);
+            sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
+            sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
         }
 
-        cs.MaterialProperties = CSharpArray_New<CSharpShaderPassMaterialProperty>(pass->MaterialProperties.size());
-        int mpIndex = 0;
+        dest.MaterialProperties.assign(static_cast<int32_t>(pass->MaterialProperties.size()));
+        int32_t mpIndex = 0;
         for (auto& kvp : pass->MaterialProperties)
         {
-            auto& mp = CSharpArray_Get<CSharpShaderPassMaterialProperty>(cs.MaterialProperties, mpIndex++);
-            mp.Name = CSharpString_FromUtf8(kvp.first);
-            mp.Offset = kvp.second.Offset;
-            mp.Size = kvp.second.Size;
+            auto& mp = dest.MaterialProperties[mpIndex++];
+            mp.Name.assign(kvp.first);
+            mp.Offset.assign(kvp.second.Offset);
+            mp.Size.assign(kvp.second.Size);
         }
 
-        cs.TextureProperties = CSharpArray_New<CSharpShaderPassTextureProperty>(pass->TextureProperties.size());
-        int tpIndex = 0;
+        dest.TextureProperties.assign(static_cast<int32_t>(pass->TextureProperties.size()));
+        int32_t tpIndex = 0;
         for (auto& kvp : pass->TextureProperties)
         {
-            auto& tp = CSharpArray_Get<CSharpShaderPassTextureProperty>(cs.TextureProperties, tpIndex++);
-            tp.Name = CSharpString_FromUtf8(kvp.first);
-            tp.ShaderRegisterTexture = kvp.second.ShaderRegisterTexture;
-            tp.RegisterSpaceTexture = kvp.second.RegisterSpaceTexture;
-            tp.HasSampler = CSHARP_MARSHAL_BOOL(kvp.second.HasSampler);
-            tp.ShaderRegisterSampler = kvp.second.ShaderRegisterSampler;
-            tp.RegisterSpaceSampler = kvp.second.RegisterSpaceSampler;
+            auto& tp = dest.TextureProperties[tpIndex++];
+            tp.Name.assign(kvp.first);
+            tp.ShaderRegisterTexture.assign(kvp.second.ShaderRegisterTexture);
+            tp.RegisterSpaceTexture.assign(kvp.second.RegisterSpaceTexture);
+            tp.HasSampler.assign(kvp.second.HasSampler);
+            tp.ShaderRegisterSampler.assign(kvp.second.ShaderRegisterSampler);
+            tp.RegisterSpaceSampler.assign(kvp.second.RegisterSpaceSampler);
         }
 
-        cs.Cull = static_cast<CSharpInt>(pass->Cull);
-        cs.Blends = CSharpArray_New<CSharpShaderPassBlendState>(pass->Blends.size());
-        for (int j = 0; j < pass->Blends.size(); j++)
+        dest.Cull.assign(pass->Cull);
+        dest.Blends.assign(static_cast<int32_t>(pass->Blends.size()));
+        for (int32_t j = 0; j < pass->Blends.size(); j++)
         {
-            auto& blend = CSharpArray_Get<CSharpShaderPassBlendState>(cs.Blends, j);
-            blend.Enable = CSHARP_MARSHAL_BOOL(pass->Blends[j].Enable);
-            blend.WriteMask = static_cast<CSharpInt>(pass->Blends[j].WriteMask);
-            blend.Rgb.Src = static_cast<CSharpInt>(pass->Blends[j].Rgb.Src);
-            blend.Rgb.Dest = static_cast<CSharpInt>(pass->Blends[j].Rgb.Dest);
-            blend.Rgb.Op = static_cast<CSharpInt>(pass->Blends[j].Rgb.Op);
-            blend.Alpha.Src = static_cast<CSharpInt>(pass->Blends[j].Alpha.Src);
-            blend.Alpha.Dest = static_cast<CSharpInt>(pass->Blends[j].Alpha.Dest);
-            blend.Alpha.Op = static_cast<CSharpInt>(pass->Blends[j].Alpha.Op);
+            auto& blend = dest.Blends[j];
+            blend.Enable.assign(pass->Blends[j].Enable);
+            blend.WriteMask.assign(pass->Blends[j].WriteMask);
+            blend.Rgb.Src.assign(pass->Blends[j].Rgb.Src);
+            blend.Rgb.Dest.assign(pass->Blends[j].Rgb.Dest);
+            blend.Rgb.Op.assign(pass->Blends[j].Rgb.Op);
+            blend.Alpha.Src.assign(pass->Blends[j].Alpha.Src);
+            blend.Alpha.Dest.assign(pass->Blends[j].Alpha.Dest);
+            blend.Alpha.Op.assign(pass->Blends[j].Alpha.Op);
         }
-        cs.DepthState.Enable = CSHARP_MARSHAL_BOOL(pass->DepthState.Enable);
-        cs.DepthState.Write = CSHARP_MARSHAL_BOOL(pass->DepthState.Write);
-        cs.DepthState.Compare = static_cast<CSharpInt>(pass->DepthState.Compare);
-        cs.StencilState.Enable = CSHARP_MARSHAL_BOOL(pass->StencilState.Enable);
-        cs.StencilState.ReadMask = pass->StencilState.ReadMask;
-        cs.StencilState.WriteMask = pass->StencilState.WriteMask;
-        cs.StencilState.FrontFace.Compare = static_cast<CSharpInt>(pass->StencilState.FrontFace.Compare);
-        cs.StencilState.FrontFace.PassOp = static_cast<CSharpInt>(pass->StencilState.FrontFace.PassOp);
-        cs.StencilState.FrontFace.FailOp = static_cast<CSharpInt>(pass->StencilState.FrontFace.FailOp);
-        cs.StencilState.FrontFace.DepthFailOp = static_cast<CSharpInt>(pass->StencilState.FrontFace.DepthFailOp);
-        cs.StencilState.BackFace.Compare = static_cast<CSharpInt>(pass->StencilState.BackFace.Compare);
-        cs.StencilState.BackFace.PassOp = static_cast<CSharpInt>(pass->StencilState.BackFace.PassOp);
-        cs.StencilState.BackFace.FailOp = static_cast<CSharpInt>(pass->StencilState.BackFace.FailOp);
-        cs.StencilState.BackFace.DepthFailOp = static_cast<CSharpInt>(pass->StencilState.BackFace.DepthFailOp);
+        dest.DepthState.Enable.assign(pass->DepthState.Enable);
+        dest.DepthState.Write.assign(pass->DepthState.Write);
+        dest.DepthState.Compare.assign(pass->DepthState.Compare);
+        dest.StencilState.Enable.assign(pass->StencilState.Enable);
+        dest.StencilState.ReadMask.assign(pass->StencilState.ReadMask);
+        dest.StencilState.WriteMask.assign(pass->StencilState.WriteMask);
+        dest.StencilState.FrontFace.Compare.assign(pass->StencilState.FrontFace.Compare);
+        dest.StencilState.FrontFace.PassOp.assign(pass->StencilState.FrontFace.PassOp);
+        dest.StencilState.FrontFace.FailOp.assign(pass->StencilState.FrontFace.FailOp);
+        dest.StencilState.FrontFace.DepthFailOp.assign(pass->StencilState.FrontFace.DepthFailOp);
+        dest.StencilState.BackFace.Compare.assign(pass->StencilState.BackFace.Compare);
+        dest.StencilState.BackFace.PassOp.assign(pass->StencilState.BackFace.PassOp);
+        dest.StencilState.BackFace.FailOp.assign(pass->StencilState.BackFace.FailOp);
+        dest.StencilState.BackFace.DepthFailOp.assign(pass->StencilState.BackFace.DepthFailOp);
     }
 }
 
-NATIVE_EXPORT(void) Shader_SetPasses(Shader* pShader, CSharpArray passes)
+NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> passes)
 {
     pShader->Version++;
-    pShader->Passes.resize(CSharpArray_GetLength<CSharpShaderPass>(passes));
+    pShader->Passes.resize(static_cast<size_t>(passes.size()));
 
-    for (int i = 0; i < pShader->Passes.size(); i++)
+    for (int32_t i = 0; i < pShader->Passes.size(); i++)
     {
-        const auto& cs = CSharpArray_Get<CSharpShaderPass>(passes, i);
+        const auto& src = passes[i];
         pShader->Passes[i] = std::make_unique<ShaderPass>();
         ShaderPass* pass = pShader->Passes[i].get();
 
-        pass->Name = CSharpString_ToUtf8(cs.Name);
+        pass->Name = src.Name;
 
         GFX_HR(Shader::GetDxcUtils()->CreateBlob(
-            &cs.VertexShader->FirstByte, cs.VertexShader->Length, DXC_CP_ACP,
+            src.VertexShader.begin(), src.VertexShader.size(), DXC_CP_ACP,
             reinterpret_cast<IDxcBlobEncoding**>(pass->VertexShader.ReleaseAndGetAddressOf())));
         GFX_HR(Shader::GetDxcUtils()->CreateBlob(
-            &cs.PixelShader->FirstByte, cs.PixelShader->Length, DXC_CP_ACP,
+            src.PixelShader.begin(), src.PixelShader.size(), DXC_CP_ACP,
             reinterpret_cast<IDxcBlobEncoding**>(pass->PixelShader.ReleaseAndGetAddressOf())));
 
         pass->ConstantBuffers.clear();
-        for (int j = 0; j < CSharpArray_GetLength<CSharpShaderPassConstantBuffer>(cs.ConstantBuffers); j++)
+        for (int32_t j = 0; j < src.ConstantBuffers.size(); j++)
         {
-            const auto& cb = CSharpArray_Get<CSharpShaderPassConstantBuffer>(cs.ConstantBuffers, j);
-            pass->ConstantBuffers[CSharpString_ToUtf8(cb.Name)] = { cb.ShaderRegister, cb.RegisterSpace, cb.Size };
+            const auto& cb = src.ConstantBuffers[j];
+            pass->ConstantBuffers[cb.Name] = { cb.ShaderRegister, cb.RegisterSpace, cb.Size };
         }
 
         pass->Samplers.clear();
-        for (int j = 0; j < CSharpArray_GetLength<CSharpShaderPassSampler>(cs.Samplers); j++)
+        for (int32_t j = 0; j < src.Samplers.size(); j++)
         {
-            const auto& sampler = CSharpArray_Get<CSharpShaderPassSampler>(cs.Samplers, j);
-            pass->Samplers[CSharpString_ToUtf8(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
+            const auto& sampler = src.Samplers[j];
+            pass->Samplers[sampler.Name] = { sampler.ShaderRegister, sampler.RegisterSpace };
         }
 
         pass->MaterialProperties.clear();
-        for (int j = 0; j < CSharpArray_GetLength<CSharpShaderPassMaterialProperty>(cs.MaterialProperties); j++)
+        for (int32_t j = 0; j < src.MaterialProperties.size(); j++)
         {
-            const auto& mp = CSharpArray_Get<CSharpShaderPassMaterialProperty>(cs.MaterialProperties, j);
-            pass->MaterialProperties[CSharpString_ToUtf8(mp.Name)] = { mp.Offset, mp.Size };
+            const auto& mp = src.MaterialProperties[j];
+            pass->MaterialProperties[mp.Name] = { mp.Offset, mp.Size };
         }
 
         pass->TextureProperties.clear();
-        for (int j = 0; j < CSharpArray_GetLength<CSharpShaderPassTextureProperty>(cs.TextureProperties); j++)
+        for (int32_t j = 0; j < src.TextureProperties.size(); j++)
         {
-            const auto& tp = CSharpArray_Get<CSharpShaderPassTextureProperty>(cs.TextureProperties, j);
-            pass->TextureProperties[CSharpString_ToUtf8(tp.Name)] =
+            const auto& tp = src.TextureProperties[j];
+            pass->TextureProperties[tp.Name] =
             {
                 tp.ShaderRegisterTexture,
                 tp.RegisterSpaceTexture,
-                CSHARP_UNMARSHAL_BOOL(tp.HasSampler),
+                tp.HasSampler,
                 tp.ShaderRegisterSampler,
                 tp.RegisterSpaceSampler
             };
         }
 
-        pass->Cull = static_cast<ShaderPassCullMode>(cs.Cull);
+        pass->Cull = src.Cull;
 
-        pass->Blends.resize(CSharpArray_GetLength<CSharpShaderPassBlendState>(cs.Blends));
-        for (int j = 0; j < pass->Blends.size(); j++)
+        pass->Blends.resize(src.Blends.size());
+        for (int32_t j = 0; j < pass->Blends.size(); j++)
         {
-            const auto& blend = CSharpArray_Get<CSharpShaderPassBlendState>(cs.Blends, j);
-            pass->Blends[j].Enable = CSHARP_UNMARSHAL_BOOL(blend.Enable);
-            pass->Blends[j].WriteMask = static_cast<ShaderPassColorWriteMask>(blend.WriteMask);
-            pass->Blends[j].Rgb = { static_cast<ShaderPassBlend>(blend.Rgb.Src), static_cast<ShaderPassBlend>(blend.Rgb.Dest), static_cast<ShaderPassBlendOp>(blend.Rgb.Op) };
-            pass->Blends[j].Alpha = { static_cast<ShaderPassBlend>(blend.Alpha.Src), static_cast<ShaderPassBlend>(blend.Alpha.Dest), static_cast<ShaderPassBlendOp>(blend.Alpha.Op) };
+            const auto& blend = src.Blends[j];
+            pass->Blends[j].Enable = blend.Enable;
+            pass->Blends[j].WriteMask = blend.WriteMask;
+            pass->Blends[j].Rgb = { blend.Rgb.Src, blend.Rgb.Dest, blend.Rgb.Op };
+            pass->Blends[j].Alpha = { blend.Alpha.Src, blend.Alpha.Dest, blend.Alpha.Op };
         }
 
         pass->DepthState =
         {
-            CSHARP_UNMARSHAL_BOOL(cs.DepthState.Enable),
-            CSHARP_UNMARSHAL_BOOL(cs.DepthState.Write),
-            static_cast<ShaderPassCompareFunc>(cs.DepthState.Compare)
+            src.DepthState.Enable,
+            src.DepthState.Write,
+            src.DepthState.Compare
         };
 
         pass->StencilState =
         {
-            CSHARP_UNMARSHAL_BOOL(cs.StencilState.Enable),
-            static_cast<uint8_t>(cs.StencilState.ReadMask),
-            static_cast<uint8_t>(cs.StencilState.WriteMask),
+            src.StencilState.Enable,
+            src.StencilState.ReadMask,
+            src.StencilState.WriteMask,
             {
-                static_cast<ShaderPassCompareFunc>(cs.StencilState.FrontFace.Compare),
-                static_cast<ShaderPassStencilOp>(cs.StencilState.FrontFace.PassOp),
-                static_cast<ShaderPassStencilOp>(cs.StencilState.FrontFace.FailOp),
-                static_cast<ShaderPassStencilOp>(cs.StencilState.FrontFace.DepthFailOp)
+                src.StencilState.FrontFace.Compare,
+                src.StencilState.FrontFace.PassOp,
+                src.StencilState.FrontFace.FailOp,
+                src.StencilState.FrontFace.DepthFailOp
             },
             {
-                static_cast<ShaderPassCompareFunc>(cs.StencilState.BackFace.Compare),
-                static_cast<ShaderPassStencilOp>(cs.StencilState.BackFace.PassOp),
-                static_cast<ShaderPassStencilOp>(cs.StencilState.BackFace.FailOp),
-                static_cast<ShaderPassStencilOp>(cs.StencilState.BackFace.DepthFailOp)
+                src.StencilState.BackFace.Compare,
+                src.StencilState.BackFace.PassOp,
+                src.StencilState.BackFace.FailOp,
+                src.StencilState.BackFace.DepthFailOp
             }
         };
     }
 }
 
-NATIVE_EXPORT(CSharpBool) Shader_CompilePass(Shader* pShader, CSharpInt passIndex, CSharpString filename, CSharpString program, CSharpString entrypoint, CSharpString shaderModel, CSharpInt programType)
+NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string program, cs_string entrypoint, cs_string shaderModel, cs<ShaderProgramType> programType)
 {
-    return CSHARP_MARSHAL_BOOL(pShader->CompilePass(
-        passIndex,
-        CSharpString_ToUtf8(filename),
-        CSharpString_ToUtf8(program),
-        CSharpString_ToUtf8(entrypoint),
-        CSharpString_ToUtf8(shaderModel),
-        static_cast<ShaderProgramType>(programType)
-    ));
+    retcs pShader->CompilePass(passIndex, filename, program, entrypoint, shaderModel, programType);
 }
 
-NATIVE_EXPORT(void) Shader_CreatePassRootSignature(Shader* pShader, CSharpInt passIndex)
+NATIVE_EXPORT_AUTO Shader_CreatePassRootSignature(cs<Shader*> pShader, cs_int passIndex)
 {
     pShader->Passes[passIndex]->CreateRootSignature();
 }

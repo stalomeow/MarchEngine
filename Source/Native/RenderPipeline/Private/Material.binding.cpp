@@ -2,44 +2,42 @@
 #include "InteropServices.h"
 #include "GfxTexture.h"
 
-using namespace march;
-
-NATIVE_EXPORT(Material*) Material_New()
+NATIVE_EXPORT_AUTO Material_New()
 {
-    return new Material();
+    retcs new Material();
 }
 
-NATIVE_EXPORT(void) Material_Delete(Material* pMaterial)
+NATIVE_EXPORT_AUTO Material_Delete(cs<Material*> pMaterial)
 {
     delete pMaterial;
 }
 
-NATIVE_EXPORT(void) Material_Reset(Material* pMaterial)
+NATIVE_EXPORT_AUTO Material_Reset(cs<Material*> pMaterial)
 {
     pMaterial->Reset();
 }
 
-NATIVE_EXPORT(void) Material_SetShader(Material* pMaterial, Shader* pShader)
+NATIVE_EXPORT_AUTO Material_SetShader(cs<Material*> pMaterial, cs<Shader*> pShader)
 {
     pMaterial->SetShader(pShader);
 }
 
-NATIVE_EXPORT(void) Material_SetInt(Material* pMaterial, CSharpString name, CSharpInt value)
+NATIVE_EXPORT_AUTO Material_SetInt(cs<Material*> pMaterial, cs_string name, cs_int value)
 {
-    pMaterial->SetInt(CSharpString_ToUtf8(name), static_cast<int32_t>(value));
+    pMaterial->SetInt(name, value);
 }
 
-NATIVE_EXPORT(void) Material_SetFloat(Material* pMaterial, CSharpString name, CSharpFloat value)
+NATIVE_EXPORT_AUTO Material_SetFloat(cs<Material*> pMaterial, cs_string name, cs_float value)
 {
-    pMaterial->SetFloat(CSharpString_ToUtf8(name), static_cast<float>(value));
+    pMaterial->SetFloat(name, value);
 }
 
-NATIVE_EXPORT(void) Material_SetVector(Material* pMaterial, CSharpString name, CSharpVector4 value)
+NATIVE_EXPORT_AUTO Material_SetVector(cs<Material*> pMaterial, cs_string name, cs_vec4 value)
 {
-    pMaterial->SetVector(CSharpString_ToUtf8(name), ToXMFLOAT4(value));
+    pMaterial->SetVector(name, value);
 }
 
-NATIVE_EXPORT(void) Material_SetTexture(Material* pMaterial, CSharpString name, GfxTexture* pTexture)
+NATIVE_EXPORT_AUTO Material_SetTexture(cs<Material*> pMaterial, cs_string name, cs<GfxTexture*> pTexture)
 {
-    pMaterial->SetTexture(CSharpString_ToUtf8(name), pTexture);
+    pMaterial->SetTexture(name, pTexture);
 }

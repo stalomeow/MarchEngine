@@ -3,5 +3,5 @@
 
 NATIVE_EXPORT_AUTO IEngine_GetRenderPipeline(cs<IEngine*> pEngine)
 {
-    return_cs(pEngine->GetRenderPipeline());
+    retcs pEngine->GetRenderPipeline();
 }

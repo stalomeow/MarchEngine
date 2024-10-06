@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Private\DotNetRuntime.cpp" />
     <ClCompile Include="Private\InteropServices.binding.cpp" />
+    <ClCompile Include="Private\InteropServices.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

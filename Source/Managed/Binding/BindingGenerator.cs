@@ -46,7 +46,8 @@ namespace March.Binding
                 return null; //TODO: issue a diagnostic that it must be top level
             }
 
-            StringBuilder source = new StringBuilder($@"
+            StringBuilder source = new StringBuilder();
+            source.Append($@"
 namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 {{
     unsafe partial {(classSymbol.IsReferenceType ? "class" : "struct")} {classSymbol.Name}");
@@ -68,11 +69,14 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             source.AppendLine("\n    {");
 
+            var paramWrapperTypes = new Dictionary<string, string>();
+
             foreach (IMethodSymbol methodSymbol in methods)
             {
-                ProcessMethod(source, methodSymbol, attrSymbol);
+                ProcessMethod(source, paramWrapperTypes, methodSymbol, attrSymbol);
             }
 
+            GenerateParameterWrappers(source, paramWrapperTypes);
             source.Append("} }");
             return source.ToString();
         }
@@ -85,7 +89,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             return symbol.ToDisplayString(NullableFlowState.NotNull, FullyQualifiedFormatIncludeGlobal);
         }
 
-        private void ProcessMethod(StringBuilder source, IMethodSymbol methodSymbol, INamedTypeSymbol attrSymbol)
+        private void ProcessMethod(StringBuilder source, Dictionary<string, string> paramWrapperTypes, IMethodSymbol methodSymbol, INamedTypeSymbol attrSymbol)
         {
             if (!methodSymbol.IsPartialDefinition || !methodSymbol.IsStatic || methodSymbol.IsAsync || methodSymbol.IsGenericMethod)
             {
@@ -148,7 +152,14 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             foreach (IParameterSymbol parameter in methodSymbol.Parameters)
             {
                 string paramType = FullQualifiedNameIncludeGlobal(parameter.Type);
-                source.Append($"{paramType}, ");
+
+                if (!paramWrapperTypes.TryGetValue(paramType, out string wrapperType))
+                {
+                    wrapperType = $"__CS_Param_Wrapper{paramWrapperTypes.Count}";
+                    paramWrapperTypes.Add(paramType, wrapperType);
+                }
+
+                source.Append($"{wrapperType}, ");
             }
 
             source.Append($"{FullQualifiedNameIncludeGlobal(methodSymbol.ReturnType)}>){fieldName})(");
@@ -165,6 +176,19 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             source.AppendLine(");");
             source.AppendLine("        }");
+        }
+
+        private void GenerateParameterWrappers(StringBuilder source, Dictionary<string, string> types)
+        {
+            foreach (KeyValuePair<string, string> type in types)
+            {
+                source.AppendLine($"private unsafe struct {type.Value}");
+                source.AppendLine($"{{");
+                source.AppendLine($"    public {type.Key} data;");
+                source.AppendLine($"    public static implicit operator {type.Value}({type.Key} value) => new {type.Value} {{ data = value }};");
+                source.AppendLine($"}}");
+                source.AppendLine();
+            }
         }
 
         internal class SyntaxReceiver : ISyntaxContextReceiver

@@ -1,54 +1,52 @@
 #include "Light.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(Light*) Light_New()
+NATIVE_EXPORT_AUTO Light_New()
 {
-    return new Light();
+    retcs new Light();
 }
 
-NATIVE_EXPORT(void) Light_Delete(Light* pLight)
+NATIVE_EXPORT_AUTO Light_Delete(cs<Light*> pLight)
 {
     delete pLight;
 }
 
-NATIVE_EXPORT(CSharpInt) Light_GetType(Light* pLight)
+NATIVE_EXPORT_AUTO Light_GetType(cs<Light*> pLight)
 {
-    return static_cast<CSharpInt>(pLight->Type);
+    retcs pLight->Type;
 }
 
-NATIVE_EXPORT(void) Light_SetType(Light* pLight, CSharpInt type)
+NATIVE_EXPORT_AUTO Light_SetType(cs<Light*> pLight, cs<LightType> type)
 {
-    pLight->Type = static_cast<LightType>(type);
+    pLight->Type = type;
 }
 
-NATIVE_EXPORT(CSharpColor) Light_GetColor(Light* pLight)
+NATIVE_EXPORT_AUTO Light_GetColor(cs<Light*> pLight)
 {
-    return ToCSharpColor(pLight->Color);
+    retcs pLight->Color;
 }
 
-NATIVE_EXPORT(void) Light_SetColor(Light* pLight, CSharpColor color)
+NATIVE_EXPORT_AUTO Light_SetColor(cs<Light*> pLight, cs_color color)
 {
-    pLight->Color = ToXMFLOAT4(color);
+    pLight->Color = color;
 }
 
-NATIVE_EXPORT(CSharpVector2) Light_GetFalloffRange(Light* pLight)
+NATIVE_EXPORT_AUTO Light_GetFalloffRange(cs<Light*> pLight)
 {
-    return ToCSharpVector2(pLight->FalloffRange);
+    retcs pLight->FalloffRange;
 }
 
-NATIVE_EXPORT(void) Light_SetFalloffRange(Light* pLight, CSharpVector2 range)
+NATIVE_EXPORT_AUTO Light_SetFalloffRange(cs<Light*> pLight, cs_vec2 range)
 {
-    pLight->FalloffRange = ToXMFLOAT2(range);
+    pLight->FalloffRange = range;
 }
 
-NATIVE_EXPORT(CSharpFloat) Light_GetSpotPower(Light* pLight)
+NATIVE_EXPORT_AUTO Light_GetSpotPower(cs<Light*> pLight)
 {
-    return pLight->SpotPower;
+    retcs pLight->SpotPower;
 }
 
-NATIVE_EXPORT(void) Light_SetSpotPower(Light* pLight, CSharpFloat power)
+NATIVE_EXPORT_AUTO Light_SetSpotPower(cs<Light*> pLight, cs_float power)
 {
     pLight->SpotPower = power;
 }

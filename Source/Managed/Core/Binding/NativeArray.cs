@@ -10,7 +10,7 @@ namespace March.Core.Binding
 
         public NativeArray(int length)
         {
-            Data = NewArray(length * sizeof(T));
+            Data = NativeArrayBindings.NewArray(length * sizeof(T));
         }
 
         public void Dispose()
@@ -34,7 +34,7 @@ namespace March.Core.Binding
             {
                 byte* pData = null;
                 int byteCount = 0;
-                UnmarshalArray(Data, &pData, &byteCount);
+                NativeArrayBindings.UnmarshalArray(Data, &pData, &byteCount);
                 return byteCount / sizeof(T);
             }
         }
@@ -45,7 +45,7 @@ namespace March.Core.Binding
             {
                 byte* pData = null;
                 int byteCount = 0;
-                UnmarshalArray(Data, &pData, &byteCount);
+                NativeArrayBindings.UnmarshalArray(Data, &pData, &byteCount);
 
                 int byteIndex = index * sizeof(T);
                 if (byteIndex < 0 || byteIndex >= byteCount)
@@ -65,7 +65,7 @@ namespace March.Core.Binding
         {
             fixed (T* p = array)
             {
-                return MarshalArray((byte*)p, array.Length * sizeof(T));
+                return NativeArrayBindings.MarshalArray((byte*)p, array.Length * sizeof(T));
             }
         }
 
@@ -73,7 +73,7 @@ namespace March.Core.Binding
         {
             byte* pData = null;
             int byteCount = 0;
-            UnmarshalArray(data, &pData, &byteCount);
+            NativeArrayBindings.UnmarshalArray(data, &pData, &byteCount);
 
             if (byteCount == 0)
             {
@@ -95,17 +95,22 @@ namespace March.Core.Binding
             return result;
         }
 
+        public static void Free(nint data) => NativeArrayBindings.FreeArray(data);
+    }
+
+    internal static unsafe partial class NativeArrayBindings
+    {
         [NativeFunction]
-        private static partial nint NewArray(int byteCount);
+        public static partial nint NewArray(int byteCount);
 
         [NativeFunction]
-        private static partial nint MarshalArray(byte* p, int byteCount);
+        public static partial nint MarshalArray(byte* p, int byteCount);
 
         [NativeFunction]
-        private static partial void UnmarshalArray(nint self, byte** ppOutData, int* pOutByteCount);
+        public static partial void UnmarshalArray(nint self, byte** ppOutData, int* pOutByteCount);
 
-        [NativeFunction(Name = "FreeArray")]
-        public static partial void Free(nint data);
+        [NativeFunction]
+        public static partial void FreeArray(nint data);
     }
 
     public interface INativeMarshal<T> where T : INativeMarshal<T>

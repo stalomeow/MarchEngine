@@ -1,216 +1,308 @@
 #pragma once
 
 #include "DotNetTypeTraits.h"
-#include "StringUtility.h"
+#include <DirectXMath.h>
 #include <stdint.h>
 #include <string>
-#include <DirectXMath.h>
+#include <utility>
+#include <stdexcept>
 
 namespace march
 {
     template<typename T, typename = void>
-    struct cs_marshal;
+    struct cs;
 
-    template<typename T, typename Marshal = cs_marshal<T>>
-    struct cs final
+    // blittable 类型
+    template<typename T>
+    struct cs<T, std::enable_if_t<is_blittable_v<T>>> final
     {
-        using marshal = typename Marshal;
-        using native_type = typename marshal::native_type;
-        using managed_type = typename marshal::managed_type;
+        using managed_type = typename T;
 
-        typename managed_type Data;
+        T data;
 
-        cs(const typename native_type& value) : Data(marshal::marshal(value)) {}
-        operator typename native_type() const { return marshal::unmarshal(Data); }
-        typename managed_type* operator &() const { return &Data; }
+        void assign(const T& value) { data = value; }
+        void assign(T&& value) { data = std::move(value); }
+
+        constexpr T* operator &() { return &data; }
+        constexpr const T* operator &() const { return &data; }
+        constexpr operator T () const { return data; }
+
+        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>>>
+        constexpr U operator ->() const { return data; }
+
+        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>>>
+        constexpr U operator +(ptrdiff_t offset) const { return data + offset; }
+
+        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>>>
+        constexpr U operator -(ptrdiff_t offset) const { return data - offset; }
+
+        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>>>
+        constexpr std::remove_pointer_t<U>& operator *() const { return *data; }
+
+        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>>>
+        constexpr std::remove_pointer_t<U>& operator [](ptrdiff_t offset) const { return data[offset]; }
+
+        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>>>
+        constexpr bool operator ==(std::nullptr_t) const { return data == nullptr; }
     };
 
+    // enum 类型
     template<typename T>
-    struct cs<T*> final
+    struct cs<T, std::enable_if_t<std::is_enum_v<T>>> final
     {
-        using marshal = typename cs_marshal<T*>;
-        using native_type = T*;
-        using managed_type = T*;
+        using managed_type = int32_t;
 
-        typename managed_type Data;
+        managed_type data;
 
-        cs(typename native_type value) : Data(value) {}
-        operator typename native_type() const { return Data; }
-        typename managed_type* operator &() const { return &Data; }
-        native_type operator ->() const { return Data; }
-        std::remove_pointer_t<native_type>& operator *() const { return *Data; }
-        bool operator ==(std::nullptr_t) const { return Data == nullptr; }
+        void assign(const T& value) { data = static_cast<managed_type>(value); }
+        void assign(T&& value) { data = static_cast<managed_type>(value); }
+
+        constexpr operator T () const { return static_cast<T>(data); }
+    };
+
+    template<>
+    struct cs<DirectX::XMFLOAT2> final
+    {
+        using managed_type = struct
+        {
+            float x;
+            float y;
+        };
+
+        managed_type data;
+
+        void assign(const DirectX::XMFLOAT2& value)
+        {
+            data.x = value.x;
+            data.y = value.y;
+        }
+
+        void assign(DirectX::XMFLOAT2&& value)
+        {
+            data.x = value.x;
+            data.y = value.y;
+        }
+
+        operator DirectX::XMFLOAT2() const
+        {
+            return { data.x, data.y };
+        }
+    };
+
+    template<>
+    struct cs<DirectX::XMFLOAT3> final
+    {
+        using managed_type = struct
+        {
+            float x;
+            float y;
+            float z;
+        };
+
+        managed_type data;
+
+        void assign(const DirectX::XMFLOAT3& value)
+        {
+            data.x = value.x;
+            data.y = value.y;
+            data.z = value.z;
+        }
+
+        void assign(DirectX::XMFLOAT3&& value)
+        {
+            data.x = value.x;
+            data.y = value.y;
+            data.z = value.z;
+        }
+
+        operator DirectX::XMFLOAT3() const
+        {
+            return { data.x, data.y, data.z };
+        }
+    };
+
+    template<>
+    struct cs<DirectX::XMFLOAT4> final
+    {
+        using managed_type = struct
+        {
+            float x;
+            float y;
+            float z;
+            float w;
+        };
+
+        managed_type data;
+
+        void assign(const DirectX::XMFLOAT4& value)
+        {
+            data.x = value.x;
+            data.y = value.y;
+            data.z = value.z;
+            data.w = value.w;
+        }
+
+        void assign(DirectX::XMFLOAT4&& value)
+        {
+            data.x = value.x;
+            data.y = value.y;
+            data.z = value.z;
+            data.w = value.w;
+        }
+
+        operator DirectX::XMFLOAT4() const
+        {
+            return { data.x, data.y, data.z, data.w };
+        }
+    };
+
+    template<>
+    struct cs<DirectX::XMFLOAT4X4> final
+    {
+        using managed_type = struct
+        {
+            float m[4][4];
+        };
+
+        managed_type data;
+
+        void assign(const DirectX::XMFLOAT4X4& value)
+        {
+            copy_float4x4(data.m, value.m);
+        }
+
+        void assign(DirectX::XMFLOAT4X4&& value)
+        {
+            copy_float4x4(data.m, value.m);
+        }
+
+        operator DirectX::XMFLOAT4X4() const
+        {
+            DirectX::XMFLOAT4X4 result{};
+            copy_float4x4(result.m, data.m);
+            return result;
+        }
+
+        static void copy_float4x4(float dst[4][4], const float src[4][4])
+        {
+            float* d = reinterpret_cast<float*>(dst);
+            const float* s = reinterpret_cast<const float*>(src);
+            std::copy_n(s, 16, d);
+        }
     };
 
     template<>
     struct cs<void> final
     {
-        using marshal = typename cs_marshal<void>;
-        using native_type = void;
-        using managed_type = void;
-    };
-
-    template<typename T>
-    static auto to_cs(const T& value)
-    {
-        return cs<T>(value).Data;
-    }
-
-    template<typename T>
-    static auto to_cs<cs<T>>(const cs<T>& value)
-    {
-        return value.Data;
-    }
-
-    template<>
-    struct cs_marshal<void>
-    {
-        using native_type = void;
         using managed_type = void;
 
-        static constexpr managed_type marshal(native_type) {}
-        static constexpr native_type unmarshal(managed_type) {}
-    };
-
-    template<typename T>
-    struct cs_marshal<T, std::enable_if_t<is_blittable<T>::value>>
-    {
-        using native_type = T;
-        using managed_type = T;
-
-        static constexpr managed_type marshal(const native_type& value) { return value; }
-        static constexpr native_type unmarshal(const managed_type& value) { return value; }
-    };
-
-    template<typename T>
-    struct cs_marshal<T, std::enable_if_t<std::is_enum<T>::value>>
-    {
-        using native_type = T;
-        using managed_type = cs<int32_t>;
-
-        static constexpr managed_type marshal(const native_type& value)
-        {
-            return static_cast<int32_t>(value);
-        }
-
-        static constexpr native_type unmarshal(const managed_type& value)
-        {
-            return static_cast<native_type>(value.Data);
-        }
-    };
-
-    struct cs_string_data
-    {
-        cs<int32_t> Length;
-        cs<wchar_t> FirstChar; // 变长数组。在最后额外追加一个 '\0'，不计入 Length
+        void assign(void) {}
     };
 
     template<>
-    struct cs_marshal<std::wstring>
+    struct cs<std::string> final
     {
-        using native_type = std::wstring;
-        using managed_type = cs_string_data*;
+        using managed_type = std::string*;
 
-        static managed_type create(const wchar_t* pData, int32_t length)
+        managed_type data;
+
+        // 只能在当前对象未持有数据时调用
+        void assign(const std::string& value)
         {
-            auto result = (managed_type)malloc(sizeof(cs_string_data) + static_cast<size_t>(length) * sizeof(cs<wchar_t>));
-            result->Length = length;
-            memcpy(&result->FirstChar, pData, static_cast<size_t>(length) * sizeof(cs<wchar_t>));
-            (&result->FirstChar)[length] = L'\0'; // 追加 '\0'
-            return result;
+            data = create_data(value);
         }
 
-        static void destroy(const managed_type& value)
+        // 只能在当前对象未持有数据时调用
+        void assign(std::string&& value)
         {
-            free(value);
+            data = create_data(std::move(value));
         }
 
-        static managed_type marshal(const native_type& value)
+        operator const std::string& () const { return *data; }
+
+        static managed_type create_data()
         {
-            return create(value.data(), static_cast<int32_t>(value.size()));
+            return new typename std::remove_pointer_t<managed_type>();
         }
 
-        static native_type unmarshal(const managed_type& value)
+        static managed_type create_data(const std::string& value)
         {
-            const wchar_t* firstChar = reinterpret_cast<const wchar_t*>(&value->FirstChar);
-            size_t size = static_cast<size_t>(value->Length);
-            return std::wstring(firstChar, size);
-        }
-    };
-
-    template<>
-    struct cs_marshal<std::string>
-    {
-        using native_type = std::string;
-        using managed_type = cs_string_data*;
-
-        static managed_type marshal(const native_type& value)
-        {
-            return cs_marshal<std::wstring>::marshal(StringUtility::Utf8ToUtf16(value));
+            return new typename std::remove_pointer_t<managed_type>(value);
         }
 
-        static native_type unmarshal(const managed_type& value)
+        static managed_type create_data(std::string&& value)
         {
-            const wchar_t* firstChar = reinterpret_cast<const wchar_t*>(&value->FirstChar);
-            int32_t size = static_cast<size_t>(value->Length);
-            return StringUtility::Utf16ToUtf8(firstChar, size);
+            return new typename std::remove_pointer_t<managed_type>(value);
         }
-    };
 
-    struct cs_array_data
-    {
-        cs<int32_t> ByteCount;
-        cs<uint8_t> FirstByte;
+        static void destroy(cs value)
+        {
+            delete value.data;
+        }
     };
 
     template<typename T>
-    struct cs_marshal<T[]>
-    {
-        using managed_type = cs_array_data*;
-
-        static managed_type create(int32_t length)
-        {
-            size_t byteCount = static_cast<size_t>(length) * sizeof(T);
-            auto result = (managed_type)malloc(sizeof(cs<int32_t>) + byteCount);
-            result->ByteCount = static_cast<int32_t>(byteCount);
-            return result;
-        }
-
-        static void destroy(const managed_type& value)
-        {
-            free(value);
-        }
-    };
-
-    template <typename T>
     struct cs<T[]> final
     {
-        using marshal = cs_marshal<T[]>;
-        using managed_type = typename marshal::managed_type;
-
-        typename marshal::managed_type Data;
-
-        cs() : Data(nullptr) {}
-        cs(int32_t length) : Data(marshal::create(length)) {}
-
-        void recreate(int32_t length)
+        using managed_type = struct
         {
-            if (Data != nullptr)
-            {
-                marshal::destroy(Data);
-            }
+            int32_t count;
+            uint8_t b; // uint8_t b[];
+        }*;
 
-            Data = marshal::create(length);
+        managed_type data;
+
+        int32_t size() const { return static_cast<int32_t>(data->count / sizeof(T)); }
+        T* begin() const { return reinterpret_cast<T*>(&data->b); }
+        T* end() const { return reinterpret_cast<T*>(&data->b + data->count); }
+
+        void copy_from(const T* p)
+        {
+            std::copy(p, p + size(), begin());
         }
 
-        int32_t length() const
+        // 只能在当前对象未持有数据时调用
+        void assign(int32_t length)
         {
-            return static_cast<int32_t>(Data->ByteCount / sizeof(T));
+            data = create_data(length);
+        }
+
+        // 只能在当前对象未持有数据时调用
+        void assign(int32_t length, const T* p)
+        {
+            assign(length);
+            copy_from(p);
         }
 
         T& operator [](int32_t index) const
         {
-            return reinterpret_cast<T*>(&Data->FirstByte)[index];
+            if (index < 0 || index >= size())
+            {
+                throw std::out_of_range("Index out of range");
+            }
+
+            return reinterpret_cast<T*>(&data->b)[index];
+        }
+
+        static managed_type create_data(int32_t length)
+        {
+            int32_t byteCount = sizeof(T) * length;
+            auto result = static_cast<managed_type>(malloc(sizeof(int32_t) + static_cast<size_t>(byteCount)));
+
+            if (result != nullptr)
+            {
+                result->count = byteCount;
+            }
+
+            return result;
+        }
+
+        static void destroy(cs value)
+        {
+            if (value.data != nullptr)
+            {
+                free(value.data);
+            }
         }
     };
 
@@ -227,14 +319,16 @@ namespace march
     using cs_float = cs<float>;
     using cs_double = cs<double>;
     using cs_bool = cs<bool>;
-    using cs_wstring = cs<std::wstring>;
     using cs_string = cs<std::string>;
-    using cs_vector2 = cs<DirectX::XMFLOAT2>;
-    using cs_vector3 = cs<DirectX::XMFLOAT3>;
-    using cs_vector4 = cs<DirectX::XMFLOAT4>;
-    using cs_matrix4x4 = cs<DirectX::XMFLOAT4X4>;
-    using cs_quaternion = cs<DirectX::XMFLOAT4>;
+    using cs_vec2 = cs<DirectX::XMFLOAT2>;
+    using cs_vec3 = cs<DirectX::XMFLOAT3>;
+    using cs_vec4 = cs<DirectX::XMFLOAT4>;
+    using cs_mat4 = cs<DirectX::XMFLOAT4X4>;
+    using cs_quat = cs<DirectX::XMFLOAT4>;
     using cs_color = cs<DirectX::XMFLOAT4>;
+
+    template<typename T>
+    using cs_array = cs<T[]>;
 
     using cs_void_t = cs_void::managed_type;
     using cs_byte_t = cs_byte::managed_type;
@@ -249,12 +343,61 @@ namespace march
     using cs_float_t = cs_float::managed_type;
     using cs_double_t = cs_double::managed_type;
     using cs_bool_t = cs_bool::managed_type;
-    using cs_wstring_t = cs_wstring::managed_type;
     using cs_string_t = cs_string::managed_type;
-    using cs_vector2_t = cs_vector2::managed_type;
-    using cs_vector3_t = cs_vector3::managed_type;
-    using cs_vector4_t = cs_vector4::managed_type;
-    using cs_matrix4x4_t = cs_matrix4x4::managed_type;
-    using cs_quaternion_t = cs_quaternion::managed_type;
+    using cs_vec2_t = cs_vec2::managed_type;
+    using cs_vec3_t = cs_vec3::managed_type;
+    using cs_vec4_t = cs_vec4::managed_type;
+    using cs_mat4_t = cs_mat4::managed_type;
+    using cs_quat_t = cs_quat::managed_type;
     using cs_color_t = cs_color::managed_type;
+
+    template<typename T>
+    using cs_array_t = typename cs_array<T>::managed_type;
+
+    static_assert(std::is_pod_v<cs_void>, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_byte> && sizeof(cs_byte) == 1, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_sbyte> && sizeof(cs_sbyte) == 1, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_ushort> && sizeof(cs_ushort) == 2, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_short> && sizeof(cs_short) == 2, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_uint> && sizeof(cs_uint) == 4, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_int> && sizeof(cs_int) == 4, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_ulong> && sizeof(cs_ulong) == 8, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_long> && sizeof(cs_long) == 8, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_char> && sizeof(cs_char) == 2, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_float> && sizeof(cs_float) == 4, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_double> && sizeof(cs_double) == 8, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_bool> && sizeof(cs_bool) == 1, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_string>, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_vec2> && sizeof(cs_vec2) == 8, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_vec3> && sizeof(cs_vec3) == 12, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_vec4> && sizeof(cs_vec4) == 16, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_mat4> && sizeof(cs_mat4) == 64, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_quat> && sizeof(cs_quat) == 16, "Type must be a POD type");
+    static_assert(std::is_pod_v<cs_color> && sizeof(cs_color) == 16, "Type must be a POD type");
+
+    template<typename T>
+    constexpr bool is_cs_type_v = false;
+
+    template<typename T>
+    constexpr bool is_cs_type_v<cs<T>> = true;
+
+    struct cs_convert final
+    {
+        template<typename T>
+        constexpr auto operator <<(T&& value)
+        {
+            using pure_t = typename std::remove_cv_t<std::remove_reference_t<T>>;
+
+            if constexpr (is_cs_type_v<pure_t>)
+            {
+                return value.data;
+            }
+            else
+            {
+                cs<pure_t> result{};
+                result.assign(std::forward<T>(value));
+                return result.data;
+            }
+        }
+    };
 }

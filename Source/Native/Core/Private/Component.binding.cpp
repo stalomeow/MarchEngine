@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO Component_CreateDefault()
 {
-    return to_cs(new Component());
+    retcs new Component();
 }
 
 NATIVE_EXPORT_AUTO Component_DeleteDefault(cs<Component*> component)
@@ -13,7 +13,7 @@ NATIVE_EXPORT_AUTO Component_DeleteDefault(cs<Component*> component)
 
 NATIVE_EXPORT_AUTO Component_GetIsActiveAndEnabled(cs<Component*> component)
 {
-    return to_cs(component->GetIsActiveAndEnabled());
+    retcs component->GetIsActiveAndEnabled();
 }
 
 NATIVE_EXPORT_AUTO Component_SetIsActiveAndEnabled(cs<Component*> component, cs_bool value)
@@ -21,7 +21,7 @@ NATIVE_EXPORT_AUTO Component_SetIsActiveAndEnabled(cs<Component*> component, cs_
     ComponentInternalUtility::SetIsActiveAndEnabled(component, value);
 }
 
-NATIVE_EXPORT_AUTO Component_SetTransform(cs<Component*> component, Transform* value)
+NATIVE_EXPORT_AUTO Component_SetTransform(cs<Component*> component, cs<Transform*> value)
 {
     ComponentInternalUtility::SetTransform(component, value);
 }

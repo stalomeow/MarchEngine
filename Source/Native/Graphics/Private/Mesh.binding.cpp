@@ -2,29 +2,27 @@
 #include "GfxDevice.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(GfxMesh*) SimpleMesh_New()
+NATIVE_EXPORT_AUTO SimpleMesh_New()
 {
-    return CreateSimpleGfxMesh(GetGfxDevice());
+    retcs CreateSimpleGfxMesh(GetGfxDevice());
 }
 
-NATIVE_EXPORT(void) SimpleMesh_Delete(GfxMesh* pObject)
+NATIVE_EXPORT_AUTO SimpleMesh_Delete(cs<GfxMesh*> pObject)
 {
     delete pObject;
 }
 
-NATIVE_EXPORT(void) SimpleMesh_ClearSubMeshes(GfxMesh* pObject)
+NATIVE_EXPORT_AUTO SimpleMesh_ClearSubMeshes(cs<GfxMesh*> pObject)
 {
     pObject->ClearSubMeshes();
 }
 
-NATIVE_EXPORT(void) SimpleMesh_AddSubMeshCube(GfxMesh* pObject)
+NATIVE_EXPORT_AUTO SimpleMesh_AddSubMeshCube(cs<GfxMesh*> pObject)
 {
     pObject->AddSubMeshCube(1, 1, 1);
 }
 
-NATIVE_EXPORT(void) SimpleMesh_AddSubMeshSphere(GfxMesh* pObject, CSharpFloat radius, CSharpUInt sliceCount, CSharpUInt stackCount)
+NATIVE_EXPORT_AUTO SimpleMesh_AddSubMeshSphere(cs<GfxMesh*> pObject, cs_float radius, cs_uint sliceCount, cs_uint stackCount)
 {
     pObject->AddSubMeshSphere(radius, sliceCount, stackCount);
 }

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace March.Core.Binding
 {
@@ -29,10 +30,10 @@ namespace March.Core.Binding
 
         public static string Get(nint s)
         {
-            char* pData;
+            byte* pData;
             int len;
             UnmarshalString(s, &pData, &len);
-            return len == 0 ? string.Empty : new string(pData, 0, len);
+            return len == 0 ? string.Empty : Encoding.UTF8.GetString(pData, len);
         }
 
         public static string GetAndFree(nint s)
@@ -46,7 +47,7 @@ namespace March.Core.Binding
         private static partial nint MarshalString(char* p, int len);
 
         [NativeFunction]
-        private static partial void UnmarshalString(nint s, char** ppOutData, int* pOutLen);
+        private static partial void UnmarshalString(nint s, byte** ppOutData, int* pOutLen);
 
         [NativeFunction(Name = "FreeString")]
         public static partial void Free(nint s);

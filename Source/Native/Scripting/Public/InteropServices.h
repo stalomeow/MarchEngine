@@ -6,10 +6,15 @@
 #include <DirectXMath.h>
 #include <stdint.h>
 
+namespace march
+{
+    extern cs_convert g_cs_convert;
+}
+
+#define NATIVE_EXPORT_AUTO extern "C" __declspec(dllexport) auto __stdcall
+#define retcs return ::march::g_cs_convert <<
+
 using namespace std;
 using namespace DirectX;
 using namespace march;
 using namespace march::StringUtility;
-
-#define NATIVE_EXPORT_AUTO extern "C" __declspec(dllexport) auto __stdcall
-#define return_cs(expr) return ::march::to_cs(expr)

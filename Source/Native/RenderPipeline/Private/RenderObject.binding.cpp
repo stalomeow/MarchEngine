@@ -2,31 +2,29 @@
 #include "InteropServices.h"
 #include "GfxMesh.h"
 
-using namespace march;
-
-NATIVE_EXPORT(RenderObject*) RenderObject_New()
+NATIVE_EXPORT_AUTO RenderObject_New()
 {
-    return new RenderObject();
+    retcs new RenderObject();
 }
 
-NATIVE_EXPORT(void) RenderObject_Delete(RenderObject* pObject)
+NATIVE_EXPORT_AUTO RenderObject_Delete(RenderObject* pObject)
 {
     delete pObject;
 }
 
-NATIVE_EXPORT(GfxMesh*) RenderObject_GetMesh(RenderObject* pObject)
+NATIVE_EXPORT_AUTO RenderObject_GetMesh(RenderObject* pObject)
 {
-    return pObject->Mesh;
+    retcs pObject->Mesh;
 }
 
-NATIVE_EXPORT(void) RenderObject_SetMesh(RenderObject* pObject, GfxMesh* pMesh)
+NATIVE_EXPORT_AUTO RenderObject_SetMesh(RenderObject* pObject, GfxMesh* pMesh)
 {
     pObject->Mesh = pMesh;
     pObject->Desc.InputLayout = pMesh->GetVertexInputLayout();
     pObject->Desc.PrimitiveTopologyType = pMesh->GetTopologyType();
 }
 
-NATIVE_EXPORT(void) RenderObject_SetMaterial(RenderObject* pObject, Material* pMaterial)
+NATIVE_EXPORT_AUTO RenderObject_SetMaterial(RenderObject* pObject, Material* pMaterial)
 {
     pObject->Mat = pMaterial;
 }

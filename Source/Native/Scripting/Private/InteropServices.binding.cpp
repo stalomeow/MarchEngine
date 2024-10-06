@@ -2,39 +2,41 @@
 
 NATIVE_EXPORT_AUTO MarshalString(cs<cs_char_t*> p, cs_int len)
 {
-    return to_cs(cs_wstring::marshal::create(p, len));
+    retcs Utf16ToUtf8(p, len);
 }
 
-NATIVE_EXPORT_AUTO UnmarshalString(cs_wstring s, cs<cs_char_t**> ppOutData, cs<cs_int_t*> pOutLen)
+NATIVE_EXPORT_AUTO UnmarshalString(cs_string s, cs<cs_byte_t**> ppOutData, cs<cs_int_t*> pOutLen)
 {
-    *ppOutData = &s.Data->FirstChar;
-    *pOutLen = s.Data->Length;
+    *ppOutData = reinterpret_cast<cs_byte_t*>(s.data->data());
+    *pOutLen = static_cast<cs_int_t>(s.data->size());
 }
 
-NATIVE_EXPORT_AUTO FreeString(cs_wstring s)
+NATIVE_EXPORT_AUTO FreeString(cs_string s)
 {
-    cs_wstring::marshal::destroy(s.Data);
+    cs_string::destroy(s);
 }
 
 NATIVE_EXPORT_AUTO NewArray(cs_int byteCount)
 {
-    return to_cs(cs<cs_byte_t[]>::marshal::create(byteCount));
+    cs_array<cs_byte_t> result;
+    result.assign(byteCount);
+    retcs result;
 }
 
 NATIVE_EXPORT_AUTO MarshalArray(cs<cs_byte_t*> p, cs_int byteCount)
 {
-    cs<cs_byte_t[]> result(byteCount);
-    memcpy(&result.Data->FirstByte, p, static_cast<size_t>(byteCount));
-    return to_cs(result);
+    cs_array<cs_byte_t> result;
+    result.assign(byteCount, p);
+    retcs result;
 }
 
-NATIVE_EXPORT_AUTO UnmarshalArray(cs<cs_byte_t[]> array, cs<cs_byte_t**> ppOutData, cs<cs_int_t*> pOutByteCount)
+NATIVE_EXPORT_AUTO UnmarshalArray(cs_array<cs_byte_t> array, cs<cs_byte_t**> ppOutData, cs<cs_int_t*> pOutByteCount)
 {
-    *ppOutData = &array.Data->FirstByte;
-    *pOutByteCount = array.Data->ByteCount;
+    *ppOutData = array.begin();
+    *pOutByteCount = array.size();
 }
 
-NATIVE_EXPORT_AUTO FreeArray(cs<cs_byte_t[]> array)
+NATIVE_EXPORT_AUTO FreeArray(cs_array<cs_byte_t> array)
 {
-    cs<cs_byte_t[]>::marshal::destroy(array.Data);
+    cs_array<cs_byte_t>::destroy(array);
 }

@@ -1,305 +1,294 @@
 #include "EditorGUI.h"
 #include "InteropServices.h"
 
-using namespace march;
-
-NATIVE_EXPORT(void) EditorGUI_PrefixLabel(CSharpString label, CSharpString tooltip)
+NATIVE_EXPORT_AUTO EditorGUI_PrefixLabel(cs_string label, cs_string tooltip)
 {
-    EditorGUI::PrefixLabel(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip));
+    EditorGUI::PrefixLabel(label, tooltip);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_IntField(CSharpString label, CSharpString tooltip, CSharpInt* v, CSharpFloat speed, CSharpInt minValue, CSharpInt maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_IntField(cs_string label, cs_string tooltip, cs<cs_int_t*> v, cs_float speed, cs_int minValue, cs_int maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::IntField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), v, speed, minValue, maxValue));
+    retcs EditorGUI::IntField(label, tooltip, v, speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_FloatField(CSharpString label, CSharpString tooltip, CSharpFloat* v, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_FloatField(cs_string label, cs_string tooltip, cs<cs_float_t*> v, cs_float speed, cs_float minValue, cs_float maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::FloatField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), v, speed, minValue, maxValue));
+    retcs EditorGUI::FloatField(label, tooltip, v, speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Vector2Field(CSharpString label, CSharpString tooltip, CSharpVector2* v, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_Vector2Field(cs_string label, cs_string tooltip, cs<cs_vec2_t*> v, cs_float speed, cs_float minValue, cs_float maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::Vector2Field(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), reinterpret_cast<float*>(v), speed, minValue, maxValue));
+    retcs EditorGUI::Vector2Field(label, tooltip, reinterpret_cast<float*>(v.data), speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Vector3Field(CSharpString label, CSharpString tooltip, CSharpVector3* v, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_Vector3Field(cs_string label, cs_string tooltip, cs<cs_vec3_t*> v, cs_float speed, cs_float minValue, cs_float maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::Vector3Field(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), reinterpret_cast<float*>(v), speed, minValue, maxValue));
+    retcs EditorGUI::Vector3Field(label, tooltip, reinterpret_cast<float*>(v.data), speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Vector4Field(CSharpString label, CSharpString tooltip, CSharpVector4* v, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_Vector4Field(cs_string label, cs_string tooltip, cs<cs_vec4_t*> v, cs_float speed, cs_float minValue, cs_float maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::Vector4Field(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), reinterpret_cast<float*>(v), speed, minValue, maxValue));
+    retcs EditorGUI::Vector4Field(label, tooltip, reinterpret_cast<float*>(v.data), speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_ColorField(CSharpString label, CSharpString tooltip, CSharpColor* v)
+NATIVE_EXPORT_AUTO EditorGUI_ColorField(cs_string label, cs_string tooltip, cs<cs_color_t*> v)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::ColorField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), reinterpret_cast<float*>(v)));
+    retcs EditorGUI::ColorField(label, tooltip, reinterpret_cast<float*>(v.data));
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_FloatSliderField(CSharpString label, CSharpString tooltip, CSharpFloat* v, CSharpFloat minValue, CSharpFloat maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_FloatSliderField(cs_string label, cs_string tooltip, cs<cs_float_t*> v, cs_float minValue, cs_float maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::FloatSliderField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), v, minValue, maxValue));
+    retcs EditorGUI::FloatSliderField(label, tooltip, v, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_CollapsingHeader(CSharpString label, CSharpBool defaultOpen)
+NATIVE_EXPORT_AUTO EditorGUI_CollapsingHeader(cs_string label, cs_bool defaultOpen)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::CollapsingHeader(CSharpString_ToUtf8(label), CSHARP_UNMARSHAL_BOOL(defaultOpen)));
+    retcs EditorGUI::CollapsingHeader(label, defaultOpen);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Combo(CSharpString label, CSharpString tooltip, CSharpInt* currentItem, CSharpString itemsSeparatedByZeros)
+NATIVE_EXPORT_AUTO EditorGUI_Combo(cs_string label, cs_string tooltip, cs<cs_int_t*> currentItem, cs_string itemsSeparatedByZeros)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::Combo(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), reinterpret_cast<int*>(currentItem), CSharpString_ToUtf8(itemsSeparatedByZeros)));
+    retcs EditorGUI::Combo(label, tooltip, reinterpret_cast<int*>(currentItem.data), itemsSeparatedByZeros);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_CenterButton(CSharpString label, CSharpFloat width)
+NATIVE_EXPORT_AUTO EditorGUI_CenterButton(cs_string label, cs_float width)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::CenterButton(CSharpString_ToUtf8(label), width));
+    retcs EditorGUI::CenterButton(label, width);
 }
 
-NATIVE_EXPORT(void) EditorGUI_Space()
+NATIVE_EXPORT_AUTO EditorGUI_Space()
 {
     EditorGUI::Space();
 }
 
-NATIVE_EXPORT(void) EditorGUI_SeparatorText(CSharpString label)
+NATIVE_EXPORT_AUTO EditorGUI_SeparatorText(cs_string label)
 {
-    EditorGUI::SeparatorText(CSharpString_ToUtf8(label));
+    EditorGUI::SeparatorText(label);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_TextField(CSharpString label, CSharpString tooltip, CSharpString text, CSharpString* outNewText, CSharpString charBlacklist)
+NATIVE_EXPORT_AUTO EditorGUI_TextField(cs_string label, cs_string tooltip, cs_string text, cs<cs_string*> outNewText, cs_string charBlacklist)
 {
-    std::string textContext = CSharpString_ToUtf8(text);
+    std::string textContext = text;
 
-    if (EditorGUI::TextField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), textContext, CSharpString_ToUtf8(charBlacklist)))
+    if (EditorGUI::TextField(label, tooltip, textContext, charBlacklist))
     {
-        *outNewText = CSharpString_FromUtf8(textContext);
-        return CSHARP_MARSHAL_BOOL(true);
+        outNewText->assign(std::move(textContext));
+        retcs true;
     }
 
-    *outNewText = nullptr;
-    return CSHARP_MARSHAL_BOOL(false);
+    retcs false;
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Checkbox(CSharpString label, CSharpString tooltip, CSharpBool* value)
+NATIVE_EXPORT_AUTO EditorGUI_Checkbox(cs_string label, cs_string tooltip, cs<cs_bool_t*> value)
 {
-    bool v = CSHARP_UNMARSHAL_BOOL(*value);
+    bool v = *value;
 
-    if (EditorGUI::Checkbox(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), v))
+    if (EditorGUI::Checkbox(label, tooltip, v))
     {
-        *value = CSHARP_MARSHAL_BOOL(v);
-        return CSHARP_MARSHAL_BOOL(true);
+        *value = v;
+        retcs true;
     }
 
-    return CSHARP_MARSHAL_BOOL(false);
+    retcs false;
 }
 
-NATIVE_EXPORT(void) EditorGUI_BeginDisabled(CSharpBool disabled)
+NATIVE_EXPORT_AUTO EditorGUI_BeginDisabled(cs_bool disabled)
 {
-    EditorGUI::BeginDisabled(CSHARP_UNMARSHAL_BOOL(disabled));
+    EditorGUI::BeginDisabled(disabled);
 }
 
-NATIVE_EXPORT(void) EditorGUI_EndDisabled()
+NATIVE_EXPORT_AUTO EditorGUI_EndDisabled()
 {
     EditorGUI::EndDisabled();
 }
 
-NATIVE_EXPORT(void) EditorGUI_LabelField(CSharpString label1, CSharpString tooltip, CSharpString label2)
+NATIVE_EXPORT_AUTO EditorGUI_LabelField(cs_string label1, cs_string tooltip, cs_string label2)
 {
-    EditorGUI::LabelField(CSharpString_ToUtf8(label1), CSharpString_ToUtf8(tooltip), CSharpString_ToUtf8(label2));
+    EditorGUI::LabelField(label1, tooltip, label2);
 }
 
-NATIVE_EXPORT(void) EditorGUI_PushIDString(CSharpString id)
+NATIVE_EXPORT_AUTO EditorGUI_PushIDString(cs_string id)
 {
-    EditorGUI::PushID(CSharpString_ToUtf8(id));
+    EditorGUI::PushID(id);
 }
 
-NATIVE_EXPORT(void) EditorGUI_PushIDInt(CSharpInt id)
+NATIVE_EXPORT_AUTO EditorGUI_PushIDInt(cs_int id)
 {
     EditorGUI::PushID(static_cast<int>(id));
 }
 
-NATIVE_EXPORT(void) EditorGUI_PopID()
+NATIVE_EXPORT_AUTO EditorGUI_PopID()
 {
     EditorGUI::PopID();
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Foldout(CSharpString label, CSharpString tooltip)
+NATIVE_EXPORT_AUTO EditorGUI_Foldout(cs_string label, cs_string tooltip)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::Foldout(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip)));
+    retcs EditorGUI::Foldout(label, tooltip);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_FoldoutClosable(CSharpString label, CSharpString tooltip, CSharpBool* pVisible)
+NATIVE_EXPORT_AUTO EditorGUI_FoldoutClosable(cs_string label, cs_string tooltip, cs<cs_bool_t*> pVisible)
 {
-    bool visible = CSHARP_UNMARSHAL_BOOL(*pVisible);
-    bool open = EditorGUI::FoldoutClosable(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), &visible);
-    *pVisible = CSHARP_MARSHAL_BOOL(visible);
-    return CSHARP_MARSHAL_BOOL(open);
+    bool visible = *pVisible;
+    bool open = EditorGUI::FoldoutClosable(label, tooltip, &visible);
+    *pVisible = visible;
+    retcs open;
 }
 
-NATIVE_EXPORT(void) EditorGUI_Indent(CSharpUInt count)
+NATIVE_EXPORT_AUTO EditorGUI_Indent(cs_uint count)
 {
-    EditorGUI::Indent(static_cast<std::uint32_t>(count));
+    EditorGUI::Indent(count);
 }
 
-NATIVE_EXPORT(void) EditorGUI_Unindent(CSharpUInt count)
+NATIVE_EXPORT_AUTO EditorGUI_Unindent(cs_uint count)
 {
-    EditorGUI::Unindent(static_cast<std::uint32_t>(count));
+    EditorGUI::Unindent(count);
 }
 
-NATIVE_EXPORT(void) EditorGUI_SameLine(CSharpFloat offsetFromStartX, CSharpFloat spacing)
+NATIVE_EXPORT_AUTO EditorGUI_SameLine(cs_float offsetFromStartX, cs_float spacing)
 {
     EditorGUI::SameLine(offsetFromStartX, spacing);
 }
 
-NATIVE_EXPORT(CSharpVector2) EditorGUI_GetContentRegionAvail()
+NATIVE_EXPORT_AUTO EditorGUI_GetContentRegionAvail()
 {
-    DirectX::XMFLOAT2 avail = EditorGUI::GetContentRegionAvail();
-    return ToCSharpVector2(avail);
+    retcs EditorGUI::GetContentRegionAvail();
 }
 
-NATIVE_EXPORT(void) EditorGUI_SetNextItemWidth(CSharpFloat width)
+NATIVE_EXPORT_AUTO EditorGUI_SetNextItemWidth(cs_float width)
 {
     EditorGUI::SetNextItemWidth(width);
 }
 
-NATIVE_EXPORT(void) EditorGUI_Separator()
+NATIVE_EXPORT_AUTO EditorGUI_Separator()
 {
     EditorGUI::Separator();
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_BeginPopup(CSharpString id)
+NATIVE_EXPORT_AUTO EditorGUI_BeginPopup(cs_string id)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopup(CSharpString_ToUtf8(id)));
+    retcs EditorGUI::BeginPopup(id);
 }
 
-NATIVE_EXPORT(void) EditorGUI_EndPopup()
+NATIVE_EXPORT_AUTO EditorGUI_EndPopup()
 {
     EditorGUI::EndPopup();
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_MenuItem(CSharpString label, CSharpBool selected, CSharpBool enabled)
+NATIVE_EXPORT_AUTO EditorGUI_MenuItem(cs_string label, cs_bool selected, cs_bool enabled)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::MenuItem(CSharpString_ToUtf8(label), CSHARP_UNMARSHAL_BOOL(selected), CSHARP_UNMARSHAL_BOOL(enabled)));
+    retcs EditorGUI::MenuItem(label, selected, enabled);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_BeginMenu(CSharpString label, CSharpBool enabled)
+NATIVE_EXPORT_AUTO EditorGUI_BeginMenu(cs_string label, cs_bool enabled)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginMenu(CSharpString_ToUtf8(label), CSHARP_UNMARSHAL_BOOL(enabled)));
+    retcs EditorGUI::BeginMenu(label, enabled);
 }
 
-NATIVE_EXPORT(void) EditorGUI_EndMenu()
+NATIVE_EXPORT_AUTO EditorGUI_EndMenu()
 {
     EditorGUI::EndMenu();
 }
 
-NATIVE_EXPORT(void) EditorGUI_OpenPopup(CSharpString id)
+NATIVE_EXPORT_AUTO EditorGUI_OpenPopup(cs_string id)
 {
-    EditorGUI::OpenPopup(CSharpString_ToUtf8(id));
+    EditorGUI::OpenPopup(id);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_FloatRangeField(CSharpString label, CSharpString tooltip, CSharpFloat* currentMin, CSharpFloat* currentMax, CSharpFloat speed, CSharpFloat minValue, CSharpFloat maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_FloatRangeField(cs_string label, cs_string tooltip, cs<cs_float_t*> currentMin, cs<cs_float_t*> currentMax, cs_float speed, cs_float minValue, cs_float maxValue)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::FloatRangeField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), *currentMin, *currentMax, speed, minValue, maxValue));
+    retcs EditorGUI::FloatRangeField(label, tooltip, *currentMin, *currentMax, speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_BeginTreeNode(CSharpString label, CSharpBool isLeaf, CSharpBool openOnArrow, CSharpBool openOnDoubleClick, CSharpBool selected, CSharpBool showBackground, CSharpBool defaultOpen, CSharpBool spanWidth)
+NATIVE_EXPORT_AUTO EditorGUI_BeginTreeNode(cs_string label, cs_bool isLeaf, cs_bool openOnArrow, cs_bool openOnDoubleClick, cs_bool selected, cs_bool showBackground, cs_bool defaultOpen, cs_bool spanWidth)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginTreeNode(CSharpString_ToUtf8(label),
-        CSHARP_UNMARSHAL_BOOL(isLeaf), CSHARP_UNMARSHAL_BOOL(openOnArrow), CSHARP_UNMARSHAL_BOOL(openOnDoubleClick), CSHARP_UNMARSHAL_BOOL(selected),
-        CSHARP_UNMARSHAL_BOOL(showBackground), CSHARP_UNMARSHAL_BOOL(defaultOpen), CSHARP_UNMARSHAL_BOOL(spanWidth)));
+    retcs EditorGUI::BeginTreeNode(label, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
 }
 
-NATIVE_EXPORT(void) EditorGUI_EndTreeNode()
+NATIVE_EXPORT_AUTO EditorGUI_EndTreeNode()
 {
     EditorGUI::EndTreeNode();
 }
 
-NATIVE_EXPORT(CSharpInt) EditorGUI_IsItemClicked(CSharpInt button, CSharpInt options)
+NATIVE_EXPORT_AUTO EditorGUI_IsItemClicked(cs<ImGuiMouseButton> button, cs<EditorGUI::ItemClickOptions> options)
 {
-    return static_cast<CSharpInt>(EditorGUI::IsItemClicked(static_cast<ImGuiMouseButton>(button), static_cast<EditorGUI::ItemClickOptions>(options)));
+    retcs EditorGUI::IsItemClicked(button, options);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_IsWindowClicked(CSharpInt button, CSharpBool ignorePopup)
+NATIVE_EXPORT_AUTO EditorGUI_IsWindowClicked(cs<ImGuiMouseButton> button, cs_bool ignorePopup)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::IsWindowClicked(static_cast<ImGuiMouseButton>(button), CSHARP_UNMARSHAL_BOOL(ignorePopup)));
+    retcs EditorGUI::IsWindowClicked(button, ignorePopup);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_BeginPopupContextWindow()
+NATIVE_EXPORT_AUTO EditorGUI_BeginPopupContextWindow()
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextWindow());
+    retcs EditorGUI::BeginPopupContextWindow();
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_BeginPopupContextItem(CSharpString id)
+NATIVE_EXPORT_AUTO EditorGUI_BeginPopupContextItem(cs_string id)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginPopupContextItem(CSharpString_ToUtf8(id)));
+    retcs EditorGUI::BeginPopupContextItem(id);
 }
 
-NATIVE_EXPORT(void) EditorGUI_DrawTexture(GfxTexture* texture)
+NATIVE_EXPORT_AUTO EditorGUI_DrawTexture(GfxTexture* texture)
 {
     EditorGUI::DrawTexture(texture);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_Button(CSharpString label)
+NATIVE_EXPORT_AUTO EditorGUI_Button(cs_string label)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::Button(CSharpString_ToUtf8(label)));
+    retcs EditorGUI::Button(label);
 }
 
-NATIVE_EXPORT(void) EditorGUI_BeginGroup()
+NATIVE_EXPORT_AUTO EditorGUI_BeginGroup()
 {
     EditorGUI::BeginGroup();
 }
 
-NATIVE_EXPORT(void) EditorGUI_EndGroup()
+NATIVE_EXPORT_AUTO EditorGUI_EndGroup()
 {
     EditorGUI::EndGroup();
 }
 
-NATIVE_EXPORT(CSharpFloat) EditorGUI_CalcButtonWidth(CSharpString label)
+NATIVE_EXPORT_AUTO EditorGUI_CalcButtonWidth(cs_string label)
 {
-    return EditorGUI::CalcButtonWidth(CSharpString_ToUtf8(label));
+    retcs EditorGUI::CalcButtonWidth(label);
 }
 
-NATIVE_EXPORT(CSharpVector2) EditorGUI_GetItemSpacing()
+NATIVE_EXPORT_AUTO EditorGUI_GetItemSpacing()
 {
-    DirectX::XMFLOAT2 spacing = EditorGUI::GetItemSpacing();
-    return ToCSharpVector2(spacing);
+    retcs EditorGUI::GetItemSpacing();
 }
 
-NATIVE_EXPORT(CSharpFloat) EditorGUI_GetCursorPosX()
+NATIVE_EXPORT_AUTO EditorGUI_GetCursorPosX()
 {
-    return EditorGUI::GetCursorPosX();
+    retcs EditorGUI::GetCursorPosX();
 }
 
-NATIVE_EXPORT(void) EditorGUI_SetCursorPosX(CSharpFloat localX)
+NATIVE_EXPORT_AUTO EditorGUI_SetCursorPosX(cs_float localX)
 {
     EditorGUI::SetCursorPosX(localX);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_BeginAssetTreeNode(CSharpString label, CSharpString assetPath, CSharpBool isLeaf, CSharpBool openOnArrow, CSharpBool openOnDoubleClick, CSharpBool selected, CSharpBool showBackground, CSharpBool defaultOpen, CSharpBool spanWidth)
+NATIVE_EXPORT_AUTO EditorGUI_BeginAssetTreeNode(cs_string label, cs_string assetPath, cs_bool isLeaf, cs_bool openOnArrow, cs_bool openOnDoubleClick, cs_bool selected, cs_bool showBackground, cs_bool defaultOpen, cs_bool spanWidth)
 {
-    return CSHARP_MARSHAL_BOOL(EditorGUI::BeginAssetTreeNode(CSharpString_ToUtf8(label), CSharpString_ToUtf8(assetPath),
-        CSHARP_UNMARSHAL_BOOL(isLeaf), CSHARP_UNMARSHAL_BOOL(openOnArrow), CSHARP_UNMARSHAL_BOOL(openOnDoubleClick), CSHARP_UNMARSHAL_BOOL(selected),
-        CSHARP_UNMARSHAL_BOOL(showBackground), CSHARP_UNMARSHAL_BOOL(defaultOpen), CSHARP_UNMARSHAL_BOOL(spanWidth)));
+    retcs EditorGUI::BeginAssetTreeNode(label, assetPath, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
 }
 
-NATIVE_EXPORT(CSharpBool) EditorGUI_MarchObjectField(CSharpString label, CSharpString tooltip, CSharpString type, CSharpString persistentPath, CSharpString* outNewPersistentPath, CSharpInt currentObjectState)
+NATIVE_EXPORT_AUTO EditorGUI_MarchObjectField(cs_string label, cs_string tooltip, cs_string type, cs_string persistentPath, cs<cs_string*> outNewPersistentPath, cs<EditorGUI::MarchObjectState> currentObjectState)
 {
-    std::string persistentPathContext = CSharpString_ToUtf8(persistentPath);
-    EditorGUI::MarchObjectState state = static_cast<EditorGUI::MarchObjectState>(currentObjectState);
+    std::string persistentPathContext = persistentPath;
 
-    if (EditorGUI::MarchObjectField(CSharpString_ToUtf8(label), CSharpString_ToUtf8(tooltip), CSharpString_ToUtf8(type), persistentPathContext, state))
+    if (EditorGUI::MarchObjectField(label, tooltip, type, persistentPathContext, currentObjectState))
     {
-        *outNewPersistentPath = CSharpString_FromUtf8(persistentPathContext);
-        return CSHARP_MARSHAL_BOOL(true);
+        outNewPersistentPath->assign(std::move(persistentPathContext));
+        retcs true;
     }
 
-    *outNewPersistentPath = nullptr;
-    return CSHARP_MARSHAL_BOOL(false);
+    retcs false;
 }
 
-NATIVE_EXPORT(CSharpFloat) EditorGUI_GetCollapsingHeaderOuterExtend()
+NATIVE_EXPORT_AUTO EditorGUI_GetCollapsingHeaderOuterExtend()
 {
-    return EditorGUI::GetCollapsingHeaderOuterExtend();
+    retcs EditorGUI::GetCollapsingHeaderOuterExtend();
 }
