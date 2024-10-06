@@ -11,11 +11,15 @@
 #include "Camera.h"
 #include "Display.h"
 #include "GfxTexture.h"
+#include "Transform.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
 #include <tuple>
+#include <ImGuizmo.h>
+
+using namespace DirectX;
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -352,6 +356,117 @@ namespace march
 
             auto srvHandle = m_StaticDescriptorViewTable.GetGpuHandle(1);
             ImGui::Image((ImTextureID)srvHandle.ptr, contextSize);
+
+            static const float identityMatrix[16] =
+            { 1.f, 0.f, 0.f, 0.f,
+                0.f, 1.f, 0.f, 0.f,
+                0.f, 0.f, 1.f, 0.f,
+                0.f, 0.f, 0.f, 1.f };
+
+            ImGuizmo::SetDrawlist();
+
+            float windowWidth = (float)ImGui::GetWindowWidth();
+            float windowHeight = (float)ImGui::GetWindowHeight();
+            ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
+
+            XMFLOAT4X4 viewMatrix = sceneCamera->GetViewMatrix();
+            XMFLOAT4X4 projMatrix = sceneCamera->GetProjectionMatrix();
+            ImGuizmo::DrawGrid(reinterpret_cast<float*>(viewMatrix.m), reinterpret_cast<float*>(projMatrix.m),
+                identityMatrix, 100.0f);
+
+            static bool isRotating = false;
+
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && (isRotating || ImGui::IsWindowHovered()))
+            {
+                isRotating = true;
+                ImVec2 delta = ImGui::GetIO().MouseDelta; //ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
+
+                if (delta.x != 0 && delta.y != 0)
+                {
+                    const float speed = 8.0f;
+                    float radDelta = XMConvertToRadians(speed * GetApp().GetDeltaTime());
+
+                    float x = delta.y * radDelta;
+                    float y = delta.x * radDelta;
+
+                    XMVECTOR rotX = XMQuaternionRotationRollPitchYaw(x, 0, 0);
+                    XMVECTOR rotY = XMQuaternionRotationRollPitchYaw(0, y, 0);
+
+                    // 绕世界空间 Y 轴旋转，再绕本地空间 X 轴旋转
+                    auto transform = sceneCamera->GetTransform();
+                    XMVECTOR rot = XMQuaternionMultiply(XMQuaternionMultiply(rotX, transform->LoadLocalRotation()), rotY);
+
+                    XMFLOAT4 r = {};
+                    XMStoreFloat4(&r, rot);
+                    TransformInternalUtility::SetLocalRotation(transform, r);
+
+                    // TODO WASD 控制相机移动
+
+                    //ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
+                    //DEBUG_LOG_INFO("ROTATE: %f, %f", x, y);
+                }
+            }
+            else
+            {
+                isRotating = false;
+            }
+
+            static bool isPanning = false;
+
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle) && (isPanning || ImGui::IsWindowHovered()))
+            {
+                isPanning = true;
+                ImVec2 delta = ImGui::GetIO().MouseDelta; //ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
+
+                if (delta.x != 0 && delta.y != 0)
+                {
+                    // TODO 控制最大移动距离，卡的时候 deltaTime 会很大
+                    const float speed = 0.5f;
+                    float offsetDelta = speed * GetApp().GetDeltaTime();
+
+                    float x = -delta.x * offsetDelta;
+                    float y = delta.y * offsetDelta;
+
+                    auto transform = sceneCamera->GetTransform();
+                    XMVECTOR position = XMVectorAdd(XMVectorAdd(
+                        XMVectorMultiply(transform->LoadRight(), XMVectorSet(x, x, x, 1)),
+                        XMVectorMultiply(transform->LoadUp(), XMVectorSet(y, y, y, 1))
+                    ), transform->LoadLocalPosition());
+
+                    XMFLOAT3 pos = {};
+                    XMStoreFloat3(&pos, position);
+                    TransformInternalUtility::SetLocalPosition(transform, pos);
+
+                    //ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
+                    //DEBUG_LOG_INFO("ROTATE: %f, %f", x, y);
+                }
+            }
+            else
+            {
+                isPanning = false;
+            }
+
+            if (ImGui::IsWindowHovered())
+            {
+                float delta = ImGui::GetIO().MouseWheel;
+
+                if (delta)
+                {
+                    // TODO 控制最大移动距离，卡的时候 deltaTime 会很大
+                    const float speed = 6.0f;
+                    float offsetDelta = speed * GetApp().GetDeltaTime();
+
+                    float z = delta * offsetDelta;
+
+                    auto transform = sceneCamera->GetTransform();
+                    XMVECTOR position = XMVectorAdd(XMVectorMultiply(transform->LoadForward(), XMVectorSet(z, z, z, 1)), transform->LoadLocalPosition());
+
+                    XMFLOAT3 pos = {};
+                    XMStoreFloat3(&pos, position);
+                    TransformInternalUtility::SetLocalPosition(transform, pos);
+                }
+            }
+
             ImGui::End();
         }
 
