@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Rendering;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -6,6 +7,7 @@ namespace March.Editor.Windows
     internal static class SceneWindow
     {
         private static readonly Scene s_DummyScene = new();
+        private static readonly Material s_GridMaterial = new();
 
         internal static void InitSceneWindow()
         {
@@ -16,6 +18,10 @@ namespace March.Editor.Windows
 
             Camera camera = go.AddComponent<Camera>();
             camera.IsEditorSceneCamera = true;
+
+            Shader gridShader = AssetDatabase.Load<Shader>("Assets/Shaders/Builtin/SceneViewGrid.shader")!;
+            s_GridMaterial.Shader = gridShader;
+            RenderPipeline.SetSceneViewGridMaterial(s_GridMaterial);
         }
     }
 }

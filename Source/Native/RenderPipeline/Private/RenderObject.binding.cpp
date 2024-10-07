@@ -20,8 +20,6 @@ NATIVE_EXPORT_AUTO RenderObject_GetMesh(RenderObject* pObject)
 NATIVE_EXPORT_AUTO RenderObject_SetMesh(RenderObject* pObject, GfxMesh* pMesh)
 {
     pObject->Mesh = pMesh;
-    pObject->Desc.InputLayout = pMesh->GetVertexInputLayout();
-    pObject->Desc.PrimitiveTopologyType = pMesh->GetTopologyType();
 }
 
 NATIVE_EXPORT_AUTO RenderObject_SetMaterial(RenderObject* pObject, Material* pMaterial)

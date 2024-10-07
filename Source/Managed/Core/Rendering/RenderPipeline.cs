@@ -24,6 +24,11 @@ namespace March.Core.Rendering
             RenderPipeline_RemoveLight(GetInstance(), light);
         }
 
+        internal static void SetSceneViewGridMaterial(Material material)
+        {
+            RenderPipeline_SetSceneViewGridMaterial(GetInstance(), material.NativePtr);
+        }
+
         private static nint GetInstance()
         {
             nint engine = Application_GetEngine();
@@ -47,5 +52,8 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void RenderPipeline_RemoveLight(nint self, nint light);
+
+        [NativeFunction]
+        private static partial void RenderPipeline_SetSceneViewGridMaterial(nint self, nint material);
     }
 }

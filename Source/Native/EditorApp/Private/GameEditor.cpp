@@ -12,6 +12,7 @@
 #include "Display.h"
 #include "GfxTexture.h"
 #include "Transform.h"
+#include "GfxMesh.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <imgui_stdlib.h>
@@ -354,25 +355,28 @@ namespace march
                 ResizeRenderPipeline(sceneCamera, m_LastSceneViewWidth, m_LastSceneViewHeight);
             }
 
+            // TODO image 不能有 alpha
             auto srvHandle = m_StaticDescriptorViewTable.GetGpuHandle(1);
             ImGui::Image((ImTextureID)srvHandle.ptr, contextSize);
 
-            static const float identityMatrix[16] =
-            { 1.f, 0.f, 0.f, 0.f,
-                0.f, 1.f, 0.f, 0.f,
-                0.f, 0.f, 1.f, 0.f,
-                0.f, 0.f, 0.f, 1.f };
+            //static const float identityMatrix[16] =
+            //{ 1.f, 0.f, 0.f, 0.f,
+            //    0.f, 1.f, 0.f, 0.f,
+            //    0.f, 0.f, 1.f, 0.f,
+            //    0.f, 0.f, 0.f, 1.f };
 
-            ImGuizmo::SetDrawlist();
+            //ImGuizmo::SetDrawlist();
 
-            float windowWidth = (float)ImGui::GetWindowWidth();
-            float windowHeight = (float)ImGui::GetWindowHeight();
-            ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
+            //float windowWidth = (float)ImGui::GetWindowWidth();
+            //float windowHeight = (float)ImGui::GetWindowHeight();
+            //ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
 
-            XMFLOAT4X4 viewMatrix = sceneCamera->GetViewMatrix();
-            XMFLOAT4X4 projMatrix = sceneCamera->GetProjectionMatrix();
-            ImGuizmo::DrawGrid(reinterpret_cast<float*>(viewMatrix.m), reinterpret_cast<float*>(projMatrix.m),
-                identityMatrix, 100.0f);
+            //XMFLOAT4X4 viewMatrix = sceneCamera->GetViewMatrix();
+            //XMFLOAT4X4 projMatrix = sceneCamera->GetProjectionMatrix();
+            //ImGuizmo::DrawGrid(reinterpret_cast<float*>(viewMatrix.m), reinterpret_cast<float*>(projMatrix.m),
+            //    identityMatrix, 100.0f);
+
+            float deltaTimeClamped = min(GetApp().GetDeltaTime(), 0.01f);
 
             static bool isRotating = false;
 
@@ -383,8 +387,8 @@ namespace march
 
                 if (delta.x != 0 && delta.y != 0)
                 {
-                    const float speed = 8.0f;
-                    float radDelta = XMConvertToRadians(speed * GetApp().GetDeltaTime());
+                    const float speed = 12.0f;
+                    float radDelta = XMConvertToRadians(speed * deltaTimeClamped);
 
                     float x = delta.y * radDelta;
                     float y = delta.x * radDelta;
@@ -405,6 +409,50 @@ namespace march
                     //ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
                     //DEBUG_LOG_INFO("ROTATE: %f, %f", x, y);
                 }
+
+                const float moveSpeed = 6.0f;
+                const float moveSpeedFast = 16.0f;
+                float moveDelta;
+
+                if (ImGui::IsKeyDown(ImGuiMod_Shift))
+                {
+                    moveDelta = moveSpeedFast * deltaTimeClamped;
+                }
+                else
+                {
+                    moveDelta = moveSpeed * deltaTimeClamped;
+                }
+
+                auto transform = sceneCamera->GetTransform();
+                XMVECTOR position = transform->LoadLocalPosition();
+
+                if (ImGui::IsKeyDown(ImGuiKey_W))
+                {
+                    position = XMVectorAdd(position,
+                        XMVectorMultiply(transform->LoadForward(), XMVectorSet(moveDelta, moveDelta, moveDelta, 1)));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_A))
+                {
+                    position = XMVectorAdd(position,
+                        XMVectorMultiply(transform->LoadRight(), XMVectorSet(-moveDelta, -moveDelta, -moveDelta, 1)));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_S))
+                {
+                    position = XMVectorAdd(position,
+                        XMVectorMultiply(transform->LoadForward(), XMVectorSet(-moveDelta, -moveDelta, -moveDelta, 1)));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_D))
+                {
+                    position = XMVectorAdd(position,
+                        XMVectorMultiply(transform->LoadRight(), XMVectorSet(moveDelta, moveDelta, moveDelta, 1)));
+                }
+
+                XMFLOAT3 pos = {};
+                XMStoreFloat3(&pos, position);
+                TransformInternalUtility::SetLocalPosition(transform, pos);
             }
             else
             {
@@ -421,8 +469,8 @@ namespace march
                 if (delta.x != 0 && delta.y != 0)
                 {
                     // TODO 控制最大移动距离，卡的时候 deltaTime 会很大
-                    const float speed = 0.5f;
-                    float offsetDelta = speed * GetApp().GetDeltaTime();
+                    const float speed = 0.8f;
+                    float offsetDelta = speed * deltaTimeClamped;
 
                     float x = -delta.x * offsetDelta;
                     float y = delta.y * offsetDelta;
@@ -453,8 +501,8 @@ namespace march
                 if (delta)
                 {
                     // TODO 控制最大移动距离，卡的时候 deltaTime 会很大
-                    const float speed = 6.0f;
-                    float offsetDelta = speed * GetApp().GetDeltaTime();
+                    const float speed = 10.0f;
+                    float offsetDelta = speed * deltaTimeClamped;
 
                     float z = delta * offsetDelta;
 

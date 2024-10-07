@@ -1,4 +1,5 @@
 #include "RenderPipeline.h"
+#include "Material.h"
 #include "InteropServices.h"
 
 NATIVE_EXPORT_AUTO RenderPipeline_AddRenderObject(cs<RenderPipeline*> pPipeline, cs<RenderObject*> pObject)
@@ -19,4 +20,9 @@ NATIVE_EXPORT_AUTO RenderPipeline_AddLight(cs<RenderPipeline*> pPipeline, cs<Lig
 NATIVE_EXPORT_AUTO RenderPipeline_RemoveLight(cs<RenderPipeline*> pPipeline, cs<Light*> pLight)
 {
     pPipeline->RemoveLight(pLight);
+}
+
+NATIVE_EXPORT_AUTO RenderPipeline_SetSceneViewGridMaterial(cs<RenderPipeline*> pPipeline, cs<Material*> pMaterial)
+{
+    pPipeline->m_SceneViewGridMaterial = pMaterial;
 }

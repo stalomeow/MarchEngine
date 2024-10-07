@@ -2,6 +2,7 @@
 
 #include <directx/d3dx12.h>
 #include <stdint.h>
+#include "PipelineState.h"
 
 namespace march
 {
@@ -31,11 +32,14 @@ namespace march
         virtual void ClearSubMeshes() = 0;
         virtual void AddSubMeshCube(float width, float height, float depth) = 0;
         virtual void AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount) = 0;
+        virtual void AddFullScreenTriangle() = 0;
 
         virtual uint32_t GetSubMeshCount() const = 0;
         virtual D3D12_PRIMITIVE_TOPOLOGY GetTopology() const = 0;
         virtual D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType() const = 0;
         virtual D3D12_INPUT_LAYOUT_DESC GetVertexInputLayout() const = 0;
+
+        MeshDesc GetDesc() const;
 
         GfxDevice* GetDevice() const { return m_Device; }
 

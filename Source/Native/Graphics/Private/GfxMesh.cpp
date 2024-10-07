@@ -19,6 +19,14 @@ namespace march
     {
     }
 
+    MeshDesc GfxMesh::GetDesc() const
+    {
+        MeshDesc desc = {};
+        desc.InputLayout = GetVertexInputLayout();
+        desc.PrimitiveTopologyType = GetTopologyType();
+        return desc;
+    }
+
     template<typename TVertex, typename TIndex>
     class GfxMeshImpl : public GfxMesh
     {
@@ -264,6 +272,7 @@ namespace march
 
         void AddSubMeshCube(float width, float height, float depth) override;
         void AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount) override;
+        void AddFullScreenTriangle() override;
     };
 
     GfxSimpleMesh::GfxSimpleMesh(GfxDevice* device)
@@ -432,6 +441,21 @@ namespace march
 
         AddSubMesh(vertices, indices);
         RecalculateNormals();
+    }
+
+    void GfxSimpleMesh::AddFullScreenTriangle()
+    {
+        std::vector<SimpleMeshVertex> vertices;
+        std::vector<std::uint16_t> indices;
+
+        vertices.emplace_back();
+        vertices.emplace_back();
+        vertices.emplace_back();
+
+        indices.push_back(0);
+        indices.push_back(1);
+        indices.push_back(2);
+        AddSubMesh(vertices, indices);
     }
 
     GfxMesh* CreateSimpleGfxMesh(GfxDevice* device)

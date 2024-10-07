@@ -2,14 +2,17 @@
 
 #include <directx/d3dx12.h>
 #include "Light.h"
+#include "GfxMesh.h"
 #include <dxgi.h>
 #include <dxgi1_4.h>
 #include <vector>
+#include <memory>
 
 namespace march
 {
     class Camera;
     class RenderObject;
+    class Material;
 
     struct PerObjConstants
     {
@@ -34,7 +37,7 @@ namespace march
     class RenderPipeline
     {
     public:
-        RenderPipeline() = default;
+        RenderPipeline();
         ~RenderPipeline() = default;
 
         void Render(Camera* camera);
@@ -63,8 +66,11 @@ namespace march
             }
         }
 
+        Material* m_SceneViewGridMaterial = nullptr;
+
     private:
         std::vector<RenderObject*> m_RenderObjects{};
         std::vector<Light*> m_Lights{};
+        std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
     };
 }

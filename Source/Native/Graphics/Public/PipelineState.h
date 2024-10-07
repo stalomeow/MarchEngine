@@ -6,7 +6,7 @@
 
 namespace march
 {
-    struct MeshRendererDesc
+    struct MeshDesc
     {
         D3D12_INPUT_LAYOUT_DESC InputLayout;
         D3D12_PRIMITIVE_TOPOLOGY_TYPE PrimitiveTopologyType;
@@ -25,7 +25,7 @@ namespace march
 
     ID3D12PipelineState* GetGraphicsPipelineState(
         const ShaderPass* pPass,
-        const MeshRendererDesc& rendererDesc,
+        const MeshDesc& meshDesc,
         const RenderPipelineDesc& pipelineDesc);
 
     namespace

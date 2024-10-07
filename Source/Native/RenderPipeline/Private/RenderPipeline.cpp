@@ -40,9 +40,15 @@ namespace march
         device->CreateConstantBufferView(&desc, table.GetCpuHandle(it->second.DescriptorTableIndex));
     }
 
+    RenderPipeline::RenderPipeline()
+    {
+        m_FullScreenTriangleMesh.reset(CreateSimpleGfxMesh(GetGfxDevice()));
+        m_FullScreenTriangleMesh->AddFullScreenTriangle();
+    }
+
     void RenderPipeline::Render(Camera* camera)
     {
-        if (m_RenderObjects.empty())
+        if (m_RenderObjects.empty() || !camera->GetIsActiveAndEnabled())
         {
             return;
         }
@@ -68,11 +74,11 @@ namespace march
 
         PerPassConstants passConsts = {};
         XMStoreFloat4x4(&passConsts.ViewMatrix, view);
-        XMStoreFloat4x4(&passConsts.InvViewMatrix, XMMatrixInverse(&XMMatrixDeterminant(view), view));
+        XMStoreFloat4x4(&passConsts.InvViewMatrix, XMMatrixInverse(nullptr, view));
         XMStoreFloat4x4(&passConsts.ProjectionMatrix, proj);
-        XMStoreFloat4x4(&passConsts.InvProjectionMatrix, XMMatrixInverse(&XMMatrixDeterminant(proj), proj));
+        XMStoreFloat4x4(&passConsts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
         XMStoreFloat4x4(&passConsts.ViewProjectionMatrix, viewProj);
-        XMStoreFloat4x4(&passConsts.InvViewProjectionMatrix, XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj));
+        XMStoreFloat4x4(&passConsts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
         XMStoreFloat4(&passConsts.CameraPositionWS, camera->GetTransform()->LoadPosition());
 
         passConsts.LightCount = m_Lights.size();
@@ -95,13 +101,13 @@ namespace march
         for (int i = 0; i < m_RenderObjects.size(); i++)
         {
             PerObjConstants consts = {};
-            consts.WorldMatrix = m_RenderObjects[i]->GetTransform()->GetLocalToWorldMatrix();
+            XMStoreFloat4x4(&consts.WorldMatrix, m_RenderObjects[i]->GetTransform()->LoadLocalToWorldMatrix());
             *reinterpret_cast<PerObjConstants*>(cbPerObj.GetMappedData(i)) = consts;
 
             if (m_RenderObjects[i]->Mat != nullptr)
             {
                 ShaderPass* pass = m_RenderObjects[i]->Mat->GetShader()->Passes[0].get();
-                size_t hash = HashState(&pass, 1, m_RenderObjects[i]->Desc.GetHash());
+                size_t hash = HashState(&pass, 1, m_RenderObjects[i]->Mesh->GetDesc().GetHash());
                 objs[hash].push_back(i);
             }
         }
@@ -148,7 +154,7 @@ namespace march
 
                 if (isFirst)
                 {
-                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Desc, rpDesc);
+                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Mesh->GetDesc(), rpDesc);
                     cmd->GetD3D12CommandList()->SetPipelineState(pso);
                     cmd->GetD3D12CommandList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
                 }
@@ -203,6 +209,33 @@ namespace march
 
                 obj->Mesh->Draw();
             }
+        }
+
+        if (camera->GetIsEditorSceneCamera() && m_SceneViewGridMaterial != nullptr)
+        {
+            // Scene Grid
+            ShaderPass* pass = m_SceneViewGridMaterial->GetShader()->Passes[0].get();
+            ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, m_FullScreenTriangleMesh->GetDesc(), rpDesc);
+            cmd->GetD3D12CommandList()->SetPipelineState(pso);
+            cmd->GetD3D12CommandList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
+
+            if (pass->GetCbvSrvUavCount() > 0)
+            {
+                GfxDescriptorTable viewTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, pass->GetCbvSrvUavCount());
+
+                BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress(0));
+
+                GfxConstantBuffer* cbMat = m_SceneViewGridMaterial->GetConstantBuffer(pass);
+                if (cbMat != nullptr)
+                {
+                    BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress(0));
+                }
+
+                cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(),
+                    viewTable.GetGpuHandle(0));
+            }
+
+            m_FullScreenTriangleMesh->Draw();
         }
 
         if (display->GetEnableMSAA())

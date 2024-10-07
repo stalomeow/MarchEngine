@@ -15,7 +15,6 @@ namespace march
 #define NATIVE_EXPORT_AUTO extern "C" __declspec(dllexport) auto __stdcall
 #define retcs return ::march::g_cs_convert <<
 
-using namespace std;
 using namespace DirectX;
 using namespace march;
 using namespace march::StringUtility;

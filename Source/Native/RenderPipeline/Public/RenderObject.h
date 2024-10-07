@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Component.h"
-#include "PipelineState.h"
 
 namespace march
 {
@@ -16,7 +15,6 @@ namespace march
 
         GfxMesh* Mesh = nullptr;
         Material* Mat = nullptr;
-        MeshRendererDesc Desc = {};
 
     protected:
         void OnMount() override;

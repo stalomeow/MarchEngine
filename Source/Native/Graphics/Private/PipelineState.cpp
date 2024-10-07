@@ -14,7 +14,7 @@ namespace march
         std::unordered_map<size_t, ComPtr<ID3D12PipelineState>> g_PsoMap;
     }
 
-    size_t MeshRendererDesc::GetHash() const
+    size_t MeshDesc::GetHash() const
     {
         size_t hash = HashState(InputLayout.pInputElementDescs, InputLayout.NumElements);
         hash = HashState(&PrimitiveTopologyType, 1, hash);
@@ -23,10 +23,10 @@ namespace march
 
     ID3D12PipelineState* GetGraphicsPipelineState(
         const ShaderPass* pPass,
-        const MeshRendererDesc& rendererDesc,
+        const MeshDesc& meshDesc,
         const RenderPipelineDesc& pipelineDesc)
     {
-        size_t hash = HashState(pPass, 1, rendererDesc.GetHash());
+        size_t hash = HashState(pPass, 1, meshDesc.GetHash());
         hash = HashState(&pipelineDesc, 1, hash);
 
         auto psoCache = g_PsoMap.find(hash);
@@ -36,7 +36,7 @@ namespace march
         }
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.InputLayout = rendererDesc.InputLayout;
+        psoDesc.InputLayout = meshDesc.InputLayout;
         psoDesc.pRootSignature = pPass->GetRootSignature();
         psoDesc.VS =
         {
@@ -88,7 +88,7 @@ namespace march
         psoDesc.DepthStencilState.BackFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->StencilState.BackFace.Compare) + 1);
 
         psoDesc.SampleMask = UINT_MAX;
-        psoDesc.PrimitiveTopologyType = rendererDesc.PrimitiveTopologyType;
+        psoDesc.PrimitiveTopologyType = meshDesc.PrimitiveTopologyType;
         psoDesc.NumRenderTargets = pipelineDesc.NumRenderTargets;
         memcpy(psoDesc.RTVFormats, pipelineDesc.RTVFormats, sizeof(pipelineDesc.RTVFormats));
         psoDesc.DSVFormat = pipelineDesc.DSVFormat;
