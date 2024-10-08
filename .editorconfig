@@ -4,7 +4,7 @@ root = true
 end_of_line = crlf
 insert_final_newline = true
 
-[*.{h,hpp,cpp,cs,hlsl}]
+[*.{h,hpp,cpp,cs,hlsl,shader}]
 charset = utf-8
 indent_style = space
 indent_size = 4

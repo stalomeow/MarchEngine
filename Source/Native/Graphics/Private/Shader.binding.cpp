@@ -330,3 +330,8 @@ NATIVE_EXPORT_AUTO Shader_CreatePassRootSignature(cs<Shader*> pShader, cs_int pa
 {
     pShader->Passes[passIndex]->CreateRootSignature();
 }
+
+NATIVE_EXPORT_AUTO Shader_GetEngineShaderPathUnixStyle()
+{
+    retcs Shader::GetEngineShaderPathUnixStyle();
+}

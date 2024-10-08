@@ -61,7 +61,7 @@ namespace march
         std::wstring wFilename = StringUtility::Utf8ToUtf16(filename);
         std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(entrypoint);
         std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(GetTargetProfile(shaderModel, programType));
-        std::wstring wIncludePath = PathHelper::GetWorkingDirectoryUtf16(PathStyle::Unix) + L"/Shaders";
+        std::wstring wIncludePath = StringUtility::Utf8ToUtf16(GetEngineShaderPathUnixStyle());
 
         LPCWSTR pszArgs[] =
         {
@@ -393,5 +393,14 @@ namespace march
         GFX_HR(GetGfxDevice()->GetD3D12Device()->CreateRootSignature(0,
             serializedRootSig->GetBufferPointer(), serializedRootSig->GetBufferSize(),
             IID_PPV_ARGS(&m_RootSignature)));
+    }
+
+    std::string Shader::GetEngineShaderPathUnixStyle()
+    {
+#ifdef ENGINE_SHADER_UNIX_PATH
+        return ENGINE_SHADER_UNIX_PATH;
+#endif
+
+        return PathHelper::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
     }
 }

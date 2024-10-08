@@ -19,7 +19,7 @@ namespace March.Editor.Windows
             Camera camera = go.AddComponent<Camera>();
             camera.IsEditorSceneCamera = true;
 
-            Shader gridShader = AssetDatabase.Load<Shader>("Assets/Shaders/Builtin/SceneViewGrid.shader")!;
+            Shader gridShader = AssetDatabase.Load<Shader>("Engine/Shaders/SceneViewGrid.shader")!;
             s_GridMaterial.Shader = gridShader;
             RenderPipeline.SetSceneViewGridMaterial(s_GridMaterial);
         }

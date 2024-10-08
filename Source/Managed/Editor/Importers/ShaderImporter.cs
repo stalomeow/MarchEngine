@@ -12,7 +12,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 11;
+        protected override int Version => base.Version + 17;
 
         protected override bool UseCache => true;
 

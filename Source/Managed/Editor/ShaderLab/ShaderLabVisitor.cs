@@ -166,7 +166,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitZTestDeclaration([NotNull] ShaderLabParser.ZTestDeclarationContext context)
         {
-            if (context.Off() != null)
+            if (context.Disabled() != null)
             {
                 CurrentPass.ZTest = null;
             }
@@ -354,8 +354,8 @@ namespace March.Editor.ShaderLab
 
         public override int VisitHlslProgramDeclaration([NotNull] ShaderLabParser.HlslProgramDeclarationContext context)
         {
-            string code = context.HlslProgram().GetText()[11..^7].Trim(); // Remove HLSLPROGRAM and ENDHLSL
-            CurrentPass.HlslProgram = code;
+            // Remove HLSLPROGRAM and ENDHLSL，但要保留换行，不要 Trim，后面要设置行号
+            string code = context.HlslProgram().GetText()[11..^7];
 
             foreach (string line in code.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
             {
@@ -381,6 +381,11 @@ namespace March.Editor.ShaderLab
                     }
                 }
             }
+
+            // 保证行号和源文件一致
+            // 注意：#line 设置的是下一行的行号
+            int startLineNumber = context.HlslProgram().Symbol.Line;
+            CurrentPass.HlslProgram = $"#line {startLineNumber}\n" + code;
 
             return base.VisitHlslProgramDeclaration(context);
 
@@ -433,10 +438,10 @@ namespace March.Editor.ShaderLab
                 ShaderLabParser.Never => ShaderPassCompareFunc.Never,
                 ShaderLabParser.Less => ShaderPassCompareFunc.Less,
                 ShaderLabParser.Equal => ShaderPassCompareFunc.Equal,
-                ShaderLabParser.LessEqual => ShaderPassCompareFunc.LessEqual,
+                ShaderLabParser.LEqual => ShaderPassCompareFunc.LessEqual,
                 ShaderLabParser.Greater => ShaderPassCompareFunc.Greater,
                 ShaderLabParser.NotEqual => ShaderPassCompareFunc.NotEqual,
-                ShaderLabParser.GreaterEqual => ShaderPassCompareFunc.GreaterEqual,
+                ShaderLabParser.GEqual => ShaderPassCompareFunc.GreaterEqual,
                 ShaderLabParser.Always => ShaderPassCompareFunc.Always,
                 _ => throw new NotSupportedException("Unknown comparison function"),
             };
@@ -449,14 +454,14 @@ namespace March.Editor.ShaderLab
                 ShaderLabParser.Zero => ShaderPassBlend.Zero,
                 ShaderLabParser.One => ShaderPassBlend.One,
                 ShaderLabParser.SrcColor => ShaderPassBlend.SrcColor,
-                ShaderLabParser.InvSrcColor => ShaderPassBlend.InvSrcColor,
+                ShaderLabParser.OneMinusSrcColor => ShaderPassBlend.InvSrcColor,
                 ShaderLabParser.SrcAlpha => ShaderPassBlend.SrcAlpha,
-                ShaderLabParser.InvSrcAlpha => ShaderPassBlend.InvSrcAlpha,
-                ShaderLabParser.DestAlpha => ShaderPassBlend.DestAlpha,
-                ShaderLabParser.InvDestAlpha => ShaderPassBlend.InvDestAlpha,
-                ShaderLabParser.DestColor => ShaderPassBlend.DestColor,
-                ShaderLabParser.InvDestColor => ShaderPassBlend.InvDestColor,
-                ShaderLabParser.SrcAlphaSat => ShaderPassBlend.SrcAlphaSat,
+                ShaderLabParser.OneMinusSrcAlpha => ShaderPassBlend.InvSrcAlpha,
+                ShaderLabParser.DstAlpha => ShaderPassBlend.DestAlpha,
+                ShaderLabParser.OneMinusDstAlpha => ShaderPassBlend.InvDestAlpha,
+                ShaderLabParser.DstColor => ShaderPassBlend.DestColor,
+                ShaderLabParser.OneMinusDstColor => ShaderPassBlend.InvDestColor,
+                ShaderLabParser.SrcAlphaSaturate => ShaderPassBlend.SrcAlphaSat,
                 _ => throw new NotSupportedException("Unknown blend factor"),
             };
         }
@@ -484,8 +489,8 @@ namespace March.Editor.ShaderLab
                 ShaderLabParser.IncrSat => ShaderPassStencilOp.IncrSat,
                 ShaderLabParser.DecrSat => ShaderPassStencilOp.DecrSat,
                 ShaderLabParser.Invert => ShaderPassStencilOp.Invert,
-                ShaderLabParser.Incr => ShaderPassStencilOp.Incr,
-                ShaderLabParser.Decr => ShaderPassStencilOp.Decr,
+                ShaderLabParser.IncrWrap => ShaderPassStencilOp.Incr,
+                ShaderLabParser.DecrWrap => ShaderPassStencilOp.Decr,
                 _ => throw new NotSupportedException("Unknown stencil operation"),
             };
         }

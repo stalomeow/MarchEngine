@@ -254,6 +254,8 @@ namespace march
         std::vector<std::unique_ptr<ShaderPass>> Passes;
         int32_t Version = 0;
 
+        static std::string GetEngineShaderPathUnixStyle();
+
         inline static IDxcUtils* GetDxcUtils()
         {
             if (s_Utils == nullptr)

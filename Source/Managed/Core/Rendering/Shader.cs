@@ -539,6 +539,18 @@ namespace March.Core.Rendering
             Shader_CreatePassRootSignature(NativePtr, passIndex);
         }
 
+        /// <summary>
+        /// 引擎内置 Shader 的路径 (Unix Style)
+        /// </summary>
+        public static string EngineShaderPath
+        {
+            get
+            {
+                nint s = Shader_GetEngineShaderPathUnixStyle();
+                return NativeString.GetAndFree(s);
+            }
+        }
+
         #region Native
 
         [NativeFunction]
@@ -568,6 +580,9 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void Shader_CreatePassRootSignature(nint pShader, int passIndex);
+
+        [NativeFunction]
+        private static partial nint Shader_GetEngineShaderPathUnixStyle();
 
         #endregion
     }

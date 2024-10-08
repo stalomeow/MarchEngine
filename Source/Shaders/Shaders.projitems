@@ -10,5 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)Public\Lighting.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
   </ItemGroup>
 </Project>

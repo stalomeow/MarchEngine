@@ -9,8 +9,9 @@ namespace March.Editor
     public abstract class AssetImporter : MarchObject
     {
         /// <summary>
-        /// 资产的路径，相对于 <see cref="Application.DataPath"/>
+        /// 资产的路径
         /// </summary>
+        /// <remarks>这是引擎使用的路径，不是文件系统路径</remarks>
         [JsonIgnore]
         public string AssetPath { get; private set; } = string.Empty;
 
@@ -63,7 +64,7 @@ namespace March.Editor
         {
             // 生成一个新的 Guid，反序列化时可能会被覆盖
             // https://learn.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=net-8.0
-            AssetGuid = System.Guid.NewGuid().ToString("N");
+            AssetGuid = Guid.NewGuid().ToString("N");
 
             // 记录版本号，反序列化时可能会被覆盖
             m_SerializedVersion = Version;
@@ -96,12 +97,21 @@ namespace March.Editor
         }
 
         internal void Initialize(string assetPath, string assetFullPath, string assetCacheFullPath,
-            string importerFullPath, MarchObject? asset = null)
+            string importerFullPath, MarchObject? asset = null, string? assetGuid = null)
         {
             AssetPath = assetPath;
             AssetFullPath = assetFullPath;
             AssetCacheFullPath = assetCacheFullPath;
             ImporterFullPath = importerFullPath;
+
+            bool assetGuidChanged = false;
+
+            // 必须在 SetAssetMetadata 之前设置
+            if (assetGuid != null && AssetGuid != assetGuid)
+            {
+                AssetGuid = assetGuid;
+                assetGuidChanged = true;
+            }
 
             if (asset != null)
             {
@@ -109,7 +119,7 @@ namespace March.Editor
                 SetAssetMetadata(asset);
             }
 
-            if (NeedReimportAsset())
+            if (assetGuidChanged || NeedReimportAsset())
             {
                 SaveImporterAndReimportAsset();
             }

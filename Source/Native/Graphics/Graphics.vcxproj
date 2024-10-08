@@ -87,7 +87,7 @@
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>_DEBUG;_LIB;_CRTDBG_MAP_ALLOC;ENABLE_GFX_DEBUG_NAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;_CRTDBG_MAP_ALLOC;ENABLE_GFX_DEBUG_NAME;ENGINE_SHADER_UNIX_PATH="$(SolutionDir.Replace('\', '/'))Source/Shaders/Public";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>ThirdParty;..\Scripting\Public;..\Utility\Public;..\Core\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

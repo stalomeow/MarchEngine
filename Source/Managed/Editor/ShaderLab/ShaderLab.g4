@@ -73,7 +73,7 @@ cullDeclaration
     ;
 
 zTestDeclaration
-    : 'ZTest' (Off | compareFuncValue)
+    : 'ZTest' (Disabled | compareFuncValue)
     ;
 
 zWriteDeclaration
@@ -172,14 +172,14 @@ blendFactorValue
     : Zero
     | One
     | SrcColor
-    | InvSrcColor
+    | OneMinusSrcColor
     | SrcAlpha
-    | InvSrcAlpha
-    | DestAlpha
-    | InvDestAlpha
-    | DestColor
-    | InvDestColor
-    | SrcAlphaSat
+    | OneMinusSrcAlpha
+    | DstAlpha
+    | OneMinusDstAlpha
+    | DstColor
+    | OneMinusDstColor
+    | SrcAlphaSaturate
     ;
 
 blendOpValue
@@ -194,10 +194,10 @@ compareFuncValue
     : Never
     | Less
     | Equal
-    | LessEqual
+    | LEqual
     | Greater
     | NotEqual
-    | GreaterEqual
+    | GEqual
     | Always
     ;
 
@@ -208,8 +208,8 @@ stencilOpValue
     | IncrSat
     | DecrSat
     | Invert
-    | Incr
-    | Decr
+    | IncrWrap
+    | DecrWrap
     ;
 
 Assign
@@ -278,6 +278,10 @@ Off
     : 'Off'
     ;
 
+Disabled
+    : 'Disabled'
+    ;
+
 Front
     : 'Front'
     ;
@@ -298,36 +302,36 @@ SrcColor
     : 'SrcColor'
     ;
 
-InvSrcColor
-    : 'InvSrcColor'
+OneMinusSrcColor
+    : 'OneMinusSrcColor'
     ;
 
 SrcAlpha
     : 'SrcAlpha'
     ;
 
-InvSrcAlpha
-    : 'InvSrcAlpha'
+OneMinusSrcAlpha
+    : 'OneMinusSrcAlpha'
     ;
 
-DestAlpha
-    : 'DestAlpha'
+DstAlpha
+    : 'DstAlpha'
     ;
 
-InvDestAlpha
-    : 'InvDestAlpha'
+OneMinusDstAlpha
+    : 'OneMinusDstAlpha'
     ;
 
-DestColor
-    : 'DestColor'
+DstColor
+    : 'DstColor'
     ;
 
-InvDestColor
-    : 'InvDestColor'
+OneMinusDstColor
+    : 'OneMinusDstColor'
     ;
 
-SrcAlphaSat
-    : 'SrcAlphaSat'
+SrcAlphaSaturate
+    : 'SrcAlphaSaturate'
     ;
 
 Add
@@ -362,8 +366,8 @@ Equal
     : 'Equal'
     ;
 
-LessEqual
-    : 'LessEqual'
+LEqual
+    : 'LEqual'
     ;
 
 Greater
@@ -374,8 +378,8 @@ NotEqual
     : 'NotEqual'
     ;
 
-GreaterEqual
-    : 'GreaterEqual'
+GEqual
+    : 'GEqual'
     ;
 
 Always
@@ -402,12 +406,12 @@ Invert
     : 'Invert'
     ;
 
-Incr
-    : 'Incr'
+IncrWrap
+    : 'IncrWrap'
     ;
 
-Decr
-    : 'Decr'
+DecrWrap
+    : 'DecrWrap'
     ;
 
 Identifier

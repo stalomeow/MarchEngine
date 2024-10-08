@@ -69,7 +69,7 @@ namespace march
         HINSTANCE m_InstanceHandle = nullptr;
         HWND m_WindowHandle = nullptr;
 
-        const std::string m_DataPath = u8"C:\\Users\\10247\\Desktop\\TestProj";
+        const std::string m_DataPath = u8"C:/Users/10247/Desktop/TestProj";
     };
 
     WinApplication& GetApp();
