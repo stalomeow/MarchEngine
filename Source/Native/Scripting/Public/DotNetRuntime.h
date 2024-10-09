@@ -9,9 +9,6 @@ namespace march
         Initialize,
         Tick,
         EditorInitialize,
-        DrawInspectorWindow,
-        DrawProjectWindow,
-        DrawHierarchyWindow,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

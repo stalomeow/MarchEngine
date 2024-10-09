@@ -1,10 +1,9 @@
 using March.Core;
 using March.Core.Rendering;
-using System.Runtime.InteropServices;
 
 namespace March.Editor.Windows
 {
-    internal static class HierarchyWindow
+    internal class HierarchyWindow : EditorWindow
     {
         private static readonly PopupMenu s_ContextMenu = new("HierarchyContextMenu");
 
@@ -43,9 +42,12 @@ namespace March.Editor.Windows
             });
         }
 
-        [UnmanagedCallersOnly]
-        internal static void Draw()
+        public HierarchyWindow() : base("Hierarchy") { }
+
+        protected override void OnDraw()
         {
+            base.OnDraw();
+
             Scene scene = SceneManager.CurrentScene;
             using var selections = ListPool<GameObject>.Get();
 

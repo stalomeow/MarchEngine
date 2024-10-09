@@ -29,7 +29,7 @@ namespace march
         float GetNearClipPlane() const;
         float GetFarClipPlane() const;
         bool GetEnableWireframe() const;
-        bool GetIsEditorSceneCamera() const;
+        bool GetEnableGizmos() const;
 
         DirectX::XMFLOAT4X4 GetViewMatrix() const;
         DirectX::XMFLOAT4X4 GetProjectionMatrix() const;
@@ -48,7 +48,8 @@ namespace march
         float m_NearZ;
         float m_FarZ;
         bool m_EnableWireframe;
-        bool m_IsEditorSceneCamera;
+        bool m_EnableGizmos;
+        Display* m_CustomTargetDisplay;
 
         static std::vector<Camera*> s_AllCameras;
     };
@@ -62,6 +63,7 @@ namespace march
         static void SetNearClipPlane(Camera* camera, float value);
         static void SetFarClipPlane(Camera* camera, float value);
         static void SetEnableWireframe(Camera* camera, bool value);
-        static void SetIsEditorSceneCamera(Camera* camera, bool value);
+        static void SetEnableGizmos(Camera* camera, bool value);
+        static void SetCustomTargetDisplay(Camera* camera, Display* value);
     };
 }

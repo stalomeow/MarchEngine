@@ -44,15 +44,10 @@ namespace march
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
         GfxDescriptorTable m_StaticDescriptorViewTable;
 
-        int m_LastSceneViewWidth = 0;
-        int m_LastSceneViewHeight = 0;
-
         bool m_ShowDemoWindow = true;
-        bool m_ShowAnotherWindow = true;
         bool m_ShowConsoleWindow = true;
         bool m_ConsoleWindowAutoScroll = true;
         bool m_ConsoleWindowScrollToBottom = true;
-        bool m_ShowHierarchyWindow = true;
         bool m_ShowDescriptorHeapWindow = true;
 
         RenderDoc m_RenderDoc{};

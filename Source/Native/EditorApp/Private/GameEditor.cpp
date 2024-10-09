@@ -63,17 +63,15 @@ namespace march
         desc.WindowHandle = GetApp().GetHWND();
         desc.WindowWidth = width;
         desc.WindowHeight = height;
-        desc.ViewTableStaticDescriptorCount = 2;
+        desc.ViewTableStaticDescriptorCount = 1;
         desc.ViewTableDynamicDescriptorCapacity = 4096;
         desc.SamplerTableStaticDescriptorCount = 0;
         desc.SamplerTableDynamicDescriptorCapacity = 1024;
         InitGfxDevice(desc);
 
         Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // temp
-        Display::CreateEditorSceneDisplay(GetGfxDevice(), static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         m_RenderPipeline = std::make_unique<RenderPipeline>();
         m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
-        //m_StaticDescriptorViewTable.Copy(1, m_RenderPipeline->GetColorShaderResourceView());
 
         InitImGui();
 
@@ -306,224 +304,6 @@ namespace march
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (m_ShowDemoWindow)
             ImGui::ShowDemoWindow(&m_ShowDemoWindow);
-
-        {
-            ImGui::Begin("Inspector");
-            m_DotNet->Invoke(ManagedMethod::DrawInspectorWindow);
-            ImGui::End();
-
-            ImGui::Begin("Project");
-            m_DotNet->Invoke(ManagedMethod::DrawProjectWindow);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window.
-        if (m_ShowAnotherWindow)
-        {
-            ImGui::Begin("Scene", &m_ShowAnotherWindow, ImGuiWindowFlags_MenuBar);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-
-            if (ImGui::BeginMenuBar())
-            {
-                if (ImGui::RadioButton("Play", false))
-                {
-                }
-
-                if (ImGui::RadioButton("MSAA", sceneCamera->GetEnableMSAA()))
-                {
-                    // 不等 gpu idle 也行，但是切换 msaa 会有一帧的延迟，画面会闪一下
-                    GetGfxDevice()->WaitForIdle();
-                    sceneCamera->SetEnableMSAA(!sceneCamera->GetEnableMSAA());
-                    SetSceneViewSrv(sceneCamera);
-                }
-
-                ImGui::Spacing();
-
-                if (ImGui::RadioButton("Wireframe", sceneCamera->GetEnableWireframe()))
-                {
-                    CameraInternalUtility::SetEnableWireframe(sceneCamera, !sceneCamera->GetEnableWireframe());
-                }
-
-                ImGui::EndMenuBar();
-            }
-
-            auto contextSize = ImGui::GetContentRegionAvail();
-
-            if (m_LastSceneViewWidth != contextSize.x || m_LastSceneViewHeight != contextSize.y)
-            {
-                m_LastSceneViewWidth = contextSize.x;
-                m_LastSceneViewHeight = contextSize.y;
-                ResizeRenderPipeline(sceneCamera, m_LastSceneViewWidth, m_LastSceneViewHeight);
-            }
-
-            // TODO image 不能有 alpha
-            auto srvHandle = m_StaticDescriptorViewTable.GetGpuHandle(1);
-            ImGui::Image((ImTextureID)srvHandle.ptr, contextSize);
-
-            //static const float identityMatrix[16] =
-            //{ 1.f, 0.f, 0.f, 0.f,
-            //    0.f, 1.f, 0.f, 0.f,
-            //    0.f, 0.f, 1.f, 0.f,
-            //    0.f, 0.f, 0.f, 1.f };
-
-            //ImGuizmo::SetDrawlist();
-
-            //float windowWidth = (float)ImGui::GetWindowWidth();
-            //float windowHeight = (float)ImGui::GetWindowHeight();
-            //ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
-
-            //XMFLOAT4X4 viewMatrix = sceneCamera->GetViewMatrix();
-            //XMFLOAT4X4 projMatrix = sceneCamera->GetProjectionMatrix();
-            //ImGuizmo::DrawGrid(reinterpret_cast<float*>(viewMatrix.m), reinterpret_cast<float*>(projMatrix.m),
-            //    identityMatrix, 100.0f);
-
-            float deltaTimeClamped = min(GetApp().GetDeltaTime(), 0.01f);
-
-            static bool isRotating = false;
-
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Right) && (isRotating || ImGui::IsWindowHovered()))
-            {
-                isRotating = true;
-                ImVec2 delta = ImGui::GetIO().MouseDelta; //ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
-
-                if (delta.x != 0 && delta.y != 0)
-                {
-                    const float speed = 12.0f;
-                    float radDelta = XMConvertToRadians(speed * deltaTimeClamped);
-
-                    float x = delta.y * radDelta;
-                    float y = delta.x * radDelta;
-
-                    XMVECTOR rotX = XMQuaternionRotationRollPitchYaw(x, 0, 0);
-                    XMVECTOR rotY = XMQuaternionRotationRollPitchYaw(0, y, 0);
-
-                    // 绕世界空间 Y 轴旋转，再绕本地空间 X 轴旋转
-                    auto transform = sceneCamera->GetTransform();
-                    XMVECTOR rot = XMQuaternionMultiply(XMQuaternionMultiply(rotX, transform->LoadLocalRotation()), rotY);
-
-                    XMFLOAT4 r = {};
-                    XMStoreFloat4(&r, rot);
-                    TransformInternalUtility::SetLocalRotation(transform, r);
-
-                    // TODO WASD 控制相机移动
-
-                    //ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
-                    //DEBUG_LOG_INFO("ROTATE: %f, %f", x, y);
-                }
-
-                const float moveSpeed = 6.0f;
-                const float moveSpeedFast = 16.0f;
-                float moveDelta;
-
-                if (ImGui::IsKeyDown(ImGuiMod_Shift))
-                {
-                    moveDelta = moveSpeedFast * deltaTimeClamped;
-                }
-                else
-                {
-                    moveDelta = moveSpeed * deltaTimeClamped;
-                }
-
-                auto transform = sceneCamera->GetTransform();
-                XMVECTOR position = transform->LoadLocalPosition();
-
-                if (ImGui::IsKeyDown(ImGuiKey_W))
-                {
-                    position = XMVectorAdd(position,
-                        XMVectorMultiply(transform->LoadForward(), XMVectorSet(moveDelta, moveDelta, moveDelta, 1)));
-                }
-
-                if (ImGui::IsKeyDown(ImGuiKey_A))
-                {
-                    position = XMVectorAdd(position,
-                        XMVectorMultiply(transform->LoadRight(), XMVectorSet(-moveDelta, -moveDelta, -moveDelta, 1)));
-                }
-
-                if (ImGui::IsKeyDown(ImGuiKey_S))
-                {
-                    position = XMVectorAdd(position,
-                        XMVectorMultiply(transform->LoadForward(), XMVectorSet(-moveDelta, -moveDelta, -moveDelta, 1)));
-                }
-
-                if (ImGui::IsKeyDown(ImGuiKey_D))
-                {
-                    position = XMVectorAdd(position,
-                        XMVectorMultiply(transform->LoadRight(), XMVectorSet(moveDelta, moveDelta, moveDelta, 1)));
-                }
-
-                XMFLOAT3 pos = {};
-                XMStoreFloat3(&pos, position);
-                TransformInternalUtility::SetLocalPosition(transform, pos);
-            }
-            else
-            {
-                isRotating = false;
-            }
-
-            static bool isPanning = false;
-
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle) && (isPanning || ImGui::IsWindowHovered()))
-            {
-                isPanning = true;
-                ImVec2 delta = ImGui::GetIO().MouseDelta; //ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
-
-                if (delta.x != 0 && delta.y != 0)
-                {
-                    // TODO 控制最大移动距离，卡的时候 deltaTime 会很大
-                    const float speed = 0.8f;
-                    float offsetDelta = speed * deltaTimeClamped;
-
-                    float x = -delta.x * offsetDelta;
-                    float y = delta.y * offsetDelta;
-
-                    auto transform = sceneCamera->GetTransform();
-                    XMVECTOR position = XMVectorAdd(XMVectorAdd(
-                        XMVectorMultiply(transform->LoadRight(), XMVectorSet(x, x, x, 1)),
-                        XMVectorMultiply(transform->LoadUp(), XMVectorSet(y, y, y, 1))
-                    ), transform->LoadLocalPosition());
-
-                    XMFLOAT3 pos = {};
-                    XMStoreFloat3(&pos, position);
-                    TransformInternalUtility::SetLocalPosition(transform, pos);
-
-                    //ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
-                    //DEBUG_LOG_INFO("ROTATE: %f, %f", x, y);
-                }
-            }
-            else
-            {
-                isPanning = false;
-            }
-
-            if (ImGui::IsWindowHovered())
-            {
-                float delta = ImGui::GetIO().MouseWheel;
-
-                if (delta)
-                {
-                    // TODO 控制最大移动距离，卡的时候 deltaTime 会很大
-                    const float speed = 10.0f;
-                    float offsetDelta = speed * deltaTimeClamped;
-
-                    float z = delta * offsetDelta;
-
-                    auto transform = sceneCamera->GetTransform();
-                    XMVECTOR position = XMVectorAdd(XMVectorMultiply(transform->LoadForward(), XMVectorSet(z, z, z, 1)), transform->LoadLocalPosition());
-
-                    XMFLOAT3 pos = {};
-                    XMStoreFloat3(&pos, position);
-                    TransformInternalUtility::SetLocalPosition(transform, pos);
-                }
-            }
-
-            ImGui::End();
-        }
-
-        if (m_ShowHierarchyWindow)
-        {
-            ImGui::Begin("Hierarchy", &m_ShowHierarchyWindow);
-            m_DotNet->Invoke(ManagedMethod::DrawHierarchyWindow);
-            ImGui::End();
-        }
 
         if (m_ShowDescriptorHeapWindow)
         {
@@ -802,27 +582,6 @@ namespace march
     {
         auto [width, height] = GetApp().GetClientWidthAndHeight();
         GetGfxDevice()->ResizeBackBuffer(width, height);
-    }
-
-    void GameEditor::ResizeRenderPipeline(Camera* sceneCamera, int width, int height)
-    {
-        GetGfxDevice()->WaitForIdle();
-        sceneCamera->GetTargetDisplay()->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-        SetSceneViewSrv(sceneCamera);
-    }
-
-    void GameEditor::SetSceneViewSrv(Camera* sceneCamera)
-    {
-        Display* display = sceneCamera->GetTargetDisplay();
-
-        if (display->GetEnableMSAA())
-        {
-            m_StaticDescriptorViewTable.Copy(1, display->GetResolvedColorBuffer()->GetSrvCpuDescriptorHandle());
-        }
-        else
-        {
-            m_StaticDescriptorViewTable.Copy(1, display->GetColorBuffer()->GetSrvCpuDescriptorHandle());
-        }
     }
 
     std::string GameEditor::GetFontPath()

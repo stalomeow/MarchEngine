@@ -86,14 +86,14 @@ NATIVE_EXPORT_AUTO Camera_SetEnableWireframe(cs<Camera*> camera, cs_bool value)
     CameraInternalUtility::SetEnableWireframe(camera, value);
 }
 
-NATIVE_EXPORT_AUTO Camera_GetIsEditorSceneCamera(cs<Camera*> camera)
+NATIVE_EXPORT_AUTO Camera_GetEnableGizmos(cs<Camera*> camera)
 {
-    retcs camera->GetIsEditorSceneCamera();
+    retcs camera->GetEnableGizmos();
 }
 
-NATIVE_EXPORT_AUTO Camera_SetIsEditorSceneCamera(cs<Camera*> camera, cs_bool value)
+NATIVE_EXPORT_AUTO Camera_SetEnableGizmos(cs<Camera*> camera, cs_bool value)
 {
-    CameraInternalUtility::SetIsEditorSceneCamera(camera, value);
+    CameraInternalUtility::SetEnableGizmos(camera, value);
 }
 
 NATIVE_EXPORT_AUTO Camera_GetViewMatrix(cs<Camera*> camera)
@@ -104,4 +104,9 @@ NATIVE_EXPORT_AUTO Camera_GetViewMatrix(cs<Camera*> camera)
 NATIVE_EXPORT_AUTO Camera_GetProjectionMatrix(cs<Camera*> camera)
 {
     retcs camera->GetProjectionMatrix();
+}
+
+NATIVE_EXPORT_AUTO Camera_SetCustomTargetDisplay(cs<Camera*> camera, cs<Display*> display)
+{
+    CameraInternalUtility::SetCustomTargetDisplay(camera, display);
 }

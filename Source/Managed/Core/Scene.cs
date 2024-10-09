@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace March.Core
 {
-    public class Scene : MarchObject, IForceInlineSerialization
+    public class Scene : MarchObject, IForceInlineSerialization, IDisposable
     {
         [JsonProperty] public string Name = "New Scene";
         [JsonProperty] public List<GameObject> RootGameObjects = [];
@@ -65,6 +65,16 @@ namespace March.Core
             }
 
             return current;
+        }
+
+        public void Dispose()
+        {
+            foreach (GameObject go in RootGameObjects)
+            {
+                //go.dis
+            }
+
+            RootGameObjects.Clear();
         }
     }
 }

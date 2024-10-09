@@ -134,7 +134,6 @@ namespace march
     }
 
     std::unique_ptr<Display> Display::s_MainDisplay = nullptr;
-    std::unique_ptr<Display> Display::s_EditorSceneDisplay = nullptr;
 
     Display* Display::GetMainDisplay()
     {
@@ -149,20 +148,5 @@ namespace march
     void Display::DestroyMainDisplay()
     {
         s_MainDisplay.reset();
-    }
-
-    Display* Display::GetEditorSceneDisplay()
-    {
-        return s_EditorSceneDisplay.get();
-    }
-
-    void Display::CreateEditorSceneDisplay(GfxDevice* device, uint32_t width, uint32_t height)
-    {
-        s_EditorSceneDisplay = std::make_unique<Display>(device, "EditorScene", width, height);
-    }
-
-    void Display::DestroyEditorSceneDisplay()
-    {
-        s_EditorSceneDisplay.reset();
     }
 }

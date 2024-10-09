@@ -16,7 +16,7 @@ namespace march
         , m_NearZ(0.1f)
         , m_FarZ(1000.0f)
         , m_EnableWireframe(false)
-        , m_IsEditorSceneCamera(false)
+        , m_EnableGizmos(false)
     {
     }
 
@@ -38,7 +38,7 @@ namespace march
 
     Display* Camera::GetTargetDisplay() const
     {
-        return m_IsEditorSceneCamera ? Display::GetEditorSceneDisplay() : Display::GetMainDisplay();
+        return m_CustomTargetDisplay != nullptr ? m_CustomTargetDisplay : Display::GetMainDisplay();
     }
 
     uint32_t Camera::GetPixelWidth() const
@@ -96,9 +96,9 @@ namespace march
         return m_EnableWireframe;
     }
 
-    bool Camera::GetIsEditorSceneCamera() const
+    bool Camera::GetEnableGizmos() const
     {
-        return m_IsEditorSceneCamera;
+        return m_EnableGizmos;
     }
 
     XMFLOAT4X4 Camera::GetViewMatrix() const
@@ -174,8 +174,13 @@ namespace march
         camera->m_EnableWireframe = value;
     }
 
-    void CameraInternalUtility::SetIsEditorSceneCamera(Camera* camera, bool value)
+    void CameraInternalUtility::SetEnableGizmos(Camera* camera, bool value)
     {
-        camera->m_IsEditorSceneCamera = value;
+        camera->m_EnableGizmos = value;
+    }
+
+    void CameraInternalUtility::SetCustomTargetDisplay(Camera* camera, Display* value)
+    {
+        camera->m_CustomTargetDisplay = value;
     }
 }

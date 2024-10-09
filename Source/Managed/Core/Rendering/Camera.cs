@@ -3,7 +3,7 @@ using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Numerics;
 
-namespace March.Core
+namespace March.Core.Rendering
 {
     public partial class Camera : Component
     {
@@ -73,15 +73,25 @@ namespace March.Core
             set => Camera_SetFarClipPlane(NativePtr, value);
         }
 
-        internal bool IsEditorSceneCamera
+        internal bool EnableGizmos
         {
-            get => Camera_GetIsEditorSceneCamera(NativePtr);
-            set => Camera_SetIsEditorSceneCamera(NativePtr, value);
+            get => Camera_GetEnableGizmos(NativePtr);
+            set => Camera_SetEnableGizmos(NativePtr, value);
         }
 
         public Matrix4x4 ViewMatrix => Camera_GetViewMatrix(NativePtr);
 
         public Matrix4x4 ProjectionMatrix => Camera_GetProjectionMatrix(NativePtr);
+
+        internal void SetCustomTargetDisplay(nint display)
+        {
+            Camera_SetCustomTargetDisplay(NativePtr, display);
+        }
+
+        internal void ResetTargetDisplay()
+        {
+            SetCustomTargetDisplay(nint.Zero);
+        }
 
         #region Bindings
 
@@ -137,16 +147,19 @@ namespace March.Core
         private static partial void Camera_SetEnableWireframe(nint camera, bool value);
 
         [NativeFunction]
-        private static partial bool Camera_GetIsEditorSceneCamera(nint camera);
+        private static partial bool Camera_GetEnableGizmos(nint camera);
 
         [NativeFunction]
-        private static partial void Camera_SetIsEditorSceneCamera(nint camera, bool value);
+        private static partial void Camera_SetEnableGizmos(nint camera, bool value);
 
         [NativeFunction]
         private static partial Matrix4x4 Camera_GetViewMatrix(nint camera);
 
         [NativeFunction]
         private static partial Matrix4x4 Camera_GetProjectionMatrix(nint camera);
+
+        [NativeFunction]
+        private static partial void Camera_SetCustomTargetDisplay(nint camera, nint display);
 
         #endregion
     }

@@ -35,10 +35,6 @@ namespace march
         static void CreateMainDisplay(GfxDevice* device, uint32_t width, uint32_t height);
         static void DestroyMainDisplay();
 
-        static Display* GetEditorSceneDisplay();
-        static void CreateEditorSceneDisplay(GfxDevice* device, uint32_t width, uint32_t height);
-        static void DestroyEditorSceneDisplay();
-
     private:
         void CreateBuffers(uint32_t width, uint32_t height);
 
@@ -59,6 +55,5 @@ namespace march
         static const DXGI_FORMAT s_DepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
         static std::unique_ptr<Display> s_MainDisplay;
-        static std::unique_ptr<Display> s_EditorSceneDisplay;
     };
 }

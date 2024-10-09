@@ -18,9 +18,6 @@ namespace march
         { ManagedMethod::Initialize         , { L"March.Core.EntryPoint,March.Core"                 , L"OnNativeInitialize" } },
         { ManagedMethod::Tick               , { L"March.Core.EntryPoint,March.Core"                 , L"OnNativeTick"       } },
         { ManagedMethod::EditorInitialize   , { L"March.Editor.EditorEntryPoint,March.Editor"       , L"OnNativeInitialize" } },
-        { ManagedMethod::DrawInspectorWindow, { L"March.Editor.Windows.InspectorWindow,March.Editor", L"Draw"               } },
-        { ManagedMethod::DrawProjectWindow  , { L"March.Editor.Windows.ProjectWindow,March.Editor"  , L"Draw"               } },
-        { ManagedMethod::DrawHierarchyWindow, { L"March.Editor.Windows.HierarchyWindow,March.Editor", L"Draw"               } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";

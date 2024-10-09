@@ -21,12 +21,30 @@
     <ClCompile Include="Private\WinMain.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\SceneWindow.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\SceneWindow.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\EditorWindow.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\EditorWindow.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\EditorGUI.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GameEditor.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\SceneWindow.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\EditorWindow.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

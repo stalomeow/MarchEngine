@@ -1,9 +1,10 @@
 #pragma once
 
-#include <string>
-#include <stdexcept>
-#include <utility>
+#include <exception>
 #include <stdint.h>
+#include <stdio.h>
+#include <string>
+#include <type_traits>
 
 namespace march::StringUtility
 {

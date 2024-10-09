@@ -1,80 +1,87 @@
 using March.Core;
 using March.Core.Rendering;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 
 namespace March.Editor.Windows
 {
-    internal static class ProjectWindow
+    internal class ProjectWindow : EditorWindow
     {
-        private static readonly ProjectFileTree s_FileTree = new();
-        private static readonly FileSystemWatcher s_AssetFileWatcher;
-        private static readonly FileSystemWatcher s_EngineShaderWatcher;
-        private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileEvents = new();
+        private readonly ProjectFileTree m_FileTree = new();
+        private readonly FileSystemWatcher m_AssetFileWatcher;
+        private readonly FileSystemWatcher m_EngineShaderWatcher;
+        private readonly ConcurrentQueue<FileSystemEventArgs> m_FileEvents = new();
 
-        static ProjectWindow()
+        public ProjectWindow() : base("Project")
         {
             RefreshAssetsAndRebuildFileTree();
 
-            s_AssetFileWatcher = new FileSystemWatcher(Path.Combine(Application.DataPath, "Assets"));
-            s_EngineShaderWatcher = new FileSystemWatcher(Shader.EngineShaderPath);
+            m_AssetFileWatcher = new FileSystemWatcher(Path.Combine(Application.DataPath, "Assets"));
+            m_EngineShaderWatcher = new FileSystemWatcher(Shader.EngineShaderPath);
 
-            SetupFileSystemWatcher(s_AssetFileWatcher);
-            SetupFileSystemWatcher(s_EngineShaderWatcher);
+            SetupFileSystemWatcher(m_AssetFileWatcher);
+            SetupFileSystemWatcher(m_EngineShaderWatcher);
         }
 
-        private static void SetupFileSystemWatcher(FileSystemWatcher watcher)
+        protected override void OnDispose(bool disposing)
+        {
+            m_AssetFileWatcher.Dispose();
+            m_EngineShaderWatcher.Dispose();
+
+            base.OnDispose(disposing);
+        }
+
+        private void SetupFileSystemWatcher(FileSystemWatcher watcher)
         {
             watcher.EnableRaisingEvents = true; // 必须设置为 true，否则事件不会触发
             watcher.IncludeSubdirectories = true;
             watcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite;
 
             // 也可以用 watcher.SynchronizingObject
-            watcher.Changed += (_, e) => s_FileEvents.Enqueue(e);
-            watcher.Created += (_, e) => s_FileEvents.Enqueue(e);
-            watcher.Deleted += (_, e) => s_FileEvents.Enqueue(e);
-            watcher.Renamed += (_, e) => s_FileEvents.Enqueue(e);
+            watcher.Changed += (_, e) => m_FileEvents.Enqueue(e);
+            watcher.Created += (_, e) => m_FileEvents.Enqueue(e);
+            watcher.Deleted += (_, e) => m_FileEvents.Enqueue(e);
+            watcher.Renamed += (_, e) => m_FileEvents.Enqueue(e);
         }
 
-        private static void AddFileOrFolder(string fullPath, out string validatedPath)
+        private void AddFileOrFolder(string fullPath, out string validatedPath)
         {
             validatedPath = AssetDatabase.GetValidatedAssetPathByFullPath(fullPath, out AssetPathType type);
 
             if (type == AssetPathType.ProjectAsset)
             {
                 bool isFolder = File.GetAttributes(fullPath).HasFlag(FileAttributes.Directory);
-                s_FileTree.Add(validatedPath, isFolder);
+                m_FileTree.Add(validatedPath, isFolder);
             }
         }
 
-        private static void RemoveFileOrFolder(string fullPath)
+        private void RemoveFileOrFolder(string fullPath)
         {
             string path = AssetDatabase.GetValidatedAssetPathByFullPath(fullPath, out AssetPathType type);
 
             if (type == AssetPathType.ProjectAsset)
             {
-                s_FileTree.Remove(path);
+                m_FileTree.Remove(path);
             }
         }
 
-        private static void OnFileChanged(FileSystemEventArgs e)
+        private void OnFileChanged(FileSystemEventArgs e)
         {
             AssetDatabase.OnAssetChanged(e.FullPath);
         }
 
-        private static void OnFileCreated(FileSystemEventArgs e)
+        private void OnFileCreated(FileSystemEventArgs e)
         {
             AssetDatabase.OnAssetCreated(e.FullPath);
             AddFileOrFolder(e.FullPath, out _);
         }
 
-        private static void OnFileDeleted(FileSystemEventArgs e)
+        private void OnFileDeleted(FileSystemEventArgs e)
         {
             AssetDatabase.OnAssetDeleted(e.FullPath);
             RemoveFileOrFolder(e.FullPath);
         }
 
-        private static void OnFileRenamed(RenamedEventArgs e)
+        private void OnFileRenamed(RenamedEventArgs e)
         {
             AssetDatabase.OnAssetRenamed(e.OldFullPath, e.FullPath, out bool isVisualStudioSavingFile);
 
@@ -85,9 +92,9 @@ namespace March.Editor.Windows
             }
         }
 
-        private static void RefreshAssetsAndRebuildFileTree()
+        private void RefreshAssetsAndRebuildFileTree()
         {
-            s_FileTree.Clear();
+            m_FileTree.Clear();
 
             var root1 = new DirectoryInfo(Path.Combine(Application.DataPath, "Assets"));
 
@@ -108,10 +115,11 @@ namespace March.Editor.Windows
             AssetDatabase.TrimGuidMap();
         }
 
-        [UnmanagedCallersOnly]
-        internal static void Draw()
+        protected override void OnDraw()
         {
-            while (s_FileEvents.TryDequeue(out FileSystemEventArgs? e))
+            base.OnDraw();
+
+            while (m_FileEvents.TryDequeue(out FileSystemEventArgs? e))
             {
                 switch (e.ChangeType)
                 {
@@ -137,7 +145,7 @@ namespace March.Editor.Windows
                 }
             }
 
-            s_FileTree.Draw();
+            m_FileTree.Draw();
         }
     }
 }

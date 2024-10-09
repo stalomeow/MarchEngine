@@ -1,38 +1,40 @@
 using March.Core;
-using System.Runtime.InteropServices;
 
 namespace March.Editor.Windows
 {
-    internal static class InspectorWindow
+    internal class InspectorWindow : EditorWindow
     {
-        private static readonly DrawerCache<InspectorDrawer> s_DrawerCache = new(typeof(InspectorDrawerFor<>));
-        private static MarchObject? s_LastTarget;
-        private static InspectorDrawer? s_LastDrawer;
+        private readonly DrawerCache<InspectorDrawer> m_DrawerCache = new(typeof(InspectorDrawerFor<>));
+        private MarchObject? m_LastTarget;
+        private InspectorDrawer? m_LastDrawer;
 
-        [UnmanagedCallersOnly]
-        internal static void Draw()
+        public InspectorWindow() : base("Inspector") { }
+
+        protected override void OnDraw()
         {
+            base.OnDraw();
+
             MarchObject? target = Selection.Active;
 
-            if (target != s_LastTarget)
+            if (target != m_LastTarget)
             {
-                s_LastDrawer?.OnDestroy();
+                m_LastDrawer?.OnDestroy();
 
-                if (target != null && s_DrawerCache.TryGetType(target.GetType(), out Type? drawerType))
+                if (target != null && m_DrawerCache.TryGetType(target.GetType(), out Type? drawerType))
                 {
-                    s_LastDrawer = (InspectorDrawer)Activator.CreateInstance(drawerType)!;
-                    s_LastDrawer.Target = target;
-                    s_LastDrawer.OnCreate();
+                    m_LastDrawer = (InspectorDrawer)Activator.CreateInstance(drawerType)!;
+                    m_LastDrawer.Target = target;
+                    m_LastDrawer.OnCreate();
                 }
                 else
                 {
-                    s_LastDrawer = null;
+                    m_LastDrawer = null;
                 }
 
-                s_LastTarget = target;
+                m_LastTarget = target;
             }
 
-            s_LastDrawer?.Draw();
+            m_LastDrawer?.Draw();
         }
     }
 }
