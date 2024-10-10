@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace March.Editor.Windows
 {
-    [EditorWindowMenu("Window/Console")]
+    [EditorWindowMenu("Window/General/Console")]
     internal partial class ConsoleWindow : EditorWindow
     {
         public ConsoleWindow() : base(ConsoleWindow_New(), "Console") { }

@@ -38,10 +38,6 @@ namespace march
             return;
         }
 
-        if (ImGui::RadioButton("Play", false))
-        {
-        }
-
         if (m_Display == nullptr)
         {
             ImGui::RadioButton("MSAA", false);

@@ -2,7 +2,7 @@ using March.Core.Binding;
 
 namespace March.Editor.Windows
 {
-    [EditorWindowMenu("Window/Descriptor Heap Debugger")]
+    [EditorWindowMenu("Window/Analysis/Descriptor Heap Debugger")]
     internal partial class DescriptorHeapDebuggerWindow : EditorWindow
     {
         public DescriptorHeapDebuggerWindow() : base(DescriptorHeapDebuggerWindow_New(), "Descriptor Heap Debugger") { }

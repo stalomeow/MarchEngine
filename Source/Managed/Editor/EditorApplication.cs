@@ -71,6 +71,8 @@ namespace March.Editor
             s_LastTypeCacheVersion = TypeCache.Version;
             s_WindowMenu.Clear();
 
+            using var types = ListPool<KeyValuePair<string, Type>>.Get();
+
             foreach (Type windowType in TypeCache.GetTypesDerivedFrom<EditorWindow>())
             {
                 var attr = windowType.GetCustomAttribute<EditorWindowMenuAttribute>();
@@ -80,7 +82,15 @@ namespace March.Editor
                     continue;
                 }
 
-                s_WindowMenu.AddMenuItem(attr.MenuPath, callback: (ref object? _) =>
+                types.Value.Add(new KeyValuePair<string, Type>(attr.MenuPath, windowType));
+            }
+
+            types.Value.Sort((x, y) => x.Key.CompareTo(y.Key));
+
+            foreach (KeyValuePair<string, Type> kv in types.Value)
+            {
+                Type windowType = kv.Value;
+                s_WindowMenu.AddMenuItem(kv.Key, callback: (ref object? _) =>
                 {
                     try
                     {

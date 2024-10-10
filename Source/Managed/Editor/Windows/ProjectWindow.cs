@@ -1,6 +1,6 @@
 namespace March.Editor.Windows
 {
-    [EditorWindowMenu("Window/Project")]
+    [EditorWindowMenu("Window/General/Project")]
     internal class ProjectWindow : EditorWindow
     {
         private readonly ProjectFileTree m_FileTree = new();

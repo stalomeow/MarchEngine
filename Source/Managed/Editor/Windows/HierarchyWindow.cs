@@ -3,7 +3,7 @@ using March.Core.Rendering;
 
 namespace March.Editor.Windows
 {
-    [EditorWindowMenu("Window/Hierarchy")]
+    [EditorWindowMenu("Window/General/Hierarchy")]
     internal class HierarchyWindow : EditorWindow
     {
         private static readonly GenericMenu s_ContextMenu = new("HierarchyContextMenu");

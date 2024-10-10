@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace March.Editor.Windows
 {
-    [EditorWindowMenu("Window/Scene")]
+    [EditorWindowMenu("Window/General/Scene")]
     internal unsafe partial class SceneWindow : EditorWindow
     {
         private readonly Material m_GridMaterial = new();
