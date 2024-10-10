@@ -1,5 +1,6 @@
 using March.Core;
 using March.Core.Rendering;
+using System.Numerics;
 
 namespace March.Editor.Windows
 {
@@ -43,7 +44,10 @@ namespace March.Editor.Windows
             });
         }
 
-        public HierarchyWindow() : base("Hierarchy") { }
+        public HierarchyWindow() : base("Hierarchy")
+        {
+            DefaultSize = new Vector2(350.0f, 600.0f);
+        }
 
         protected override void OnDraw()
         {

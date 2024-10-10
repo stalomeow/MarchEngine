@@ -45,6 +45,12 @@
     <ClCompile Include="Private\DescriptorHeapDebuggerWindow.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\ImGuiDemoWindow.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\ImGuiDemoWindow.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\EditorGUI.h">
@@ -63,6 +69,9 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\DescriptorHeapDebuggerWindow.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\ImGuiDemoWindow.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

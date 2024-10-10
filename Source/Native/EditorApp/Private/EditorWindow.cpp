@@ -2,12 +2,18 @@
 
 namespace march
 {
-    EditorWindow::EditorWindow() : m_Title(), m_Id(), m_FullName(), m_IsOpen(true)
+    EditorWindow::EditorWindow()
+        : m_IsOpen(true)
+        , m_Title()
+        , m_Id()
+        , m_FullName()
+        , m_DefaultSize(600.0f, 350.0f)
     {
     }
 
     bool EditorWindow::Begin()
     {
+        ImGui::SetNextWindowSize(m_DefaultSize, ImGuiCond_FirstUseEver);
         return ImGui::Begin(m_FullName.c_str(), &m_IsOpen, GetWindowFlags());
     }
 
@@ -31,6 +37,11 @@ namespace march
         return m_Id;
     }
 
+    const ImVec2& EditorWindow::GetDefaultSize() const
+    {
+        return m_DefaultSize;
+    }
+
     bool EditorWindow::GetIsOpen() const
     {
         return m_IsOpen;
@@ -52,6 +63,11 @@ namespace march
         m_FullName = m_Title + "###" + m_Id;
     }
 
+    void EditorWindow::SetDefaultSize(const ImVec2& size)
+    {
+        m_DefaultSize = size;
+    }
+
     bool EditorWindowInternalUtility::InvokeBegin(EditorWindow* window)
     {
         return window->Begin();
@@ -70,6 +86,11 @@ namespace march
     void EditorWindowInternalUtility::SetId(EditorWindow* window, const std::string& id)
     {
         window->SetId(id);
+    }
+
+    void EditorWindowInternalUtility::SetDefaultSize(EditorWindow* window, const ImVec2& size)
+    {
+        window->SetDefaultSize(size);
     }
 
     void EditorWindowInternalUtility::SetIsOpen(EditorWindow* window, bool value)

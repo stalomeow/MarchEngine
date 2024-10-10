@@ -12,6 +12,7 @@ namespace march
         EditorApplication_OnStart,
         EditorApplication_OnTick,
         EditorApplication_OnQuit,
+        EditorApplication_OpenConsoleWindowIfNot,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

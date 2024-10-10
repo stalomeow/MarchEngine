@@ -15,6 +15,8 @@ namespace March.Editor.Windows
 
         public SceneWindow() : base(SceneWindow_New(), "Scene")
         {
+            DefaultSize = new Vector2(960.0f, 540.0f);
+
             GameObject go = m_DummyScene.CreateGameObject("EditorSceneCamera");
             go.transform.Position = new Vector3(0, 5, -5);
             go.transform.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI / 4.0f);

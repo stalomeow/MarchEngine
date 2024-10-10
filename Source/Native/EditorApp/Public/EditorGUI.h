@@ -106,6 +106,10 @@ namespace march
         // only call EndMainMenuBar() if BeginMainMenuBar() returns true!
         static void EndMainMenuBar();
 
+        static bool BeginMainViewportSideBar(const std::string& name, ImGuiDir dir, float contentHeight);
+        // always call EndMainViewportSideBar() after BeginMainViewportSideBar()
+        static void EndMainViewportSideBar();
+
     public:
         static constexpr float MinLabelWidth = 140.0f;
         static constexpr float MaxFieldWidth = 320.0f;

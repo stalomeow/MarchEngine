@@ -2,6 +2,7 @@ using March.Core;
 using March.Core.Binding;
 using March.Core.Serialization;
 using Newtonsoft.Json;
+using System.Numerics;
 
 namespace March.Editor.Windows
 {
@@ -49,7 +50,7 @@ namespace March.Editor.Windows
                 return NativeString.GetAndFree(title);
             }
 
-            set
+            protected set
             {
                 using NativeString v = value;
                 EditorWindow_SetTitle(NativePtr, v.Data);
@@ -65,11 +66,18 @@ namespace March.Editor.Windows
                 return NativeString.GetAndFree(id);
             }
 
-            set
+            protected set
             {
                 using NativeString v = value;
                 EditorWindow_SetId(NativePtr, v.Data);
             }
+        }
+
+        [JsonProperty]
+        public Vector2 DefaultSize
+        {
+            get => EditorWindow_GetDefaultSize(NativePtr);
+            protected set => EditorWindow_SetDefaultSize(NativePtr, value);
         }
 
         internal bool IsOpen
@@ -143,6 +151,12 @@ namespace March.Editor.Windows
 
         [NativeFunction]
         private static partial void EditorWindow_SetId(nint w, nint id);
+
+        [NativeFunction]
+        private static partial Vector2 EditorWindow_GetDefaultSize(nint w);
+
+        [NativeFunction]
+        private static partial void EditorWindow_SetDefaultSize(nint w, Vector2 value);
 
         [NativeFunction]
         private static partial bool EditorWindow_GetIsOpen(nint w);

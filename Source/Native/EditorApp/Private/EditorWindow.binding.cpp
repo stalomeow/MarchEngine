@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO EditorWindow_CreateDefault()
 {
-    retcs new EditorWindow();
+    retcs DBG_NEW EditorWindow();
 }
 
 NATIVE_EXPORT_AUTO EditorWindow_DeleteDefault(cs<EditorWindow*> w)
@@ -29,6 +29,17 @@ NATIVE_EXPORT_AUTO EditorWindow_GetId(cs<EditorWindow*> w)
 NATIVE_EXPORT_AUTO EditorWindow_SetId(cs<EditorWindow*> w, cs_string id)
 {
     EditorWindowInternalUtility::SetId(w, id);
+}
+
+NATIVE_EXPORT_AUTO EditorWindow_GetDefaultSize(cs<EditorWindow*> w)
+{
+    const ImVec2& size = w->GetDefaultSize();
+    retcs XMFLOAT2(size.x, size.y);
+}
+
+NATIVE_EXPORT_AUTO EditorWindow_SetDefaultSize(cs<EditorWindow*> w, cs_vec2 size)
+{
+    EditorWindowInternalUtility::SetDefaultSize(w, ImVec2(size.data.x, size.data.y));
 }
 
 NATIVE_EXPORT_AUTO EditorWindow_GetIsOpen(cs<EditorWindow*> w)

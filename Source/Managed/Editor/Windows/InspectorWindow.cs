@@ -1,4 +1,5 @@
 using March.Core;
+using System.Numerics;
 
 namespace March.Editor.Windows
 {
@@ -9,7 +10,10 @@ namespace March.Editor.Windows
         private MarchObject? m_LastTarget;
         private InspectorDrawer? m_LastDrawer;
 
-        public InspectorWindow() : base("Inspector") { }
+        public InspectorWindow() : base("Inspector")
+        {
+            DefaultSize = new Vector2(350.0f, 600.0f);
+        }
 
         protected override void OnDraw()
         {

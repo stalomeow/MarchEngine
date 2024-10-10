@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO SceneWindow_New()
 {
-    retcs new SceneWindow();
+    retcs DBG_NEW SceneWindow();
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_Delete(cs<SceneWindow*> w)

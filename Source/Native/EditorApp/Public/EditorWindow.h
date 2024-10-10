@@ -22,25 +22,29 @@ namespace march
 
         const std::string& GetTitle() const;
         const std::string& GetId() const;
+        const ImVec2& GetDefaultSize() const;
         bool GetIsOpen() const;
 
     protected:
         void SetTitle(const std::string& title);
         void SetId(const std::string& id);
+        void SetDefaultSize(const ImVec2& size);
 
+        virtual bool Begin();
+        virtual void End();
         virtual ImGuiWindowFlags GetWindowFlags() const;
+
         virtual void OnOpen() {}
         virtual void OnClose() {}
         virtual void OnDraw() {}
 
-    private:
-        bool Begin();
-        void End();
+        bool m_IsOpen;
 
+    private:
         std::string m_Title;
         std::string m_Id;
         std::string m_FullName;
-        bool m_IsOpen;
+        ImVec2 m_DefaultSize;
     };
 
     class EditorWindowInternalUtility
@@ -50,6 +54,7 @@ namespace march
         static void InvokeEnd(EditorWindow* window);
         static void SetTitle(EditorWindow* window, const std::string& title);
         static void SetId(EditorWindow* window, const std::string& id);
+        static void SetDefaultSize(EditorWindow* window, const ImVec2& size);
         static void SetIsOpen(EditorWindow* window, bool value);
         static void InvokeOnOpen(EditorWindow* window);
         static void InvokeOnClose(EditorWindow* window);

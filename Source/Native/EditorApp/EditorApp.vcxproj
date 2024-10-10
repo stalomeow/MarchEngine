@@ -125,6 +125,8 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <ClCompile Include="Private\EditorWindow.binding.cpp" />
     <ClCompile Include="Private\EditorWindow.cpp" />
     <ClCompile Include="Private\GameEditor.cpp" />
+    <ClCompile Include="Private\ImGuiDemoWindow.binding.cpp" />
+    <ClCompile Include="Private\ImGuiDemoWindow.cpp" />
     <ClCompile Include="Private\SceneWindow.binding.cpp" />
     <ClCompile Include="Private\SceneWindow.cpp" />
     <ClCompile Include="Private\WinMain.cpp" />
@@ -135,6 +137,7 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <ClInclude Include="Public\EditorGUI.h" />
     <ClInclude Include="Public\EditorWindow.h" />
     <ClInclude Include="Public\GameEditor.h" />
+    <ClInclude Include="Public\ImGuiDemoWindow.h" />
     <ClInclude Include="Public\SceneWindow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

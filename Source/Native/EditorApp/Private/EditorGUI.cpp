@@ -640,4 +640,26 @@ namespace march
     {
         ImGui::EndMainMenuBar();
     }
+
+    bool EditorGUI::BeginMainViewportSideBar(const std::string& name, ImGuiDir dir, float contentHeight)
+    {
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetStyleColorVec4(ImGuiCol_DockingEmptyBg));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        float height = contentHeight + ImGui::GetStyle().WindowPadding.y * 2;
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
+
+        bool ret = ImGui::BeginViewportSideBar(name.c_str(), viewport, dir, height, flags);
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+
+        return ret;
+    }
+
+    void EditorGUI::EndMainViewportSideBar()
+    {
+        ImGui::End();
+    }
 }

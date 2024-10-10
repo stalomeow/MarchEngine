@@ -40,9 +40,58 @@ namespace March.Editor
             SaveWindows();
         }
 
+        [UnmanagedCallersOnly]
+        private static void OpenConsoleWindowIfNot()
+        {
+            OpenWindowIfNot<ConsoleWindow>();
+        }
+
+        public static T OpenWindow<T>() where T : EditorWindow, new()
+        {
+            var window = new T();
+            s_WindowData.Windows.Add(window);
+            return window;
+        }
+
+        public static T? OpenWindowIfNot<T>() where T : EditorWindow, new()
+        {
+            if (s_WindowData.Windows.Find(w => w is T) != null)
+            {
+                return null;
+            }
+
+            return OpenWindow<T>();
+        }
+
+        public static EditorWindow? OpenWindow(Type windowType)
+        {
+            try
+            {
+                var window = (EditorWindow)Activator.CreateInstance(windowType, true)!;
+                s_WindowData.Windows.Add(window);
+                return window;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to open window: {windowType}; {e}");
+                return null;
+            }
+        }
+
+        public static EditorWindow? OpenWindowIfNot(Type windowType)
+        {
+            if (s_WindowData.Windows.Find(w => w.GetType() == windowType) != null)
+            {
+                return null;
+            }
+
+            return OpenWindow(windowType);
+        }
+
         private static void DrawWindows()
         {
-            for (int i = s_WindowData.Windows.Count - 1; i >= 0; i--)
+            // 正向遍历，这样 DrawWindows() 中可以 OpenWindow()，且不会影响遍历
+            for (int i = 0; i < s_WindowData.Windows.Count; i++)
             {
                 EditorWindow window = s_WindowData.Windows[i];
                 window.Draw();
@@ -51,6 +100,7 @@ namespace March.Editor
                 {
                     window.Dispose();
                     s_WindowData.Windows.RemoveAt(i);
+                    i--;
                 }
             }
         }
@@ -85,23 +135,24 @@ namespace March.Editor
                 types.Value.Add(new KeyValuePair<string, Type>(attr.MenuPath, windowType));
             }
 
-            types.Value.Sort((x, y) => x.Key.CompareTo(y.Key));
+            types.Value.Sort((x, y) =>
+            {
+                int slashCountX = x.Key.Count(c => c == '/');
+                int slashCountY = y.Key.Count(c => c == '/');
+
+                // 斜杠越多的越靠前
+                if (slashCountX != slashCountY)
+                {
+                    return slashCountY.CompareTo(slashCountX);
+                }
+
+                return x.Key.CompareTo(y.Key);
+            });
 
             foreach (KeyValuePair<string, Type> kv in types.Value)
             {
                 Type windowType = kv.Value;
-                s_WindowMenu.AddMenuItem(kv.Key, callback: (ref object? _) =>
-                {
-                    try
-                    {
-                        var window = (EditorWindow)Activator.CreateInstance(windowType, true)!;
-                        s_WindowData.Windows.Add(window);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"Failed to create window: {windowType}; {e}");
-                    }
-                });
+                s_WindowMenu.AddMenuItem(kv.Key, callback: (ref object? _) => OpenWindow(windowType));
             }
         }
 
@@ -126,8 +177,6 @@ namespace March.Editor
                 s_WindowData.Windows.Add(new InspectorWindow());
                 s_WindowData.Windows.Add(new ProjectWindow());
                 s_WindowData.Windows.Add(new ConsoleWindow());
-
-                // TODO imgui demo window
             }
         }
 

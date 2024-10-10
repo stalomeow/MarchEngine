@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO ConsoleWindow_New()
 {
-    retcs new ConsoleWindow();
+    retcs DBG_NEW ConsoleWindow();
 }
 
 NATIVE_EXPORT_AUTO ConsoleWindow_Delete(cs<ConsoleWindow*> w)

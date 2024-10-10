@@ -15,12 +15,13 @@ namespace march
     // pair.first 是 type name，pair.second 是 method name
     const std::unordered_map<ManagedMethod, std::pair<LPCWSTR, LPCWSTR>> g_ManagedMethodConfig =
     {
-        { ManagedMethod::Application_OnStart      , { L"March.Core.Application,March.Core"          , L"OnStart" } },
-        { ManagedMethod::Application_OnTick       , { L"March.Core.Application,March.Core"          , L"OnTick"  } },
-        { ManagedMethod::Application_OnQuit       , { L"March.Core.Application,March.Core"          , L"OnQuit"  } },
-        { ManagedMethod::EditorApplication_OnStart, { L"March.Editor.EditorApplication,March.Editor", L"OnStart" } },
-        { ManagedMethod::EditorApplication_OnTick , { L"March.Editor.EditorApplication,March.Editor", L"OnTick"  } },
-        { ManagedMethod::EditorApplication_OnQuit , { L"March.Editor.EditorApplication,March.Editor", L"OnQuit"  } },
+        { ManagedMethod::Application_OnStart                      , { L"March.Core.Application,March.Core"          , L"OnStart"                 } },
+        { ManagedMethod::Application_OnTick                       , { L"March.Core.Application,March.Core"          , L"OnTick"                  } },
+        { ManagedMethod::Application_OnQuit                       , { L"March.Core.Application,March.Core"          , L"OnQuit"                  } },
+        { ManagedMethod::EditorApplication_OnStart                , { L"March.Editor.EditorApplication,March.Editor", L"OnStart"                 } },
+        { ManagedMethod::EditorApplication_OnTick                 , { L"March.Editor.EditorApplication,March.Editor", L"OnTick"                  } },
+        { ManagedMethod::EditorApplication_OnQuit                 , { L"March.Editor.EditorApplication,March.Editor", L"OnQuit"                  } },
+        { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { L"March.Editor.EditorApplication,March.Editor", L"OpenConsoleWindowIfNot"  } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";

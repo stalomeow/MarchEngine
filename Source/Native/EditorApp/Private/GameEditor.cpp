@@ -19,6 +19,7 @@
 #include <imgui_internal.h>
 #include <tuple>
 #include <ImGuizmo.h>
+#include "ConsoleWindow.h"
 
 using namespace DirectX;
 
@@ -91,8 +92,9 @@ namespace march
         auto& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        const ImVec4 bgColor = ColorFromBytes(20, 20, 21);
-        const ImVec4 menuColor = ColorFromBytes(34, 34, 35);
+        const ImVec4 dockingEmptyBgColor = ColorFromBytes(18, 18, 18);
+        const ImVec4 bgColor = ColorFromBytes(25, 25, 26);
+        const ImVec4 menuColor = ColorFromBytes(35, 35, 36);
         const ImVec4 lightBgColor = ColorFromBytes(90, 90, 92);
         const ImVec4 veryLightBgColor = ColorFromBytes(110, 110, 115);
 
@@ -116,9 +118,9 @@ namespace march
         colors[ImGuiCol_FrameBg] = panelColor;
         colors[ImGuiCol_FrameBgHovered] = panelHoverColor;
         colors[ImGuiCol_FrameBgActive] = panelActiveColor;
-        colors[ImGuiCol_TitleBg] = bgColor;
-        colors[ImGuiCol_TitleBgActive] = bgColor;
-        colors[ImGuiCol_TitleBgCollapsed] = bgColor;
+        colors[ImGuiCol_TitleBg] = dockingEmptyBgColor;
+        colors[ImGuiCol_TitleBgActive] = dockingEmptyBgColor;
+        colors[ImGuiCol_TitleBgCollapsed] = dockingEmptyBgColor;
         colors[ImGuiCol_MenuBarBg] = menuColor;
         colors[ImGuiCol_ScrollbarBg] = panelColor;
         colors[ImGuiCol_ScrollbarGrab] = lightBgColor;
@@ -134,8 +136,8 @@ namespace march
         colors[ImGuiCol_HeaderHovered] = panelHoverColor;
         colors[ImGuiCol_HeaderActive] = panelActiveColor;
         colors[ImGuiCol_Separator] = borderColor;
-        colors[ImGuiCol_SeparatorHovered] = borderColor;
-        colors[ImGuiCol_SeparatorActive] = borderColor;
+        colors[ImGuiCol_SeparatorHovered] = panelHoverColor;
+        colors[ImGuiCol_SeparatorActive] = panelActiveColor;
         colors[ImGuiCol_ResizeGrip] = bgColor;
         colors[ImGuiCol_ResizeGripHovered] = panelHoverColor;
         colors[ImGuiCol_ResizeGripActive] = panelActiveColor;
@@ -147,11 +149,15 @@ namespace march
         colors[ImGuiCol_DragDropTarget] = panelActiveColor;
         colors[ImGuiCol_NavHighlight] = bgColor;
         colors[ImGuiCol_DockingPreview] = panelActiveColor;
+        colors[ImGuiCol_DockingEmptyBg] = dockingEmptyBgColor;
         colors[ImGuiCol_Tab] = bgColor;
-        colors[ImGuiCol_TabActive] = panelActiveColor;
+        colors[ImGuiCol_TabActive] = panelColor;
         colors[ImGuiCol_TabUnfocused] = bgColor;
-        colors[ImGuiCol_TabUnfocusedActive] = panelActiveColor;
-        colors[ImGuiCol_TabHovered] = panelHoverColor;
+        colors[ImGuiCol_TabUnfocusedActive] = panelColor;
+        colors[ImGuiCol_TabHovered] = panelColor;
+        colors[ImGuiCol_TabDimmedSelected] = panelColor;
+        colors[ImGuiCol_TabDimmedSelectedOverline] = panelColor;
+        colors[ImGuiCol_TabSelectedOverline] = panelActiveColor;
 
         style.WindowRounding = 0.0f;
         style.ChildRounding = 0.0f;
@@ -160,6 +166,8 @@ namespace march
         style.PopupRounding = 0.0f;
         style.ScrollbarRounding = 0.0f;
         style.TabRounding = 0.0f;
+        style.TabBarBorderSize = 2.0f;
+        style.TabBarOverlineSize = 2.0f;
     }
 
     void GameEditor::InitImGui()
@@ -190,7 +198,6 @@ namespace march
         //ImGui::GetStyle().FrameBorderSize = 1.0f;
         //ImGui::GetStyle().FrameRounding = 2.0f;
         //ImGui::GetStyle().TabRounding = 2.0f;
-        ImGui::GetStyle().TabBarOverlineSize = 0.0f;
 
         auto device = GetGfxDevice()->GetD3D12Device();
         ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
@@ -215,25 +222,6 @@ namespace march
 
     void GameEditor::DrawBaseImGui()
     {
-        ImGui::DockSpaceOverViewport();
-    }
-
-    void GameEditor::OnTick()
-    {
-        GfxDevice* device = GetGfxDevice();
-
-        device->BeginFrame();
-        CalculateFrameStats();
-
-        // Start the Dear ImGui frame
-        ImGui_ImplDX12_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
-        DrawBaseImGui();
-        m_DotNet->Invoke(ManagedMethod::Application_OnTick);
-        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnTick);
-
         if (EditorGUI::BeginMainMenuBar())
         {
             if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
@@ -274,6 +262,37 @@ namespace march
 
             EditorGUI::EndMainMenuBar();
         }
+
+        if (EditorGUI::BeginMainViewportSideBar("##SingleLineToolbar", ImGuiDir_Up, ImGui::GetFrameHeight()))
+        {
+            EditorGUI::Button("Play");
+            ImGui::SameLine();
+            EditorGUI::Button("Pause");
+            ImGui::SameLine();
+            EditorGUI::Button("Capture");
+        }
+        EditorGUI::EndMainViewportSideBar();
+
+        ConsoleWindow::DrawMainViewportSideBarConsole(m_DotNet.get());
+
+        ImGui::DockSpaceOverViewport();
+    }
+
+    void GameEditor::OnTick()
+    {
+        GfxDevice* device = GetGfxDevice();
+
+        device->BeginFrame();
+        CalculateFrameStats();
+
+        // Start the Dear ImGui frame
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        DrawBaseImGui();
+        m_DotNet->Invoke(ManagedMethod::Application_OnTick);
+        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnTick);
 
         // Render Dear ImGui graphics
         ImGui::Render();

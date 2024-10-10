@@ -26,10 +26,9 @@ namespace march
         Display* UpdateDisplay();
         void DrawSceneView();
         void TravelScene(DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);
+        bool IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const;
 
         std::unique_ptr<Display> m_Display;
-        bool m_IsRotatingAndMoving;
-        bool m_IsPanning;
 
         float m_MouseSensitivity;
         float m_RotateDegSpeed;

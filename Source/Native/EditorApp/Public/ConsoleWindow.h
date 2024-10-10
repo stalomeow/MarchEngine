@@ -6,6 +6,8 @@
 
 namespace march
 {
+    struct LogEntry;
+    class IDotNetRuntime;
     class ConsoleWindowInternalUtility;
 
     class ConsoleWindow : public EditorWindow
@@ -17,11 +19,15 @@ namespace march
         ConsoleWindow();
         virtual ~ConsoleWindow() = default;
 
+        static void DrawMainViewportSideBarConsole(IDotNetRuntime* dotnet);
+
     protected:
         ImGuiWindowFlags GetWindowFlags() const override;
         void OnDraw() override;
 
     private:
+        static void DrawColorfulLogEntryText(const LogEntry* entry);
+
         int m_LogTypeFilter;
         ImGuiTextFilter m_LogMsgFilter;
         int m_SelectedLog;

@@ -1,12 +1,16 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
+using System.Numerics;
 
 namespace March.Editor.Windows
 {
     [EditorWindowMenu("Window/General/Console")]
     internal partial class ConsoleWindow : EditorWindow
     {
-        public ConsoleWindow() : base(ConsoleWindow_New(), "Console") { }
+        public ConsoleWindow() : base(ConsoleWindow_New(), "Console")
+        {
+            DefaultSize = new Vector2(850.0f, 400.0f);
+        }
 
         protected override void OnDispose(bool disposing)
         {

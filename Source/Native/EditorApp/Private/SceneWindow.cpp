@@ -5,6 +5,7 @@
 #include "GfxTexture.h"
 #include "GfxDescriptorHeap.h"
 #include <stdint.h>
+#include <imgui_internal.h>
 
 #undef min
 #undef max
@@ -15,14 +16,12 @@ namespace march
 {
     SceneWindow::SceneWindow()
         : m_Display(nullptr)
-        , m_IsRotatingAndMoving(false)
-        , m_IsPanning(false)
         , m_MouseSensitivity(0.00833f) // 鼠标相关操作需要乘灵敏度，不能乘 deltaTime
         , m_RotateDegSpeed(16.0f)
         , m_NormalMoveSpeed(8.0f)
         , m_FastMoveSpeed(24.0f)
-        , m_PanSpeed(1.2f)
-        , m_ZoomSpeed(10.0f)
+        , m_PanSpeed(1.5f)
+        , m_ZoomSpeed(40.0f)
     {
     }
 
@@ -101,17 +100,14 @@ namespace march
         XMVECTOR cameraRight = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), cameraRot);
         XMVECTOR cameraUp = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), cameraRot);
 
-        bool isWindowHovered = ImGui::IsWindowHovered();
         float mouseDeltaX = ImGui::GetIO().MouseDelta.x * m_MouseSensitivity;
         float mouseDeltaY = ImGui::GetIO().MouseDelta.y * m_MouseSensitivity;
         float mouseWheel = ImGui::GetIO().MouseWheel * m_MouseSensitivity;
         float deltaTime = GetApp().GetDeltaTime();
 
         // Rotate & Move
-        if ((m_IsRotatingAndMoving || isWindowHovered) && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+        if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Right))
         {
-            m_IsRotatingAndMoving = true;
-
             float rotateSpeed = XMConvertToRadians(m_RotateDegSpeed);
             float translation = (ImGui::IsKeyDown(ImGuiMod_Shift) ? m_FastMoveSpeed : m_NormalMoveSpeed) * deltaTime;
 
@@ -140,32 +136,36 @@ namespace march
                 cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -translation));
             }
         }
-        else
-        {
-            m_IsRotatingAndMoving = false;
-        }
 
         // Pan
-        if ((m_IsPanning || isWindowHovered) && ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+        if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Middle))
         {
-            m_IsPanning = true;
-
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -mouseDeltaX * m_PanSpeed));
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, mouseDeltaY * m_PanSpeed));
         }
-        else
-        {
-            m_IsPanning = false;
-        }
 
         // Zoom
-        if (isWindowHovered)
+        if (ImGui::IsWindowHovered())
         {
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
         }
 
         XMStoreFloat3(&cameraPosition, cameraPos);
         XMStoreFloat4(&cameraRotation, cameraRot);
+    }
+
+    bool SceneWindow::IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const
+    {
+        if (!ImGui::IsMouseDragging(button))
+        {
+            return false;
+        }
+
+        // 检查鼠标拖拽是否来自当前窗口
+        ImVec2 mousePos = ImGui::GetMousePos();
+        ImVec2 mouseDragDelta = ImGui::GetMouseDragDelta(button);
+        ImVec2 mouseDragOrigin = ImVec2(mousePos.x - mouseDragDelta.x, mousePos.y - mouseDragDelta.y);
+        return ImGui::GetCurrentWindow()->InnerClipRect.Contains(mouseDragOrigin);
     }
 
     void SceneWindowInternalUtility::DrawMenuBar(SceneWindow* window, bool& wireframe)

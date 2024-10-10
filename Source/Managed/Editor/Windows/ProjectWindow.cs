@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace March.Editor.Windows
 {
     [EditorWindowMenu("Window/General/Project")]
@@ -5,7 +7,10 @@ namespace March.Editor.Windows
     {
         private readonly ProjectFileTree m_FileTree = new();
 
-        public ProjectWindow() : base("Project") { }
+        public ProjectWindow() : base("Project")
+        {
+            DefaultSize = new Vector2(350.0f, 600.0f);
+        }
 
         protected override void OnOpen()
         {
