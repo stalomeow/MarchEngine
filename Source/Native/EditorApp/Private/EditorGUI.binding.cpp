@@ -292,3 +292,13 @@ NATIVE_EXPORT_AUTO EditorGUI_GetCollapsingHeaderOuterExtend()
 {
     retcs EditorGUI::GetCollapsingHeaderOuterExtend();
 }
+
+NATIVE_EXPORT_AUTO EditorGUI_BeginMainMenuBar()
+{
+    retcs EditorGUI::BeginMainMenuBar();
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_EndMainMenuBar()
+{
+    EditorGUI::EndMainMenuBar();
+}

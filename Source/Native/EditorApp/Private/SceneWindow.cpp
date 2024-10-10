@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #undef min
+#undef max
 
 using namespace DirectX;
 
@@ -68,8 +69,8 @@ namespace march
         GfxDevice* device = GetGfxDevice();
         ImVec2 size = ImGui::GetContentRegionAvail();
 
-        uint32_t width = static_cast<uint32_t>(size.x);
-        uint32_t height = static_cast<uint32_t>(size.y);
+        uint32_t width = std::max(static_cast<uint32_t>(size.x), 16u);
+        uint32_t height = std::max(static_cast<uint32_t>(size.y), 16u);
 
         if (m_Display == nullptr)
         {
@@ -93,7 +94,7 @@ namespace march
         srv.Copy(0, colorBuffer->GetSrvCpuDescriptorHandle());
 
         // TODO image 不能有 alpha
-        ImGui::Image(reinterpret_cast<ImTextureID>(srv.GetCpuHandle(0).ptr), size);
+        ImGui::Image(reinterpret_cast<ImTextureID>(srv.GetGpuHandle(0).ptr), size);
     }
 
     void SceneWindow::TravelScene(XMFLOAT3& cameraPosition, XMFLOAT4& cameraRotation)

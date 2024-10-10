@@ -627,4 +627,17 @@ namespace march
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         return IM_TRUNC(window->WindowPadding.x * 0.5f);
     }
+
+    bool EditorGUI::BeginMainMenuBar()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        bool ret = ImGui::BeginMainMenuBar();
+        ImGui::PopStyleVar();
+        return ret;
+    }
+
+    void EditorGUI::EndMainMenuBar()
+    {
+        ImGui::EndMainMenuBar();
+    }
 }

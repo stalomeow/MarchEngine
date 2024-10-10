@@ -2,17 +2,13 @@
 
 namespace march
 {
-    EditorWindow::EditorWindow() : EditorWindow("Untitled")
-    {
-    }
-
-    EditorWindow::EditorWindow(const std::string& title) : m_Title(title), m_IsOpen(true)
+    EditorWindow::EditorWindow() : m_Title(), m_Id(), m_FullName(), m_IsOpen(true)
     {
     }
 
     bool EditorWindow::Begin()
     {
-        return ImGui::Begin(m_Title.c_str(), &m_IsOpen, GetWindowFlags());
+        return ImGui::Begin(m_FullName.c_str(), &m_IsOpen, GetWindowFlags());
     }
 
     void EditorWindow::End()
@@ -30,6 +26,11 @@ namespace march
         return m_Title;
     }
 
+    const std::string& EditorWindow::GetId() const
+    {
+        return m_Id;
+    }
+
     bool EditorWindow::GetIsOpen() const
     {
         return m_IsOpen;
@@ -38,6 +39,17 @@ namespace march
     void EditorWindow::SetTitle(const std::string& title)
     {
         m_Title = title;
+
+        // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
+        m_FullName = m_Title + "###" + m_Id;
+    }
+
+    void EditorWindow::SetId(const std::string& id)
+    {
+        m_Id = id;
+
+        // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
+        m_FullName = m_Title + "###" + m_Id;
     }
 
     bool EditorWindowInternalUtility::InvokeBegin(EditorWindow* window)
@@ -53,6 +65,11 @@ namespace march
     void EditorWindowInternalUtility::SetTitle(EditorWindow* window, const std::string& title)
     {
         window->SetTitle(title);
+    }
+
+    void EditorWindowInternalUtility::SetId(EditorWindow* window, const std::string& id)
+    {
+        window->SetId(id);
     }
 
     void EditorWindowInternalUtility::SetIsOpen(EditorWindow* window, bool value)

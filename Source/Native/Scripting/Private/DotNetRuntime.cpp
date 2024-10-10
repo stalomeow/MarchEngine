@@ -15,9 +15,12 @@ namespace march
     // pair.first 是 type name，pair.second 是 method name
     const std::unordered_map<ManagedMethod, std::pair<LPCWSTR, LPCWSTR>> g_ManagedMethodConfig =
     {
-        { ManagedMethod::Initialize         , { L"March.Core.EntryPoint,March.Core"                 , L"OnNativeInitialize" } },
-        { ManagedMethod::Tick               , { L"March.Core.EntryPoint,March.Core"                 , L"OnNativeTick"       } },
-        { ManagedMethod::EditorInitialize   , { L"March.Editor.EditorEntryPoint,March.Editor"       , L"OnNativeInitialize" } },
+        { ManagedMethod::Application_OnStart      , { L"March.Core.Application,March.Core"          , L"OnStart" } },
+        { ManagedMethod::Application_OnTick       , { L"March.Core.Application,March.Core"          , L"OnTick"  } },
+        { ManagedMethod::Application_OnQuit       , { L"March.Core.Application,March.Core"          , L"OnQuit"  } },
+        { ManagedMethod::EditorApplication_OnStart, { L"March.Editor.EditorApplication,March.Editor", L"OnStart" } },
+        { ManagedMethod::EditorApplication_OnTick , { L"March.Editor.EditorApplication,March.Editor", L"OnTick"  } },
+        { ManagedMethod::EditorApplication_OnQuit , { L"March.Editor.EditorApplication,March.Editor", L"OnQuit"  } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";

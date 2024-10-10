@@ -13,7 +13,6 @@ namespace march
 
     public:
         EditorWindow();
-        EditorWindow(const std::string& title);
         virtual ~EditorWindow() = default;
 
         EditorWindow(const EditorWindow&) = delete;
@@ -22,10 +21,12 @@ namespace march
         EditorWindow& operator=(EditorWindow&&) = delete;
 
         const std::string& GetTitle() const;
+        const std::string& GetId() const;
         bool GetIsOpen() const;
 
     protected:
         void SetTitle(const std::string& title);
+        void SetId(const std::string& id);
 
         virtual ImGuiWindowFlags GetWindowFlags() const;
         virtual void OnOpen() {}
@@ -37,6 +38,8 @@ namespace march
         void End();
 
         std::string m_Title;
+        std::string m_Id;
+        std::string m_FullName;
         bool m_IsOpen;
     };
 
@@ -46,6 +49,7 @@ namespace march
         static bool InvokeBegin(EditorWindow* window);
         static void InvokeEnd(EditorWindow* window);
         static void SetTitle(EditorWindow* window, const std::string& title);
+        static void SetId(EditorWindow* window, const std::string& id);
         static void SetIsOpen(EditorWindow* window, bool value);
         static void InvokeOnOpen(EditorWindow* window);
         static void InvokeOnClose(EditorWindow* window);

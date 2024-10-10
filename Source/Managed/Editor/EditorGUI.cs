@@ -812,6 +812,15 @@ namespace March.Editor
         [NativeFunction]
         private static partial float EditorGUI_GetCollapsingHeaderOuterExtend();
 
+        [NativeFunction(Name = "EditorGUI_BeginMainMenuBar")]
+        public static partial bool BeginMainMenuBar();
+
+        /// <summary>
+        /// only call EndMainMenuBar() if BeginMainMenuBar() returns true!
+        /// </summary>
+        [NativeFunction(Name = "EditorGUI_EndMainMenuBar")]
+        public static partial void EndMainMenuBar();
+
         #endregion
     }
 }

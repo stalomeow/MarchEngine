@@ -1,6 +1,7 @@
 using March.Core;
 using March.Core.Binding;
 using March.Core.Serialization;
+using Newtonsoft.Json;
 
 namespace March.Editor.Windows
 {
@@ -9,25 +10,16 @@ namespace March.Editor.Windows
         private readonly bool m_IsDefaultNativeWindow;
         private bool m_IsOnOpenInvoked = false;
 
-        protected EditorWindow() : base(EditorWindow_CreateDefault())
+        private EditorWindow(nint nativePtr, bool isDefaultNativeWindow, string? title) : base(nativePtr)
         {
-            m_IsDefaultNativeWindow = true;
+            m_IsDefaultNativeWindow = isDefaultNativeWindow;
+            Title = title ?? GetType().Name;
+            Id = Guid.NewGuid().ToString("N");
         }
 
-        protected EditorWindow(nint nativePtr) : base(nativePtr)
-        {
-            m_IsDefaultNativeWindow = false;
-        }
+        protected EditorWindow(string? title = null) : this(EditorWindow_CreateDefault(), true, title) { }
 
-        protected EditorWindow(string title) : this()
-        {
-            Title = title;
-        }
-
-        protected EditorWindow(nint nativePtr, string title) : this(nativePtr)
-        {
-            Title = title;
-        }
+        protected EditorWindow(nint nativePtr, string? title = null) : this(nativePtr, false, title) { }
 
         protected sealed override void Dispose(bool disposing)
         {
@@ -48,6 +40,7 @@ namespace March.Editor.Windows
             }
         }
 
+        [JsonProperty]
         public string Title
         {
             get
@@ -60,6 +53,22 @@ namespace March.Editor.Windows
             {
                 using NativeString v = value;
                 EditorWindow_SetTitle(NativePtr, v.Data);
+            }
+        }
+
+        [JsonProperty]
+        public string Id
+        {
+            get
+            {
+                nint id = EditorWindow_GetId(NativePtr);
+                return NativeString.GetAndFree(id);
+            }
+
+            set
+            {
+                using NativeString v = value;
+                EditorWindow_SetId(NativePtr, v.Data);
             }
         }
 
@@ -128,6 +137,12 @@ namespace March.Editor.Windows
 
         [NativeFunction]
         private static partial void EditorWindow_SetTitle(nint w, nint title);
+
+        [NativeFunction]
+        private static partial nint EditorWindow_GetId(nint w);
+
+        [NativeFunction]
+        private static partial void EditorWindow_SetId(nint w, nint id);
 
         [NativeFunction]
         private static partial bool EditorWindow_GetIsOpen(nint w);

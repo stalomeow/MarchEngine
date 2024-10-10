@@ -21,13 +21,7 @@ namespace March.Core.Rendering
 
         public float AspectRatio => Camera_GetAspectRatio(NativePtr);
 
-        [JsonProperty]
-        [InspectorName("MSAA")]
-        public bool EnableMSAA
-        {
-            get => Camera_GetEnableMSAA(NativePtr);
-            set => Camera_SetEnableMSAA(NativePtr, value);
-        }
+        public bool EnableMSAA => Camera_GetEnableMSAA(NativePtr);
 
         [JsonProperty]
         [InspectorName("Wireframe")]
@@ -112,9 +106,6 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial bool Camera_GetEnableMSAA(nint camera);
-
-        [NativeFunction]
-        private static partial void Camera_SetEnableMSAA(nint camera, bool value);
 
         [NativeFunction]
         private static partial float Camera_GetVerticalFieldOfView(nint camera);

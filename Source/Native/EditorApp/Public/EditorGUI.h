@@ -102,6 +102,10 @@ namespace march
 
         static float GetCollapsingHeaderOuterExtend();
 
+        static bool BeginMainMenuBar();
+        // only call EndMainMenuBar() if BeginMainMenuBar() returns true!
+        static void EndMainMenuBar();
+
     public:
         static constexpr float MinLabelWidth = 140.0f;
         static constexpr float MaxFieldWidth = 320.0f;

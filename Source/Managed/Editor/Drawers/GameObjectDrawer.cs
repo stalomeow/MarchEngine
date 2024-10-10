@@ -8,7 +8,7 @@ namespace March.Editor.Drawers
     internal class GameObjectDrawer : InspectorDrawerFor<GameObject>
     {
         private static readonly DrawerCache<IComponentDrawer> s_ComponentDrawerCache = new(typeof(IComponentDrawerFor<>));
-        private static readonly PopupMenu s_AddComponentPopup = new("GameObjectInspectorAddComponentPopup");
+        private static readonly GenericMenu s_AddComponentPopup = new("GameObjectInspectorAddComponentPopup");
         private static int? s_AddComponentPopupTypeCacheVersion;
 
         public override void Draw()
@@ -42,7 +42,7 @@ namespace March.Editor.Drawers
 
             if (EditorGUI.CenterButton("Add Component", 220.0f))
             {
-                s_AddComponentPopup.Open();
+                s_AddComponentPopup.OpenPopup();
             }
 
             if (s_AddComponentPopupTypeCacheVersion != TypeCache.Version)
@@ -50,7 +50,7 @@ namespace March.Editor.Drawers
                 RebuildAddComponentPopup();
             }
 
-            s_AddComponentPopup.Draw();
+            s_AddComponentPopup.DrawPopup();
 
             if (changed)
             {

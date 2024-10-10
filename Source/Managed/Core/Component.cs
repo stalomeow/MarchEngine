@@ -33,7 +33,6 @@ namespace March.Core
                 OnUnmount();
             }
 
-            m_GameObject?.m_Components.Remove(this);
             DisposeNative();
         }
 

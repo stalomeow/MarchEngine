@@ -6,9 +6,12 @@ namespace march
 {
     enum class ManagedMethod : int
     {
-        Initialize,
-        Tick,
-        EditorInitialize,
+        Application_OnStart,
+        Application_OnTick,
+        Application_OnQuit,
+        EditorApplication_OnStart,
+        EditorApplication_OnTick,
+        EditorApplication_OnQuit,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

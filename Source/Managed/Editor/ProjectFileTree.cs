@@ -62,7 +62,7 @@ namespace March.Editor
 
         private readonly FolderNode m_Root = new("Root");
 
-        private static readonly PopupMenu s_ContextMenu = new("ProjectFileTreeContextMenu");
+        private static readonly GenericMenu s_ContextMenu = new("ProjectFileTreeContextMenu");
 
         static ProjectFileTree()
         {
@@ -112,13 +112,17 @@ namespace March.Editor
             }
         }
 
-        public void Remove(string path)
+        public void Remove(string path, bool isFolder)
         {
             if (FindParentNode(ref path, false, out string[] segments, out FolderNode? node))
             {
                 string key = segments[^1];
 
-                if (!node.Folders.Remove(key))
+                if (isFolder)
+                {
+                    node.Folders.Remove(key);
+                }
+                else
                 {
                     node.Files.Remove(key);
                 }
@@ -167,7 +171,7 @@ namespace March.Editor
         public void Draw()
         {
             m_Root.Draw();
-            s_ContextMenu.DoWindowContext();
+            s_ContextMenu.ShowAsWindowContext();
         }
     }
 }

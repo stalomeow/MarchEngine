@@ -9,6 +9,12 @@ namespace March.Editor
     public abstract class AssetImporter : MarchObject
     {
         /// <summary>
+        /// 资产的类别
+        /// </summary>
+        [JsonIgnore]
+        public AssetCategory Category { get; private set; } = AssetCategory.Unknown;
+
+        /// <summary>
         /// 资产的路径
         /// </summary>
         /// <remarks>这是引擎使用的路径，不是文件系统路径</remarks>
@@ -96,9 +102,10 @@ namespace March.Editor
             }
         }
 
-        internal void Initialize(string assetPath, string assetFullPath, string assetCacheFullPath,
+        internal void Initialize(AssetCategory category, string assetPath, string assetFullPath, string assetCacheFullPath,
             string importerFullPath, MarchObject? asset = null, string? assetGuid = null)
         {
+            Category = category;
             AssetPath = assetPath;
             AssetFullPath = assetFullPath;
             AssetCacheFullPath = assetCacheFullPath;

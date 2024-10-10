@@ -71,7 +71,7 @@ namespace March.Core
         {
             foreach (GameObject go in RootGameObjects)
             {
-                //go.dis
+                go.Dispose();
             }
 
             RootGameObjects.Clear();

@@ -11,6 +11,8 @@
 
 namespace march
 {
+    class ConsoleWindow;
+
     enum class LogType
     {
         Info,
@@ -36,7 +38,7 @@ namespace march
 
     class Debug
     {
-        friend class GameEditor;
+        friend ConsoleWindow;
 
     public:
         template<typename ... Args>

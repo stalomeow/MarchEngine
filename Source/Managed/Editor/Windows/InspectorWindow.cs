@@ -2,6 +2,7 @@ using March.Core;
 
 namespace March.Editor.Windows
 {
+    [EditorWindowMenu("Window/Inspector")]
     internal class InspectorWindow : EditorWindow
     {
         private readonly DrawerCache<InspectorDrawer> m_DrawerCache = new(typeof(InspectorDrawerFor<>));

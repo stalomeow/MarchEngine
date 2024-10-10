@@ -3,9 +3,10 @@ using March.Core.Rendering;
 
 namespace March.Editor.Windows
 {
+    [EditorWindowMenu("Window/Hierarchy")]
     internal class HierarchyWindow : EditorWindow
     {
-        private static readonly PopupMenu s_ContextMenu = new("HierarchyContextMenu");
+        private static readonly GenericMenu s_ContextMenu = new("HierarchyContextMenu");
 
         static HierarchyWindow()
         {
@@ -75,7 +76,7 @@ namespace March.Editor.Windows
                     Selection.Active = null;
                 }
 
-                s_ContextMenu.DoWindowContext();
+                s_ContextMenu.ShowAsWindowContext();
             }
             else if (EditorGUI.IsWindowClicked())
             {

@@ -46,9 +46,9 @@ namespace march
         m_FullScreenTriangleMesh->AddFullScreenTriangle();
     }
 
-    void RenderPipeline::Render(Camera* camera)
+    void RenderPipeline::Render(Camera* camera, Material* gridGizmoMaterial)
     {
-        if (m_RenderObjects.empty() || !camera->GetIsActiveAndEnabled())
+        if (!camera->GetIsActiveAndEnabled())
         {
             return;
         }
@@ -95,23 +95,6 @@ namespace march
         auto cbPass = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerPassConstants), 1, GfxConstantBuffer::Alignment);
         *reinterpret_cast<PerPassConstants*>(cbPass.GetMappedData(0)) = passConsts;
 
-        auto cbPerObj = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerObjConstants), m_RenderObjects.size(), GfxConstantBuffer::Alignment);
-        std::unordered_map<size_t, std::vector<int>> objs; // 优化 pso 切换
-
-        for (int i = 0; i < m_RenderObjects.size(); i++)
-        {
-            PerObjConstants consts = {};
-            XMStoreFloat4x4(&consts.WorldMatrix, m_RenderObjects[i]->GetTransform()->LoadLocalToWorldMatrix());
-            *reinterpret_cast<PerObjConstants*>(cbPerObj.GetMappedData(i)) = consts;
-
-            if (m_RenderObjects[i]->Mat != nullptr)
-            {
-                ShaderPass* pass = m_RenderObjects[i]->Mat->GetShader()->Passes[0].get();
-                size_t hash = HashState(&pass, 1, m_RenderObjects[i]->Mesh->GetDesc().GetHash());
-                objs[hash].push_back(i);
-            }
-        }
-
         RenderPipelineDesc rpDesc = {};
         rpDesc.NumRenderTargets = 1;
         rpDesc.RTVFormats[0] = display->GetColorFormat();
@@ -137,84 +120,104 @@ namespace march
         // Specify the buffers we are going to render to.
         cmd->GetD3D12CommandList()->OMSetRenderTargets(1, &rtv, true, &dsv);
 
-        for (auto& it : objs)
+        if (!m_RenderObjects.empty())
         {
-            bool isFirst = true;
+            auto cbPerObj = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerObjConstants), m_RenderObjects.size(), GfxConstantBuffer::Alignment);
+            std::unordered_map<size_t, std::vector<int>> objs; // 优化 pso 切换
 
-            for (int i = 0; i < it.second.size(); i++)
+            for (int i = 0; i < m_RenderObjects.size(); i++)
             {
-                int index = it.second[i];
-                RenderObject* obj = m_RenderObjects[index];
-                if (!obj->GetIsActiveAndEnabled() || obj->Mesh == nullptr || obj->Mat == nullptr)
+                PerObjConstants consts = {};
+                XMStoreFloat4x4(&consts.WorldMatrix, m_RenderObjects[i]->GetTransform()->LoadLocalToWorldMatrix());
+                *reinterpret_cast<PerObjConstants*>(cbPerObj.GetMappedData(i)) = consts;
+
+                if (m_RenderObjects[i]->Mat != nullptr)
                 {
-                    continue;
+                    ShaderPass* pass = m_RenderObjects[i]->Mat->GetShader()->Passes[0].get();
+                    size_t hash = HashState(&pass, 1, m_RenderObjects[i]->Mesh->GetDesc().GetHash());
+                    objs[hash].push_back(i);
                 }
+            }
 
-                ShaderPass* pass = obj->Mat->GetShader()->Passes[0].get();
+            for (auto& it : objs)
+            {
+                bool isFirst = true;
 
-                if (isFirst)
+                for (int i = 0; i < it.second.size(); i++)
                 {
-                    ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Mesh->GetDesc(), rpDesc);
-                    cmd->GetD3D12CommandList()->SetPipelineState(pso);
-                    cmd->GetD3D12CommandList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
-                }
-
-                isFirst = false;
-
-                if (pass->GetCbvSrvUavCount() > 0)
-                {
-                    GfxDescriptorTable viewTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, pass->GetCbvSrvUavCount());
-
-                    for (auto& kv : pass->TextureProperties)
+                    int index = it.second[i];
+                    RenderObject* obj = m_RenderObjects[index];
+                    if (!obj->GetIsActiveAndEnabled() || obj->Mesh == nullptr || obj->Mat == nullptr)
                     {
-                        GfxTexture* texture = nullptr;
-                        if (obj->Mat->GetTexture(kv.first, &texture))
-                        {
-                            viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
-                        }
+                        continue;
                     }
 
-                    BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress(0));
-                    BindCbv(viewTable, pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
+                    ShaderPass* pass = obj->Mat->GetShader()->Passes[0].get();
 
-                    GfxConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(pass);
-                    if (cbMat != nullptr)
+                    if (isFirst)
                     {
-                        BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress(0));
+                        ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, obj->Mesh->GetDesc(), rpDesc);
+                        cmd->GetD3D12CommandList()->SetPipelineState(pso);
+                        cmd->GetD3D12CommandList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
                     }
 
-                    cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(),
-                        viewTable.GetGpuHandle(0));
-                }
+                    isFirst = false;
 
-                if (pass->GetSamplerCount() > 0)
-                {
-                    GfxDescriptorTable samplerTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::Sampler, pass->GetSamplerCount());
-
-                    for (auto& kv : pass->TextureProperties)
+                    if (pass->GetCbvSrvUavCount() > 0)
                     {
-                        GfxTexture* texture = nullptr;
-                        if (obj->Mat->GetTexture(kv.first, &texture))
+                        GfxDescriptorTable viewTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, pass->GetCbvSrvUavCount());
+
+                        for (auto& kv : pass->TextureProperties)
                         {
-                            if (kv.second.HasSampler)
+                            GfxTexture* texture = nullptr;
+                            if (obj->Mat->GetTexture(kv.first, &texture))
                             {
-                                samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                                viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
                             }
                         }
+
+                        BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress(0));
+                        BindCbv(viewTable, pass, "cbObject", cbPerObj.GetGpuVirtualAddress(index));
+
+                        GfxConstantBuffer* cbMat = obj->Mat->GetConstantBuffer(pass);
+                        if (cbMat != nullptr)
+                        {
+                            BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress(0));
+                        }
+
+                        cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(),
+                            viewTable.GetGpuHandle(0));
                     }
 
-                    cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetSamplerRootParamIndex(),
-                        samplerTable.GetGpuHandle(0));
-                }
+                    if (pass->GetSamplerCount() > 0)
+                    {
+                        GfxDescriptorTable samplerTable = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::Sampler, pass->GetSamplerCount());
 
-                obj->Mesh->Draw();
+                        for (auto& kv : pass->TextureProperties)
+                        {
+                            GfxTexture* texture = nullptr;
+                            if (obj->Mat->GetTexture(kv.first, &texture))
+                            {
+                                if (kv.second.HasSampler)
+                                {
+                                    samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                                }
+                            }
+                        }
+
+                        cmd->GetD3D12CommandList()->SetGraphicsRootDescriptorTable(pass->GetSamplerRootParamIndex(),
+                            samplerTable.GetGpuHandle(0));
+                    }
+
+                    obj->Mesh->Draw();
+                }
             }
         }
 
-        if (camera->GetIsEditorSceneCamera() && m_SceneViewGridMaterial != nullptr)
+        if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
         {
             // Scene Grid
-            ShaderPass* pass = m_SceneViewGridMaterial->GetShader()->Passes[0].get();
+            ShaderPass* pass = gridGizmoMaterial->GetShader()->Passes[0].get();
             ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, m_FullScreenTriangleMesh->GetDesc(), rpDesc);
             cmd->GetD3D12CommandList()->SetPipelineState(pso);
             cmd->GetD3D12CommandList()->SetGraphicsRootSignature(pass->GetRootSignature()); // ??? 不是 PSO 里已经有了吗
@@ -225,7 +228,7 @@ namespace march
 
                 BindCbv(viewTable, pass, "cbPass", cbPass.GetGpuVirtualAddress(0));
 
-                GfxConstantBuffer* cbMat = m_SceneViewGridMaterial->GetConstantBuffer(pass);
+                GfxConstantBuffer* cbMat = gridGizmoMaterial->GetConstantBuffer(pass);
                 if (cbMat != nullptr)
                 {
                     BindCbv(viewTable, pass, "cbMaterial", cbMat->GetGpuVirtualAddress(0));

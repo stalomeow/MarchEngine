@@ -1,27 +1,55 @@
 using March.Core.Binding;
+using System.Runtime.InteropServices;
 
 namespace March.Core
 {
     public static partial class Application
     {
-        private static string? s_DataPath;
+        private static string? s_CachedDataPath;
 
         public static string DataPath
         {
             get
             {
-                if (s_DataPath == null)
+                if (s_CachedDataPath == null)
                 {
                     nint path = Application_GetDataPath();
-                    s_DataPath = NativeString.Get(path);
-                    NativeString.Free(path);
+                    s_CachedDataPath = NativeString.GetAndFree(path);
                 }
 
-                return s_DataPath;
+                return s_CachedDataPath;
             }
         }
 
+        [UnmanagedCallersOnly]
+        private static void OnStart()
+        {
+            foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
+            {
+                gameObject.AwakeRecursive();
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        private static void OnTick()
+        {
+            foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
+            {
+                gameObject.UpdateRecursive();
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        private static void OnQuit()
+        {
+
+        }
+
+        #region Bindings
+
         [NativeFunction]
         private static partial nint Application_GetDataPath();
+
+        #endregion
     }
 }

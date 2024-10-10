@@ -17,6 +17,7 @@ namespace march
         , m_FarZ(1000.0f)
         , m_EnableWireframe(false)
         , m_EnableGizmos(false)
+        , m_CustomTargetDisplay(nullptr)
     {
     }
 
@@ -61,11 +62,6 @@ namespace march
     bool Camera::GetEnableMSAA() const
     {
         return GetTargetDisplay()->GetEnableMSAA();
-    }
-
-    void Camera::SetEnableMSAA(bool value) const
-    {
-        GetTargetDisplay()->SetEnableMSAA(value);
     }
 
     float Camera::GetVerticalFieldOfView() const

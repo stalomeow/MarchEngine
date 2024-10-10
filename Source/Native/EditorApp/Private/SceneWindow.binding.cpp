@@ -13,7 +13,7 @@ NATIVE_EXPORT_AUTO SceneWindow_Delete(cs<SceneWindow*> w)
 
 NATIVE_EXPORT_AUTO SceneWindow_DrawMenuBar(cs<SceneWindow*> w, cs<cs_bool*> wireframe)
 {
-    bool enableWireframe = wireframe;
+    bool enableWireframe = *wireframe;
     SceneWindowInternalUtility::DrawMenuBar(w, enableWireframe);
     wireframe->assign(enableWireframe);
 }

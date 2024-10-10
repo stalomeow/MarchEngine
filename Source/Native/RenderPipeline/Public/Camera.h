@@ -22,7 +22,6 @@ namespace march
         uint32_t GetPixelHeight() const;
         float GetAspectRatio() const;
         bool GetEnableMSAA() const;
-        void SetEnableMSAA(bool value) const;
 
         float GetVerticalFieldOfView() const; // in degrees
         float GetHorizontalFieldOfView() const; // in degrees

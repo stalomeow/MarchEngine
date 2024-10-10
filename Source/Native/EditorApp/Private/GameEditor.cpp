@@ -75,8 +75,8 @@ namespace march
 
         InitImGui();
 
-        m_DotNet->Invoke(ManagedMethod::Initialize);
-        m_DotNet->Invoke(ManagedMethod::EditorInitialize);
+        m_DotNet->Invoke(ManagedMethod::Application_OnStart);
+        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnStart);
     }
 
     static void SetStyles()
@@ -164,6 +164,8 @@ namespace march
 
     void GameEditor::InitImGui()
     {
+        m_ImGuiIniFilename = GetApp().GetDataPath() + "/ProjectSettings/imgui.ini";
+
         // Setup Dear ImGui context
         ImGui::CreateContext();
 
@@ -171,6 +173,7 @@ namespace march
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+        io.IniFilename = m_ImGuiIniFilename.c_str();
 
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(GetApp().GetHWND());
@@ -197,60 +200,42 @@ namespace march
 
     void GameEditor::OnQuit()
     {
+        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnQuit);
+        m_DotNet->Invoke(ManagedMethod::Application_OnQuit);
+
         GetGfxDevice()->WaitForIdle();
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
 
         //Display::DestroyMainDisplay();
-        //Display::DestroyEditorSceneDisplay();
         //DestroyGfxDevice();
         //GfxUtility::ReportLiveObjects();
     }
 
-    void GameEditor::DrawImGui(Camera* sceneCamera)
+    void GameEditor::DrawBaseImGui()
     {
+        ImGui::DockSpaceOverViewport();
+    }
+
+    void GameEditor::OnTick()
+    {
+        GfxDevice* device = GetGfxDevice();
+
+        device->BeginFrame();
+        CalculateFrameStats();
+
         // Start the Dear ImGui frame
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        static bool showStyleEditor = false;
-        static bool showMetrics = false;
+        DrawBaseImGui();
+        m_DotNet->Invoke(ManagedMethod::Application_OnTick);
+        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnTick);
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        if (ImGui::BeginMainMenuBar())
+        if (EditorGUI::BeginMainMenuBar())
         {
-            if (ImGui::BeginMenu("File"))
-            {
-                ImGui::EndMenu();
-            }
-
-            if (ImGui::BeginMenu("Window"))
-            {
-                if (ImGui::BeginMenu("ImGui Tools"))
-                {
-                    if (ImGui::MenuItem("Style Editor"))
-                    {
-                        showStyleEditor = true;
-                    }
-
-                    if (ImGui::MenuItem("Metrics"))
-                    {
-                        showMetrics = true;
-                    }
-
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::MenuItem("Console"))
-                {
-                    m_ShowConsoleWindow = true;
-                }
-
-                ImGui::EndMenu();
-            }
-
             if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
             {
                 m_RenderDoc.CaptureSingleFrame();
@@ -287,295 +272,15 @@ namespace march
                 ImGui::EndMenu();
             }
 
-            ImGui::EndMainMenuBar();
-        }
-        ImGui::PopStyleVar();
-
-        ImGui::DockSpaceOverViewport();
-
-        if (showStyleEditor)
-        {
-            ImGui::Begin("Style Editor", &showStyleEditor);
-            ImGui::ShowStyleEditor();
-            ImGui::End();
-        }
-        if (showMetrics) ImGui::ShowMetricsWindow(&showMetrics);
-
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (m_ShowDemoWindow)
-            ImGui::ShowDemoWindow(&m_ShowDemoWindow);
-
-        if (m_ShowDescriptorHeapWindow)
-        {
-            ImGui::Begin("DescriptorTable Profiler", &m_ShowDescriptorHeapWindow);
-            DrawDebugDescriptorTableAllocator("CBV-SRV-UAV Allocator", GetGfxDevice()->GetViewDescriptorTableAllocator());
-            ImGui::Spacing();
-            DrawDebugDescriptorTableAllocator("Sampler Allocator", GetGfxDevice()->GetSamplerDescriptorTableAllocator());
-            ImGui::End();
+            EditorGUI::EndMainMenuBar();
         }
 
-        DrawConsoleWindow();
-
-        // Rendering
+        // Render Dear ImGui graphics
         ImGui::Render();
-    }
+        device->SetBackBufferAsRenderTarget();
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), device->GetGraphicsCommandList()->GetD3D12CommandList());
 
-    void GameEditor::DrawDebugDescriptorTableAllocator(const std::string& name, GfxDescriptorTableAllocator* allocator)
-    {
-        if (!ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
-        {
-            return;
-        }
-
-        const ImVec2 p = ImGui::GetCursorScreenPos();
-        const float width = ImGui::GetContentRegionAvail().x;
-        const float height = 50.0f; // 固定高度
-
-        const uint64_t currentFrame = GetApp().GetFrameCount();
-        const UINT dynamicCapacity = allocator->GetDynamicDescriptorCapacity();
-        const UINT staticCount = allocator->GetStaticDescriptorCount();
-        const UINT capacity = dynamicCapacity + staticCount;
-        const float columnWidth = width / static_cast<float>(capacity);
-
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        // 动态区域用绿色表示，静态区域用灰色表示
-        drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + dynamicCapacity * columnWidth, p.y + height), IM_COL32(0, 255, 0, 80));
-        drawList->AddRectFilled(ImVec2(p.x + dynamicCapacity * columnWidth, p.y), ImVec2(p.x + width, p.y + height), IM_COL32(192, 192, 192, 80));
-
-        uint32_t front = allocator->GetDynamicFront();
-        uint32_t rear = allocator->GetDynamicRear();
-
-        if (front < rear)
-        {
-            float x0 = p.x + front * columnWidth;
-            float x1 = p.x + rear * columnWidth;
-
-            ImU32 color = IM_COL32(255, 0, 0, 255);
-            drawList->AddRectFilled(ImVec2(x0, p.y), ImVec2(x1, p.y + height), color);
-        }
-        else if (front > rear)
-        {
-            float x0 = p.x + rear * columnWidth;
-            float x1 = p.x + front * columnWidth;
-
-            ImU32 color = IM_COL32(255, 0, 0, 255);
-            drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(x0, p.y + height), color);
-            drawList->AddRectFilled(ImVec2(x1, p.y), ImVec2(p.x + width, p.y + height), color);
-        }
-
-        int dynamicDescriptorCount = static_cast<int>((rear + dynamicCapacity - front) % dynamicCapacity);
-
-        // 让 ImGui 知道这个区域是有内容的
-        ImGui::Dummy(ImVec2(width, height));
-
-        float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
-        std::string label1 = StringUtility::Format("Dynamic Capacity: %d / %d (%.2f%% Used)", dynamicDescriptorCount, static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
-        std::string label2 = StringUtility::Format("Static Count: %d", staticCount);
-
-        float startX = ImGui::GetCursorPosX();
-        ImGui::TextUnformatted(label1.c_str());
-        ImGui::SameLine();
-        ImVec2 label2Size = ImGui::CalcTextSize(label2.c_str());
-        ImGui::SetCursorPosX(startX + width - label2Size.x);
-        ImGui::TextUnformatted(label2.c_str());
-
-        ImGui::TreePop();
-    }
-
-    void GameEditor::DrawConsoleWindow()
-    {
-        if (!m_ShowConsoleWindow)
-        {
-            return;
-        }
-
-        if (!ImGui::Begin("Console", &m_ShowConsoleWindow, ImGuiWindowFlags_NoScrollbar))
-        {
-            ImGui::End();
-            return;
-        }
-
-        if (ImGui::Button("Clear"))
-        {
-            Debug::ClearLogs();
-        }
-
-        static int logTypeFilter = 0;
-        static ImGuiTextFilter logMsgFilter{};
-        static int selectedLog = -1;
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Options"))
-        {
-            ImGui::OpenPopup("Options");
-        }
-
-        ImGui::SameLine();
-        ImGui::Spacing();
-        ImGui::SameLine();
-        ImGui::TextUnformatted("Filter (inc,-exc)");
-        ImGui::SameLine();
-        ImGui::PushItemWidth(120.0f);
-        ImGui::Combo("##LogTypeFilter", &logTypeFilter, "All\0Info\0Warn\0Error\0\0");
-        ImGui::PopItemWidth();
-        ImGui::SameLine();
-        logMsgFilter.Draw("##LogMsgFilter", ImGui::GetContentRegionAvail().x);
-
-        if (ImGui::BeginPopup("Options"))
-        {
-            ImGui::Checkbox("Auto Scroll", &m_ConsoleWindowAutoScroll);
-            ImGui::EndPopup();
-        }
-
-        ImGui::SeparatorText(StringUtility::Format("%d Info | %d Warn | %d Error",
-            Debug::GetLogCount(LogType::Info),
-            Debug::GetLogCount(LogType::Warn),
-            Debug::GetLogCount(LogType::Error)).c_str());
-
-        if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), ImGuiChildFlags_ResizeY | ImGuiChildFlags_Border, ImGuiWindowFlags_None))
-        {
-            for (int i = 0; i < Debug::s_Logs.size(); i++)
-            {
-                const auto& item = Debug::s_Logs[i];
-
-                if ((logTypeFilter == 1 && item.Type != LogType::Info)  ||
-                    (logTypeFilter == 2 && item.Type != LogType::Warn)  ||
-                    (logTypeFilter == 3 && item.Type != LogType::Error) ||
-                    (logMsgFilter.IsActive() && !logMsgFilter.PassFilter(item.Message.c_str())))
-                {
-                    if (selectedLog == i)
-                    {
-                        selectedLog = -1;
-                    }
-                    continue;
-                }
-
-                float width = ImGui::GetContentRegionMax().x;
-                float height = ImGui::GetTextLineHeight();
-                ImVec2 cursorPos = ImGui::GetCursorPos();
-                std::string label = "##LogItem" + std::to_string(i);
-                if (ImGui::Selectable(label.c_str(), i == selectedLog, ImGuiSelectableFlags_None, ImVec2(width, height)))
-                {
-                    selectedLog = i;
-                }
-
-                if (ImGui::BeginPopupContextItem())
-                {
-                    if (ImGui::MenuItem("Copy"))
-                    {
-                        ImGui::SetClipboardText(item.Message.c_str());
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-                ImGui::SameLine();
-                ImGui::SetCursorPos(cursorPos);
-
-                ImVec4 timeColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-                timeColor.w = 0.6f;
-                ImGui::PushStyleColor(ImGuiCol_Text, timeColor);
-                ImGui::TextUnformatted(Debug::GetTimePrefix(item.Time).c_str());
-                ImGui::PopStyleColor();
-                ImGui::SameLine();
-
-                ImVec4 color;
-                bool has_color = false;
-                if (item.Type == LogType::Info) { color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); has_color = true; }
-                else if (item.Type == LogType::Error) { color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); has_color = true; }
-                else if (item.Type == LogType::Warn) { color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); has_color = true; }
-
-                if (has_color) ImGui::PushStyleColor(ImGuiCol_Text, color);
-                ImGui::TextUnformatted(Debug::GetTypePrefix(item.Type).c_str());
-                if (has_color) ImGui::PopStyleColor();
-                ImGui::SameLine();
-
-                size_t newlinePos = item.Message.find_first_of("\r\n");
-                if (newlinePos == std::string::npos)
-                {
-                    ImGui::TextUnformatted(item.Message.c_str());
-                }
-                else
-                {
-                    ImGui::TextUnformatted(item.Message.substr(0, newlinePos).c_str());
-                }
-            }
-
-            // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
-            // Using a scrollbar or mouse-wheel will take away from the bottom edge.
-            if (m_ConsoleWindowScrollToBottom || (m_ConsoleWindowAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
-                ImGui::SetScrollHereY(1.0f);
-            m_ConsoleWindowScrollToBottom = false;
-        }
-        ImGui::EndChild();
-
-        if (ImGui::BeginChild("DetailedRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None))
-        {
-            if (selectedLog >= 0 && selectedLog < Debug::s_Logs.size())
-            {
-                const LogEntry& item = Debug::s_Logs[selectedLog];
-
-                ImGui::PushTextWrapPos();
-                ImGui::TextUnformatted(item.Message.c_str());
-                ImGui::Spacing();
-
-                for (const LogStackFrame& frame : item.StackTrace)
-                {
-                    ImGui::Text("%s (at %s : %d)", frame.Function.c_str(), frame.Filename.c_str(), frame.Line);
-                }
-
-                ImGui::PopTextWrapPos();
-
-                if (ImGui::BeginPopupContextWindow())
-                {
-                    if (ImGui::MenuItem("Copy"))
-                    {
-                        ImGui::SetClipboardText(item.Message.c_str());
-                    }
-
-                    ImGui::EndPopup();
-                }
-            }
-            else
-            {
-                selectedLog = -1;
-            }
-        }
-        ImGui::EndChild();
-
-        ImGui::End();
-    }
-
-    void GameEditor::OnTick()
-    {
-        GetGfxDevice()->BeginFrame();
-        CalculateFrameStats();
-
-        m_DotNet->Invoke(ManagedMethod::Tick);
-
-        Camera* sceneCamera = nullptr;
-        for (const auto c : Camera::GetAllCameras())
-        {
-            if (c->GetIsEditorSceneCamera())
-            {
-                sceneCamera = c;
-                break;
-            }
-        }
-
-        if (sceneCamera != nullptr)
-        {
-            DrawImGui(sceneCamera);
-            m_RenderPipeline->Render(sceneCamera);
-
-            // Render Dear ImGui graphics
-            GetGfxDevice()->SetBackBufferAsRenderTarget();
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetGfxDevice()->GetGraphicsCommandList()->GetD3D12CommandList());
-        }
-
-        GetGfxDevice()->EndFrame();
+        device->EndFrame();
     }
 
     void GameEditor::OnResized()

@@ -21,6 +21,16 @@ NATIVE_EXPORT_AUTO EditorWindow_SetTitle(cs<EditorWindow*> w, cs_string title)
     EditorWindowInternalUtility::SetTitle(w, title);
 }
 
+NATIVE_EXPORT_AUTO EditorWindow_GetId(cs<EditorWindow*> w)
+{
+    retcs w->GetId();
+}
+
+NATIVE_EXPORT_AUTO EditorWindow_SetId(cs<EditorWindow*> w, cs_string id)
+{
+    EditorWindowInternalUtility::SetId(w, id);
+}
+
 NATIVE_EXPORT_AUTO EditorWindow_GetIsOpen(cs<EditorWindow*> w)
 {
     retcs w->GetIsOpen();

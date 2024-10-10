@@ -3,19 +3,13 @@ using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.Importers;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
 
 namespace March.Editor
 {
-    public enum AssetPathType
-    {
-        ProjectAsset,
-        EngineShader,
-        Unknown,
-    }
-
     public static class AssetDatabase
     {
         private const string ImporterPathSuffix = ".meta";
@@ -27,10 +21,86 @@ namespace March.Editor
         private static readonly Dictionary<string, string> s_Guid2PathMap = new();
         private static readonly Dictionary<string, AssetImporter> s_Path2Importers = new();
 
-        internal static void InitAssetDatabase()
+        private static readonly FileSystemWatcher s_ProjectAssetFileWatcher;
+        private static readonly FileSystemWatcher s_EngineShaderWatcher;
+        private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileSystemEvents = new();
+
+        public static event Action<string>? OnProjectAssetChanged;
+        public static event Action<string>? OnProjectAssetImported;
+        public static event Action<string>? OnProjectAssetRemoved;
+        public static event Action<string, string>? OnProjectAssetRenamed;
+
+        static AssetDatabase()
         {
-            AssetManager.Impl = new EditorAssetManagerImpl();
+            s_ProjectAssetFileWatcher = new FileSystemWatcher(Path.Combine(Application.DataPath, "Assets"));
+            s_EngineShaderWatcher = new FileSystemWatcher(Shader.EngineShaderPath);
+        }
+
+        internal static void Initialize()
+        {
             LoadGuidMap(); // 提前加载缓存的 guid 表，这样后面 import asset 时，LoadByGuid 就能找到对应的 path
+            PreImportAllAssets();
+            TrimGuidMap();
+
+            SetupFileSystemWatcher(s_ProjectAssetFileWatcher);
+            SetupFileSystemWatcher(s_EngineShaderWatcher);
+
+            AssetManager.Impl = new EditorAssetManagerImpl();
+        }
+
+        private static void PreImportAllAssets()
+        {
+            ImportDirectory(Path.Combine(Application.DataPath, "Assets"));
+            ImportDirectory(Shader.EngineShaderPath);
+
+            static void ImportDirectory(string directoryFullPath)
+            {
+                var root = new DirectoryInfo(directoryFullPath);
+
+                foreach (FileSystemInfo info in root.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+                {
+                    string path = GetValidatedAssetPathByFullPath(info.FullName, out _);
+                    GetAssetImporter(path);
+                }
+            }
+        }
+
+        private static void SetupFileSystemWatcher(FileSystemWatcher watcher)
+        {
+            watcher.EnableRaisingEvents = true; // 必须设置为 true，否则事件不会触发
+            watcher.IncludeSubdirectories = true;
+            watcher.NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite;
+
+            // 也可以用 watcher.SynchronizingObject
+            watcher.Changed += (_, e) => s_FileSystemEvents.Enqueue(e);
+            watcher.Created += (_, e) => s_FileSystemEvents.Enqueue(e);
+            watcher.Deleted += (_, e) => s_FileSystemEvents.Enqueue(e);
+            watcher.Renamed += (_, e) => s_FileSystemEvents.Enqueue(e);
+        }
+
+        internal static void Update()
+        {
+            while (s_FileSystemEvents.TryDequeue(out FileSystemEventArgs? e))
+            {
+                switch (e.ChangeType)
+                {
+                    case WatcherChangeTypes.Changed:
+                        OnAssetChanged(e);
+                        break;
+
+                    case WatcherChangeTypes.Created:
+                        OnAssetCreated(e);
+                        break;
+
+                    case WatcherChangeTypes.Deleted:
+                        OnAssetDeleted(e);
+                        break;
+
+                    case WatcherChangeTypes.Renamed:
+                        OnAssetRenamed((RenamedEventArgs)e);
+                        break;
+                }
+            }
         }
 
         private static void LoadGuidMap()
@@ -61,7 +131,7 @@ namespace March.Editor
             File.WriteAllText(fullPath, json, Encoding.UTF8);
         }
 
-        internal static void TrimGuidMap()
+        private static void TrimGuidMap()
         {
             using var unusedGuids = ListPool<string>.Get();
 
@@ -121,6 +191,21 @@ namespace March.Editor
             return path == null ? null : Load<T>(path);
         }
 
+        public static string[] GetAllProjectAssetPaths()
+        {
+            using var list = ListPool<string>.Get();
+
+            foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
+            {
+                if (kv.Value.Category == AssetCategory.ProjectAsset)
+                {
+                    list.Value.Add(kv.Value.AssetPath);
+                }
+            }
+
+            return list.Value.ToArray();
+        }
+
         public static void Create(string path, MarchObject asset)
         {
             if (asset.PersistentGuid != null || GetAssetImporter(path) != null)
@@ -128,22 +213,32 @@ namespace March.Editor
                 throw new InvalidOperationException("Asset is already created");
             }
 
-            if (ValidateAssetPathAndGetType(ref path, out string fullPath, out _) != AssetPathType.ProjectAsset)
+            AssetCategory category = ValidateAssetPathAndGetCategory(ref path, out string fullPath, out _);
+
+            if (category != AssetCategory.ProjectAsset)
             {
                 throw new InvalidOperationException("Can not create an asset outside project folder");
             }
 
             PersistentManager.Save(asset, fullPath);
-            GetAssetImporter(path, asset, null); // Create importer
+            AssetImporter? importer = GetAssetImporter(path, asset, null); // Create importer
+            Debug.Assert(importer != null, "Importer should be created");
+
+            if (category == AssetCategory.ProjectAsset)
+            {
+                OnProjectAssetImported?.Invoke(path);
+            }
         }
 
-        internal static void OnAssetChanged(string fullPath)
+        private static void OnAssetChanged(FileSystemEventArgs e)
         {
-            string path = GetValidatedAssetPathByFullPath(fullPath, out AssetPathType pathType);
+            //Debug.LogInfo("Changed: " + e.FullPath);
 
-            if (pathType == AssetPathType.Unknown)
+            string path = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory category);
+
+            if (category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to reimport an asset whose path is unknown: {fullPath}");
+                Debug.LogWarning($"Attempting to reimport an asset whose path is unknown: {e.FullPath}");
                 return;
             }
 
@@ -152,10 +247,15 @@ namespace March.Editor
             if (importer != null && importer.NeedReimportAsset())
             {
                 importer.SaveImporterAndReimportAsset();
+
+                if (category == AssetCategory.ProjectAsset)
+                {
+                    OnProjectAssetChanged?.Invoke(path);
+                }
             }
         }
 
-        private static bool IsVisualStudioTempSavingFile(string path)
+        private static bool IsVisualStudioTempFile(string path)
         {
             if (path.EndsWith('~'))
             {
@@ -166,7 +266,7 @@ namespace March.Editor
             return string.Equals(ext, ".TMP", StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static void OnAssetRenamed(string oldFullPath, string newFullPath, out bool isVisualStudioSavingFile)
+        private static void OnAssetRenamed(RenamedEventArgs e)
         {
             // Visual Studio 2022 保存 XXXX 文件的逻辑：
             // 1. 创建 ZZZZ~ 文件
@@ -177,26 +277,25 @@ namespace March.Editor
             // 6. 重命名 ZZZZ~ 文件为 XXXX
             // 7. 删除 XXXX~YYYY.TMP
 
-            if (IsVisualStudioTempSavingFile(newFullPath))
+            if (IsVisualStudioTempFile(e.FullPath))
             {
-                isVisualStudioSavingFile = true;
                 return;
             }
 
-            if (IsVisualStudioTempSavingFile(oldFullPath))
+            if (IsVisualStudioTempFile(e.OldFullPath))
             {
-                isVisualStudioSavingFile = true;
-                OnAssetChanged(newFullPath);
+                OnAssetChanged(e);
                 return;
             }
 
-            isVisualStudioSavingFile = false;
-            string oldPath = GetValidatedAssetPathByFullPath(oldFullPath, out AssetPathType oldPathType);
-            string newPath = GetValidatedAssetPathByFullPath(newFullPath, out AssetPathType newPathType);
+            //Debug.LogInfo($"Renamed: {e.OldFullPath} -> {e.FullPath}");
 
-            if (oldPathType == AssetPathType.Unknown || newPathType == AssetPathType.Unknown)
+            string oldPath = GetValidatedAssetPathByFullPath(e.OldFullPath, out AssetCategory oldCategory);
+            string newPath = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory newCategory);
+
+            if (oldCategory == AssetCategory.Unknown || newCategory == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to rename an asset whose path is unknown: {oldFullPath} -> {newFullPath}");
+                Debug.LogWarning($"Attempting to rename an asset whose path is unknown: {e.OldFullPath} -> {e.FullPath}");
                 return;
             }
 
@@ -213,33 +312,72 @@ namespace March.Editor
             if (s_Path2Importers.TryGetValue(newPath, out AssetImporter? newImporter))
             {
                 Debug.LogWarning("Asset already exists at new path. It will be deleted.");
+                AssetCategory assetCategory = newImporter.Category;
                 DeleteImporter(newImporter, true, false);
+
+                if (assetCategory == AssetCategory.ProjectAsset)
+                {
+                    OnProjectAssetRemoved?.Invoke(newPath);
+                }
             }
 
             // Recreate importer; GuidMap will be saved in this method
-            GetAssetImporter(newPath, asset, assetGuid);
+            newImporter = GetAssetImporter(newPath, asset, assetGuid);
+
+            if (newImporter != null)
+            {
+                bool oldIsProjectAsset = oldCategory == AssetCategory.ProjectAsset;
+                bool newIsProjectAsset = newCategory == AssetCategory.ProjectAsset;
+
+                if (oldIsProjectAsset && newIsProjectAsset)
+                {
+                    OnProjectAssetRenamed?.Invoke(oldPath, newPath);
+                }
+                else if (oldIsProjectAsset)
+                {
+                    OnProjectAssetRemoved?.Invoke(oldPath);
+                }
+                else if (newIsProjectAsset)
+                {
+                    OnProjectAssetImported?.Invoke(newPath);
+                }
+            }
         }
 
-        internal static void OnAssetCreated(string fullPath)
+        private static void OnAssetCreated(FileSystemEventArgs e)
         {
-            string path = GetValidatedAssetPathByFullPath(fullPath, out AssetPathType pathType);
+            //Debug.LogInfo("Created: " + e.FullPath);
 
-            if (pathType == AssetPathType.Unknown)
+            string path = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory category);
+
+            if (category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to create and import an asset whose path is unknown: {fullPath}");
+                Debug.LogWarning($"Attempting to create and import an asset whose path is unknown: {e.FullPath}");
                 return;
             }
 
-            GetAssetImporter(path);
+            if (s_Path2Importers.ContainsKey(path))
+            {
+                return;
+            }
+
+            AssetImporter? importer = GetAssetImporter(path);
+
+            if (importer != null && category == AssetCategory.ProjectAsset)
+            {
+                OnProjectAssetImported?.Invoke(path);
+            }
         }
 
-        internal static void OnAssetDeleted(string fullPath)
+        private static void OnAssetDeleted(FileSystemEventArgs e)
         {
-            string path = GetValidatedAssetPathByFullPath(fullPath, out AssetPathType pathType);
+            //Debug.LogInfo("Deleted: " + e.FullPath);
 
-            if (pathType == AssetPathType.Unknown)
+            string path = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory category);
+
+            if (category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to delete an asset whose path is unknown: {fullPath}");
+                Debug.LogWarning($"Attempting to delete an asset whose path is unknown: {e.FullPath}");
                 return;
             }
 
@@ -248,6 +386,11 @@ namespace March.Editor
             if (importer != null)
             {
                 DeleteImporter(importer, true, true);
+
+                if (category == AssetCategory.ProjectAsset)
+                {
+                    OnProjectAssetRemoved?.Invoke(path);
+                }
             }
         }
 
@@ -280,7 +423,7 @@ namespace March.Editor
 
         public static bool IsAsset(string path) => GetAssetImporter(path) != null;
 
-        private static AssetPathType ValidateAssetPathAndGetType(ref string path, out string fullPath, out string importerFullPath)
+        private static AssetCategory ValidateAssetPathAndGetCategory(ref string path, out string fullPath, out string importerFullPath)
         {
             path = path.ValidatePath();
 
@@ -291,7 +434,7 @@ namespace March.Editor
                 {
                     fullPath = Path.Combine(Application.DataPath, path).ValidatePath();
                     importerFullPath = fullPath + ImporterPathSuffix;
-                    return AssetPathType.ProjectAsset;
+                    return AssetCategory.ProjectAsset;
                 }
 
                 // 需要排除掉 Engine/Shaders 文件夹本身
@@ -301,21 +444,21 @@ namespace March.Editor
                     // "Engine/Shaders/".Length == 15
                     fullPath = Path.Combine(Shader.EngineShaderPath, path[15..]).ValidatePath();
                     importerFullPath = Path.Combine(Application.DataPath, "EngineMeta", path[7..] + ImporterPathSuffix).ValidatePath();
-                    return AssetPathType.EngineShader;
+                    return AssetCategory.EngineShader;
                 }
             }
 
             fullPath = path;
             importerFullPath = path + ImporterPathSuffix;
-            return AssetPathType.Unknown;
+            return AssetCategory.Unknown;
         }
 
-        public static AssetPathType GetAssetPathType(string path)
+        public static AssetCategory GetAssetCategory(string path)
         {
-            return ValidateAssetPathAndGetType(ref path, out _, out _);
+            return ValidateAssetPathAndGetCategory(ref path, out _, out _);
         }
 
-        public static string GetValidatedAssetPathByFullPath(string fullPath, out AssetPathType type)
+        public static string GetValidatedAssetPathByFullPath(string fullPath, out AssetCategory category)
         {
             fullPath = fullPath.ValidatePath();
 
@@ -323,18 +466,18 @@ namespace March.Editor
             {
                 if (fullPath.StartsWith(Application.DataPath + "/", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    type = AssetPathType.ProjectAsset;
+                    category = AssetCategory.ProjectAsset;
                     return fullPath[(Application.DataPath.Length + 1)..];
                 }
 
                 if (fullPath.StartsWith(Shader.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    type = AssetPathType.EngineShader;
+                    category = AssetCategory.EngineShader;
                     return "Engine/Shaders/" + fullPath[(Shader.EngineShaderPath.Length + 1)..];
                 }
             }
 
-            type = AssetPathType.Unknown;
+            category = AssetCategory.Unknown;
             return fullPath;
         }
 
@@ -345,9 +488,9 @@ namespace March.Editor
 
         private static AssetImporter? GetAssetImporter(string path, MarchObject? initAsset, string? initAssetGuid)
         {
-            AssetPathType pathType = ValidateAssetPathAndGetType(ref path, out string assetFullPath, out string importerFullPath);
+            AssetCategory category = ValidateAssetPathAndGetCategory(ref path, out string assetFullPath, out string importerFullPath);
 
-            if (pathType == AssetPathType.Unknown)
+            if (category == AssetCategory.Unknown)
             {
                 return null;
             }
@@ -372,6 +515,7 @@ namespace March.Editor
                 }
 
                 importer.Initialize(
+                    category: category,
                     assetPath: path,
                     assetFullPath: assetFullPath,
                     assetCacheFullPath: GetAssetCacheFullPath(importer.AssetGuid),

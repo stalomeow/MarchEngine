@@ -31,11 +31,6 @@ NATIVE_EXPORT_AUTO Camera_GetEnableMSAA(cs<Camera*> camera)
     retcs camera->GetEnableMSAA();
 }
 
-NATIVE_EXPORT_AUTO Camera_SetEnableMSAA(cs<Camera*> camera, cs_bool value)
-{
-    camera->SetEnableMSAA(value);
-}
-
 NATIVE_EXPORT_AUTO Camera_GetVerticalFieldOfView(cs<Camera*> camera)
 {
     retcs camera->GetVerticalFieldOfView();

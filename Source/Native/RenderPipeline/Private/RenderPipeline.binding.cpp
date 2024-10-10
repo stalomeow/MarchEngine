@@ -22,7 +22,7 @@ NATIVE_EXPORT_AUTO RenderPipeline_RemoveLight(cs<RenderPipeline*> pPipeline, cs<
     pPipeline->RemoveLight(pLight);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_SetSceneViewGridMaterial(cs<RenderPipeline*> pPipeline, cs<Material*> pMaterial)
+NATIVE_EXPORT_AUTO RenderPipeline_Render(cs<RenderPipeline*> pPipeline, cs<Camera*> camera, cs<Material*> gridGizmoMaterial)
 {
-    pPipeline->m_SceneViewGridMaterial = pMaterial;
+    pPipeline->Render(camera, gridGizmoMaterial);
 }

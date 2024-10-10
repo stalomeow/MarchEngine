@@ -32,11 +32,7 @@ namespace march
 
     private:
         void InitImGui();
-        void DrawImGui(Camera* sceneCamera);
-        void ResizeRenderPipeline(Camera* sceneCamera, int width, int height);
-        void SetSceneViewSrv(Camera* sceneCamera);
-        void DrawDebugDescriptorTableAllocator(const std::string& name, GfxDescriptorTableAllocator* allocator);
-        void DrawConsoleWindow();
+        void DrawBaseImGui();
         void CalculateFrameStats();
         std::string GetFontPath();
 
@@ -44,14 +40,10 @@ namespace march
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
         GfxDescriptorTable m_StaticDescriptorViewTable;
 
-        bool m_ShowDemoWindow = true;
-        bool m_ShowConsoleWindow = true;
-        bool m_ConsoleWindowAutoScroll = true;
-        bool m_ConsoleWindowScrollToBottom = true;
-        bool m_ShowDescriptorHeapWindow = true;
-
         RenderDoc m_RenderDoc{};
         std::unique_ptr<IDotNetRuntime> m_DotNet{};
+
+        std::string m_ImGuiIniFilename{};
 
     private:
         float m_FontSize = 15.0f;

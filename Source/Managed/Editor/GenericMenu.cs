@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor
 {
-    public class PopupMenu<T>(string popupId)
+    public class GenericMenu<T>(string menuId)
     {
         public delegate void MenuAction(ref T? arg);
 
@@ -126,14 +126,14 @@ namespace March.Editor
             m_MenuTree.Clear();
         }
 
-        public void Open()
+        public void OpenPopup()
         {
-            EditorGUI.OpenPopup(popupId);
+            EditorGUI.OpenPopup(menuId);
         }
 
-        public T? Draw(T? arg = default)
+        public T? DrawPopup(T? arg = default)
         {
-            if (EditorGUI.BeginPopup(popupId))
+            if (EditorGUI.BeginPopup(menuId))
             {
                 m_MenuTree.DrawMenuEntries(ref arg);
                 EditorGUI.EndPopup();
@@ -142,7 +142,7 @@ namespace March.Editor
             return arg;
         }
 
-        public T? DoWindowContext(T? arg = default)
+        public T? ShowAsWindowContext(T? arg = default)
         {
             if (EditorGUI.BeginPopupContextWindow())
             {
@@ -153,7 +153,7 @@ namespace March.Editor
             return arg;
         }
 
-        public T? DoItemContext(T? arg = default)
+        public T? ShowAsItemContext(T? arg = default)
         {
             if (EditorGUI.BeginPopupContextItem())
             {
@@ -164,12 +164,23 @@ namespace March.Editor
             return arg;
         }
 
-        public T? DoItemContext(string customIdAppend, T? arg = default)
+        public T? ShowAsItemContext(string customIdAppend, T? arg = default)
         {
-            if (EditorGUI.BeginPopupContextItem(popupId + customIdAppend))
+            if (EditorGUI.BeginPopupContextItem(menuId + customIdAppend))
             {
                 m_MenuTree.DrawMenuEntries(ref arg);
                 EditorGUI.EndPopup();
+            }
+
+            return arg;
+        }
+
+        public T? ShowInMainMenuBar(T? arg = default)
+        {
+            if (EditorGUI.BeginMainMenuBar())
+            {
+                m_MenuTree.DrawMenuEntries(ref arg);
+                EditorGUI.EndMainMenuBar();
             }
 
             return arg;
@@ -226,5 +237,5 @@ namespace March.Editor
         }
     }
 
-    public class PopupMenu(string popupId) : PopupMenu<object>(popupId) { }
+    public class GenericMenu(string menuId) : GenericMenu<object>(menuId) { }
 }

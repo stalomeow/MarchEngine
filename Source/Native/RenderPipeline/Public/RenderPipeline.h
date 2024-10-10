@@ -40,7 +40,7 @@ namespace march
         RenderPipeline();
         ~RenderPipeline() = default;
 
-        void Render(Camera* camera);
+        void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
         void AddRenderObject(RenderObject* obj) { m_RenderObjects.push_back(obj); }
 
@@ -65,8 +65,6 @@ namespace march
                 m_Lights.erase(it);
             }
         }
-
-        Material* m_SceneViewGridMaterial = nullptr;
 
     private:
         std::vector<RenderObject*> m_RenderObjects{};

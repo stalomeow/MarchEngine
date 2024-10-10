@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace March.Core
 {
-    public sealed class GameObject : MarchObject, IForceInlineSerialization
+    public sealed class GameObject : MarchObject, IForceInlineSerialization, IDisposable
     {
         private const string k_NameCharBlacklist = "/\\:;*?\"<>|";
 
@@ -149,6 +149,47 @@ namespace March.Core
         {
             component = GetComponent<T>();
             return component != null;
+        }
+
+        public void DestroyAndRemoveComponent(Component component)
+        {
+            if (component.gameObject != this)
+            {
+                throw new ArgumentException("Component is not attached to this GameObject", nameof(component));
+            }
+
+            if (component.GetType() == typeof(Transform))
+            {
+                throw new InvalidOperationException("Transform component cannot be removed from GameObject");
+            }
+
+            component.Dispose();
+            m_Components.Remove(component);
+        }
+
+        /// <summary>
+        /// 递归销毁 <see cref="GameObject"/> 及其所有子 <see cref="GameObject"/> 和 <see cref="Component"/>
+        /// </summary>
+        public void Dispose()
+        {
+            DisposeRecursive();
+        }
+
+        private void DisposeRecursive()
+        {
+            for (int i = 0; i < m_Transform.ChildCount; i++)
+            {
+                m_Transform.GetChild(i).gameObject.DisposeRecursive();
+            }
+
+            m_Transform.Dispose();
+
+            foreach (Component component in m_Components)
+            {
+                component.Dispose();
+            }
+
+            m_Components.Clear();
         }
 
         internal void AwakeRecursive()

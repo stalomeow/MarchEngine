@@ -116,6 +116,10 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Private\ConsoleWindow.binding.cpp" />
+    <ClCompile Include="Private\ConsoleWindow.cpp" />
+    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.binding.cpp" />
+    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.cpp" />
     <ClCompile Include="Private\EditorGUI.binding.cpp" />
     <ClCompile Include="Private\EditorGUI.cpp" />
     <ClCompile Include="Private\EditorWindow.binding.cpp" />
@@ -126,6 +130,8 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <ClCompile Include="Private\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Public\ConsoleWindow.h" />
+    <ClInclude Include="Public\DescriptorHeapDebuggerWindow.h" />
     <ClInclude Include="Public\EditorGUI.h" />
     <ClInclude Include="Public\EditorWindow.h" />
     <ClInclude Include="Public\GameEditor.h" />

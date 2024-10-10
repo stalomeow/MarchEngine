@@ -6,6 +6,7 @@ using System.Numerics;
 
 namespace March.Editor.Windows
 {
+    [EditorWindowMenu("Window/Scene")]
     internal unsafe partial class SceneWindow : EditorWindow
     {
         private readonly Material m_GridMaterial = new();
@@ -22,12 +23,11 @@ namespace March.Editor.Windows
             m_SceneViewCamera.EnableGizmos = true;
 
             m_GridMaterial.Shader = AssetDatabase.Load<Shader>("Engine/Shaders/SceneViewGrid.shader")!;
-            RenderPipeline.SetSceneViewGridMaterial(m_GridMaterial); // TODO remove it
         }
 
         protected override void OnDispose(bool disposing)
         {
-            // TODO dispose scene
+            m_DummyScene.Dispose();
 
             SceneWindow_Delete(NativePtr);
             base.OnDispose(disposing);
@@ -50,43 +50,43 @@ namespace March.Editor.Windows
         [JsonProperty]
         public float MouseSensitivity
         {
-            get => SceneView_GetMouseSensitivity(NativePtr);
-            set => SceneView_SetMouseSensitivity(NativePtr, value);
+            get => SceneWindow_GetMouseSensitivity(NativePtr);
+            set => SceneWindow_SetMouseSensitivity(NativePtr, value);
         }
 
         [JsonProperty]
         public float RotateDegSpeed
         {
-            get => SceneView_GetRotateDegSpeed(NativePtr);
-            set => SceneView_SetRotateDegSpeed(NativePtr, value);
+            get => SceneWindow_GetRotateDegSpeed(NativePtr);
+            set => SceneWindow_SetRotateDegSpeed(NativePtr, value);
         }
 
         [JsonProperty]
         public float NormalMoveSpeed
         {
-            get => SceneView_GetNormalMoveSpeed(NativePtr);
-            set => SceneView_SetNormalMoveSpeed(NativePtr, value);
+            get => SceneWindow_GetNormalMoveSpeed(NativePtr);
+            set => SceneWindow_SetNormalMoveSpeed(NativePtr, value);
         }
 
         [JsonProperty]
         public float FastMoveSpeed
         {
-            get => SceneView_GetFastMoveSpeed(NativePtr);
-            set => SceneView_SetFastMoveSpeed(NativePtr, value);
+            get => SceneWindow_GetFastMoveSpeed(NativePtr);
+            set => SceneWindow_SetFastMoveSpeed(NativePtr, value);
         }
 
         [JsonProperty]
         public float PanSpeed
         {
-            get => SceneView_GetPanSpeed(NativePtr);
-            set => SceneView_SetPanSpeed(NativePtr, value);
+            get => SceneWindow_GetPanSpeed(NativePtr);
+            set => SceneWindow_SetPanSpeed(NativePtr, value);
         }
 
         [JsonProperty]
         public float ZoomSpeed
         {
-            get => SceneView_GetZoomSpeed(NativePtr);
-            set => SceneView_SetZoomSpeed(NativePtr, value);
+            get => SceneWindow_GetZoomSpeed(NativePtr);
+            set => SceneWindow_SetZoomSpeed(NativePtr, value);
         }
 
         protected override void OnDraw()
@@ -94,7 +94,7 @@ namespace March.Editor.Windows
             base.OnDraw();
 
             DrawMenuBar();
-            UpdateDisplay();
+            RenderCamera();
             SceneWindow_DrawSceneView(NativePtr);
             TravelScene();
         }
@@ -106,10 +106,11 @@ namespace March.Editor.Windows
             m_SceneViewCamera.EnableWireframe = enableWireframe;
         }
 
-        private void UpdateDisplay()
+        private void RenderCamera()
         {
             nint display = SceneWindow_UpdateDisplay(NativePtr);
             m_SceneViewCamera.SetCustomTargetDisplay(display);
+            RenderPipeline.Render(m_SceneViewCamera, m_GridMaterial);
         }
 
         private void TravelScene()
@@ -118,7 +119,7 @@ namespace March.Editor.Windows
 
             Vector3 position = transform.Position;
             Quaternion rotation = transform.Rotation;
-            SceneView_TravelScene(NativePtr, &position, &rotation);
+            SceneWindow_TravelScene(NativePtr, &position, &rotation);
             transform.Position = position;
             transform.Rotation = rotation;
         }
@@ -141,43 +142,43 @@ namespace March.Editor.Windows
         private static partial void SceneWindow_DrawSceneView(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_TravelScene(nint w, Vector3* cameraPosition, Quaternion* cameraRotation);
+        private static partial void SceneWindow_TravelScene(nint w, Vector3* cameraPosition, Quaternion* cameraRotation);
 
         [NativeFunction]
-        private static partial float SceneView_GetMouseSensitivity(nint w);
+        private static partial float SceneWindow_GetMouseSensitivity(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_SetMouseSensitivity(nint w, float value);
+        private static partial void SceneWindow_SetMouseSensitivity(nint w, float value);
 
         [NativeFunction]
-        private static partial float SceneView_GetRotateDegSpeed(nint w);
+        private static partial float SceneWindow_GetRotateDegSpeed(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_SetRotateDegSpeed(nint w, float value);
+        private static partial void SceneWindow_SetRotateDegSpeed(nint w, float value);
 
         [NativeFunction]
-        private static partial float SceneView_GetNormalMoveSpeed(nint w);
+        private static partial float SceneWindow_GetNormalMoveSpeed(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_SetNormalMoveSpeed(nint w, float value);
+        private static partial void SceneWindow_SetNormalMoveSpeed(nint w, float value);
 
         [NativeFunction]
-        private static partial float SceneView_GetFastMoveSpeed(nint w);
+        private static partial float SceneWindow_GetFastMoveSpeed(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_SetFastMoveSpeed(nint w, float value);
+        private static partial void SceneWindow_SetFastMoveSpeed(nint w, float value);
 
         [NativeFunction]
-        private static partial float SceneView_GetPanSpeed(nint w);
+        private static partial float SceneWindow_GetPanSpeed(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_SetPanSpeed(nint w, float value);
+        private static partial void SceneWindow_SetPanSpeed(nint w, float value);
 
         [NativeFunction]
-        private static partial float SceneView_GetZoomSpeed(nint w);
+        private static partial float SceneWindow_GetZoomSpeed(nint w);
 
         [NativeFunction]
-        private static partial void SceneView_SetZoomSpeed(nint w, float value);
+        private static partial void SceneWindow_SetZoomSpeed(nint w, float value);
 
         #endregion
     }
