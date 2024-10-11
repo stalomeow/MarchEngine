@@ -11,11 +11,9 @@ NATIVE_EXPORT_AUTO SceneWindow_Delete(cs<SceneWindow*> w)
     delete w;
 }
 
-NATIVE_EXPORT_AUTO SceneWindow_DrawMenuBar(cs<SceneWindow*> w, cs<cs_bool*> wireframe)
+NATIVE_EXPORT_AUTO SceneWindow_DrawMenuBar(cs<SceneWindow*> w)
 {
-    bool enableWireframe = *wireframe;
-    SceneWindowInternalUtility::DrawMenuBar(w, enableWireframe);
-    wireframe->assign(enableWireframe);
+    SceneWindowInternalUtility::DrawMenuBar(w);
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_UpdateDisplay(cs<SceneWindow*> w)
@@ -35,6 +33,29 @@ NATIVE_EXPORT_AUTO SceneWindow_TravelScene(cs<SceneWindow*> w, cs<cs_vec3*> came
     SceneWindowInternalUtility::TravelScene(w, pos, rot);
     cameraPosition->assign(pos);
     cameraRotation->assign(rot);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_ManipulateTransform(cs<SceneWindow*> w, cs<Camera*> camera, cs<cs_mat4*> localToWorldMatrix)
+{
+    XMFLOAT4X4 m = *localToWorldMatrix;
+    bool changed = SceneWindowInternalUtility::ManipulateTransform(w, camera, m);
+    if (changed) localToWorldMatrix->assign(m);
+    retcs changed;
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_DrawWindowSettings(cs<SceneWindow*> w)
+{
+    SceneWindowInternalUtility::DrawWindowSettings(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetEnableMSAA(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetEnableMSAA(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetEnableMSAA(cs<SceneWindow*> w, cs_bool value)
+{
+    SceneWindowInternalUtility::SetEnableMSAA(w, value);
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_GetMouseSensitivity(cs<SceneWindow*> w)
@@ -95,4 +116,44 @@ NATIVE_EXPORT_AUTO SceneWindow_GetZoomSpeed(cs<SceneWindow*> w)
 NATIVE_EXPORT_AUTO SceneWindow_SetZoomSpeed(cs<SceneWindow*> w, cs_float value)
 {
     SceneWindowInternalUtility::SetZoomSpeed(w, value);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetGizmoOperation(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetGizmoOperation(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetGizmoOperation(cs<SceneWindow*> w, cs<SceneGizmoOperation> value)
+{
+    SceneWindowInternalUtility::SetGizmoOperation(w, value);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetGizmoMode(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetGizmoMode(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetGizmoMode(cs<SceneWindow*> w, cs<SceneGizmoMode> value)
+{
+    SceneWindowInternalUtility::SetGizmoMode(w, value);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetGizmoSnap(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetGizmoSnap(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetGizmoSnap(cs<SceneWindow*> w, cs_bool value)
+{
+    SceneWindowInternalUtility::SetGizmoSnap(w, value);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetWindowMode(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetWindowMode(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetWindowMode(cs<SceneWindow*> w, cs<SceneWindowMode> value)
+{
+    SceneWindowInternalUtility::SetWindowMode(w, value);
 }

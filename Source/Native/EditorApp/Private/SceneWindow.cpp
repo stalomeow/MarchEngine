@@ -1,11 +1,17 @@
 #include "SceneWindow.h"
 #include "WinApplication.h"
 #include "Display.h"
+#include "Camera.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
 #include "GfxDescriptorHeap.h"
+#include "Debug.h"
+#include "IconsFontAwesome6.h"
+#include "EditorGUI.h"
 #include <stdint.h>
 #include <imgui_internal.h>
+#include <ImGuizmo.h>
+#include <string>
 
 #undef min
 #undef max
@@ -15,13 +21,18 @@ using namespace DirectX;
 namespace march
 {
     SceneWindow::SceneWindow()
-        : m_Display(nullptr)
+        : m_EnableMSAA(true)
+        , m_Display(nullptr)
         , m_MouseSensitivity(0.00833f) // 鼠标相关操作需要乘灵敏度，不能乘 deltaTime
         , m_RotateDegSpeed(16.0f)
         , m_NormalMoveSpeed(8.0f)
         , m_FastMoveSpeed(24.0f)
         , m_PanSpeed(1.5f)
         , m_ZoomSpeed(40.0f)
+        , m_GizmoOperation(SceneGizmoOperation::Pan)
+        , m_GizmoMode(SceneGizmoMode::Local)
+        , m_GizmoSnap(false)
+        , m_WindowMode(SceneWindowMode::SceneView)
     {
     }
 
@@ -30,31 +41,51 @@ namespace march
         return base::GetWindowFlags() | ImGuiWindowFlags_MenuBar;
     }
 
-    void SceneWindow::DrawMenuBar(bool& wireframe)
+    void SceneWindow::DrawMenuBar()
     {
         if (!ImGui::BeginMenuBar())
         {
             return;
         }
 
-        if (m_Display == nullptr)
+        ImGui::TextUnformatted("Operation");
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+        if (ToggleButton(ICON_FA_HAND, "View Tool", m_GizmoOperation == SceneGizmoOperation::Pan))
         {
-            ImGui::RadioButton("MSAA", false);
+            m_GizmoOperation = SceneGizmoOperation::Pan;
         }
-        else
+
+        if (ToggleButton(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, "Move Tool", m_GizmoOperation == SceneGizmoOperation::Translate))
         {
-            if (ImGui::RadioButton("MSAA", m_Display->GetEnableMSAA()))
-            {
-                m_Display->SetEnableMSAA(!m_Display->GetEnableMSAA());
-            }
+            m_GizmoOperation = SceneGizmoOperation::Translate;
         }
+
+        if (ToggleButton(ICON_FA_ARROWS_ROTATE, "Rotate Tool", m_GizmoOperation == SceneGizmoOperation::Rotate))
+        {
+            m_GizmoOperation = SceneGizmoOperation::Rotate;
+        }
+
+        if (ToggleButton(ICON_FA_UP_RIGHT_AND_DOWN_LEFT_FROM_CENTER, "Scale Tool", m_GizmoOperation == SceneGizmoOperation::Scale))
+        {
+            m_GizmoOperation = SceneGizmoOperation::Scale;
+        }
+
+        ImGui::PopStyleVar();
 
         ImGui::Spacing();
 
-        if (ImGui::RadioButton("Wireframe", wireframe))
+        DrawMenuGizmoModeCombo();
+
+        ImGui::TextUnformatted("Snap");
+
+        if (ToggleButton(ICON_FA_MAGNET, "", m_GizmoSnap))
         {
-            wireframe = !wireframe;
+            m_GizmoSnap = !m_GizmoSnap;
         }
+
+        DrawMenuRightButtons();
 
         ImGui::EndMenuBar();
     }
@@ -70,6 +101,7 @@ namespace march
         if (m_Display == nullptr)
         {
             m_Display = std::make_unique<Display>(device, "EditorSceneView", width, height);
+            m_Display->SetEnableMSAA(m_EnableMSAA);
         }
         else if (m_Display->GetPixelWidth() != width || m_Display->GetPixelHeight() != height)
         {
@@ -84,7 +116,7 @@ namespace march
         GfxDevice* device = GetGfxDevice();
         ImVec2 size = ImGui::GetContentRegionAvail();
 
-        GfxRenderTexture* colorBuffer = m_Display->GetEnableMSAA() ? m_Display->GetResolvedColorBuffer() : m_Display->GetColorBuffer();
+        GfxRenderTexture* colorBuffer = m_EnableMSAA ? m_Display->GetResolvedColorBuffer() : m_Display->GetColorBuffer();
         GfxDescriptorTable srv = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, 1);
         srv.Copy(0, colorBuffer->GetSrvCpuDescriptorHandle());
 
@@ -154,7 +186,8 @@ namespace march
         }
 
         // Pan
-        if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Middle))
+        if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Middle) ||
+            (m_GizmoOperation == SceneGizmoOperation::Pan && IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Left)))
         {
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -mouseDeltaX * m_PanSpeed));
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, mouseDeltaY * m_PanSpeed));
@@ -162,6 +195,80 @@ namespace march
 
         XMStoreFloat3(&cameraPosition, cameraPos);
         XMStoreFloat4(&cameraRotation, cameraRot);
+    }
+
+    bool SceneWindow::ManipulateTransform(const Camera* camera, XMFLOAT4X4& localToWorldMatrix)
+    {
+        if (m_GizmoOperation == SceneGizmoOperation::Pan)
+        {
+            return false;
+        }
+
+        ImGuizmo::OPERATION operation;
+        ImGuizmo::MODE mode;
+
+        switch (m_GizmoOperation)
+        {
+        case SceneGizmoOperation::Translate:
+            operation = ImGuizmo::TRANSLATE;
+            break;
+        case SceneGizmoOperation::Rotate:
+            operation = ImGuizmo::ROTATE_X | ImGuizmo::ROTATE_Y | ImGuizmo::ROTATE_Z;
+            break;
+        case SceneGizmoOperation::Scale:
+            operation = ImGuizmo::SCALE;
+            break;
+        default:
+            DEBUG_LOG_ERROR("Unknown gizmo operation: %d", static_cast<int>(m_GizmoOperation));
+            return false;
+        }
+
+        switch (m_GizmoMode)
+        {
+        case SceneGizmoMode::Local:
+            mode = ImGuizmo::LOCAL;
+            break;
+        case SceneGizmoMode::World:
+            mode = ImGuizmo::WORLD;
+            break;
+        default:
+            DEBUG_LOG_ERROR("Unknown gizmo mode: %d", static_cast<int>(m_GizmoMode));
+            return false;
+        }
+
+        ImGuizmo::SetDrawlist();
+
+        // ContentRegionRect 不考虑滚动条，不过理论上 scene view 永远没有滚动条
+        ImRect contentRegion = ImGui::GetCurrentWindow()->ContentRegionRect;
+        ImGuizmo::SetRect(contentRegion.Min.x, contentRegion.Min.y, contentRegion.GetWidth(), contentRegion.GetHeight());
+
+        XMFLOAT4X4 viewMatrix = camera->GetViewMatrix();
+        XMFLOAT4X4 projMatrix = camera->GetProjectionMatrix();
+
+        const float* view = reinterpret_cast<float*>(viewMatrix.m);
+        const float* proj = reinterpret_cast<float*>(projMatrix.m);
+        float* matrix = reinterpret_cast<float*>(localToWorldMatrix.m);
+        return ImGuizmo::Manipulate(view, proj, operation, mode, matrix);
+    }
+
+    void SceneWindow::DrawWindowSettings()
+    {
+        EditorGUI::SeparatorText("Window Settings");
+
+        if (EditorGUI::Checkbox("MSAA", "", m_EnableMSAA))
+        {
+            if (m_Display != nullptr)
+            {
+                m_Display->SetEnableMSAA(m_EnableMSAA);
+            }
+        }
+
+        EditorGUI::FloatField("Mouse Sensitivity", "", &m_MouseSensitivity);
+        EditorGUI::FloatField("Rotate Speed (Deg)", "", &m_RotateDegSpeed);
+        EditorGUI::FloatField("Normal Move Speed", "", &m_NormalMoveSpeed);
+        EditorGUI::FloatField("Fast Move Speed", "", &m_FastMoveSpeed);
+        EditorGUI::FloatField("Pan Speed", "", &m_PanSpeed);
+        EditorGUI::FloatField("Zoom Speed", "", &m_ZoomSpeed);
     }
 
     bool SceneWindow::IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const
@@ -191,9 +298,72 @@ namespace march
         return false;
     }
 
-    void SceneWindowInternalUtility::DrawMenuBar(SceneWindow* window, bool& wireframe)
+    void SceneWindow::DrawMenuGizmoModeCombo()
     {
-        window->DrawMenuBar(wireframe);
+        ImGui::TextUnformatted("Mode");
+
+        std::string localLabel = ICON_FA_CUBE + std::string(" Local");
+        std::string worldLabel = ICON_FA_GLOBE + std::string(" World");
+
+        float w1 = ImGui::CalcTextSize(localLabel.c_str()).x;
+        float w2 = ImGui::CalcTextSize(worldLabel.c_str()).x;
+        float comboWidth = std::max(w1, w2) * 2.0f + ImGui::GetStyle().FramePadding.x * 2.0f;
+
+        int current = static_cast<int>(m_GizmoMode);
+        const char* labels[] = { localLabel.c_str(), worldLabel.c_str() };
+        ImGui::SetNextItemWidth(comboWidth);
+
+        if (ImGui::Combo("##GizmoMode", &current, labels, std::size(labels)))
+        {
+            m_GizmoMode = static_cast<SceneGizmoMode>(current);
+        }
+    }
+
+    void SceneWindow::DrawMenuRightButtons()
+    {
+        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - CalcToggleButtonWidth(ICON_FA_GEAR));
+
+        if (ToggleButton(ICON_FA_GEAR, "", m_WindowMode == SceneWindowMode::Settings))
+        {
+            m_WindowMode = (m_WindowMode == SceneWindowMode::Settings) ?
+                SceneWindowMode::SceneView : SceneWindowMode::Settings;
+        }
+    }
+
+    float SceneWindow::CalcToggleButtonWidth(const std::string& name, float widthScale)
+    {
+        return EditorGUI::CalcButtonWidth(name.c_str()) * widthScale;
+    }
+
+    bool SceneWindow::ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale)
+    {
+        float width = CalcToggleButtonWidth(name, widthScale);
+        ImVec2 size = ImVec2(width, ImGui::GetFrameHeight());
+
+        bool isClicked;
+
+        if (isOn)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            isClicked = ImGui::Button(name.c_str(), size);
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            isClicked = ImGui::Button(name.c_str(), size);
+        }
+
+        if (!tooltip.empty())
+        {
+            ImGui::SetItemTooltip("%s", tooltip.c_str());
+        }
+
+        return isClicked;
+    }
+
+    void SceneWindowInternalUtility::DrawMenuBar(SceneWindow* window)
+    {
+        window->DrawMenuBar();
     }
 
     Display* SceneWindowInternalUtility::UpdateDisplay(SceneWindow* window)
@@ -209,6 +379,31 @@ namespace march
     void SceneWindowInternalUtility::TravelScene(SceneWindow* window, XMFLOAT3& cameraPosition, XMFLOAT4& cameraRotation)
     {
         window->TravelScene(cameraPosition, cameraRotation);
+    }
+
+    bool SceneWindowInternalUtility::ManipulateTransform(SceneWindow* window, const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix)
+    {
+        return window->ManipulateTransform(camera, localToWorldMatrix);
+    }
+
+    void SceneWindowInternalUtility::DrawWindowSettings(SceneWindow* window)
+    {
+        window->DrawWindowSettings();
+    }
+
+    bool SceneWindowInternalUtility::GetEnableMSAA(SceneWindow* window)
+    {
+        return window->m_EnableMSAA;
+    }
+
+    void SceneWindowInternalUtility::SetEnableMSAA(SceneWindow* window, bool value)
+    {
+        window->m_EnableMSAA = value;
+
+        if (window->m_Display != nullptr)
+        {
+            window->m_Display->SetEnableMSAA(value);
+        }
     }
 
     float SceneWindowInternalUtility::GetMouseSensitivity(SceneWindow* window)
@@ -269,5 +464,45 @@ namespace march
     void SceneWindowInternalUtility::SetZoomSpeed(SceneWindow* window, float value)
     {
         window->m_ZoomSpeed = value;
+    }
+
+    SceneGizmoOperation SceneWindowInternalUtility::GetGizmoOperation(SceneWindow* window)
+    {
+        return window->m_GizmoOperation;
+    }
+
+    void SceneWindowInternalUtility::SetGizmoOperation(SceneWindow* window, SceneGizmoOperation value)
+    {
+        window->m_GizmoOperation = value;
+    }
+
+    SceneGizmoMode SceneWindowInternalUtility::GetGizmoMode(SceneWindow* window)
+    {
+        return window->m_GizmoMode;
+    }
+
+    void SceneWindowInternalUtility::SetGizmoMode(SceneWindow* window, SceneGizmoMode value)
+    {
+        window->m_GizmoMode = value;
+    }
+
+    bool SceneWindowInternalUtility::GetGizmoSnap(SceneWindow* window)
+    {
+        return window->m_GizmoSnap;
+    }
+
+    void SceneWindowInternalUtility::SetGizmoSnap(SceneWindow* window, bool value)
+    {
+        window->m_GizmoSnap = value;
+    }
+
+    SceneWindowMode SceneWindowInternalUtility::GetWindowMode(SceneWindow* window)
+    {
+        return window->m_WindowMode;
+    }
+
+    void SceneWindowInternalUtility::SetWindowMode(SceneWindow* window, SceneWindowMode value)
+    {
+        window->m_WindowMode = value;
     }
 }

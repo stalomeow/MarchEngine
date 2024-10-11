@@ -211,10 +211,9 @@ namespace March.Editor
             {
                 // 默认窗口
                 s_WindowData.Windows.Add(new SceneWindow());
-                s_WindowData.Windows.Add(new HierarchyWindow());
                 s_WindowData.Windows.Add(new InspectorWindow());
+                s_WindowData.Windows.Add(new HierarchyWindow());
                 s_WindowData.Windows.Add(new ProjectWindow());
-                s_WindowData.Windows.Add(new ConsoleWindow());
             }
         }
 

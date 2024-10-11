@@ -1,4 +1,5 @@
 #include "Transform.h"
+#include "Debug.h"
 #include <math.h>
 
 using namespace DirectX;
@@ -404,6 +405,45 @@ namespace march
     void TransformInternalUtility::SetEulerAngles(Transform* transform, const XMFLOAT3& value)
     {
         SetRotation(transform, Transform::EulerAnglesToQuaternion(value));
+    }
+
+    void TransformInternalUtility::SetLocalToWorldMatrix(Transform* transform, const XMFLOAT4X4& value)
+    {
+        XMMATRIX transformMatrix = XMLoadFloat4x4(&value);
+
+        if (transform->GetParent() != nullptr)
+        {
+            XMMATRIX parentWorldToLocal = transform->GetParent()->LoadWorldToLocalMatrix();
+            transformMatrix = XMMatrixMultiply(transformMatrix, parentWorldToLocal); // DirectX 中使用的是行向量
+        }
+
+        XMVECTOR scale;
+        XMVECTOR rotation;
+        XMVECTOR translation;
+
+        if (!XMMatrixDecompose(&scale, &rotation, &translation, transformMatrix))
+        {
+            DEBUG_LOG_ERROR("Invalid local to world matrix");
+            return;
+        }
+
+        XMFLOAT3 localPosition = {};
+        XMFLOAT4 localRotation = {};
+        XMFLOAT3 localScale = {};
+        XMStoreFloat3(&localPosition, translation);
+        XMStoreFloat4(&localRotation, rotation);
+        XMStoreFloat3(&localScale, scale);
+
+        SetLocalPosition(transform, localPosition);
+        SetLocalRotation(transform, localRotation);
+        SetLocalScale(transform, localScale);
+    }
+
+    void TransformInternalUtility::SetWorldToLocalMatrix(Transform* transform, const XMFLOAT4X4& value)
+    {
+        XMFLOAT4X4 localToWorld = {};
+        XMStoreFloat4x4(&localToWorld, XMMatrixInverse(nullptr, XMLoadFloat4x4(&value)));
+        SetLocalToWorldMatrix(transform, localToWorld);
     }
 
     void TransformInternalUtility::SyncLocalEulerAngles(Transform* transform)

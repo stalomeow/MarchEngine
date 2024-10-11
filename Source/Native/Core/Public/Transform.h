@@ -87,6 +87,8 @@ namespace march
         static void SetPosition(Transform* transform, const DirectX::XMFLOAT3& value);
         static void SetRotation(Transform* transform, const DirectX::XMFLOAT4& value);
         static void SetEulerAngles(Transform* transform, const DirectX::XMFLOAT3& value);
+        static void SetLocalToWorldMatrix(Transform* transform, const DirectX::XMFLOAT4X4& value);
+        static void SetWorldToLocalMatrix(Transform* transform, const DirectX::XMFLOAT4X4& value);
 
     private:
         static void SyncLocalEulerAngles(Transform* transform);

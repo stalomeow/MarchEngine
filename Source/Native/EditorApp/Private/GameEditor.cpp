@@ -101,7 +101,7 @@ namespace march
         const ImVec4 lightBgColor = ColorFromBytes(90, 90, 92);
         const ImVec4 veryLightBgColor = ColorFromBytes(110, 110, 115);
 
-        const ImVec4 panelColor = ColorFromBytes(50, 50, 54);
+        const ImVec4 panelColor = ColorFromBytes(55, 55, 59);
         const ImVec4 panelHoverColor = ColorFromBytes(35, 80, 142);
         const ImVec4 panelActiveColor = ColorFromBytes(0, 95, 170);
 
@@ -270,9 +270,11 @@ namespace march
             float width2 = EditorGUI::CalcButtonWidth(ICON_FA_PAUSE) * 1.8f;
             float width3 = EditorGUI::CalcButtonWidth(ICON_FA_FORWARD_STEP) * 1.8f;
             float width4 = EditorGUI::CalcButtonWidth(ICON_FA_CAMERA) * 1.8f;
-            float buttonWidth = width1 + width2 + width3 + width4 + ImGui::GetStyle().ItemSpacing.x * 3;
+            float buttonWidth = width1 + width2 + width3 + width4;
             float contentTotalWidth = ImGui::GetContentRegionAvail().x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (contentTotalWidth - buttonWidth) * 0.5f);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
             ImGui::Button(ICON_FA_PLAY, ImVec2(width1, ImGui::GetFrameHeight()));
             ImGui::SameLine();
@@ -282,8 +284,13 @@ namespace march
             ImGui::SameLine();
 
             ImGui::BeginDisabled(!m_RenderDoc.IsLoaded());
-            ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
+            if (ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight())))
+            {
+                m_RenderDoc.CaptureSingleFrame();
+            }
             ImGui::EndDisabled();
+
+            ImGui::PopStyleVar();
         }
         EditorGUI::EndMainViewportSideBar();
 

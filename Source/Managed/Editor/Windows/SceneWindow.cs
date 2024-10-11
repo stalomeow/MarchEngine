@@ -7,6 +7,26 @@ using System.Numerics;
 
 namespace March.Editor.Windows
 {
+    enum SceneGizmoOperation
+    {
+        Pan = 0,
+        Translate = 1,
+        Rotate = 2,
+        Scale = 3
+    }
+
+    enum SceneGizmoMode
+    {
+        Local = 0,
+        World = 1
+    }
+
+    enum SceneWindowMode
+    {
+        SceneView = 0,
+        Settings = 1
+    }
+
     [EditorWindowMenu("Window/General/Scene")]
     internal unsafe partial class SceneWindow : EditorWindow
     {
@@ -52,6 +72,41 @@ namespace March.Editor.Windows
         }
 
         [JsonProperty]
+        public bool CameraEnableWireframe
+        {
+            get => m_SceneViewCamera.EnableWireframe;
+            set => m_SceneViewCamera.EnableWireframe = value;
+        }
+
+        [JsonProperty]
+        public float CameraVerticalFieldOfView
+        {
+            get => m_SceneViewCamera.VerticalFieldOfView;
+            set => m_SceneViewCamera.VerticalFieldOfView = value;
+        }
+
+        [JsonProperty]
+        public float CameraNearClipPlane
+        {
+            get => m_SceneViewCamera.NearClipPlane;
+            set => m_SceneViewCamera.NearClipPlane = value;
+        }
+
+        [JsonProperty]
+        public float CameraFarClipPlane
+        {
+            get => m_SceneViewCamera.FarClipPlane;
+            set => m_SceneViewCamera.FarClipPlane = value;
+        }
+
+        [JsonProperty]
+        public bool EnableMSAA
+        {
+            get => SceneWindow_GetEnableMSAA(NativePtr);
+            set => SceneWindow_SetEnableMSAA(NativePtr, value);
+        }
+
+        [JsonProperty]
         public float MouseSensitivity
         {
             get => SceneWindow_GetMouseSensitivity(NativePtr);
@@ -93,21 +148,53 @@ namespace March.Editor.Windows
             set => SceneWindow_SetZoomSpeed(NativePtr, value);
         }
 
+        [JsonProperty]
+        public SceneGizmoOperation GizmoOperation
+        {
+            get => SceneWindow_GetGizmoOperation(NativePtr);
+            set => SceneWindow_SetGizmoOperation(NativePtr, value);
+        }
+
+        [JsonProperty]
+        public SceneGizmoMode GizmoMode
+        {
+            get => SceneWindow_GetGizmoMode(NativePtr);
+            set => SceneWindow_SetGizmoMode(NativePtr, value);
+        }
+
+        [JsonProperty]
+        public bool GizmoSnap
+        {
+            get => SceneWindow_GetGizmoSnap(NativePtr);
+            set => SceneWindow_SetGizmoSnap(NativePtr, value);
+        }
+
+        [JsonProperty]
+        public SceneWindowMode WindowMode
+        {
+            get => SceneWindow_GetWindowMode(NativePtr);
+            set => SceneWindow_SetWindowMode(NativePtr, value);
+        }
+
         protected override void OnDraw()
         {
             base.OnDraw();
+            SceneWindow_DrawMenuBar(NativePtr);
 
-            DrawMenuBar();
-            RenderCamera();
-            SceneWindow_DrawSceneView(NativePtr);
-            TravelScene();
-        }
+            if (WindowMode == SceneWindowMode.SceneView)
+            {
+                RenderCamera();
+                SceneWindow_DrawSceneView(NativePtr);
+                TravelScene();
+                ManipulateTransform();
+            }
+            else
+            {
+                SceneWindow_DrawWindowSettings(NativePtr);
 
-        private void DrawMenuBar()
-        {
-            bool enableWireframe = m_SceneViewCamera.EnableWireframe;
-            SceneWindow_DrawMenuBar(NativePtr, &enableWireframe);
-            m_SceneViewCamera.EnableWireframe = enableWireframe;
+                EditorGUI.SeparatorText("Camera Settings");
+                EditorGUI.ObjectPropertyFields(m_SceneViewCamera);
+            }
         }
 
         private void RenderCamera()
@@ -128,6 +215,22 @@ namespace March.Editor.Windows
             transform.Rotation = rotation;
         }
 
+        private void ManipulateTransform()
+        {
+            if (Selection.Active is not GameObject go)
+            {
+                return;
+            }
+
+            Transform transform = go.transform;
+            Matrix4x4 m = transform.LocalToWorldMatrix;
+
+            if (SceneWindow_ManipulateTransform(NativePtr, m_SceneViewCamera.NativePtr, &m))
+            {
+                transform.LocalToWorldMatrix = m;
+            }
+        }
+
         #region Bindings
 
         [NativeFunction]
@@ -137,7 +240,7 @@ namespace March.Editor.Windows
         private static partial void SceneWindow_Delete(nint w);
 
         [NativeFunction]
-        private static partial void SceneWindow_DrawMenuBar(nint w, bool* wireframe);
+        private static partial void SceneWindow_DrawMenuBar(nint w);
 
         [NativeFunction]
         private static partial nint SceneWindow_UpdateDisplay(nint w);
@@ -147,6 +250,18 @@ namespace March.Editor.Windows
 
         [NativeFunction]
         private static partial void SceneWindow_TravelScene(nint w, Vector3* cameraPosition, Quaternion* cameraRotation);
+
+        [NativeFunction]
+        private static partial bool SceneWindow_ManipulateTransform(nint w, nint camera, Matrix4x4* transform);
+
+        [NativeFunction]
+        private static partial void SceneWindow_DrawWindowSettings(nint w);
+
+        [NativeFunction]
+        private static partial bool SceneWindow_GetEnableMSAA(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetEnableMSAA(nint w, bool value);
 
         [NativeFunction]
         private static partial float SceneWindow_GetMouseSensitivity(nint w);
@@ -183,6 +298,30 @@ namespace March.Editor.Windows
 
         [NativeFunction]
         private static partial void SceneWindow_SetZoomSpeed(nint w, float value);
+
+        [NativeFunction]
+        private static partial SceneGizmoOperation SceneWindow_GetGizmoOperation(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetGizmoOperation(nint w, SceneGizmoOperation value);
+
+        [NativeFunction]
+        private static partial SceneGizmoMode SceneWindow_GetGizmoMode(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetGizmoMode(nint w, SceneGizmoMode value);
+
+        [NativeFunction]
+        private static partial bool SceneWindow_GetGizmoSnap(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetGizmoSnap(nint w, bool value);
+
+        [NativeFunction]
+        private static partial SceneWindowMode SceneWindow_GetWindowMode(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetWindowMode(nint w, SceneWindowMode value);
 
         #endregion
     }

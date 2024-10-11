@@ -106,9 +106,19 @@ NATIVE_EXPORT_AUTO Transform_GetLocalToWorldMatrix(cs<Transform*> transform)
     retcs transform->GetLocalToWorldMatrix();
 }
 
+NATIVE_EXPORT_AUTO Transform_SetLocalToWorldMatrix(cs<Transform*> transform, cs_mat4 value)
+{
+    TransformInternalUtility::SetLocalToWorldMatrix(transform, value);
+}
+
 NATIVE_EXPORT_AUTO Transform_GetWorldToLocalMatrix(cs<Transform*> transform)
 {
     retcs transform->GetWorldToLocalMatrix();
+}
+
+NATIVE_EXPORT_AUTO Transform_SetWorldToLocalMatrix(cs<Transform*> transform, cs_mat4 value)
+{
+    TransformInternalUtility::SetWorldToLocalMatrix(transform, value);
 }
 
 NATIVE_EXPORT_AUTO Transform_GetForward(cs<Transform*> transform)

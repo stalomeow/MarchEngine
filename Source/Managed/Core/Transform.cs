@@ -84,9 +84,17 @@ namespace March.Core
 
         public Vector3 LossyScale => Transform_GetLossyScale(NativePtr);
 
-        public Matrix4x4 LocalToWorldMatrix => Transform_GetLocalToWorldMatrix(NativePtr);
+        public Matrix4x4 LocalToWorldMatrix
+        {
+            get => Transform_GetLocalToWorldMatrix(NativePtr);
+            set => Transform_SetLocalToWorldMatrix(NativePtr, value);
+        }
 
-        public Matrix4x4 WorldToLocalMatrix => Transform_GetWorldToLocalMatrix(NativePtr);
+        public Matrix4x4 WorldToLocalMatrix
+        {
+            get => Transform_GetWorldToLocalMatrix(NativePtr);
+            set => Transform_SetWorldToLocalMatrix(NativePtr, value);
+        }
 
         public Vector3 Forward => Transform_GetForward(NativePtr);
 
@@ -254,7 +262,13 @@ namespace March.Core
         private static partial Matrix4x4 Transform_GetLocalToWorldMatrix(nint transform);
 
         [NativeFunction]
+        private static partial void Transform_SetLocalToWorldMatrix(nint transform, Matrix4x4 value);
+
+        [NativeFunction]
         private static partial Matrix4x4 Transform_GetWorldToLocalMatrix(nint transform);
+
+        [NativeFunction]
+        private static partial void Transform_SetWorldToLocalMatrix(nint transform, Matrix4x4 value);
 
         [NativeFunction]
         private static partial Vector3 Transform_GetForward(nint transform);
