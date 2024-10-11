@@ -7,6 +7,9 @@
     <Filter Include="Private">
       <UniqueIdentifier>{48005241-b113-4490-be2a-23a637b9064e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{c76b9627-d08f-4dda-94d5-c145c42dd09d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Debug.binding.cpp">
@@ -55,6 +58,12 @@
     </ClInclude>
     <ClInclude Include="Public\Transform.h">
       <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\IconsFontAwesome6.h">
+      <Filter>ThirdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\IconsFontAwesome6Brands.h">
+      <Filter>ThirdParty</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

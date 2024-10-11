@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.IconFonts;
 
 namespace March.Editor.Importers
 {
@@ -7,9 +8,16 @@ namespace March.Editor.Importers
     /// </summary>
     internal class FolderImporter : ExternalAssetImporter
     {
+        public const string FolderIconNormal = FontAwesome6.Folder;
+        public const string FolderIconExpanded = FontAwesome6.FolderOpen;
+
         public override string DisplayName => "Folder Asset";
 
         protected override int Version => base.Version + 1;
+
+        public override string IconNormal => FolderIconNormal;
+
+        public override string IconExpanded => FolderIconExpanded;
 
         protected override bool UseCache => false;
 

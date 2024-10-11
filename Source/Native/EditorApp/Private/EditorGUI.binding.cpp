@@ -210,6 +210,11 @@ NATIVE_EXPORT_AUTO EditorGUI_EndTreeNode()
     EditorGUI::EndTreeNode();
 }
 
+NATIVE_EXPORT_AUTO EditorGUI_IsTreeNodeOpen(cs_string id)
+{
+    retcs EditorGUI::IsTreeNodeOpen(id);
+}
+
 NATIVE_EXPORT_AUTO EditorGUI_IsItemClicked(cs<ImGuiMouseButton> button, cs<EditorGUI::ItemClickOptions> options)
 {
     retcs EditorGUI::IsItemClicked(button, options);

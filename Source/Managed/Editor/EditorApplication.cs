@@ -13,6 +13,9 @@ namespace March.Editor
         {
             [JsonProperty]
             public List<EditorWindow> Windows { get; set; } = [];
+
+            [JsonProperty]
+            public Dictionary<Type, Stack<string>> IdPool { get; set; } = [];
         }
 
         private static readonly WindowData s_WindowData = new();
@@ -49,7 +52,7 @@ namespace March.Editor
         public static T OpenWindow<T>() where T : EditorWindow, new()
         {
             var window = new T();
-            s_WindowData.Windows.Add(window);
+            OnWindowOpened(window);
             return window;
         }
 
@@ -68,7 +71,7 @@ namespace March.Editor
             try
             {
                 var window = (EditorWindow)Activator.CreateInstance(windowType, true)!;
-                s_WindowData.Windows.Add(window);
+                OnWindowOpened(window);
                 return window;
             }
             catch (Exception e)
@@ -88,6 +91,24 @@ namespace March.Editor
             return OpenWindow(windowType);
         }
 
+        private static void OnWindowOpened(EditorWindow window)
+        {
+            Type windowType = window.GetType();
+
+            // 循环使用 id
+            if (s_WindowData.IdPool.TryGetValue(windowType, out Stack<string>? pool))
+            {
+                window.Id = pool.Pop();
+
+                if (pool.Count <= 0)
+                {
+                    s_WindowData.IdPool.Remove(windowType);
+                }
+            }
+
+            s_WindowData.Windows.Add(window);
+        }
+
         private static void DrawWindows()
         {
             // 正向遍历，这样 DrawWindows() 中可以 OpenWindow()，且不会影响遍历
@@ -98,11 +119,28 @@ namespace March.Editor
 
                 if (!window.IsOpen)
                 {
-                    window.Dispose();
+                    OnWindowClosed(window);
                     s_WindowData.Windows.RemoveAt(i);
                     i--;
                 }
             }
+        }
+
+        private static void OnWindowClosed(EditorWindow window)
+        {
+            Type windowType = window.GetType();
+
+            if (!s_WindowData.IdPool.TryGetValue(windowType, out Stack<string>? pool))
+            {
+                pool = new Stack<string>();
+                s_WindowData.IdPool.Add(windowType, pool);
+            }
+
+            // 关闭窗口后，ImGui 不会删除窗口相关设置
+            // 如果不循环使用 id，那么 ini 配置文件会越来越大，占用内存也越来越多
+            // ImGui 底层用于保存窗口设置的 ImChunkStream<T> 只能往后添加元素，不能删除元素
+            pool.Push(window.Id);
+            window.Dispose();
         }
 
         private static void ShowWindowMenu()

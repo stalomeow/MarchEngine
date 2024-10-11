@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.IconFonts;
 using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
@@ -235,6 +236,18 @@ namespace March.Editor
         /// <remarks>子类重写时返回 <c>base.Version + number</c></remarks>
         [JsonIgnore]
         protected virtual int Version => 1;
+
+        /// <summary>
+        /// 图标
+        /// </summary>
+        [JsonIgnore]
+        public virtual string IconNormal => FontAwesome6.File;
+
+        /// <summary>
+        /// 展开后的图标
+        /// </summary>
+        [JsonIgnore]
+        public virtual string IconExpanded => IconNormal;
 
         /// <summary>
         /// 创建 Asset 实例，只创建实例，不填充数据

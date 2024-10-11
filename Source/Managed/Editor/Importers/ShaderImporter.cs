@@ -1,5 +1,6 @@
 using Antlr4.Runtime;
 using March.Core;
+using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Editor.ShaderLab;
 using March.Editor.ShaderLab.Internal;
@@ -13,6 +14,8 @@ namespace March.Editor.Importers
         public override string DisplayName => "Shader Asset";
 
         protected override int Version => base.Version + 17;
+
+        public override string IconNormal => FontAwesome6.Code;
 
         protected override bool UseCache => true;
 

@@ -41,7 +41,6 @@ namespace March.Editor.Windows
             }
         }
 
-        [JsonProperty]
         public string Title
         {
             get
@@ -66,14 +65,13 @@ namespace March.Editor.Windows
                 return NativeString.GetAndFree(id);
             }
 
-            protected set
+            protected internal set
             {
                 using NativeString v = value;
                 EditorWindow_SetId(NativePtr, v.Data);
             }
         }
 
-        [JsonProperty]
         public Vector2 DefaultSize
         {
             get => EditorWindow_GetDefaultSize(NativePtr);

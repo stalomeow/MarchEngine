@@ -1,5 +1,6 @@
 using March.Core;
 using March.Core.Binding;
+using March.Core.IconFonts;
 using March.Core.Rendering;
 using Newtonsoft.Json;
 using System.Numerics;
@@ -13,7 +14,7 @@ namespace March.Editor.Windows
         private readonly Scene m_DummyScene = new();
         private readonly Camera m_SceneViewCamera;
 
-        public SceneWindow() : base(SceneWindow_New(), "Scene")
+        public SceneWindow() : base(SceneWindow_New(), $"{FontAwesome6.VectorSquare} Scene")
         {
             DefaultSize = new Vector2(960.0f, 540.0f);
 
@@ -29,6 +30,7 @@ namespace March.Editor.Windows
 
         protected override void OnDispose(bool disposing)
         {
+            m_GridMaterial.Dispose();
             m_DummyScene.Dispose();
 
             SceneWindow_Delete(NativePtr);

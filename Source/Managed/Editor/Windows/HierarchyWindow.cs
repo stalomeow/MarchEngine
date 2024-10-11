@@ -1,5 +1,7 @@
 using March.Core;
+using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Editor.Importers;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -44,7 +46,7 @@ namespace March.Editor.Windows
             });
         }
 
-        public HierarchyWindow() : base("Hierarchy")
+        public HierarchyWindow() : base($"{FontAwesome6.BarsStaggered} Hierarchy")
         {
             DefaultSize = new Vector2(350.0f, 600.0f);
         }
@@ -54,9 +56,10 @@ namespace March.Editor.Windows
             base.OnDraw();
 
             Scene scene = SceneManager.CurrentScene;
+            string sceneLabel = $"{SceneImporter.SceneIcon} {scene.Name}###{scene.Name}";
             using var selections = ListPool<GameObject>.Get();
 
-            if (EditorGUI.CollapsingHeader(scene.Name, defaultOpen: true))
+            if (EditorGUI.CollapsingHeader(sceneLabel, defaultOpen: true))
             {
                 List<GameObject> gameObjects = scene.RootGameObjects;
                 bool isAnyItemClicked = false;
@@ -91,9 +94,10 @@ namespace March.Editor.Windows
 
         private static void DrawGameObjectsRecursive(GameObject go, List<GameObject> selections, ref bool isAnyItemClicked)
         {
+            string label = $"{FontAwesome6.DiceD6} {go.Name}###{go.Name}";
             bool isSelected = Selection.Active == go;
             bool isLeaf = go.transform.ChildCount == 0;
-            bool isOpen = EditorGUI.BeginTreeNode(go.Name, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
+            bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
 
             EditorGUI.ItemClickResult clickResult = EditorGUI.IsTreeNodeClicked(isOpen, isLeaf);
             isAnyItemClicked |= clickResult != EditorGUI.ItemClickResult.False;

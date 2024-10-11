@@ -58,6 +58,9 @@ namespace march
         // only call EndTreeNode() if BeginTreeNode() returns true!
         static void EndTreeNode();
 
+        static ImGuiTreeNodeFlags GetTreeNodeFlags(bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
+        static bool IsTreeNodeOpen(const std::string& id);
+
         enum class ItemClickOptions
         {
             None = 0,

@@ -399,6 +399,17 @@ namespace march
 
     bool EditorGUI::BeginTreeNode(const std::string& label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
     {
+        ImGuiTreeNodeFlags flags = GetTreeNodeFlags(isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+        return ImGui::TreeNodeEx(label.c_str(), flags);
+    }
+
+    void EditorGUI::EndTreeNode()
+    {
+        ImGui::TreePop();
+    }
+
+    ImGuiTreeNodeFlags EditorGUI::GetTreeNodeFlags(bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
+    {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
 
         if (isLeaf)             flags |= ImGuiTreeNodeFlags_Leaf;
@@ -409,12 +420,12 @@ namespace march
         if (defaultOpen)        flags |= ImGuiTreeNodeFlags_DefaultOpen;
         if (spanWidth)          flags |= ImGuiTreeNodeFlags_SpanFullWidth; // ImGuiTreeNodeFlags_SpanAvailWidth;
 
-        return ImGui::TreeNodeEx(label.c_str(), flags);
+        return flags;
     }
 
-    void EditorGUI::EndTreeNode()
+    bool EditorGUI::IsTreeNodeOpen(const std::string& id)
     {
-        ImGui::TreePop();
+        return ImGui::TreeNodeGetOpen(ImGui::GetID(id.c_str()));
     }
 
     bool EditorGUI::HasItemClickOptions(ItemClickOptions options, ItemClickOptions checkOptions)

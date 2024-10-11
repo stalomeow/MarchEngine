@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.IconFonts;
 using March.Core.Rendering;
 
 namespace March.Editor.Importers
@@ -9,6 +10,8 @@ namespace March.Editor.Importers
         public override string DisplayName => "Material Asset";
 
         protected override int Version => base.Version + 1;
+
+        public override string IconNormal => FontAwesome6.Droplet;
 
         protected override MarchObject CreateAsset()
         {

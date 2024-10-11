@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.IconFonts;
 using March.Core.Rendering;
 using Newtonsoft.Json;
 
@@ -10,6 +11,8 @@ namespace March.Editor.Importers
         public override string DisplayName => "Texture Asset";
 
         protected override int Version => base.Version + 1;
+
+        public override string IconNormal => FontAwesome6.Image;
 
         protected override bool UseCache => true;
 

@@ -269,6 +269,12 @@ namespace March.Editor
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
+        public static bool IsTreeNodeOpen(string id)
+        {
+            using NativeString i = id;
+            return EditorGUI_IsTreeNodeOpen(i.Data);
+        }
+
         public static ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options)
         {
             return EditorGUI_IsItemClicked((int)button, options);
@@ -766,6 +772,9 @@ namespace March.Editor
         /// </summary>
         [NativeFunction(Name = "EditorGUI_EndTreeNode")]
         public static partial void EndTreeNode();
+
+        [NativeFunction]
+        private static partial bool EditorGUI_IsTreeNodeOpen(nint id);
 
         [NativeFunction]
         private static partial ItemClickResult EditorGUI_IsItemClicked(int button, ItemClickOptions options);

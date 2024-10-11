@@ -27,7 +27,7 @@ namespace march
 
     ImGuiWindowFlags SceneWindow::GetWindowFlags() const
     {
-        return ImGuiWindowFlags_MenuBar;
+        return base::GetWindowFlags() | ImGuiWindowFlags_MenuBar;
     }
 
     void SceneWindow::DrawMenuBar(bool& wireframe)
@@ -96,25 +96,35 @@ namespace march
     {
         XMVECTOR cameraPos = XMLoadFloat3(&cameraPosition);
         XMVECTOR cameraRot = XMLoadFloat4(&cameraRotation);
-        XMVECTOR cameraForward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), cameraRot);
-        XMVECTOR cameraRight = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), cameraRot);
-        XMVECTOR cameraUp = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), cameraRot);
 
         float mouseDeltaX = ImGui::GetIO().MouseDelta.x * m_MouseSensitivity;
         float mouseDeltaY = ImGui::GetIO().MouseDelta.y * m_MouseSensitivity;
         float mouseWheel = ImGui::GetIO().MouseWheel * m_MouseSensitivity;
         float deltaTime = GetApp().GetDeltaTime();
 
-        // Rotate & Move
+        bool isRotating = false;
+
+        // Rotate
         if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Right))
         {
+            isRotating = true;
             float rotateSpeed = XMConvertToRadians(m_RotateDegSpeed);
-            float translation = (ImGui::IsKeyDown(ImGuiMod_Shift) ? m_FastMoveSpeed : m_NormalMoveSpeed) * deltaTime;
 
             // 绕本地空间 X 轴旋转，再绕世界空间 Y 轴旋转
             XMVECTOR rotX = XMQuaternionRotationRollPitchYaw(mouseDeltaY * rotateSpeed, 0, 0);
             XMVECTOR rotY = XMQuaternionRotationRollPitchYaw(0, mouseDeltaX * rotateSpeed, 0);
             cameraRot = XMQuaternionMultiply(XMQuaternionMultiply(rotX, cameraRot), rotY);
+        }
+
+        // 必须在 Rotate 之后计算方向
+        XMVECTOR cameraForward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), cameraRot);
+        XMVECTOR cameraRight = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), cameraRot);
+        XMVECTOR cameraUp = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), cameraRot);
+
+        // Move
+        if (isRotating)
+        {
+            float translation = (ImGui::IsKeyDown(ImGuiMod_Shift) ? m_FastMoveSpeed : m_NormalMoveSpeed) * deltaTime;
 
             if (ImGui::IsKeyDown(ImGuiKey_W))
             {
@@ -137,17 +147,17 @@ namespace march
             }
         }
 
+        // Zoom
+        if (ImGui::IsWindowHovered())
+        {
+            cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
+        }
+
         // Pan
         if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Middle))
         {
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -mouseDeltaX * m_PanSpeed));
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, mouseDeltaY * m_PanSpeed));
-        }
-
-        // Zoom
-        if (ImGui::IsWindowHovered())
-        {
-            cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
         }
 
         XMStoreFloat3(&cameraPosition, cameraPos);
@@ -161,11 +171,24 @@ namespace march
             return false;
         }
 
-        // 检查鼠标拖拽是否来自当前窗口
         ImVec2 mousePos = ImGui::GetMousePos();
         ImVec2 mouseDragDelta = ImGui::GetMouseDragDelta(button);
         ImVec2 mouseDragOrigin = ImVec2(mousePos.x - mouseDragDelta.x, mousePos.y - mouseDragDelta.y);
-        return ImGui::GetCurrentWindow()->InnerClipRect.Contains(mouseDragOrigin);
+        const ImVector<ImGuiWindow*>& windows = ImGui::GetCurrentContext()->Windows;
+
+        // 从顶层窗口开始检查
+        for (int i = windows.size() - 1; i >= 0; i--)
+        {
+            const ImGuiWindow* w = windows[i];
+
+            if (w->InnerClipRect.Contains(mouseDragOrigin))
+            {
+                // 检查鼠标拖拽是否来自当前窗口
+                return w == ImGui::GetCurrentWindow();
+            }
+        }
+
+        return false;
     }
 
     void SceneWindowInternalUtility::DrawMenuBar(SceneWindow* window, bool& wireframe)

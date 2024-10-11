@@ -15,7 +15,7 @@ namespace march
 
     ImGuiWindowFlags ConsoleWindow::GetWindowFlags() const
     {
-        return ImGuiWindowFlags_NoScrollbar;
+        return base::GetWindowFlags() | ImGuiWindowFlags_NoScrollbar;
     }
 
     void ConsoleWindow::OnDraw()

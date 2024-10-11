@@ -28,6 +28,8 @@
     <ClInclude Include="Public\IEngine.h" />
     <ClInclude Include="Public\Transform.h" />
     <ClInclude Include="Public\WinApplication.h" />
+    <ClInclude Include="ThirdParty\IconsFontAwesome6.h" />
+    <ClInclude Include="ThirdParty\IconsFontAwesome6Brands.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -71,7 +73,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_LIB;_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Utility\Public;..\Scripting\Public;..\Graphics\Public;..\RenderPipeline\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>ThirdParty;..\Utility\Public;..\Scripting\Public;..\Graphics\Public;..\RenderPipeline\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -84,7 +86,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\Utility\Public;..\Scripting\Public;..\Graphics\Public;..\RenderPipeline\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>ThirdParty;..\Utility\Public;..\Scripting\Public;..\Graphics\Public;..\RenderPipeline\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>

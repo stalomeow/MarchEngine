@@ -1,4 +1,5 @@
 using March.Core;
+using March.Editor.Importers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor
@@ -19,37 +20,66 @@ namespace March.Editor
 
                 foreach ((string name, FolderNode node) in Folders)
                 {
-                    bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == node.FolderPath);
-                    string assetPath = AssetDatabase.IsAsset(node.FolderPath) ? node.FolderPath : string.Empty;
-                    bool open = EditorGUI.BeginAssetTreeNode(name, assetPath, openOnArrow: true, openOnDoubleClick: true, selected: selected, spanWidth: true);
-
-                    if (EditorGUI.IsTreeNodeClicked(open, isLeaf: false) == EditorGUI.ItemClickResult.True)
-                    {
-                        Selection.Active = AssetDatabase.GetAssetImporter(node.FolderPath);
-                    }
-
-                    if (open)
-                    {
-                        node.Draw();
-                        EditorGUI.EndTreeNode();
-                    }
+                    DrawFolderAssetNode(name, node);
                 }
 
                 foreach ((string name, string path) in Files)
                 {
-                    bool selected = (Selection.Active is AssetImporter importer) && (importer.AssetPath == path);
-                    string assetPath = AssetDatabase.IsAsset(path) ? path : string.Empty;
-                    bool open = EditorGUI.BeginAssetTreeNode(name, assetPath, isLeaf: true, selected: selected, spanWidth: true);
+                    DrawLeafAssetNode(name, path);
+                }
+            }
 
-                    if (EditorGUI.IsTreeNodeClicked(open, isLeaf: true) == EditorGUI.ItemClickResult.True)
-                    {
-                        Selection.Active = AssetDatabase.GetAssetImporter(path);
-                    }
+            private static void DrawFolderAssetNode(string name, FolderNode node)
+            {
+                // 如果 importer 是 null，说明是 Assets 根结点
+                AssetImporter? importer = AssetDatabase.GetAssetImporter(node.FolderPath);
 
-                    if (open)
-                    {
-                        EditorGUI.EndTreeNode();
-                    }
+                string icon;
+                if (EditorGUI.IsTreeNodeOpen($"###{name}"))
+                {
+                    icon = importer?.IconExpanded ?? FolderImporter.FolderIconExpanded;
+                }
+                else
+                {
+                    icon = importer?.IconNormal ?? FolderImporter.FolderIconNormal;
+                }
+
+                string label = $"{icon} {name}###{name}";
+                string assetPath = importer?.AssetPath ?? string.Empty;
+                bool selected = (importer != null) && (Selection.Active == importer);
+                bool defaultOpen = (importer == null); // 默认展开 Assets 根结点
+                bool open = EditorGUI.BeginAssetTreeNode(label, assetPath, openOnArrow: true, openOnDoubleClick: true, selected: selected, defaultOpen: defaultOpen, spanWidth: true);
+
+                if (importer != null && EditorGUI.IsTreeNodeClicked(open, isLeaf: false) == EditorGUI.ItemClickResult.True)
+                {
+                    Selection.Active = importer;
+                }
+
+                if (open)
+                {
+                    node.Draw();
+                    EditorGUI.EndTreeNode();
+                }
+            }
+
+            private static void DrawLeafAssetNode(string name, string path)
+            {
+                AssetImporter importer = AssetDatabase.GetAssetImporter(path)!;
+                string icon = EditorGUI.IsTreeNodeOpen($"###{name}") ? importer.IconExpanded : importer.IconNormal;
+
+                string label = $"{icon} {name}###{name}";
+                string assetPath = importer.AssetPath;
+                bool selected = Selection.Active == importer;
+                bool open = EditorGUI.BeginAssetTreeNode(label, assetPath, isLeaf: true, selected: selected, spanWidth: true);
+
+                if (EditorGUI.IsTreeNodeClicked(open, isLeaf: true) == EditorGUI.ItemClickResult.True)
+                {
+                    Selection.Active = importer;
+                }
+
+                if (open)
+                {
+                    EditorGUI.EndTreeNode();
                 }
             }
 

@@ -20,6 +20,9 @@
 #include <tuple>
 #include <ImGuizmo.h>
 #include "ConsoleWindow.h"
+#include "IconsFontAwesome6.h"
+#include "IconsFontAwesome6Brands.h"
+#include <imgui_freetype.h>
 
 using namespace DirectX;
 
@@ -185,10 +188,6 @@ namespace march
 
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(GetApp().GetHWND());
-        io.Fonts->AddFontFromFileTTF(GetFontPath().c_str(), m_FontSize * GetApp().GetDisplayScale(),
-            nullptr, io.Fonts->GetGlyphRangesChineseFull());
-        io.Fonts->AddFontDefault();
-        io.Fonts->Build();
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
@@ -198,6 +197,8 @@ namespace march
         //ImGui::GetStyle().FrameBorderSize = 1.0f;
         //ImGui::GetStyle().FrameRounding = 2.0f;
         //ImGui::GetStyle().TabRounding = 2.0f;
+
+        ReloadFonts();
 
         auto device = GetGfxDevice()->GetD3D12Device();
         ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
@@ -265,11 +266,24 @@ namespace march
 
         if (EditorGUI::BeginMainViewportSideBar("##SingleLineToolbar", ImGuiDir_Up, ImGui::GetFrameHeight()))
         {
-            EditorGUI::Button("Play");
+            float width1 = EditorGUI::CalcButtonWidth(ICON_FA_PLAY) * 1.8f;
+            float width2 = EditorGUI::CalcButtonWidth(ICON_FA_PAUSE) * 1.8f;
+            float width3 = EditorGUI::CalcButtonWidth(ICON_FA_FORWARD_STEP) * 1.8f;
+            float width4 = EditorGUI::CalcButtonWidth(ICON_FA_CAMERA) * 1.8f;
+            float buttonWidth = width1 + width2 + width3 + width4 + ImGui::GetStyle().ItemSpacing.x * 3;
+            float contentTotalWidth = ImGui::GetContentRegionAvail().x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (contentTotalWidth - buttonWidth) * 0.5f);
+
+            ImGui::Button(ICON_FA_PLAY, ImVec2(width1, ImGui::GetFrameHeight()));
             ImGui::SameLine();
-            EditorGUI::Button("Pause");
+            ImGui::Button(ICON_FA_PAUSE, ImVec2(width2, ImGui::GetFrameHeight()));
             ImGui::SameLine();
-            EditorGUI::Button("Capture");
+            ImGui::Button(ICON_FA_FORWARD_STEP, ImVec2(width3, ImGui::GetFrameHeight()));
+            ImGui::SameLine();
+
+            ImGui::BeginDisabled(!m_RenderDoc.IsLoaded());
+            ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
+            ImGui::EndDisabled();
         }
         EditorGUI::EndMainViewportSideBar();
 
@@ -308,23 +322,64 @@ namespace march
         GetGfxDevice()->ResizeBackBuffer(width, height);
     }
 
-    std::string GameEditor::GetFontPath()
+    std::string GameEditor::GetFontPath(std::string fontName) const
     {
         std::string basePath = PathHelper::GetWorkingDirectoryUtf8();
-        return basePath + "\\Resources\\Fonts\\Inter-Regular.otf";
+        return basePath + "\\Resources\\Fonts\\" + fontName;
+    }
+
+    std::string GameEditor::GetFontAwesomePath(std::string fontName) const
+    {
+        std::string basePath = PathHelper::GetWorkingDirectoryUtf8();
+        return basePath + "\\Resources\\FontAwesome\\" + fontName;
+    }
+
+    void GameEditor::ReloadFonts()
+    {
+        const float dpiScale = GetApp().GetDisplayScale();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.Fonts->Clear();
+
+        // 英文字体
+        ImFontConfig latinConfig{};
+        latinConfig.PixelSnapH = true;
+        io.Fonts->AddFontFromFileTTF(GetFontPath("Inter-Regular.otf").c_str(), m_FontSizeLatin * dpiScale,
+            &latinConfig, io.Fonts->GetGlyphRangesDefault());
+
+        // 中文字体
+        ImFontConfig cjkConfig{};
+        cjkConfig.MergeMode = true;
+        cjkConfig.PixelSnapH = true;
+        cjkConfig.RasterizerDensity = 1.5f; // 稍微放大一点，更清晰
+        io.Fonts->AddFontFromFileTTF(GetFontPath("NotoSansSC-Regular.ttf").c_str(), m_FontSizeCJK * dpiScale,
+            &cjkConfig, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+
+        // Font Awesome 图标字体
+        float iconFontSizePixels = m_FontSizeIcon * dpiScale;
+        static const ImWchar faIconsRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+        static const ImWchar fabIconsRanges[] = { ICON_MIN_FAB, ICON_MAX_16_FAB, 0 };
+
+        ImFontConfig iconConfig;
+        iconConfig.MergeMode = true;
+        iconConfig.PixelSnapH = true;
+        iconConfig.GlyphMinAdvanceX = iconFontSizePixels; // 让所有图标等宽
+        iconConfig.GlyphMaxAdvanceX = iconFontSizePixels; // 让所有图标等宽
+
+        // use FONT_ICON_FILE_NAME_FAR if you want regular instead of solid
+        io.Fonts->AddFontFromFileTTF(GetFontAwesomePath(FONT_ICON_FILE_NAME_FAS).c_str(), iconFontSizePixels,
+            &iconConfig, faIconsRanges);
+        io.Fonts->AddFontFromFileTTF(GetFontAwesomePath(FONT_ICON_FILE_NAME_FAB).c_str(), iconFontSizePixels,
+            &iconConfig, fabIconsRanges);
+
+        io.Fonts->Build();
     }
 
     void GameEditor::OnDisplayScaleChanged()
     {
         DEBUG_LOG_INFO("DPI Changed: %f", GetApp().GetDisplayScale());
 
-        auto& io = ImGui::GetIO();
-        io.Fonts->Clear();
-        io.Fonts->AddFontFromFileTTF(GetFontPath().c_str(), m_FontSize * GetApp().GetDisplayScale(),
-            nullptr, io.Fonts->GetGlyphRangesChineseFull());
-        io.Fonts->AddFontDefault();
-        io.Fonts->Build();
-
+        ReloadFonts();
         ImGui_ImplDX12_InvalidateDeviceObjects();
     }
 

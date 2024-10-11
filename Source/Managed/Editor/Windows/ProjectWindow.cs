@@ -1,3 +1,4 @@
+using March.Core.IconFonts;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -7,7 +8,7 @@ namespace March.Editor.Windows
     {
         private readonly ProjectFileTree m_FileTree = new();
 
-        public ProjectWindow() : base("Project")
+        public ProjectWindow() : base($"{FontAwesome6.Folder} Project")
         {
             DefaultSize = new Vector2(350.0f, 600.0f);
         }

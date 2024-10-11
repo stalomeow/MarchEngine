@@ -34,7 +34,9 @@ namespace march
         void InitImGui();
         void DrawBaseImGui();
         void CalculateFrameStats();
-        std::string GetFontPath();
+        std::string GetFontPath(std::string fontName) const;
+        std::string GetFontAwesomePath(std::string fontName) const;
+        void ReloadFonts();
 
     private:
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
@@ -46,6 +48,8 @@ namespace march
         std::string m_ImGuiIniFilename{};
 
     private:
-        float m_FontSize = 15.0f;
+        const float m_FontSizeLatin = 15.0f;
+        const float m_FontSizeCJK = 19.0f;
+        const float m_FontSizeIcon = 13.0f;
     };
 }
