@@ -2,7 +2,9 @@ using March.Core;
 using March.Core.Binding;
 using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Core.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -97,6 +99,43 @@ namespace March.Editor.Windows
         {
             get => m_SceneViewCamera.FarClipPlane;
             set => m_SceneViewCamera.FarClipPlane = value;
+        }
+
+        [JsonProperty]
+        public Color GridXAxisColor
+        {
+            get => m_GridMaterial.MustGetColor("_XAxisColor");
+            set => m_GridMaterial.SetColor("_XAxisColor", value);
+        }
+
+        [JsonProperty]
+        public Color GridZAxisColor
+        {
+            get => m_GridMaterial.MustGetColor("_ZAxisColor");
+            set => m_GridMaterial.SetColor("_ZAxisColor", value);
+        }
+
+        [JsonProperty]
+        public Color GridLineColor
+        {
+            get => m_GridMaterial.MustGetColor("_LineColor");
+            set => m_GridMaterial.SetColor("_LineColor", value);
+        }
+
+        [JsonProperty]
+        [FloatDrawer(Min = 0.0f, Max = 1.0f, Slider = true)]
+        public float GridAntialiasing
+        {
+            get => m_GridMaterial.MustGetFloat("_Antialiasing");
+            set => m_GridMaterial.SetFloat("_Antialiasing", value);
+        }
+
+        [JsonProperty]
+        [FloatDrawer(Min = 0.0f, Max = 1.0f, Slider = true)]
+        public float GridFadeOut
+        {
+            get => m_GridMaterial.MustGetFloat("_FadeOut");
+            set => m_GridMaterial.SetFloat("_FadeOut", value);
         }
 
         [JsonProperty]
@@ -218,6 +257,21 @@ namespace March.Editor.Windows
                     using (new EditorGUI.IndentedScope(2))
                     {
                         EditorGUI.ObjectPropertyFields(m_SceneViewCamera);
+                    }
+                }
+
+                EditorGUI.Space();
+
+                if (EditorGUI.Foldout("Grid", string.Empty))
+                {
+                    using (new EditorGUI.IndentedScope(2))
+                    {
+                        var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(GetType());
+                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridXAxisColor)));
+                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridZAxisColor)));
+                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridLineColor)));
+                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridAntialiasing)));
+                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridFadeOut)));
                     }
                 }
             }

@@ -5,14 +5,10 @@ using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
-    public partial class Material : NativeMarchObject
+    public sealed unsafe partial class Material : NativeMarchObject
     {
-        [JsonIgnore] private Shader? m_Shader = null;
-        [JsonProperty] private Dictionary<string, int> m_Ints = [];
-        [JsonProperty] private Dictionary<string, float> m_Floats = [];
-        [JsonProperty] private Dictionary<string, Vector4> m_Vectors = [];
-        [JsonProperty] private Dictionary<string, Color> m_Colors = [];
-        [JsonProperty] private Dictionary<string, Texture> m_Textures = [];
+        private Shader? m_Shader = null;
+        private Dictionary<string, Texture> m_NonNullTextures = [];
 
         [JsonProperty]
         public Shader? Shader
@@ -35,119 +31,297 @@ namespace March.Core.Rendering
         [OnDeserializing]
         private void OnDeserializingCallback(StreamingContext context)
         {
-            Material_Reset(NativePtr); // 避免 overwrite 后还有旧数据
-        }
-
-        [OnDeserialized]
-        private void OnDeserializedCallback(StreamingContext context)
-        {
-            foreach (KeyValuePair<string, int> kvp in m_Ints)
-            {
-                using NativeString n = kvp.Key;
-                Material_SetInt(NativePtr, n.Data, kvp.Value);
-            }
-
-            foreach (KeyValuePair<string, float> kvp in m_Floats)
-            {
-                using NativeString n = kvp.Key;
-                Material_SetFloat(NativePtr, n.Data, kvp.Value);
-            }
-
-            foreach (KeyValuePair<string, Vector4> kvp in m_Vectors)
-            {
-                using NativeString n = kvp.Key;
-                Material_SetVector(NativePtr, n.Data, kvp.Value);
-            }
-
-            foreach (KeyValuePair<string, Color> kvp in m_Colors)
-            {
-                using NativeString n = kvp.Key;
-                Material_SetVector(NativePtr, n.Data, new Vector4(kvp.Value.R, kvp.Value.G, kvp.Value.B, kvp.Value.A));
-            }
-
-            foreach (KeyValuePair<string, Texture> kvp in m_Textures)
-            {
-                using NativeString n = kvp.Key;
-                Material_SetTexture(NativePtr, n.Data, kvp.Value.NativePtr);
-            }
+            // 防止 overwrite 后有旧属性残留
+            Material_Reset(NativePtr);
         }
 
         public void SetInt(string name, int value)
         {
-            m_Ints[name] = value;
-
             using NativeString n = name;
             Material_SetInt(NativePtr, n.Data, value);
         }
 
         public void SetFloat(string name, float value)
         {
-            m_Floats[name] = value;
-
             using NativeString n = name;
             Material_SetFloat(NativePtr, n.Data, value);
         }
 
         public void SetVector(string name, Vector4 value)
         {
-            m_Vectors[name] = value;
-
             using NativeString n = name;
             Material_SetVector(NativePtr, n.Data, value);
         }
 
         public void SetColor(string name, Color value)
         {
-            m_Colors[name] = value;
-
             using NativeString n = name;
-            Material_SetVector(NativePtr, n.Data, new Vector4(value.R, value.G, value.B, value.A));
+            Material_SetColor(NativePtr, n.Data, value);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="value">如果为 <c>null</c> 则删除</param>
         public void SetTexture(string name, Texture? value)
         {
             if (value == null)
             {
-                m_Textures.Remove(name);
+                m_NonNullTextures.Remove(name);
             }
             else
             {
-                m_Textures[name] = value;
+                m_NonNullTextures[name] = value;
             }
 
             using NativeString n = name;
             Material_SetTexture(NativePtr, n.Data, value?.NativePtr ?? nint.Zero);
         }
 
-        public int GetInt(string name, int defaultValue = default)
+        public bool TryGetInt(string name, out int value)
         {
-            return m_Ints.GetValueOrDefault(name, defaultValue);
+            using NativeString n = name;
+
+            int v = default;
+            bool ret = Material_GetInt(NativePtr, n.Data, &v);
+            value = v;
+            return ret;
         }
 
-        public float GetFloat(string name, float defaultValue = default)
+        public bool TryGetFloat(string name, out float value)
         {
-            return m_Floats.GetValueOrDefault(name, defaultValue);
+            using NativeString n = name;
+
+            float v = default;
+            bool ret = Material_GetFloat(NativePtr, n.Data, &v);
+            value = v;
+            return ret;
         }
 
-        public Vector4 GetVector(string name, Vector4 defaultValue = default)
+        public bool TryGetVector(string name, out Vector4 value)
         {
-            return m_Vectors.GetValueOrDefault(name, defaultValue);
+            using NativeString n = name;
+
+            Vector4 v = default;
+            bool ret = Material_GetVector(NativePtr, n.Data, &v);
+            value = v;
+            return ret;
         }
 
-        public Color GetColor(string name, Color defaultValue = default)
+        public bool TryGetColor(string name, out Color value)
         {
-            return m_Colors.GetValueOrDefault(name, defaultValue);
+            using NativeString n = name;
+
+            Color v = default;
+            bool ret = Material_GetColor(NativePtr, n.Data, &v);
+            value = v;
+            return ret;
         }
 
-        public Texture? GetTexture(string name, Texture? defaultValue = default)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value">即使返回值为 <c>true</c> 该值也可能为 <c>null</c>；返回值只代表有没有这个属性，属性值可以为 <c>null</c></param>
+        /// <returns></returns>
+        public bool TryGetTexture(string name, out Texture? value)
         {
-            return m_Textures.TryGetValue(name, out Texture? value) ? value : defaultValue;
+            if (m_NonNullTextures.TryGetValue(name, out value))
+            {
+                return true;
+            }
+
+            value = null;
+            using NativeString n = name;
+            return Material_HasTextureProperty(NativePtr, n.Data);
         }
+
+        public int GetIntOrDefault(string name, int defaultValue = default)
+        {
+            return TryGetInt(name, out int value) ? value : defaultValue;
+        }
+
+        public float GetFloatOrDefault(string name, float defaultValue = default)
+        {
+            return TryGetFloat(name, out float value) ? value : defaultValue;
+        }
+
+        public Vector4 GetVectorOrDefault(string name, Vector4 defaultValue = default)
+        {
+            return TryGetVector(name, out Vector4 value) ? value : defaultValue;
+        }
+
+        public Color GetColorOrDefault(string name, Color defaultValue = default)
+        {
+            return TryGetColor(name, out Color value) ? value : defaultValue;
+        }
+
+        public Texture? GetTextureOrDefault(string name, Texture? defaultValue = default)
+        {
+            return TryGetTexture(name, out Texture? value) ? value : defaultValue;
+        }
+
+        public int MustGetInt(string name)
+        {
+            return TryGetInt(name, out int value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
+        }
+
+        public float MustGetFloat(string name)
+        {
+            return TryGetFloat(name, out float value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
+        }
+
+        public Vector4 MustGetVector(string name)
+        {
+            return TryGetVector(name, out Vector4 value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
+        }
+
+        public Color MustGetColor(string name)
+        {
+            return TryGetColor(name, out Color value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
+        }
+
+        public Texture? MustGetTexture(string name)
+        {
+            return TryGetTexture(name, out Texture? value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
+        }
+
+        #region Serialization
+
+        private struct NativeProperty<T> where T : unmanaged
+        {
+            public nint Name;
+            public T Value;
+        }
+
+        [JsonProperty("m_Ints")]
+        private Dictionary<string, int> IntProperties
+        {
+            get
+            {
+                using var props = (NativeArray<NativeProperty<int>>)Material_GetAllInts(NativePtr);
+                var result = new Dictionary<string, int>();
+
+                for (int i = 0; i < props.Length; i++)
+                {
+                    ref NativeProperty<int> p = ref props[i];
+                    result.Add(NativeString.GetAndFree(p.Name), p.Value);
+                }
+
+                return result;
+            }
+
+            set
+            {
+                foreach (KeyValuePair<string, int> kvp in value)
+                {
+                    SetInt(kvp.Key, kvp.Value);
+                }
+            }
+        }
+
+        [JsonProperty("m_Floats")]
+        private Dictionary<string, float> FloatProperties
+        {
+            get
+            {
+                using var props = (NativeArray<NativeProperty<float>>)Material_GetAllFloats(NativePtr);
+                var result = new Dictionary<string, float>();
+
+                for (int i = 0; i < props.Length; i++)
+                {
+                    ref NativeProperty<float> p = ref props[i];
+                    result.Add(NativeString.GetAndFree(p.Name), p.Value);
+                }
+
+                return result;
+            }
+
+            set
+            {
+                foreach (KeyValuePair<string, float> kvp in value)
+                {
+                    SetFloat(kvp.Key, kvp.Value);
+                }
+            }
+        }
+
+        [JsonProperty("m_Vectors")]
+        private Dictionary<string, Vector4> VectorProperties
+        {
+            get
+            {
+                using var props = (NativeArray<NativeProperty<Vector4>>)Material_GetAllVectors(NativePtr);
+                var result = new Dictionary<string, Vector4>();
+
+                for (int i = 0; i < props.Length; i++)
+                {
+                    ref NativeProperty<Vector4> p = ref props[i];
+                    result.Add(NativeString.GetAndFree(p.Name), p.Value);
+                }
+
+                return result;
+            }
+
+            set
+            {
+                foreach (KeyValuePair<string, Vector4> kvp in value)
+                {
+                    SetVector(kvp.Key, kvp.Value);
+                }
+            }
+        }
+
+        [JsonProperty("m_Colors")]
+        private Dictionary<string, Color> ColorProperties
+        {
+            get
+            {
+                using var props = (NativeArray<NativeProperty<Color>>)Material_GetAllColors(NativePtr);
+                var result = new Dictionary<string, Color>();
+
+                for (int i = 0; i < props.Length; i++)
+                {
+                    ref NativeProperty<Color> p = ref props[i];
+                    result.Add(NativeString.GetAndFree(p.Name), p.Value);
+                }
+
+                return result;
+            }
+
+            set
+            {
+                foreach (KeyValuePair<string, Color> kvp in value)
+                {
+                    SetColor(kvp.Key, kvp.Value);
+                }
+            }
+        }
+
+        [JsonProperty("m_Textures")]
+        private Dictionary<string, Texture?> TextureProperties
+        {
+            get
+            {
+                using var props = (NativeArray<NativeProperty<nint>>)Material_GetAllTextures(NativePtr);
+                var result = new Dictionary<string, Texture?>();
+
+                for (int i = 0; i < props.Length; i++)
+                {
+                    ref NativeProperty<nint> p = ref props[i];
+                    string name = NativeString.GetAndFree(p.Name);
+                    result.Add(name, m_NonNullTextures.GetValueOrDefault(name));
+                }
+
+                return result;
+            }
+
+            set
+            {
+                foreach (KeyValuePair<string, Texture?> kvp in value)
+                {
+                    SetTexture(kvp.Key, kvp.Value);
+                }
+            }
+        }
+
+        #endregion
 
         #region Native
 
@@ -173,7 +347,40 @@ namespace March.Core.Rendering
         private static partial void Material_SetVector(nint pMaterial, nint name, Vector4 value);
 
         [NativeFunction]
+        private static partial void Material_SetColor(nint pMaterial, nint name, Color value);
+
+        [NativeFunction]
         private static partial void Material_SetTexture(nint pMaterial, nint name, nint pTexture);
+
+        [NativeFunction]
+        private static partial bool Material_GetInt(nint pMaterial, nint name, int* outValue);
+
+        [NativeFunction]
+        private static partial bool Material_GetFloat(nint pMaterial, nint name, float* outValue);
+
+        [NativeFunction]
+        private static partial bool Material_GetVector(nint pMaterial, nint name, Vector4* outValue);
+
+        [NativeFunction]
+        private static partial bool Material_GetColor(nint pMaterial, nint name, Color* outValue);
+
+        [NativeFunction]
+        private static partial bool Material_HasTextureProperty(nint pMaterial, nint name);
+
+        [NativeFunction]
+        private static partial nint Material_GetAllInts(nint pMaterial);
+
+        [NativeFunction]
+        private static partial nint Material_GetAllFloats(nint pMaterial);
+
+        [NativeFunction]
+        private static partial nint Material_GetAllVectors(nint pMaterial);
+
+        [NativeFunction]
+        private static partial nint Material_GetAllColors(nint pMaterial);
+
+        [NativeFunction]
+        private static partial nint Material_GetAllTextures(nint pMaterial);
 
         #endregion
     }

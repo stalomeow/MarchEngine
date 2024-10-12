@@ -355,6 +355,7 @@ namespace march
     using cs_float = cs<float>;
     using cs_double = cs<double>;
     using cs_bool = cs<bool>;
+    using cs_nint = cs<void*>;
     using cs_string = cs<std::string>;
     using cs_vec2 = cs<DirectX::XMFLOAT2>;
     using cs_vec3 = cs<DirectX::XMFLOAT3>;
@@ -365,6 +366,12 @@ namespace march
 
     template<typename T>
     using cs_array = cs<T[]>;
+
+    template<typename T>
+    using cs_ptr = cs<T*>;
+
+    template<typename T>
+    using cs_pptr = cs<cs<T*>*>;
 
     using cs_void_t = cs_void::managed_type;
     using cs_byte_t = cs_byte::managed_type;
@@ -379,6 +386,7 @@ namespace march
     using cs_float_t = cs_float::managed_type;
     using cs_double_t = cs_double::managed_type;
     using cs_bool_t = cs_bool::managed_type;
+    using cs_nint_t = cs_nint::managed_type;
     using cs_string_t = cs_string::managed_type;
     using cs_vec2_t = cs_vec2::managed_type;
     using cs_vec3_t = cs_vec3::managed_type;
@@ -389,6 +397,12 @@ namespace march
 
     template<typename T>
     using cs_array_t = typename cs_array<T>::managed_type;
+
+    template<typename T>
+    using cs_ptr_t = typename cs_ptr<T>::managed_type;
+
+    template<typename T>
+    using cs_pptr_t = typename cs_pptr<T>::managed_type;
 
     template<typename T>
     using cs_t = typename cs<T>::managed_type;
@@ -406,6 +420,7 @@ namespace march
     static_assert(is_valid_cs_type_v<cs_float>);
     static_assert(is_valid_cs_type_v<cs_double>);
     static_assert(is_valid_cs_type_v<cs_bool>);
+    static_assert(is_valid_cs_type_v<cs_nint>);
     static_assert(is_valid_cs_type_v<cs_string>);
     static_assert(is_valid_cs_type_v<cs_vec2>);
     static_assert(is_valid_cs_type_v<cs_vec3>);

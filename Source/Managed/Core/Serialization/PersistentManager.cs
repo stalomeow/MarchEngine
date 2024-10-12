@@ -120,7 +120,11 @@ namespace March.Core.Serialization
 
             public override void WriteJson(JsonWriter writer, MarchObject? value, JsonSerializer serializer)
             {
-                if (value?.PersistentGuid == null)
+                if (value == null)
+                {
+                    writer.WriteNull();
+                }
+                else if (value.PersistentGuid == null)
                 {
                     writer.WriteComment("Not Persistent");
                     writer.WriteNull();

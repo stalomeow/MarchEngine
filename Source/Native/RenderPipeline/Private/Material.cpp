@@ -1,12 +1,26 @@
 #include "Material.h"
-#include "StringUtility.h"
+#include "Shader.h"
 #include "Debug.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
-#include "GfxBuffer.h"
+
+using namespace DirectX;
 
 namespace march
 {
+    Material::Material()
+        : m_Shader(nullptr)
+        , m_ShaderVersion(0)
+        , m_ConstantBuffers{}
+        , m_Ints{}
+        , m_Floats{}
+        , m_Vectors{}
+        , m_Colors{}
+        , m_Textures{}
+    {
+
+    }
+
     void Material::Reset()
     {
         m_Shader = nullptr;
@@ -16,6 +30,7 @@ namespace march
         m_Ints.clear();
         m_Floats.clear();
         m_Vectors.clear();
+        m_Colors.clear();
         m_Textures.clear();
     }
 
@@ -31,9 +46,15 @@ namespace march
         SetConstantBufferValue(name, value);
     }
 
-    void Material::SetVector(const std::string& name, DirectX::XMFLOAT4 value)
+    void Material::SetVector(const std::string& name, const XMFLOAT4& value)
     {
         m_Vectors[name] = value;
+        SetConstantBufferValue(name, value);
+    }
+
+    void Material::SetColor(const std::string& name, const XMFLOAT4& value)
+    {
+        m_Colors[name] = value;
         SetConstantBufferValue(name, value);
     }
 
@@ -87,7 +108,7 @@ namespace march
         return false;
     }
 
-    bool Material::GetVector(const std::string& name, DirectX::XMFLOAT4* outValue) const
+    bool Material::GetVector(const std::string& name, XMFLOAT4* outValue) const
     {
         auto matProp = m_Vectors.find(name);
         if (matProp != m_Vectors.end())
@@ -97,19 +118,29 @@ namespace march
         }
 
         auto shaderProp = m_Shader->Properties.find(name);
-        if (shaderProp != m_Shader->Properties.end())
+        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Vector)
         {
-            if (shaderProp->second.Type == ShaderPropertyType::Vector)
-            {
-                *outValue = shaderProp->second.DefaultVector;
-                return true;
-            }
+            *outValue = shaderProp->second.DefaultVector;
+            return true;
+        }
 
-            if (shaderProp->second.Type == ShaderPropertyType::Color)
-            {
-                *outValue = shaderProp->second.DefaultColor;
-                return true;
-            }
+        return false;
+    }
+
+    bool Material::GetColor(const std::string& name, XMFLOAT4* outValue) const
+    {
+        auto matProp = m_Colors.find(name);
+        if (matProp != m_Colors.end())
+        {
+            *outValue = matProp->second;
+            return true;
+        }
+
+        auto shaderProp = m_Shader->Properties.find(name);
+        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Color)
+        {
+            *outValue = shaderProp->second.DefaultColor;
+            return true;
         }
 
         return false;
@@ -197,9 +228,18 @@ namespace march
             }
 
             case ShaderPropertyType::Color:
+            {
+                XMFLOAT4 value;
+                if (GetColor(name, &value))
+                {
+                    SetConstantBufferValue(name, value);
+                }
+                break;
+            }
+
             case ShaderPropertyType::Vector:
             {
-                DirectX::XMFLOAT4 value;
+                XMFLOAT4 value;
                 if (GetVector(name, &value))
                 {
                     SetConstantBufferValue(name, value);
@@ -217,6 +257,31 @@ namespace march
         }
     }
 
+    template<typename T>
+    void Material::SetConstantBufferValue(const std::string& name, const T& value)
+    {
+        CheckShaderVersion();
+
+        for (const auto& kv : m_ConstantBuffers)
+        {
+            const ShaderPass* pass = kv.first;
+            const GfxConstantBuffer* cb = kv.second.get();
+            const auto prop = pass->MaterialProperties.find(name);
+
+            if (prop != pass->MaterialProperties.end())
+            {
+                BYTE* p = cb->GetMappedData(0);
+                assert(sizeof(value) >= prop->second.Size); // 有时候会把 Vector4 绑定到 Vector3 上，所以用 >=
+                memcpy(p + prop->second.Offset, &value, prop->second.Size);
+            }
+        }
+    }
+
+    Shader* Material::GetShader() const
+    {
+        return m_Shader;
+    }
+
     void Material::SetShader(Shader* pShader)
     {
         if (m_Shader == pShader && m_ShaderVersion == pShader->Version)
@@ -227,5 +292,37 @@ namespace march
         m_Shader = pShader;
         m_ShaderVersion = pShader->Version;
         RecreateConstantBuffers();
+    }
+
+    GfxConstantBuffer* Material::GetConstantBuffer(ShaderPass* pass, GfxConstantBuffer* defaultValue)
+    {
+        CheckShaderVersion();
+        auto it = m_ConstantBuffers.find(pass);
+        return it == m_ConstantBuffers.end() ? defaultValue : it->second.get();
+    }
+
+    const std::unordered_map<std::string, int32_t>& MaterialInternalUtility::GetRawInts(Material* m)
+    {
+        return m->m_Ints;
+    }
+
+    const std::unordered_map<std::string, float>& MaterialInternalUtility::GetRawFloats(Material* m)
+    {
+        return m->m_Floats;
+    }
+
+    const std::unordered_map<std::string, XMFLOAT4>& MaterialInternalUtility::GetRawVectors(Material* m)
+    {
+        return m->m_Vectors;
+    }
+
+    const std::unordered_map<std::string, XMFLOAT4>& MaterialInternalUtility::GetRawColors(Material* m)
+    {
+        return m->m_Colors;
+    }
+
+    const std::unordered_map<std::string, GfxTexture*>& MaterialInternalUtility::GetRawTextures(Material* m)
+    {
+        return m->m_Textures;
     }
 }

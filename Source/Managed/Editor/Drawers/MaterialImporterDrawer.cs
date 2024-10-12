@@ -30,7 +30,7 @@ namespace March.Editor.Drawers
 
                         case ShaderPropertyType.Int:
                             {
-                                int value = material.GetInt(shaderProp.Name, shaderProp.DefaultInt);
+                                int value = material.MustGetInt(shaderProp.Name);
                                 isChanged |= EditorGUI.IntField(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetInt(shaderProp.Name, value);
                                 break;
@@ -38,7 +38,7 @@ namespace March.Editor.Drawers
 
                         case ShaderPropertyType.Color:
                             {
-                                Color value = material.GetColor(shaderProp.Name, shaderProp.DefaultColor);
+                                Color value = material.MustGetColor(shaderProp.Name);
                                 isChanged |= EditorGUI.ColorField(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetColor(shaderProp.Name, value);
                                 break;
@@ -46,7 +46,7 @@ namespace March.Editor.Drawers
 
                         case ShaderPropertyType.Vector:
                             {
-                                Vector4 value = material.GetVector(shaderProp.Name, shaderProp.DefaultVector);
+                                Vector4 value = material.MustGetVector(shaderProp.Name);
                                 isChanged |= EditorGUI.Vector4Field(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetVector(shaderProp.Name, value);
                                 break;
@@ -54,7 +54,7 @@ namespace March.Editor.Drawers
 
                         case ShaderPropertyType.Texture:
                             {
-                                Texture? value = material.GetTexture(shaderProp.Name);
+                                Texture? value = material.MustGetTexture(shaderProp.Name);
                                 isChanged |= EditorGUI.MarchObjectField(shaderProp.Label, shaderProp.Tooltip, ref value);
                                 material.SetTexture(shaderProp.Name, value);
                                 break;
@@ -70,7 +70,7 @@ namespace March.Editor.Drawers
         private static bool DrawFloat(Material material, ShaderProperty prop)
         {
             bool isChanged;
-            float value = material.GetFloat(prop.Name, prop.DefaultFloat);
+            float value = material.MustGetFloat(prop.Name);
             ShaderPropertyAttribute? rangeAttr = prop.Attributes.FirstOrDefault(a => a.Name == "Range");
 
             if (rangeAttr == null || rangeAttr.Arguments == null)
