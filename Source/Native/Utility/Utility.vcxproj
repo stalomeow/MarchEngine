@@ -14,10 +14,10 @@
     <ClCompile Include="Private\MathHelper.cpp" />
     <ClCompile Include="Private\PathHelper.cpp" />
     <ClCompile Include="Private\StringUtility.cpp" />
-    <ClCompile Include="Public\PathHelper.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\MathHelper.h" />
+    <ClInclude Include="Public\PathHelper.h" />
     <ClInclude Include="Public\StringUtility.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

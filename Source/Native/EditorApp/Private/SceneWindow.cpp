@@ -20,7 +20,7 @@ using namespace DirectX;
 namespace march
 {
     // Scene Window 几个要点：
-    // 1. 开多个 Scene Window 时，各种操作不能相互影响
+    // 1. 开多个 Scene Window 时，各种操作不能相互影响，尤其是一个 Scene Window 显示在另一个上面时
     // 2. 必须在 Scene View Image 上滚动鼠标滚轮才能移动相机
     // 3. 必须从 Scene View Image 上**开始**拖拽才能转动相机，之后鼠标可以拖出窗口
     // 4. 如果窗口正在移动，不允许操作相机

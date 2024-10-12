@@ -80,7 +80,7 @@ namespace march
         std::vector<std::string> results(numArgs);
         for (int i = 0; i < numArgs; i++)
         {
-            results[i] = StringUtility::Utf16ToUtf8(args[i], wcslen(args[i]));
+            results[i] = StringUtility::Utf16ToUtf8(args[i], static_cast<int32_t>(wcslen(args[i])));
         }
 
         LocalFree(args);

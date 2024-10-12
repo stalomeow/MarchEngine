@@ -175,7 +175,7 @@ namespace march
     static int TextFieldCharFilter(ImGuiInputTextCallbackData* data)
     {
         std::string* blacklist = static_cast<std::string*>(data->UserData);
-        return blacklist->find(data->EventChar) == std::string::npos ? 0 : 1;
+        return blacklist->find(static_cast<char>(data->EventChar)) == std::string::npos ? 0 : 1;
     }
 
     bool EditorGUI::TextField(const std::string& label, const std::string& tooltip, std::string& text, const std::string& charBlacklist)

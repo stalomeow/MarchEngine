@@ -1,5 +1,7 @@
 #include "Shader.h"
 #include "InteropServices.h"
+#include "Debug.h"
+#include <exception>
 
 struct CSharpShaderProperty
 {
@@ -239,12 +241,20 @@ NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
 
         pass->Name = src.Name;
 
-        GFX_HR(Shader::GetDxcUtils()->CreateBlob(
-            src.VertexShader.begin(), src.VertexShader.size(), DXC_CP_ACP,
-            reinterpret_cast<IDxcBlobEncoding**>(pass->VertexShader.ReleaseAndGetAddressOf())));
-        GFX_HR(Shader::GetDxcUtils()->CreateBlob(
-            src.PixelShader.begin(), src.PixelShader.size(), DXC_CP_ACP,
-            reinterpret_cast<IDxcBlobEncoding**>(pass->PixelShader.ReleaseAndGetAddressOf())));
+        try
+        {
+            GFX_HR(Shader::GetDxcUtils()->CreateBlob(
+                src.VertexShader.begin(), src.VertexShader.size(), DXC_CP_ACP,
+                reinterpret_cast<IDxcBlobEncoding**>(pass->VertexShader.ReleaseAndGetAddressOf())));
+            GFX_HR(Shader::GetDxcUtils()->CreateBlob(
+                src.PixelShader.begin(), src.PixelShader.size(), DXC_CP_ACP,
+                reinterpret_cast<IDxcBlobEncoding**>(pass->PixelShader.ReleaseAndGetAddressOf())));
+        }
+        catch (const std::exception& e)
+        {
+            DEBUG_LOG_ERROR("Failed to create shader blob: %s", e.what());
+            return;
+        }
 
         pass->ConstantBuffers.clear();
         for (int32_t j = 0; j < src.ConstantBuffers.size(); j++)

@@ -78,7 +78,7 @@ namespace march
         // Open source file.
         //
         ComPtr<IDxcBlobEncoding> pSource = nullptr;
-        GFX_HR(pUtils->CreateBlob(program.data(), program.size(), DXC_CP_UTF8, &pSource));
+        GFX_HR(pUtils->CreateBlob(program.data(), static_cast<UINT32>(program.size()), DXC_CP_UTF8, &pSource));
         DxcBuffer Source = {};
         Source.Ptr = pSource->GetBufferPointer();
         Source.Size = pSource->GetBufferSize();
@@ -327,14 +327,14 @@ namespace march
             cbvSrvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
                 texProp.ShaderRegisterTexture, texProp.RegisterSpaceTexture,
                 D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-            texProp.TextureDescriptorTableIndex = cbvSrvUavRanges.size() - 1;
+            texProp.TextureDescriptorTableIndex = static_cast<UINT>(cbvSrvUavRanges.size()) - 1;
 
             if (texProp.HasSampler)
             {
                 samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
                     texProp.ShaderRegisterSampler, texProp.RegisterSpaceSampler,
                     D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-                texProp.SamplerDescriptorTableIndex = samplerRanges.size() - 1;
+                texProp.SamplerDescriptorTableIndex = static_cast<UINT>(samplerRanges.size()) - 1;
             }
         }
 
@@ -344,7 +344,7 @@ namespace march
             cbvSrvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1,
                 cbProp.ShaderRegister, cbProp.RegisterSpace,
                 D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-            cbProp.DescriptorTableIndex = cbvSrvUavRanges.size() - 1;
+            cbProp.DescriptorTableIndex = static_cast<UINT>(cbvSrvUavRanges.size()) - 1;
         }
 
         std::vector<CD3DX12_ROOT_PARAMETER> params;
@@ -353,9 +353,9 @@ namespace march
         // Perfomance TIP: Order from most frequent to least frequent.
         if (cbvSrvUavRanges.size() > 0)
         {
-            params.emplace_back().InitAsDescriptorTable(cbvSrvUavRanges.size(), cbvSrvUavRanges.data(), D3D12_SHADER_VISIBILITY_ALL);
-            m_CbvSrvUavCount = cbvSrvUavRanges.size();
-            m_CbvSrvUavRootParamIndex = params.size() - 1;
+            params.emplace_back().InitAsDescriptorTable(static_cast<UINT>(cbvSrvUavRanges.size()), cbvSrvUavRanges.data(), D3D12_SHADER_VISIBILITY_ALL);
+            m_CbvSrvUavCount = static_cast<UINT>(cbvSrvUavRanges.size());
+            m_CbvSrvUavRootParamIndex = static_cast<UINT>(params.size()) - 1;
         }
         else
         {
@@ -364,9 +364,9 @@ namespace march
 
         if (samplerRanges.size() > 0)
         {
-            params.emplace_back().InitAsDescriptorTable(samplerRanges.size(), samplerRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
-            m_SamplerCount = samplerRanges.size();
-            m_SamplerRootParamIndex = params.size() - 1;
+            params.emplace_back().InitAsDescriptorTable(static_cast<UINT>(samplerRanges.size()), samplerRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
+            m_SamplerCount = static_cast<UINT>(samplerRanges.size());
+            m_SamplerRootParamIndex = static_cast<UINT>(params.size()) - 1;
         }
         else
         {

@@ -201,6 +201,8 @@ namespace march
     class ShaderPass
     {
     public:
+        ShaderPass() = default;
+
         std::string Name;
 
         Microsoft::WRL::ComPtr<IDxcBlob> VertexShader;

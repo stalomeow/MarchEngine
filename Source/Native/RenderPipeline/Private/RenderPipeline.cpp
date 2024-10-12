@@ -81,7 +81,7 @@ namespace march
         XMStoreFloat4x4(&passConsts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
         XMStoreFloat4(&passConsts.CameraPositionWS, camera->GetTransform()->LoadPosition());
 
-        passConsts.LightCount = m_Lights.size();
+        passConsts.LightCount = static_cast<int>(m_Lights.size());
         for (int i = 0; i < m_Lights.size(); i++)
         {
             if (!m_Lights[i]->GetIsActiveAndEnabled())
@@ -122,7 +122,7 @@ namespace march
 
         if (!m_RenderObjects.empty())
         {
-            auto cbPerObj = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerObjConstants), m_RenderObjects.size(), GfxConstantBuffer::Alignment);
+            auto cbPerObj = GetGfxDevice()->AllocateTransientUploadMemory(sizeof(PerObjConstants), static_cast<uint32_t>(m_RenderObjects.size()), GfxConstantBuffer::Alignment);
             std::unordered_map<size_t, std::vector<int>> objs; // 优化 pso 切换
 
             for (int i = 0; i < m_RenderObjects.size(); i++)

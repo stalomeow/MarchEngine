@@ -358,7 +358,7 @@ namespace march
         std::vector<std::uint16_t> indices;
 
         // top
-        vertices.emplace_back(0.0f, radius, 0.0f, 0, 0, 0, 0, 0, 0, 0, 0);
+        vertices.emplace_back(0.0f, radius, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
         float phiStep = DirectX::XM_PI / stackCount;
         float thetaStep = 2.0f * DirectX::XM_PI / sliceCount;
@@ -385,7 +385,7 @@ namespace march
         }
 
         // bottom
-        vertices.emplace_back(0.0f, -radius, 0.0f, 0, 0, 0, 0, 0, 0, 0, 0);
+        vertices.emplace_back(0.0f, -radius, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
         //
         // Compute indices for top stack.  The top stack was written first to the vertex buffer

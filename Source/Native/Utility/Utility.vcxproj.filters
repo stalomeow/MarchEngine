@@ -15,9 +15,6 @@
     <ClCompile Include="Private\StringUtility.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Public\PathHelper.h">
-      <Filter>Public</Filter>
-    </ClCompile>
     <ClCompile Include="Private\PathHelper.cpp">
       <Filter>Private</Filter>
     </ClCompile>
@@ -27,6 +24,9 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\StringUtility.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\PathHelper.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>
