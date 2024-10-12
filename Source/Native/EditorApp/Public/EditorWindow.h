@@ -22,8 +22,11 @@ namespace march
 
         const std::string& GetTitle() const;
         const std::string& GetId() const;
+        const std::string& GetFullName() const;
         const ImVec2& GetDefaultSize() const;
         bool GetIsOpen() const;
+
+        ImGuiID GetImGuiID() const;
 
     protected:
         void SetTitle(const std::string& title);

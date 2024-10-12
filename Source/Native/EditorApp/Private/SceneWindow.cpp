@@ -24,6 +24,7 @@ namespace march
     // 2. 必须在 Scene View Image 上滚动鼠标滚轮才能移动相机
     // 3. 必须从 Scene View Image 上**开始**拖拽才能转动相机，之后鼠标可以拖出窗口
     // 4. 如果窗口正在移动，不允许操作相机
+    // 5. ImGuizmo 必须要设置 ID，否则多个 Scene Window 会相互影响
 
     SceneWindow::SceneWindow()
         : m_EnableMSAA(true)
@@ -321,6 +322,8 @@ namespace march
             }
         }
 
+        // 避免多个窗口相互干扰
+        ImGuizmo::SetID(static_cast<int>(GetImGuiID())); // TODO: 换成 ImGuizmo::PushID 和 ImGuizmo::PopID，假如之后它们被公开的话
         return ImGuizmo::Manipulate(view, proj, operation, mode, matrix, nullptr, snap);
     }
 

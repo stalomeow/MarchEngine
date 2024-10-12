@@ -37,6 +37,11 @@ namespace march
         return m_Id;
     }
 
+    const std::string& EditorWindow::GetFullName() const
+    {
+        return m_FullName;
+    }
+
     const ImVec2& EditorWindow::GetDefaultSize() const
     {
         return m_DefaultSize;
@@ -45,6 +50,11 @@ namespace march
     bool EditorWindow::GetIsOpen() const
     {
         return m_IsOpen;
+    }
+
+    ImGuiID EditorWindow::GetImGuiID() const
+    {
+        return ImGui::GetID(m_FullName.c_str());
     }
 
     void EditorWindow::SetTitle(const std::string& title)
