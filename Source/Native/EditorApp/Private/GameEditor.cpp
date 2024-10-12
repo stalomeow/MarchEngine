@@ -185,6 +185,8 @@ namespace march
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
         io.IniFilename = m_ImGuiIniFilename.c_str();
+        io.ConfigWindowsMoveFromTitleBarOnly = true;
+        io.ConfigDockingAlwaysTabBar = true;
 
         // Setup Platform/Renderer backends
         ImGui_ImplWin32_Init(GetApp().GetHWND());

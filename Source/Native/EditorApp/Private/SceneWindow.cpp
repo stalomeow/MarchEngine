@@ -9,7 +9,6 @@
 #include "IconsFontAwesome6.h"
 #include "EditorGUI.h"
 #include <stdint.h>
-#include <imgui_internal.h>
 #include <ImGuizmo.h>
 #include <string>
 
@@ -134,6 +133,11 @@ namespace march
 
     void SceneWindow::TravelScene(XMFLOAT3& cameraPosition, XMFLOAT4& cameraRotation)
     {
+        if (!AllowTravellingScene())
+        {
+            return;
+        }
+
         XMVECTOR cameraPos = XMLoadFloat3(&cameraPosition);
         XMVECTOR cameraRot = XMLoadFloat4(&cameraRotation);
 
@@ -145,7 +149,7 @@ namespace march
         bool isRotating = false;
 
         // Rotate
-        if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Right))
+        if (IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Right))
         {
             isRotating = true;
             float rotateSpeed = XMConvertToRadians(m_RotateDegSpeed);
@@ -196,7 +200,7 @@ namespace march
                 cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, -translation));
             }
         }
-        else if (ImGui::IsWindowFocused())
+        else
         {
             if (ImGui::IsKeyPressed(ImGuiKey_Q))
             {
@@ -226,14 +230,14 @@ namespace march
         }
 
         // Zoom
-        if (ImGui::IsWindowHovered())
+        if (IsSceneViewImageHovered())
         {
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
         }
 
         // Pan
-        if (IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Middle) ||
-            (m_GizmoOperation == SceneGizmoOperation::Pan && IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton_Left)))
+        if (IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Middle) ||
+            (m_GizmoOperation == SceneGizmoOperation::Pan && IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Left)))
         {
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -mouseDeltaX * m_PanSpeed));
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, mouseDeltaY * m_PanSpeed));
@@ -284,8 +288,7 @@ namespace march
 
         ImGuizmo::SetDrawlist();
 
-        // ContentRegionRect 不考虑滚动条，不过理论上 scene view 永远没有滚动条
-        ImRect contentRegion = ImGui::GetCurrentWindow()->ContentRegionRect;
+        ImRect contentRegion = GetSceneViewImageRect();
         ImGuizmo::SetRect(contentRegion.Min.x, contentRegion.Min.y, contentRegion.GetWidth(), contentRegion.GetHeight());
 
         XMFLOAT4X4 viewMatrix = camera->GetViewMatrix();
@@ -361,38 +364,6 @@ namespace march
         EditorGUI::Space();
     }
 
-    bool SceneWindow::IsForceGizmoSnapByKeyboardShortcut() const
-    {
-        return ImGui::IsWindowFocused() && ImGui::IsKeyDown(ImGuiMod_Ctrl);
-    }
-
-    bool SceneWindow::IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const
-    {
-        if (!ImGui::IsMouseDragging(button))
-        {
-            return false;
-        }
-
-        ImVec2 mousePos = ImGui::GetMousePos();
-        ImVec2 mouseDragDelta = ImGui::GetMouseDragDelta(button);
-        ImVec2 mouseDragOrigin = ImVec2(mousePos.x - mouseDragDelta.x, mousePos.y - mouseDragDelta.y);
-        const ImVector<ImGuiWindow*>& windows = ImGui::GetCurrentContext()->Windows;
-
-        // 从顶层窗口开始检查
-        for (int i = windows.size() - 1; i >= 0; i--)
-        {
-            const ImGuiWindow* w = windows[i];
-
-            if (w->InnerClipRect.Contains(mouseDragOrigin))
-            {
-                // 检查鼠标拖拽是否来自当前窗口
-                return w == ImGui::GetCurrentWindow();
-            }
-        }
-
-        return false;
-    }
-
     void SceneWindow::DrawMenuGizmoModeCombo()
     {
         ImGui::TextUnformatted("Mode");
@@ -454,6 +425,96 @@ namespace march
         }
 
         return isClicked;
+    }
+
+    bool SceneWindow::IsForceGizmoSnapByKeyboardShortcut()
+    {
+        return ImGui::IsWindowFocused() && ImGui::IsKeyDown(ImGuiMod_Ctrl);
+    }
+
+    bool SceneWindow::AllowTravellingScene()
+    {
+        if (IsWindowMoving())
+        {
+            return false;
+        }
+
+        if (ImGui::IsWindowFocused())
+        {
+            return true;
+        }
+
+        if (AllowFocusingWindow())
+        {
+            ImGui::SetWindowFocus();
+            return true;
+        }
+
+        return false;
+    }
+
+    bool SceneWindow::AllowFocusingWindow()
+    {
+        if (IsSceneViewImageHovered())
+        {
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left, false))
+            {
+                return true;
+            }
+
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Right, false))
+            {
+                return true;
+            }
+
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Middle, false))
+            {
+                return true;
+            }
+
+            float mouseWheel = ImGui::GetIO().MouseWheel;
+            if (mouseWheel > 0 || mouseWheel < 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool SceneWindow::IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton button)
+    {
+        if (!ImGui::IsMouseDragging(button))
+        {
+            return false;
+        }
+
+        ImVec2 mousePos = ImGui::GetMousePos();
+        ImVec2 mouseDragDelta = ImGui::GetMouseDragDelta(button);
+        ImVec2 mouseOrigin = ImVec2(mousePos.x - mouseDragDelta.x, mousePos.y - mouseDragDelta.y);
+        return IsPointInsideSceneViewImage(mouseOrigin);
+    }
+
+    bool SceneWindow::IsWindowMoving()
+    {
+        return ImGui::GetCurrentContext()->MovingWindow == ImGui::GetCurrentWindowRead();
+    }
+
+    bool SceneWindow::IsSceneViewImageHovered()
+    {
+        // 光标必须在 scene view 的那张 image 上，不能是 title bar 或者 menu bar
+        return ImGui::IsWindowHovered() && IsPointInsideSceneViewImage(ImGui::GetMousePos());
+    }
+
+    bool SceneWindow::IsPointInsideSceneViewImage(const ImVec2& p)
+    {
+        return GetSceneViewImageRect().Contains(p);
+    }
+
+    ImRect SceneWindow::GetSceneViewImageRect()
+    {
+        // ContentRegionRect 不考虑滚动条，不过理论上 scene view 永远没有滚动条
+        return ImGui::GetCurrentWindowRead()->ContentRegionRect;
     }
 
     void SceneWindowInternalUtility::DrawMenuBar(SceneWindow* window)

@@ -4,6 +4,7 @@
 #include <DirectXMath.h>
 #include <memory>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace march
 {
@@ -50,13 +51,19 @@ namespace march
         void TravelScene(DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);
         bool ManipulateTransform(const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix);
         void DrawWindowSettings();
-
-        bool IsForceGizmoSnapByKeyboardShortcut() const;
-        bool IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const;
         void DrawMenuGizmoModeCombo();
         void DrawMenuRightButtons();
+
         static float CalcToggleButtonWidth(const std::string& name, float widthScale = 1.5f);
         static bool ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale = 1.5f);
+        static bool IsForceGizmoSnapByKeyboardShortcut();
+        static bool AllowTravellingScene();
+        static bool AllowFocusingWindow();
+        static bool IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton button);
+        static bool IsWindowMoving();
+        static bool IsSceneViewImageHovered();
+        static bool IsPointInsideSceneViewImage(const ImVec2& p);
+        static ImRect GetSceneViewImageRect();
 
         bool m_EnableMSAA;
         std::unique_ptr<Display> m_Display;
