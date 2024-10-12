@@ -32,6 +32,9 @@ namespace march
         , m_GizmoOperation(SceneGizmoOperation::Pan)
         , m_GizmoMode(SceneGizmoMode::Local)
         , m_GizmoSnap(false)
+        , m_GizmoTranslationSnapValue(1.0f, 1.0f, 1.0f)
+        , m_GizmoRotationSnapValue(15)
+        , m_GizmoScaleSnapValue(1.0f)
         , m_WindowMode(SceneWindowMode::SceneView)
     {
     }
@@ -48,7 +51,9 @@ namespace march
             return;
         }
 
-        ImGui::TextUnformatted("Operation");
+        DrawMenuGizmoModeCombo();
+
+        ImGui::TextUnformatted("Tool");
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
@@ -75,12 +80,15 @@ namespace march
         ImGui::PopStyleVar();
 
         ImGui::Spacing();
-
-        DrawMenuGizmoModeCombo();
-
         ImGui::TextUnformatted("Snap");
 
-        if (ToggleButton(ICON_FA_MAGNET, "", m_GizmoSnap))
+        if (IsForceGizmoSnapByKeyboardShortcut())
+        {
+            ImGui::BeginDisabled();
+            ToggleButton(ICON_FA_MAGNET, "", true);
+            ImGui::EndDisabled();
+        }
+        else if (ToggleButton(ICON_FA_MAGNET, "", m_GizmoSnap))
         {
             m_GizmoSnap = !m_GizmoSnap;
         }
@@ -177,6 +185,44 @@ namespace march
             {
                 cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -translation));
             }
+
+            if (ImGui::IsKeyDown(ImGuiKey_E))
+            {
+                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, translation));
+            }
+
+            if (ImGui::IsKeyDown(ImGuiKey_Q))
+            {
+                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, -translation));
+            }
+        }
+        else if (ImGui::IsWindowFocused())
+        {
+            if (ImGui::IsKeyPressed(ImGuiKey_Q))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Pan;
+            }
+
+            if (ImGui::IsKeyPressed(ImGuiKey_W))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Translate;
+            }
+
+            if (ImGui::IsKeyPressed(ImGuiKey_E))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Rotate;
+            }
+
+            if (ImGui::IsKeyPressed(ImGuiKey_R))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Scale;
+            }
+
+            if (ImGui::IsKeyPressed(ImGuiKey_X))
+            {
+                m_GizmoMode = (m_GizmoMode == SceneGizmoMode::Local) ?
+                    SceneGizmoMode::World : SceneGizmoMode::Local;
+            }
         }
 
         // Zoom
@@ -213,7 +259,7 @@ namespace march
             operation = ImGuizmo::TRANSLATE;
             break;
         case SceneGizmoOperation::Rotate:
-            operation = ImGuizmo::ROTATE_X | ImGuizmo::ROTATE_Y | ImGuizmo::ROTATE_Z;
+            operation = ImGuizmo::ROTATE;
             break;
         case SceneGizmoOperation::Scale:
             operation = ImGuizmo::SCALE;
@@ -248,27 +294,76 @@ namespace march
         const float* view = reinterpret_cast<float*>(viewMatrix.m);
         const float* proj = reinterpret_cast<float*>(projMatrix.m);
         float* matrix = reinterpret_cast<float*>(localToWorldMatrix.m);
-        return ImGuizmo::Manipulate(view, proj, operation, mode, matrix);
+        const float* snap = nullptr;
+
+        if (m_GizmoSnap || IsForceGizmoSnapByKeyboardShortcut())
+        {
+            switch (m_GizmoOperation)
+            {
+            case SceneGizmoOperation::Translate:
+                snap = &m_GizmoTranslationSnapValue.x;
+                break;
+            case SceneGizmoOperation::Rotate:
+                snap = &m_GizmoRotationSnapValue;
+                break;
+            case SceneGizmoOperation::Scale:
+                snap = &m_GizmoScaleSnapValue;
+                break;
+            }
+        }
+
+        return ImGuizmo::Manipulate(view, proj, operation, mode, matrix, nullptr, snap);
     }
 
     void SceneWindow::DrawWindowSettings()
     {
-        EditorGUI::SeparatorText("Window Settings");
+        EditorGUI::SeparatorText("Settings");
+        EditorGUI::Space();
 
-        if (EditorGUI::Checkbox("MSAA", "", m_EnableMSAA))
+        if (EditorGUI::Foldout("Display", ""))
         {
-            if (m_Display != nullptr)
+            EditorGUI::Indent(2);
+            if (EditorGUI::Checkbox("MSAA", "", m_EnableMSAA))
             {
-                m_Display->SetEnableMSAA(m_EnableMSAA);
+                if (m_Display != nullptr)
+                {
+                    m_Display->SetEnableMSAA(m_EnableMSAA);
+                }
             }
+            EditorGUI::Unindent(2);
         }
 
-        EditorGUI::FloatField("Mouse Sensitivity", "", &m_MouseSensitivity);
-        EditorGUI::FloatField("Rotate Speed (Deg)", "", &m_RotateDegSpeed);
-        EditorGUI::FloatField("Normal Move Speed", "", &m_NormalMoveSpeed);
-        EditorGUI::FloatField("Fast Move Speed", "", &m_FastMoveSpeed);
-        EditorGUI::FloatField("Pan Speed", "", &m_PanSpeed);
-        EditorGUI::FloatField("Zoom Speed", "", &m_ZoomSpeed);
+        EditorGUI::Space();
+
+        if (EditorGUI::Foldout("Tool", ""))
+        {
+            EditorGUI::Indent(2);
+            EditorGUI::FloatField("Mouse Sensitivity", "", &m_MouseSensitivity);
+            EditorGUI::FloatField("Rotate Speed (deg)", "", &m_RotateDegSpeed);
+            EditorGUI::FloatField("Normal Move Speed", "", &m_NormalMoveSpeed);
+            EditorGUI::FloatField("Fast Move Speed", "", &m_FastMoveSpeed);
+            EditorGUI::FloatField("Pan Speed", "", &m_PanSpeed);
+            EditorGUI::FloatField("Zoom Speed", "", &m_ZoomSpeed);
+            EditorGUI::Unindent(2);
+        }
+
+        EditorGUI::Space();
+
+        if (EditorGUI::Foldout("Snap", ""))
+        {
+            EditorGUI::Indent(2);
+            EditorGUI::Vector3Field("Translation", "", &m_GizmoTranslationSnapValue.x);
+            EditorGUI::FloatField("Rotation (deg)", "", &m_GizmoRotationSnapValue);
+            EditorGUI::FloatField("Scale", "", &m_GizmoScaleSnapValue);
+            EditorGUI::Unindent(2);
+        }
+
+        EditorGUI::Space();
+    }
+
+    bool SceneWindow::IsForceGizmoSnapByKeyboardShortcut() const
+    {
+        return ImGui::IsWindowFocused() && ImGui::IsKeyDown(ImGuiMod_Ctrl);
     }
 
     bool SceneWindow::IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const
@@ -303,7 +398,7 @@ namespace march
         ImGui::TextUnformatted("Mode");
 
         std::string localLabel = ICON_FA_CUBE + std::string(" Local");
-        std::string worldLabel = ICON_FA_GLOBE + std::string(" World");
+        std::string worldLabel = ICON_FA_GLOBE + std::string(" Global");
 
         float w1 = ImGui::CalcTextSize(localLabel.c_str()).x;
         float w2 = ImGui::CalcTextSize(worldLabel.c_str()).x;
@@ -381,7 +476,7 @@ namespace march
         window->TravelScene(cameraPosition, cameraRotation);
     }
 
-    bool SceneWindowInternalUtility::ManipulateTransform(SceneWindow* window, const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix)
+    bool SceneWindowInternalUtility::ManipulateTransform(SceneWindow* window, const Camera* camera, XMFLOAT4X4& localToWorldMatrix)
     {
         return window->ManipulateTransform(camera, localToWorldMatrix);
     }
@@ -494,6 +589,36 @@ namespace march
     void SceneWindowInternalUtility::SetGizmoSnap(SceneWindow* window, bool value)
     {
         window->m_GizmoSnap = value;
+    }
+
+    const XMFLOAT3& SceneWindowInternalUtility::GetGizmoTranslationSnapValue(SceneWindow* window)
+    {
+        return window->m_GizmoTranslationSnapValue;
+    }
+
+    void SceneWindowInternalUtility::SetGizmoTranslationSnapValue(SceneWindow* window, const XMFLOAT3& value)
+    {
+        window->m_GizmoTranslationSnapValue = value;
+    }
+
+    float SceneWindowInternalUtility::GetGizmoRotationSnapValue(SceneWindow* window)
+    {
+        return window->m_GizmoRotationSnapValue;
+    }
+
+    void SceneWindowInternalUtility::SetGizmoRotationSnapValue(SceneWindow* window, float value)
+    {
+        window->m_GizmoRotationSnapValue = value;
+    }
+
+    float SceneWindowInternalUtility::GetGizmoScaleSnapValue(SceneWindow* window)
+    {
+        return window->m_GizmoScaleSnapValue;
+    }
+
+    void SceneWindowInternalUtility::SetGizmoScaleSnapValue(SceneWindow* window, float value)
+    {
+        window->m_GizmoScaleSnapValue = value;
     }
 
     SceneWindowMode SceneWindowInternalUtility::GetWindowMode(SceneWindow* window)

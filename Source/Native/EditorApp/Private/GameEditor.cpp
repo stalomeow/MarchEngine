@@ -204,6 +204,9 @@ namespace march
         ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
             GetGfxDevice()->GetBackBufferFormat(), m_StaticDescriptorViewTable.GetD3D12DescriptorHeap(),
             m_StaticDescriptorViewTable.GetCpuHandle(0), m_StaticDescriptorViewTable.GetGpuHandle(0));
+
+        ImGuizmo::GetStyle().RotationLineThickness = 3.0f;
+        ImGuizmo::GetStyle().RotationOuterLineThickness = 2.0f;
     }
 
     void GameEditor::OnQuit()

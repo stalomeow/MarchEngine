@@ -51,6 +51,7 @@ namespace march
         bool ManipulateTransform(const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix);
         void DrawWindowSettings();
 
+        bool IsForceGizmoSnapByKeyboardShortcut() const;
         bool IsMouseDraggingAndFromCurrentWindow(ImGuiMouseButton button) const;
         void DrawMenuGizmoModeCombo();
         void DrawMenuRightButtons();
@@ -70,6 +71,9 @@ namespace march
         SceneGizmoOperation m_GizmoOperation;
         SceneGizmoMode m_GizmoMode;
         bool m_GizmoSnap;
+        DirectX::XMFLOAT3 m_GizmoTranslationSnapValue;
+        float m_GizmoRotationSnapValue;
+        float m_GizmoScaleSnapValue;
 
         SceneWindowMode m_WindowMode;
     };
@@ -104,6 +108,12 @@ namespace march
         static void SetGizmoMode(SceneWindow* window, SceneGizmoMode value);
         static bool GetGizmoSnap(SceneWindow* window);
         static void SetGizmoSnap(SceneWindow* window, bool value);
+        static const DirectX::XMFLOAT3& GetGizmoTranslationSnapValue(SceneWindow* window);
+        static void SetGizmoTranslationSnapValue(SceneWindow* window, const DirectX::XMFLOAT3& value);
+        static float GetGizmoRotationSnapValue(SceneWindow* window);
+        static void SetGizmoRotationSnapValue(SceneWindow* window, float value);
+        static float GetGizmoScaleSnapValue(SceneWindow* window);
+        static void SetGizmoScaleSnapValue(SceneWindow* window, float value);
         static SceneWindowMode GetWindowMode(SceneWindow* window);
         static void SetWindowMode(SceneWindow* window, SceneWindowMode value);
     };

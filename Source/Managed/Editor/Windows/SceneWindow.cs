@@ -170,6 +170,27 @@ namespace March.Editor.Windows
         }
 
         [JsonProperty]
+        public Vector3 GizmoTranslationSnapValue
+        {
+            get => SceneWindow_GetGizmoTranslationSnapValue(NativePtr);
+            set => SceneWindow_SetGizmoTranslationSnapValue(NativePtr, value);
+        }
+
+        [JsonProperty]
+        public float GizmoRotationSnapValue
+        {
+            get => SceneWindow_GetGizmoRotationSnapValue(NativePtr);
+            set => SceneWindow_SetGizmoRotationSnapValue(NativePtr, value);
+        }
+
+        [JsonProperty]
+        public float GizmoScaleSnapValue
+        {
+            get => SceneWindow_GetGizmoScaleSnapValue(NativePtr);
+            set => SceneWindow_SetGizmoScaleSnapValue(NativePtr, value);
+        }
+
+        [JsonProperty]
         public SceneWindowMode WindowMode
         {
             get => SceneWindow_GetWindowMode(NativePtr);
@@ -192,8 +213,13 @@ namespace March.Editor.Windows
             {
                 SceneWindow_DrawWindowSettings(NativePtr);
 
-                EditorGUI.SeparatorText("Camera Settings");
-                EditorGUI.ObjectPropertyFields(m_SceneViewCamera);
+                if (EditorGUI.Foldout("Camera", string.Empty))
+                {
+                    using (new EditorGUI.IndentedScope(2))
+                    {
+                        EditorGUI.ObjectPropertyFields(m_SceneViewCamera);
+                    }
+                }
             }
         }
 
@@ -319,6 +345,24 @@ namespace March.Editor.Windows
 
         [NativeFunction]
         private static partial SceneWindowMode SceneWindow_GetWindowMode(nint w);
+
+        [NativeFunction]
+        private static partial Vector3 SceneWindow_GetGizmoTranslationSnapValue(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetGizmoTranslationSnapValue(nint w, Vector3 value);
+
+        [NativeFunction]
+        private static partial float SceneWindow_GetGizmoRotationSnapValue(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetGizmoRotationSnapValue(nint w, float value);
+
+        [NativeFunction]
+        private static partial float SceneWindow_GetGizmoScaleSnapValue(nint w);
+
+        [NativeFunction]
+        private static partial void SceneWindow_SetGizmoScaleSnapValue(nint w, float value);
 
         [NativeFunction]
         private static partial void SceneWindow_SetWindowMode(nint w, SceneWindowMode value);

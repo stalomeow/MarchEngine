@@ -36,7 +36,7 @@ namespace march
         static void PushID(const std::string& id);
         static void PushID(int id);
         static void PopID();
-        static bool Foldout(const std::string& label, const std::string& tooltip);
+        static bool Foldout(const std::string& label, const std::string& tooltip, bool defaultOpen = false);
         static bool FoldoutClosable(const std::string& label, const std::string& tooltip, bool* pVisible);
         static void Indent(std::uint32_t count = 1);
         static void Unindent(std::uint32_t count = 1);

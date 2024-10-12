@@ -209,11 +209,11 @@ namespace March.Editor
             EditorGUI_LabelField(l1.Data, t.Data, l2.Data);
         }
 
-        public static bool Foldout(string label, string tooltip)
+        public static bool Foldout(string label, string tooltip, bool defaultOpen = false)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
-            return EditorGUI_Foldout(l.Data, t.Data);
+            return EditorGUI_Foldout(l.Data, t.Data, defaultOpen);
         }
 
         public static bool FoldoutClosable(string label, string tooltip, ref bool visible)
@@ -714,7 +714,7 @@ namespace March.Editor
         private static partial void EditorGUI_PopID();
 
         [NativeFunction]
-        private static partial bool EditorGUI_Foldout(nint label, nint tooltip);
+        private static partial bool EditorGUI_Foldout(nint label, nint tooltip, bool defaultOpen);
 
         [NativeFunction]
         private static partial bool EditorGUI_FoldoutClosable(nint label, nint tooltip, bool* pVisible);

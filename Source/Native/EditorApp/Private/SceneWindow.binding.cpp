@@ -148,6 +148,36 @@ NATIVE_EXPORT_AUTO SceneWindow_SetGizmoSnap(cs<SceneWindow*> w, cs_bool value)
     SceneWindowInternalUtility::SetGizmoSnap(w, value);
 }
 
+NATIVE_EXPORT_AUTO SceneWindow_GetGizmoTranslationSnapValue(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetGizmoTranslationSnapValue(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetGizmoTranslationSnapValue(cs<SceneWindow*> w, cs_vec3 value)
+{
+    SceneWindowInternalUtility::SetGizmoTranslationSnapValue(w, value);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetGizmoRotationSnapValue(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetGizmoRotationSnapValue(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetGizmoRotationSnapValue(cs<SceneWindow*> w, cs_float value)
+{
+    SceneWindowInternalUtility::SetGizmoRotationSnapValue(w, value);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_GetGizmoScaleSnapValue(cs<SceneWindow*> w)
+{
+    retcs SceneWindowInternalUtility::GetGizmoScaleSnapValue(w);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_SetGizmoScaleSnapValue(cs<SceneWindow*> w, cs_float value)
+{
+    SceneWindowInternalUtility::SetGizmoScaleSnapValue(w, value);
+}
+
 NATIVE_EXPORT_AUTO SceneWindow_GetWindowMode(cs<SceneWindow*> w)
 {
     retcs SceneWindowInternalUtility::GetWindowMode(w);

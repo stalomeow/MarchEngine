@@ -122,9 +122,9 @@ NATIVE_EXPORT_AUTO EditorGUI_PopID()
     EditorGUI::PopID();
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_Foldout(cs_string label, cs_string tooltip)
+NATIVE_EXPORT_AUTO EditorGUI_Foldout(cs_string label, cs_string tooltip, cs_bool defaultOpen)
 {
-    retcs EditorGUI::Foldout(label, tooltip);
+    retcs EditorGUI::Foldout(label, tooltip, defaultOpen);
 }
 
 NATIVE_EXPORT_AUTO EditorGUI_FoldoutClosable(cs_string label, cs_string tooltip, cs<cs_bool_t*> pVisible)

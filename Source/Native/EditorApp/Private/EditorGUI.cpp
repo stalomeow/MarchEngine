@@ -247,14 +247,15 @@ namespace march
         ImGui::PopID();
     }
 
-    bool EditorGUI::Foldout(const std::string& label, const std::string& tooltip)
+    bool EditorGUI::Foldout(const std::string& label, const std::string& tooltip, bool defaultOpen)
     {
-        // 缩短箭头两边的空白
-        ImVec2 framePadding = ImGui::GetStyle().FramePadding;
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, framePadding.y });
-
         // 加上 ImGuiTreeNodeFlags_NoTreePushOnOpen 就不用调用 TreePop() 了
-        bool result = ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth);
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (defaultOpen) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+
+        // 缩短箭头两边的空白
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, ImGui::GetStyle().FramePadding.y });
+        bool result = ImGui::TreeNodeEx(label.c_str(), flags);
         ImGui::PopStyleVar();
 
         if (!tooltip.empty())
