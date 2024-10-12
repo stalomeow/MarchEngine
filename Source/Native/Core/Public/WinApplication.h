@@ -16,7 +16,7 @@ namespace march
         ~WinApplication() = default;
 
     public:
-        bool Initialize(HINSTANCE hInstance, int nCmdShow, int clientWidth = 800, int clientHeight = 600);
+        bool Initialize(HINSTANCE hInstance, int nCmdShow);
         int RunEngine(LPWSTR lpCmdLine, IEngine* engine);
         void Quit(int exitCode = 0);
 
@@ -59,7 +59,7 @@ namespace march
         const std::string& GetDataPath() const { return m_DataPath; }
 
     private:
-        bool InitWindow(int nCmdShow, int clientWidth, int clientHeight);
+        bool InitWindow(int nCmdShow);
         LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
         static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 

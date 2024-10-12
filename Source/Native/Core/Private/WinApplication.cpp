@@ -22,14 +22,14 @@ namespace march
         }
     }
 
-    bool WinApplication::Initialize(HINSTANCE hInstance, int nCmdShow, int clientWidth, int clientHeight)
+    bool WinApplication::Initialize(HINSTANCE hInstance, int nCmdShow)
     {
         m_InstanceHandle = hInstance;
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-        return InitWindow(nCmdShow, clientWidth, clientHeight);
+        return InitWindow(nCmdShow);
     }
 
-    bool WinApplication::InitWindow(int nCmdShow, int clientWidth, int clientHeight)
+    bool WinApplication::InitWindow(int nCmdShow)
     {
         WNDCLASS wc = { 0 };
         wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -43,18 +43,14 @@ namespace march
             return false;
         }
 
-        // Compute window rectangle dimensions based on requested client area dimensions.
-        RECT rect = { 0, 0, clientWidth, clientHeight };
-        AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, false);
-
         m_WindowHandle = CreateWindow(
             wc.lpszClassName,
             TEXT("March Engine"),
-            WS_OVERLAPPEDWINDOW,
+            WS_OVERLAPPEDWINDOW | WS_MAXIMIZE,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            rect.right - rect.left,
-            rect.bottom - rect.top,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
             NULL,
             NULL,
             m_InstanceHandle,
@@ -66,7 +62,8 @@ namespace march
             return false;
         }
 
-        ShowWindow(m_WindowHandle, nCmdShow);
+        //ShowWindow(m_WindowHandle, nCmdShow);
+        ShowWindow(m_WindowHandle, SW_SHOWMAXIMIZED); // 强制最大化显示
         UpdateWindow(m_WindowHandle);
         return true;
     }
