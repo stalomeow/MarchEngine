@@ -82,6 +82,11 @@ namespace March.Editor
         {
             while (s_FileSystemEvents.TryDequeue(out FileSystemEventArgs? e))
             {
+                if (IsImporterFilePath(e.FullPath))
+                {
+                    continue;
+                }
+
                 switch (e.ChangeType)
                 {
                     case WatcherChangeTypes.Changed:
@@ -101,6 +106,12 @@ namespace March.Editor
                         break;
                 }
             }
+        }
+
+        internal static void Dispose()
+        {
+            s_ProjectAssetFileWatcher.Dispose();
+            s_EngineShaderWatcher.Dispose();
         }
 
         private static void LoadGuidMap()

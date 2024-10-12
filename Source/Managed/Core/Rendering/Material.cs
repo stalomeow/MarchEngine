@@ -1,6 +1,7 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
@@ -8,7 +9,7 @@ namespace March.Core.Rendering
     public sealed unsafe partial class Material : NativeMarchObject
     {
         private Shader? m_Shader = null;
-        private Dictionary<string, Texture> m_NonNullTextures = [];
+        private readonly Dictionary<string, Texture> m_NonNullTextures = [];
 
         [JsonProperty]
         public Shader? Shader
@@ -32,6 +33,8 @@ namespace March.Core.Rendering
         private void OnDeserializingCallback(StreamingContext context)
         {
             // 防止 overwrite 后有旧属性残留
+            m_Shader = null;
+            m_NonNullTextures.Clear();
             Material_Reset(NativePtr);
         }
 
@@ -184,6 +187,7 @@ namespace March.Core.Rendering
 
         #region Serialization
 
+        [StructLayout(LayoutKind.Sequential)]
         private struct NativeProperty<T> where T : unmanaged
         {
             public nint Name;

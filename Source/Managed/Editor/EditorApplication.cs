@@ -41,6 +41,11 @@ namespace March.Editor
         private static void OnQuit()
         {
             SaveWindows();
+            DisposeWindows();
+            AssetDatabase.Dispose();
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
 
         [UnmanagedCallersOnly]
@@ -220,6 +225,14 @@ namespace March.Editor
         private static void SaveWindows()
         {
             PersistentManager.Save(s_WindowData, GetWindowDataFilePath());
+        }
+
+        private static void DisposeWindows()
+        {
+            foreach (EditorWindow window in s_WindowData.Windows)
+            {
+                window.Dispose();
+            }
         }
     }
 }

@@ -221,9 +221,11 @@ namespace march
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
 
-        //Display::DestroyMainDisplay();
-        //DestroyGfxDevice();
-        //GfxUtility::ReportLiveObjects();
+        m_RenderPipeline.reset();
+        DestroyAllPipelineStates();
+        Display::DestroyMainDisplay();
+        DestroyGfxDevice();
+        GfxUtility::ReportLiveObjects();
     }
 
     void GameEditor::DrawBaseImGui()

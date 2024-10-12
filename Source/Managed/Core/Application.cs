@@ -42,7 +42,10 @@ namespace March.Core
         [UnmanagedCallersOnly]
         private static void OnQuit()
         {
+            SceneManager.CurrentScene.Dispose();
 
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
 
         #region Bindings

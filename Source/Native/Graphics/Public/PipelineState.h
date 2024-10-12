@@ -50,4 +50,6 @@ namespace march
         static_assert((sizeof(T) & 3) == 0 && alignof(T) >= 4, "State object is not word-aligned");
         return HashRange((uint32_t*)StateDesc, (uint32_t*)(StateDesc + Count), Hash);
     }
+
+    void DestroyAllPipelineStates();
 }

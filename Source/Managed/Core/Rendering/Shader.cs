@@ -518,7 +518,14 @@ namespace March.Core.Rendering
             foreach (ShaderProperty prop in Properties)
             {
                 ShaderProperty.ToNative(prop, out ShaderProperty.Native native);
-                Shader_SetProperty(NativePtr, &native);
+                try
+                {
+                    Shader_SetProperty(NativePtr, &native);
+                }
+                finally
+                {
+                    ShaderProperty.FreeNative(ref native);
+                }
             }
         }
 

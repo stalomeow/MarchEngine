@@ -96,9 +96,19 @@ namespace march
 
     GfxDevice::~GfxDevice()
     {
+        m_SwapChain.reset(); // SwapChain 依赖下面几个 allocator，所以要先释放
+
+        // 这几个 allocator 里面的资源需要在 ProcessReleaseQueue() 时释放
+        m_UploadMemoryAllocator.reset();
+        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
+        {
+            m_DescriptorAllocators[i].reset();
+        }
+        m_ViewDescriptorTableAllocator.reset();
+        m_SamplerDescriptorTableAllocator.reset();
+
         WaitForIdle(); // 防止崩溃
         ProcessReleaseQueue();
-
         assert(m_ReleaseQueue.empty());
     }
 

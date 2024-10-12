@@ -1,7 +1,6 @@
 #include "Material.h"
 #include "InteropServices.h"
 #include "Shader.h"
-#include <unordered_map>
 
 NATIVE_EXPORT_AUTO Material_New()
 {

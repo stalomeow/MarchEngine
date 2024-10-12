@@ -52,6 +52,7 @@ namespace March.Editor.Windows
 
         protected override void OnDispose(bool disposing)
         {
+            m_GridMaterial.Shader = null;
             m_GridMaterial.Dispose();
             m_DummyScene.Dispose();
 

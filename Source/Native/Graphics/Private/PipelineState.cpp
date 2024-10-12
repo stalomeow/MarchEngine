@@ -100,4 +100,9 @@ namespace march
         DEBUG_LOG_INFO("Create new Graphics PSO");
         return pso.Get();
     }
+
+    void DestroyAllPipelineStates()
+    {
+        g_PsoMap.clear();
+    }
 }

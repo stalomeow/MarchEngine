@@ -290,8 +290,17 @@ namespace march
         }
 
         m_Shader = pShader;
-        m_ShaderVersion = pShader->Version;
-        RecreateConstantBuffers();
+
+        if (pShader != nullptr)
+        {
+            m_ShaderVersion = pShader->Version;
+            RecreateConstantBuffers();
+        }
+        else
+        {
+            m_ShaderVersion = 0;
+            m_ConstantBuffers.clear();
+        }
     }
 
     GfxConstantBuffer* Material::GetConstantBuffer(ShaderPass* pass, GfxConstantBuffer* defaultValue)
