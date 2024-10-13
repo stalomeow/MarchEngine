@@ -23,11 +23,12 @@ namespace march
     // 1. 开多个 Scene Window 时，各种操作不能相互影响，尤其是一个 Scene Window 显示在另一个上面时
     // 2. 必须在 Scene View Image 上滚动鼠标滚轮才能移动相机
     // 3. 必须从 Scene View Image 上**开始**拖拽才能转动相机，之后鼠标可以拖出窗口
-    // 4. 如果窗口正在移动，不允许操作相机
+    // 4. 如果窗口正在移动或大小正在变化，不允许操作相机
     // 5. ImGuizmo 必须要设置 ID，否则多个 Scene Window 会相互影响
 
     SceneWindow::SceneWindow()
-        : m_EnableMSAA(true)
+        : m_LastWindowSize(0, 0)
+        , m_EnableMSAA(true)
         , m_Display(nullptr)
         , m_MouseSensitivity(0.00833f) // 鼠标相关操作需要乘灵敏度，不能乘 deltaTime
         , m_RotateDegSpeed(16.0f)
@@ -254,6 +255,31 @@ namespace march
         XMStoreFloat4(&cameraRotation, cameraRot);
     }
 
+    bool SceneWindow::AllowTravellingScene()
+    {
+        ImVec2 size = ImGui::GetWindowSize();
+        bool isResizing = size.x != m_LastWindowSize.x || size.y != m_LastWindowSize.y;
+        m_LastWindowSize = size;
+
+        if (isResizing || IsWindowMoving())
+        {
+            return false;
+        }
+
+        if (ImGui::IsWindowFocused())
+        {
+            return true;
+        }
+
+        if (AllowFocusingWindow())
+        {
+            ImGui::SetWindowFocus();
+            return true;
+        }
+
+        return false;
+    }
+
     bool SceneWindow::ManipulateTransform(const Camera* camera, XMFLOAT4X4& localToWorldMatrix)
     {
         if (m_GizmoOperation == SceneGizmoOperation::Pan)
@@ -439,27 +465,6 @@ namespace march
     bool SceneWindow::IsForceGizmoSnapByKeyboardShortcut()
     {
         return ImGui::IsWindowFocused() && ImGui::IsKeyDown(ImGuiMod_Ctrl);
-    }
-
-    bool SceneWindow::AllowTravellingScene()
-    {
-        if (IsWindowMoving())
-        {
-            return false;
-        }
-
-        if (ImGui::IsWindowFocused())
-        {
-            return true;
-        }
-
-        if (AllowFocusingWindow())
-        {
-            ImGui::SetWindowFocus();
-            return true;
-        }
-
-        return false;
     }
 
     bool SceneWindow::AllowFocusingWindow()

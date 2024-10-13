@@ -49,6 +49,7 @@ namespace march
         Display* UpdateDisplay();
         void DrawSceneView();
         void TravelScene(DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);
+        bool AllowTravellingScene();
         bool ManipulateTransform(const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix);
         void DrawWindowSettings();
         void DrawMenuGizmoModeCombo();
@@ -57,13 +58,14 @@ namespace march
         static float CalcToggleButtonWidth(const std::string& name, float widthScale = 1.5f);
         static bool ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale = 1.5f);
         static bool IsForceGizmoSnapByKeyboardShortcut();
-        static bool AllowTravellingScene();
         static bool AllowFocusingWindow();
         static bool IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton button);
         static bool IsWindowMoving();
         static bool IsSceneViewImageHovered();
         static bool IsPointInsideSceneViewImage(const ImVec2& p);
         static ImRect GetSceneViewImageRect();
+
+        ImVec2 m_LastWindowSize;
 
         bool m_EnableMSAA;
         std::unique_ptr<Display> m_Display;

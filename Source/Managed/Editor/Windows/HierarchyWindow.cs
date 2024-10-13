@@ -94,7 +94,7 @@ namespace March.Editor.Windows
 
         private static void DrawGameObjectsRecursive(GameObject go, List<GameObject> selections, ref bool isAnyItemClicked)
         {
-            string label = $"{FontAwesome6.DiceD6} {go.Name}###{go.Name}";
+            string label = $"{FontAwesome6.DiceD6} {go.Name}###GameObject";
             bool isSelected = Selection.Active == go;
             bool isLeaf = go.transform.ChildCount == 0;
             bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
