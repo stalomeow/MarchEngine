@@ -19,7 +19,7 @@ namespace march
         ConsoleWindow();
         virtual ~ConsoleWindow() = default;
 
-        static void DrawMainViewportSideBarConsole(IDotNetRuntime* dotnet);
+        static void DrawMainViewportSideBarConsole();
 
     protected:
         ImGuiWindowFlags GetWindowFlags() const override;

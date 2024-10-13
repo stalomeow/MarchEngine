@@ -4,8 +4,6 @@
 #include "IEngine.h"
 #include "RenderPipeline.h"
 #include "GfxDescriptorHeap.h"
-#include "RenderDoc.h"
-#include "DotNetRuntime.h"
 #include <vector>
 #include <wrl.h>
 #include <memory>
@@ -42,12 +40,8 @@ namespace march
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
         GfxDescriptorTable m_StaticDescriptorViewTable;
 
-        RenderDoc m_RenderDoc{};
-        std::unique_ptr<IDotNetRuntime> m_DotNet{};
-
         std::string m_ImGuiIniFilename{};
 
-    private:
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;
         const float m_FontSizeIcon = 13.0f;

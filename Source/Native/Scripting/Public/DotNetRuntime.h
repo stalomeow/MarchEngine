@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 namespace march
 {
     enum class ManagedMethod : int
@@ -21,7 +19,6 @@ namespace march
     class IDotNetRuntime
     {
     public:
-        IDotNetRuntime() = default;
         virtual ~IDotNetRuntime() = default;
 
         IDotNetRuntime(const IDotNetRuntime&) = delete;
@@ -30,22 +27,39 @@ namespace march
         IDotNetRuntime(IDotNetRuntime&&) = default;
         IDotNetRuntime& operator=(IDotNetRuntime&&) = default;
 
-        template <typename Ret, typename ...Args>
-        Ret Invoke(ManagedMethod method, Args ...args);
-
+        template <typename Ret, typename... Args>
+        Ret Invoke(ManagedMethod method, Args... args);
         void Invoke(ManagedMethod method) { Invoke<void>(method); }
 
     protected:
+        IDotNetRuntime() = default;
         virtual void* GetFunctionPointer(ManagedMethod method) = 0;
     };
 
-    std::unique_ptr<IDotNetRuntime> CreateDotNetRuntime();
-
-    template <typename Ret, typename ...Args>
-    Ret IDotNetRuntime::Invoke(ManagedMethod method, Args ...args)
+    template <typename Ret, typename... Args>
+    Ret IDotNetRuntime::Invoke(ManagedMethod method, Args... args)
     {
         typedef Ret(*FunctionType)(Args...);
         auto func = reinterpret_cast<FunctionType>(GetFunctionPointer(method));
         return func(args...);
     }
+
+    class DotNet
+    {
+    public:
+        static void InitRuntime();
+        static void DestroyRuntime();
+        static IDotNetRuntime* GetRuntime();
+
+        template <typename Ret, typename... Args>
+        static Ret RuntimeInvoke(ManagedMethod method, Args... args)
+        {
+            return GetRuntime()->Invoke<Ret, Args...>(method, args...);
+        }
+
+        static void RuntimeInvoke(ManagedMethod method)
+        {
+            return GetRuntime()->Invoke(method);
+        }
+    };
 }

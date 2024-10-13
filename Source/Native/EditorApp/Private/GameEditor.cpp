@@ -6,6 +6,8 @@
 #include "GfxBuffer.h"
 #include "Debug.h"
 #include "StringUtility.h"
+#include "RenderDoc.h"
+#include "DotNetRuntime.h"
 #include "PathHelper.h"
 #include "EditorGUI.h"
 #include "Camera.h"
@@ -50,10 +52,10 @@ namespace march
     {
         if (std::count(args.begin(), args.end(), "-load-renderdoc") > 0)
         {
-            m_RenderDoc.Load(); // 越早越好
+            RenderDoc::Load(); // 越早越好
         }
 
-        m_DotNet = CreateDotNetRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
+        DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         auto [width, height] = GetApp().GetClientWidthAndHeight();
 
@@ -79,8 +81,8 @@ namespace march
 
         InitImGui();
 
-        m_DotNet->Invoke(ManagedMethod::Application_OnStart);
-        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnStart);
+        DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
+        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
     }
 
     static void SetStyles()
@@ -213,8 +215,9 @@ namespace march
 
     void GameEditor::OnQuit()
     {
-        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnQuit);
-        m_DotNet->Invoke(ManagedMethod::Application_OnQuit);
+        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
+        DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
+        DotNet::DestroyRuntime();
 
         GetGfxDevice()->WaitForIdle();
         ImGui_ImplDX12_Shutdown();
@@ -234,34 +237,34 @@ namespace march
         {
             if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
             {
-                m_RenderDoc.CaptureSingleFrame();
+                RenderDoc::CaptureSingleFrame();
             }
 
             if (ImGui::BeginMenu("RenderDoc"))
             {
-                if (ImGui::MenuItem("Capture", "Alt+C", nullptr, m_RenderDoc.IsLoaded()))
+                if (ImGui::MenuItem("Capture", "Alt+C", nullptr, RenderDoc::IsLoaded()))
                 {
-                    m_RenderDoc.CaptureSingleFrame();
+                    RenderDoc::CaptureSingleFrame();
                 }
 
                 ImGui::SeparatorText("Information");
 
                 if (ImGui::BeginMenu("Library"))
                 {
-                    ImGui::TextUnformatted(m_RenderDoc.GetLibraryPath().c_str());
+                    ImGui::TextUnformatted(RenderDoc::GetLibraryPath().c_str());
                     ImGui::EndMenu();
                 }
 
                 if (ImGui::BeginMenu("API Version"))
                 {
-                    auto [major, minor, patch] = m_RenderDoc.GetVersion();
+                    auto [major, minor, patch] = RenderDoc::GetVersion();
                     ImGui::Text("%d.%d.%d", major, minor, patch);
                     ImGui::EndMenu();
                 }
 
                 if (ImGui::BeginMenu("Num Captures"))
                 {
-                    ImGui::Text("%d", m_RenderDoc.GetNumCaptures());
+                    ImGui::Text("%d", RenderDoc::GetNumCaptures());
                     ImGui::EndMenu();
                 }
 
@@ -290,10 +293,10 @@ namespace march
             ImGui::Button(ICON_FA_FORWARD_STEP, ImVec2(width3, ImGui::GetFrameHeight()));
             ImGui::SameLine();
 
-            ImGui::BeginDisabled(!m_RenderDoc.IsLoaded());
+            ImGui::BeginDisabled(!RenderDoc::IsLoaded());
             if (ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight())))
             {
-                m_RenderDoc.CaptureSingleFrame();
+                RenderDoc::CaptureSingleFrame();
             }
             ImGui::EndDisabled();
 
@@ -301,7 +304,7 @@ namespace march
         }
         EditorGUI::EndMainViewportSideBar();
 
-        ConsoleWindow::DrawMainViewportSideBarConsole(m_DotNet.get());
+        ConsoleWindow::DrawMainViewportSideBarConsole();
 
         ImGui::DockSpaceOverViewport();
     }
@@ -319,8 +322,8 @@ namespace march
         ImGui::NewFrame();
 
         DrawBaseImGui();
-        m_DotNet->Invoke(ManagedMethod::Application_OnTick);
-        m_DotNet->Invoke(ManagedMethod::EditorApplication_OnTick);
+        DotNet::RuntimeInvoke(ManagedMethod::Application_OnTick);
+        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnTick);
 
         // Render Dear ImGui graphics
         ImGui::Render();

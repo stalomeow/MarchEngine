@@ -9,15 +9,11 @@ namespace march
     class RenderDoc final
     {
     public:
-        void Load();
-        void CaptureSingleFrame() const;
-        uint32_t GetNumCaptures() const;
-        std::tuple<int, int, int> GetVersion() const;
-        std::string GetLibraryPath() const;
-
-        bool IsLoaded() const { return m_Api != nullptr; }
-
-    private:
-        void* m_Api = nullptr;
+        static bool IsLoaded();
+        static void Load();
+        static void CaptureSingleFrame();
+        static uint32_t GetNumCaptures();
+        static std::tuple<int32_t, int32_t, int32_t> GetVersion();
+        static std::string GetLibraryPath();
     };
 }

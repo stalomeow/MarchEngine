@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <stdint.h>
 #include <stdexcept>
+#include <memory>
 
 namespace march
 {
@@ -69,8 +70,7 @@ namespace march
         void* m_Methods[static_cast<int>(ManagedMethod::NumMethods)];
     };
 
-    DotNetRuntimeImpl::DotNetRuntimeImpl()
-        : m_Methods{}
+    DotNetRuntimeImpl::DotNetRuntimeImpl() : m_Methods{}
     {
         // Load hostfxr and get desired exports
         HMODULE hostfxr = LoadLibraryW(GetHostfxrPath().c_str());
@@ -164,10 +164,21 @@ namespace march
         return m_Methods[index];
     }
 
-    std::unique_ptr<IDotNetRuntime> CreateDotNetRuntime()
+    static std::unique_ptr<DotNetRuntimeImpl> g_Runtime;
+
+    void DotNet::InitRuntime()
     {
-        auto impl = std::make_unique<DotNetRuntimeImpl>();
-        impl->LoadAssemblies();
-        return impl;
+        g_Runtime = std::make_unique<DotNetRuntimeImpl>();
+        g_Runtime->LoadAssemblies();
+    }
+
+    void DotNet::DestroyRuntime()
+    {
+        g_Runtime.reset();
+    }
+
+    IDotNetRuntime* DotNet::GetRuntime()
+    {
+        return g_Runtime.get();
     }
 }

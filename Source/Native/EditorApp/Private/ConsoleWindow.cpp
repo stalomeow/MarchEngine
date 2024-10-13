@@ -181,7 +181,7 @@ namespace march
         }
     }
 
-    void ConsoleWindow::DrawMainViewportSideBarConsole(IDotNetRuntime* dotnet)
+    void ConsoleWindow::DrawMainViewportSideBarConsole()
     {
         if (EditorGUI::BeginMainViewportSideBar("##SingleLineConsoleWindow", ImGuiDir_Down, ImGui::GetTextLineHeight()))
         {
@@ -192,7 +192,7 @@ namespace march
 
             if (EditorGUI::IsWindowClicked(ImGuiMouseButton_Left))
             {
-                dotnet->Invoke(ManagedMethod::EditorApplication_OpenConsoleWindowIfNot);
+                DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OpenConsoleWindowIfNot);
             }
         }
 
