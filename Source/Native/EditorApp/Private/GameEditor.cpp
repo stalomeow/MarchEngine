@@ -80,9 +80,6 @@ namespace march
         m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
 
         InitImGui();
-
-        DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
-        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
     }
 
     static void SetStyles()
@@ -215,8 +212,6 @@ namespace march
 
     void GameEditor::OnQuit()
     {
-        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
-        DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
         DotNet::DestroyRuntime();
 
         GetGfxDevice()->WaitForIdle();
@@ -309,7 +304,7 @@ namespace march
         ImGui::DockSpaceOverViewport();
     }
 
-    void GameEditor::OnTick()
+    void GameEditor::OnTick(bool willQuit)
     {
         GfxDevice* device = GetGfxDevice();
 
@@ -321,9 +316,26 @@ namespace march
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        if (!m_IsScriptInitialized)
+        {
+            // 初始化代码可能也会用到 GfxDevice，所以放在 tick 里
+            DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
+            m_IsScriptInitialized = true;
+        }
+
+        // Update
         DrawBaseImGui();
         DotNet::RuntimeInvoke(ManagedMethod::Application_OnTick);
         DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnTick);
+
+        if (willQuit && m_IsScriptInitialized)
+        {
+            m_IsScriptInitialized = false;
+            // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
+            DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
+        }
 
         // Render Dear ImGui graphics
         ImGui::Render();
@@ -402,7 +414,7 @@ namespace march
 
     void GameEditor::OnPaint()
     {
-        OnTick();
+        OnTick(false);
     }
 
     void GameEditor::CalculateFrameStats()

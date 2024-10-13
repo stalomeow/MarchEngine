@@ -32,7 +32,10 @@ namespace March.Editor
         /// 资产缓存的完整路径
         /// </summary>
         [JsonIgnore]
-        internal string AssetCacheFullPath { get; private set; } = string.Empty;
+        internal string AssetCacheFullPath
+        {
+            get => Path.Combine(Application.DataPath, "Library/AssetCache", AssetGuid).ValidatePath();
+        }
 
         /// <summary>
         /// <see cref="AssetImporter"/> 文件的完整路径
@@ -103,31 +106,37 @@ namespace March.Editor
             }
         }
 
-        internal void Initialize(AssetCategory category, string assetPath, string assetFullPath, string assetCacheFullPath,
-            string importerFullPath, MarchObject? asset = null, string? assetGuid = null)
+        internal void Initialize(AssetCategory category, string assetPath, string assetFullPath, string importerFullPath)
         {
             Category = category;
             AssetPath = assetPath;
             AssetFullPath = assetFullPath;
-            AssetCacheFullPath = assetCacheFullPath;
             ImporterFullPath = importerFullPath;
+        }
 
-            bool assetGuidChanged = false;
-
-            // 必须在 SetAssetMetadata 之前设置
-            if (assetGuid != null && AssetGuid != assetGuid)
+        internal void SetAsset(MarchObject asset)
+        {
+            if (asset.PersistentGuid == null)
             {
-                AssetGuid = assetGuid;
-                assetGuidChanged = true;
-            }
-
-            if (asset != null)
-            {
-                m_AssetWeakRef = new WeakReference<MarchObject>(asset);
                 SetAssetMetadata(asset);
             }
+            else if (asset.PersistentGuid != AssetGuid)
+            {
+                AssetGuid = asset.PersistentGuid;
+            }
+            else
+            {
+                // Guid 没变，说明和之前是同一个 Asset
+                return;
+            }
 
-            if (assetGuidChanged || NeedReimportAsset())
+            m_AssetWeakRef = new WeakReference<MarchObject>(asset);
+            SaveImporterAndReimportAsset();
+        }
+
+        public void ReimportAssetIfNeeded()
+        {
+            if (NeedReimportAsset())
             {
                 SaveImporterAndReimportAsset();
             }

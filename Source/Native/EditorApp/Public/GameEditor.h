@@ -20,7 +20,7 @@ namespace march
         bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
         void OnStart(const std::vector<std::string>& args) override;
         void OnQuit() override;
-        void OnTick() override;
+        void OnTick(bool willQuit) override;
         void OnResized() override;
         void OnDisplayScaleChanged() override;
         void OnPaint() override;
@@ -41,6 +41,7 @@ namespace march
         GfxDescriptorTable m_StaticDescriptorViewTable;
 
         std::string m_ImGuiIniFilename{};
+        bool m_IsScriptInitialized = false;
 
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;

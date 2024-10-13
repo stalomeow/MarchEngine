@@ -2,11 +2,9 @@ using March.Core;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.Importers;
-using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Text;
 
 namespace March.Editor
 {
@@ -38,29 +36,36 @@ namespace March.Editor
 
         internal static void Initialize()
         {
-            LoadGuidMap(); // 提前加载缓存的 guid 表，这样后面 import asset 时，LoadByGuid 就能找到对应的 path
             PreImportAllAssets();
-            TrimGuidMap();
 
             SetupFileSystemWatcher(s_ProjectAssetFileWatcher);
             SetupFileSystemWatcher(s_EngineShaderWatcher);
-
-            AssetManager.Impl = new EditorAssetManagerImpl();
         }
 
         private static void PreImportAllAssets()
         {
-            ImportDirectory(Path.Combine(Application.DataPath, "Assets"));
-            ImportDirectory(Shader.EngineShaderPath);
+            CreateImportersOnly(Path.Combine(Application.DataPath, "Assets"));
+            CreateImportersOnly(Shader.EngineShaderPath);
 
-            static void ImportDirectory(string directoryFullPath)
+            // 现在 guid 表已经构建完毕，可以导入资产了
+            AssetManager.Impl = new EditorAssetManagerImpl();
+
+            foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
+            {
+                kv.Value.ReimportAssetIfNeeded();
+            }
+
+            static void CreateImportersOnly(string directoryFullPath)
             {
                 var root = new DirectoryInfo(directoryFullPath);
 
                 foreach (FileSystemInfo info in root.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
                     string path = GetValidatedAssetPathByFullPath(info.FullName, out _);
-                    GetAssetImporter(path);
+
+                    // 仅创建 importer，不导入资产，构建一张 guid 到 importer 的表
+                    // 资产间的依赖是用 guid 记录的，只有构建完 guid 表才能正确导入资产
+                    GetAssetImporter(path, reimportAssetIfNeeded: false);
                 }
             }
         }
@@ -113,56 +118,6 @@ namespace March.Editor
             s_ProjectAssetFileWatcher.Dispose();
             s_EngineShaderWatcher.Dispose();
         }
-
-        private static void LoadGuidMap()
-        {
-            string fullPath = GetGuidMapFullPath();
-
-            if (File.Exists(fullPath))
-            {
-                string json = File.ReadAllText(fullPath, Encoding.UTF8);
-                Dictionary<string, string>? data = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
-
-                if (data != null)
-                {
-                    foreach (KeyValuePair<string, string> kvp in data)
-                    {
-                        s_Guid2PathMap[kvp.Key] = kvp.Value;
-                    }
-
-                    Debug.LogInfo($"AssetDatabase loads guid map with {data.Count} entries");
-                }
-            }
-        }
-
-        private static void SaveGuidMap()
-        {
-            string fullPath = GetGuidMapFullPath();
-            string json = JsonConvert.SerializeObject(s_Guid2PathMap);
-            File.WriteAllText(fullPath, json, Encoding.UTF8);
-        }
-
-        private static void TrimGuidMap()
-        {
-            using var unusedGuids = ListPool<string>.Get();
-
-            foreach (KeyValuePair<string, string> kv in s_Guid2PathMap)
-            {
-                if (!s_Path2Importers.ContainsKey(kv.Value))
-                {
-                    unusedGuids.Value.Add(kv.Key);
-                }
-            }
-
-            foreach (string guid in unusedGuids.Value)
-            {
-                s_Guid2PathMap.Remove(guid);
-            }
-
-            SaveGuidMap(); // TODO: 换到其他地方 Save，避免频繁写入
-        }
-
-        private static string GetGuidMapFullPath() => Path.Combine(Application.DataPath, "Library/AssetGuidMap.json");
 
         public static string? GetGuidByPath(string path)
         {
@@ -232,8 +187,7 @@ namespace March.Editor
             }
 
             PersistentManager.Save(asset, fullPath);
-            AssetImporter? importer = GetAssetImporter(path, asset, null); // Create importer
-            Debug.Assert(importer != null, "Importer should be created");
+            MustCreateAssetImporter(path, asset);
 
             if (category == AssetCategory.ProjectAsset)
             {
@@ -315,16 +269,22 @@ namespace March.Editor
                 return;
             }
 
-            AssetImporter oldImporter = GetAssetImporter(oldPath) ?? throw new ArgumentException("Old asset not found");
+            AssetImporter? oldImporter = GetAssetImporter(oldPath);
+
+            if (oldImporter == null)
+            {
+                Debug.LogWarning("Attempting to rename an asset whose importer is unknown: " + oldPath);
+                return;
+            }
+
             MarchObject asset = oldImporter.Asset;
-            string assetGuid = oldImporter.AssetGuid;
-            DeleteImporter(oldImporter, false, false);
+            DeleteImporter(oldImporter, false);
 
             if (s_Path2Importers.TryGetValue(newPath, out AssetImporter? newImporter))
             {
                 Debug.LogWarning("Asset already exists at new path. It will be deleted.");
                 AssetCategory assetCategory = newImporter.Category;
-                DeleteImporter(newImporter, true, false);
+                DeleteImporter(newImporter, true);
 
                 if (assetCategory == AssetCategory.ProjectAsset)
                 {
@@ -332,26 +292,22 @@ namespace March.Editor
                 }
             }
 
-            // Recreate importer; GuidMap will be saved in this method
-            newImporter = GetAssetImporter(newPath, asset, assetGuid);
+            newImporter = MustCreateAssetImporter(newPath, asset);
 
-            if (newImporter != null)
+            bool oldIsProjectAsset = oldCategory == AssetCategory.ProjectAsset;
+            bool newIsProjectAsset = newCategory == AssetCategory.ProjectAsset;
+
+            if (oldIsProjectAsset && newIsProjectAsset)
             {
-                bool oldIsProjectAsset = oldCategory == AssetCategory.ProjectAsset;
-                bool newIsProjectAsset = newCategory == AssetCategory.ProjectAsset;
-
-                if (oldIsProjectAsset && newIsProjectAsset)
-                {
-                    OnProjectAssetRenamed?.Invoke(oldPath, newPath);
-                }
-                else if (oldIsProjectAsset)
-                {
-                    OnProjectAssetRemoved?.Invoke(oldPath);
-                }
-                else if (newIsProjectAsset)
-                {
-                    OnProjectAssetImported?.Invoke(newPath);
-                }
+                OnProjectAssetRenamed?.Invoke(oldPath, newPath);
+            }
+            else if (oldIsProjectAsset)
+            {
+                OnProjectAssetRemoved?.Invoke(oldPath);
+            }
+            else if (newIsProjectAsset)
+            {
+                OnProjectAssetImported?.Invoke(newPath);
             }
         }
 
@@ -396,7 +352,7 @@ namespace March.Editor
 
             if (importer != null)
             {
-                DeleteImporter(importer, true, true);
+                DeleteImporter(importer, true);
 
                 if (category == AssetCategory.ProjectAsset)
                 {
@@ -405,7 +361,7 @@ namespace March.Editor
             }
         }
 
-        private static void DeleteImporter(AssetImporter importer, bool deleteAssetCache, bool saveGuidMap)
+        private static void DeleteImporter(AssetImporter importer, bool deleteAssetCache)
         {
             if (deleteAssetCache && File.Exists(importer.AssetCacheFullPath))
             {
@@ -419,11 +375,6 @@ namespace March.Editor
 
             s_Guid2PathMap.Remove(importer.AssetGuid);
             s_Path2Importers.Remove(importer.AssetPath);
-
-            if (saveGuidMap)
-            {
-                SaveGuidMap(); // TODO: 换到其他地方 Save，避免频繁写入
-            }
         }
 
         internal static bool IsImporterFilePath(string path) => path.EndsWith(ImporterPathSuffix);
@@ -492,24 +443,58 @@ namespace March.Editor
             return fullPath;
         }
 
-        public static AssetImporter? GetAssetImporter(string path)
+        public static AssetImporter? GetAssetImporter(string path, bool reimportAssetIfNeeded = true)
         {
-            return GetAssetImporter(path, null, null);
+            AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
+
+            if (reimportAssetIfNeeded && importer != null && isNewlyCreated)
+            {
+                importer.ReimportAssetIfNeeded();
+            }
+
+            return importer;
         }
 
-        private static AssetImporter? GetAssetImporter(string path, MarchObject? initAsset, string? initAssetGuid)
+        private static AssetImporter MustCreateAssetImporter(string path, MarchObject? initAsset)
+        {
+            AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
+
+            if (importer == null || !isNewlyCreated)
+            {
+                throw new Exception("Failed to create asset importer");
+            }
+
+            if (initAsset == null)
+            {
+                importer.ReimportAssetIfNeeded();
+            }
+            else
+            {
+                importer.SetAsset(initAsset);
+            }
+
+            return importer;
+        }
+
+        private static AssetImporter? GetOrCreateAssetImporter(string path, out bool isNewlyCreated)
         {
             AssetCategory category = ValidateAssetPathAndGetCategory(ref path, out string assetFullPath, out string importerFullPath);
 
             if (category == AssetCategory.Unknown)
             {
+                isNewlyCreated = false;
                 return null;
             }
 
-            if (!s_Path2Importers.TryGetValue(path, out AssetImporter? importer))
+            if (s_Path2Importers.TryGetValue(path, out AssetImporter? importer))
+            {
+                isNewlyCreated = false;
+            }
+            else
             {
                 if (!File.Exists(assetFullPath) && !Directory.Exists(assetFullPath))
                 {
+                    isNewlyCreated = false;
                     return null;
                 }
 
@@ -521,29 +506,18 @@ namespace March.Editor
                 {
                     if (!TryCreateAssetImporter(assetFullPath, out importer))
                     {
+                        isNewlyCreated = false;
                         return null;
                     }
                 }
 
-                importer.Initialize(
-                    category: category,
-                    assetPath: path,
-                    assetFullPath: assetFullPath,
-                    assetCacheFullPath: GetAssetCacheFullPath(importer.AssetGuid),
-                    importerFullPath: importerFullPath,
-                    asset: initAsset,
-                    assetGuid: initAssetGuid);
+                isNewlyCreated = true;
+                importer.Initialize(category, path, assetFullPath, importerFullPath);
                 s_Path2Importers.Add(path, importer);
                 s_Guid2PathMap[importer.AssetGuid] = path;
-                SaveGuidMap(); // TODO: 换到其他地方 Save，避免频繁写入
             }
 
             return importer;
-        }
-
-        private static string GetAssetCacheFullPath(string guid)
-        {
-            return Path.Combine(Application.DataPath, "Library/AssetCache", guid).ValidatePath();
         }
 
         private static bool TryCreateAssetImporter(string fullPath, [NotNullWhen(true)] out AssetImporter? importer)

@@ -122,10 +122,11 @@ namespace march
 
                 if (m_Timer.Tick())
                 {
-                    m_Engine->OnTick();
+                    m_Engine->OnTick(false);
                 }
             }
 
+            m_Engine->OnTick(true);
             m_Engine->OnQuit();
             return (int)msg.wParam;
 #if !defined(_DEBUG) && !defined(DEBUG)
