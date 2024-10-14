@@ -3,6 +3,7 @@
 #include "GfxBuffer.h"
 #include "GfxCommandList.h"
 #include "GfxExcept.h"
+#include "GfxSupportInfo.h"
 #include <stdexcept>
 #include <DirectXColors.h>
 
@@ -201,7 +202,7 @@ namespace march
         if (IsDepthStencilFormat(format))
         {
             clearValue.Format = format;
-            clearValue.DepthStencil.Depth = 1.0f;
+            clearValue.DepthStencil.Depth = GfxSupportInfo::GetFarClipPlaneDepth();
             clearValue.DepthStencil.Stencil = 0;
 
             resourceFormat = GetDepthStencilResFormat(format);

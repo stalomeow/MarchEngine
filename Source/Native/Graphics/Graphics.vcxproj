@@ -19,6 +19,7 @@
     <ClInclude Include="Public\GfxExcept.h" />
     <ClInclude Include="Public\GfxFence.h" />
     <ClInclude Include="Public\GfxResource.h" />
+    <ClInclude Include="Public\GfxSupportInfo.h" />
     <ClInclude Include="Public\GfxSwapChain.h" />
     <ClInclude Include="Public\GfxMesh.h" />
     <ClInclude Include="Public\GfxTexture.h" />
@@ -37,6 +38,8 @@
     <ClCompile Include="Private\GfxFence.cpp" />
     <ClCompile Include="Private\GfxMesh.cpp" />
     <ClCompile Include="Private\GfxResource.cpp" />
+    <ClCompile Include="Private\GfxSupportInfo.binding.cpp" />
+    <ClCompile Include="Private\GfxSupportInfo.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />
     <ClCompile Include="Private\Mesh.binding.cpp" />
     <ClCompile Include="Private\PipelineState.cpp" />

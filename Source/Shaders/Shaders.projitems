@@ -9,6 +9,7 @@
     <Import_RootNamespace>Shaders</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)public\Common.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
   </ItemGroup>

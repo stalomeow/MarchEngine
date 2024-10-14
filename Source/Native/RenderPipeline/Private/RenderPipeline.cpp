@@ -12,6 +12,7 @@
 #include "Camera.h"
 #include "RenderObject.h"
 #include "Display.h"
+#include "GfxSupportInfo.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
@@ -115,7 +116,7 @@ namespace march
 
         // Clear the back buffer and depth buffer.
         cmd->GetD3D12CommandList()->ClearRenderTargetView(rtv, Colors::Black, 0, nullptr);
-        cmd->GetD3D12CommandList()->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+        cmd->GetD3D12CommandList()->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, GfxSupportInfo::GetFarClipPlaneDepth(), 0, 0, nullptr);
 
         // Specify the buffers we are going to render to.
         cmd->GetD3D12CommandList()->OMSetRenderTargets(1, &rtv, true, &dsv);

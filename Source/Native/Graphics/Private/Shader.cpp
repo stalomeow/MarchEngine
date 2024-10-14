@@ -1,8 +1,8 @@
 #include "Shader.h"
 #include "Debug.h"
 #include "StringUtility.h"
-#include "GfxMesh.h"
 #include "GfxDevice.h"
+#include "GfxSupportInfo.h"
 #include "PathHelper.h"
 #include <d3d12shader.h>    // Shader reflection.
 #include <algorithm>
@@ -63,7 +63,7 @@ namespace march
         std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(GetTargetProfile(shaderModel, programType));
         std::wstring wIncludePath = StringUtility::Utf8ToUtf16(GetEngineShaderPathUnixStyle());
 
-        LPCWSTR pszArgs[] =
+        std::vector<LPCWSTR> pszArgs =
         {
             wFilename.c_str(),                     // Optional shader source file name for error reporting and for PIX shader source view.
             L"-E", wEntrypoint.c_str(),            // Entry point.
@@ -73,6 +73,24 @@ namespace march
             L"-I", wIncludePath.c_str(),           // Include directory.
             // L"-Qstrip_reflect",                 // Strip reflection into a separate blob.
         };
+
+        if constexpr (GfxSupportInfo::UseReversedZBuffer())
+        {
+            pszArgs.push_back(L"-D");
+            pszArgs.push_back(L"MARCH_REVERSED_Z=1");
+        }
+
+        std::vector<std::wstring> dynamicDefines =
+        {
+            L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxSupportInfo::GetNearClipPlaneDepth()),
+            L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxSupportInfo::GetFarClipPlaneDepth()),
+        };
+
+        for (const auto& d : dynamicDefines)
+        {
+            pszArgs.push_back(L"-D");
+            pszArgs.push_back(d.c_str());
+        }
 
         //
         // Open source file.
@@ -89,11 +107,11 @@ namespace march
         //
         ComPtr<IDxcResult> pResults;
         GFX_HR(pCompiler->Compile(
-            &Source,                // Source buffer.
-            pszArgs,                // Array of pointers to arguments.
-            _countof(pszArgs),      // Number of arguments.
-            pIncludeHandler.Get(),  // User-provided interface to handle #include directives (optional).
-            IID_PPV_ARGS(&pResults) // Compiler output status, buffer, and errors.
+            &Source,                             // Source buffer.
+            pszArgs.data(),                      // Array of pointers to arguments.
+            static_cast<UINT32>(pszArgs.size()), // Number of arguments.
+            pIncludeHandler.Get(),               // User-provided interface to handle #include directives (optional).
+            IID_PPV_ARGS(&pResults)              // Compiler output status, buffer, and errors.
         ));
 
         //

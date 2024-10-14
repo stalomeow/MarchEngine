@@ -57,6 +57,9 @@
     <ClInclude Include="Public\Shader.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\GfxSupportInfo.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\GfxDescriptorHeap.cpp">
@@ -108,6 +111,12 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Shader.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxSupportInfo.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxSupportInfo.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

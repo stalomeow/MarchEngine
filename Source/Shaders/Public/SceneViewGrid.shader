@@ -24,6 +24,7 @@ Shader "SceneViewGrid"
         #pragma vs vert
         #pragma ps frag
 
+        #include "Common.hlsl"
         #include "Lighting.hlsl"
 
         cbuffer cbMaterial
@@ -59,16 +60,8 @@ Shader "SceneViewGrid"
         Varyings vert(uint vertexID : SV_VertexID)
         {
             Varyings output;
-
-            // https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl#L1576
-            // note: the triangle vertex position coordinates are x2 so the returned UV coordinates are in range -1, 1 on the screen.
-            // 我们使用顺时针，和 unity 不太一样
-            float2 uv = float2(vertexID & 2, ((vertexID << 1) & 2));
-            output.positionCS = float4(uv * 2.0 - 1.0, 0.0, 1.0); // 放在近平面处
-
-            // 我们 uv starts at top
-            output.uv = float2(vertexID & 2, 1.0 - ((vertexID << 1) & 2));
-
+            output.positionCS = GetFullScreenTriangleVertexPositionCS(vertexID);
+            output.uv = GetFullScreenTriangleTexCoord(vertexID);
             return output;
         }
 
@@ -108,11 +101,11 @@ Shader "SceneViewGrid"
 
             float4 color;
 
-            if (abs(scaledPos.x) < diff.x)
+            if (abs(scaledPos.x) < halfLineWidth.x)
             {
                 color = _ZAxisColor;
             }
-            else if (abs(scaledPos.y) < diff.y)
+            else if (abs(scaledPos.y) < halfLineWidth.y)
             {
                 color = _XAxisColor;
             }

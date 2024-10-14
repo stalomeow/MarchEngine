@@ -2,8 +2,10 @@ using Antlr4.Runtime;
 using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Core.Serialization;
 using March.Editor.ShaderLab;
 using March.Editor.ShaderLab.Internal;
+using Newtonsoft.Json;
 using System.Text;
 
 namespace March.Editor.Importers
@@ -13,11 +15,26 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 17;
+        protected override int Version => base.Version + 18;
 
         public override string IconNormal => FontAwesome6.Code;
 
         protected override bool UseCache => true;
+
+        [JsonProperty]
+        [HideInInspector]
+        private bool m_UseReversedZBuffer = GfxSupportInfo.UseReversedZBuffer;
+
+        public override bool NeedReimportAsset()
+        {
+            return (m_UseReversedZBuffer != GfxSupportInfo.UseReversedZBuffer) || base.NeedReimportAsset();
+        }
+
+        protected override void OnWillSaveImporter()
+        {
+            base.OnWillSaveImporter();
+            m_UseReversedZBuffer = GfxSupportInfo.UseReversedZBuffer;
+        }
 
         protected override MarchObject CreateAsset()
         {

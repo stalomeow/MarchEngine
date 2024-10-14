@@ -1,6 +1,7 @@
 #include "Camera.h"
 #include "Transform.h"
 #include "Display.h"
+#include "GfxSupportInfo.h"
 #include <algorithm>
 
 #undef max
@@ -133,7 +134,14 @@ namespace march
 
     XMMATRIX Camera::LoadProjectionMatrix() const
     {
-        return XMMatrixPerspectiveFovLH(m_FovY, GetAspectRatio(), m_NearZ, m_FarZ);
+        if constexpr (GfxSupportInfo::UseReversedZBuffer())
+        {
+            return XMMatrixPerspectiveFovLH(m_FovY, GetAspectRatio(), m_FarZ, m_NearZ);
+        }
+        else
+        {
+            return XMMatrixPerspectiveFovLH(m_FovY, GetAspectRatio(), m_NearZ, m_FarZ);
+        }
     }
 
     const std::vector<Camera*>& Camera::GetAllCameras()

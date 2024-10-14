@@ -1,6 +1,7 @@
 #include "PipelineState.h"
 #include "GfxDevice.h"
 #include "GfxExcept.h"
+#include "GfxSupportInfo.h"
 #include "Debug.h"
 #include <unordered_map>
 #include <wrl.h>
@@ -12,6 +13,33 @@ namespace march
     namespace
     {
         std::unordered_map<size_t, ComPtr<ID3D12PipelineState>> g_PsoMap;
+
+        inline void ValidateDepthFunc(D3D12_COMPARISON_FUNC& func)
+        {
+            if constexpr (!GfxSupportInfo::UseReversedZBuffer())
+            {
+                return;
+            }
+
+            switch (func)
+            {
+            case D3D12_COMPARISON_FUNC_LESS:
+                func = D3D12_COMPARISON_FUNC_GREATER;
+                break;
+
+            case D3D12_COMPARISON_FUNC_LESS_EQUAL:
+                func = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+                break;
+
+            case D3D12_COMPARISON_FUNC_GREATER:
+                func = D3D12_COMPARISON_FUNC_LESS;
+                break;
+
+            case D3D12_COMPARISON_FUNC_GREATER_EQUAL:
+                func = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                break;
+            }
+        }
     }
 
     size_t MeshDesc::GetHash() const
@@ -75,6 +103,7 @@ namespace march
         psoDesc.DepthStencilState.DepthEnable = pPass->DepthState.Enable;
         psoDesc.DepthStencilState.DepthWriteMask = pPass->DepthState.Write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
         psoDesc.DepthStencilState.DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->DepthState.Compare) + 1);
+        ValidateDepthFunc(psoDesc.DepthStencilState.DepthFunc);
         psoDesc.DepthStencilState.StencilEnable = pPass->StencilState.Enable;
         psoDesc.DepthStencilState.StencilReadMask = static_cast<UINT8>(pPass->StencilState.ReadMask);
         psoDesc.DepthStencilState.StencilWriteMask = static_cast<UINT8>(pPass->StencilState.WriteMask);

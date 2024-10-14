@@ -173,8 +173,10 @@ namespace march
         XMVECTOR cameraRight = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), cameraRot);
         XMVECTOR cameraUp = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), cameraRot);
 
+        bool isSceneViewImageHovered = IsSceneViewImageHovered();
+
         // Move
-        if (isRotating)
+        if (isRotating || (isSceneViewImageHovered && ImGui::IsMouseDown(ImGuiMouseButton_Right)))
         {
             float translation = (ImGui::IsKeyDown(ImGuiMod_Shift) ? m_FastMoveSpeed : m_NormalMoveSpeed) * deltaTime;
 
@@ -210,27 +212,27 @@ namespace march
         }
         else
         {
-            if (ImGui::IsKeyPressed(ImGuiKey_Q))
+            if (ImGui::IsKeyPressed(ImGuiKey_Q, false))
             {
                 m_GizmoOperation = SceneGizmoOperation::Pan;
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_W))
+            if (ImGui::IsKeyPressed(ImGuiKey_W, false))
             {
                 m_GizmoOperation = SceneGizmoOperation::Translate;
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_E))
+            if (ImGui::IsKeyPressed(ImGuiKey_E, false))
             {
                 m_GizmoOperation = SceneGizmoOperation::Rotate;
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_R))
+            if (ImGui::IsKeyPressed(ImGuiKey_R, false))
             {
                 m_GizmoOperation = SceneGizmoOperation::Scale;
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_X))
+            if (ImGui::IsKeyPressed(ImGuiKey_X, false))
             {
                 m_GizmoMode = (m_GizmoMode == SceneGizmoMode::Local) ?
                     SceneGizmoMode::World : SceneGizmoMode::Local;
@@ -238,7 +240,7 @@ namespace march
         }
 
         // Zoom
-        if (IsSceneViewImageHovered())
+        if (isSceneViewImageHovered)
         {
             cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
         }

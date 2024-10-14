@@ -1,7 +1,7 @@
 #include "Display.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
 #include "GfxTexture.h"
+#include "GfxSupportInfo.h"
 
 namespace march
 {
@@ -14,7 +14,7 @@ namespace march
         , m_ResolvedColorBuffer(nullptr)
         , m_ResolvedDepthStencilBuffer(nullptr)
     {
-        m_MSAAQuality = GetMSAAQuality(device);
+        m_MSAAQuality = GfxSupportInfo::GetMSAAQuality(device, s_ColorFormat, s_MSAASampleCount);
         CreateBuffers(width, height);
     }
 
@@ -119,18 +119,6 @@ namespace march
             m_ResolvedColorBuffer = nullptr;
             m_ResolvedDepthStencilBuffer = nullptr;
         }
-    }
-
-    uint32_t Display::GetMSAAQuality(GfxDevice* device)
-    {
-        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS levels = {};
-        levels.Format = s_ColorFormat;
-        levels.SampleCount = static_cast<UINT>(s_MSAASampleCount);
-        levels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-
-        ID3D12Device4* d3d12Device = device->GetD3D12Device();
-        GFX_HR(d3d12Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels)));
-        return static_cast<uint32_t>(levels.NumQualityLevels - 1);
     }
 
     std::unique_ptr<Display> Display::s_MainDisplay = nullptr;

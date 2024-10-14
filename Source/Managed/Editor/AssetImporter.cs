@@ -171,6 +171,7 @@ namespace March.Editor
         {
             m_SerializedVersion = Version;
             RecordAssetLastWriteTime();
+            OnWillSaveImporter();
             PersistentManager.Save(this, ImporterFullPath);
         }
 
@@ -259,6 +260,11 @@ namespace March.Editor
         public virtual string IconExpanded => IconNormal;
 
         /// <summary>
+        /// 保存 <see cref="AssetImporter"/> 前调用，可以在这里更新一些状态
+        /// </summary>
+        protected virtual void OnWillSaveImporter() { }
+
+        /// <summary>
         /// 创建 Asset 实例，只创建实例，不填充数据
         /// </summary>
         /// <returns></returns>
@@ -298,7 +304,7 @@ namespace March.Editor
 
     public abstract class ExternalAssetImporter : AssetImporter
     {
-        public sealed override bool NeedReimportAsset()
+        public override bool NeedReimportAsset()
         {
             if (UseCache && !File.Exists(AssetCacheFullPath))
             {
