@@ -123,7 +123,7 @@ NATIVE_EXPORT_AUTO Shader_ClearProperties(cs<Shader*> pShader)
 NATIVE_EXPORT_AUTO Shader_SetProperty(cs<Shader*> pShader, cs<CSharpShaderProperty*> prop)
 {
     pShader->Version++;
-    pShader->Properties[prop->Name] =
+    pShader->Properties[Shader::GetNameId(prop->Name)] =
     {
         prop->Type,
         prop->DefaultFloat,
@@ -158,7 +158,7 @@ NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
         for (auto& kvp : pass->ConstantBuffers)
         {
             auto& cb = dest.ConstantBuffers[cbIndex++];
-            cb.Name.assign(kvp.first);
+            cb.Name.assign(Shader::GetIdName(kvp.first));
             cb.ShaderRegister.assign(kvp.second.ShaderRegister);
             cb.RegisterSpace.assign(kvp.second.RegisterSpace);
             cb.Size.assign(kvp.second.Size);
@@ -169,7 +169,7 @@ NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
         for (auto& kvp : pass->Samplers)
         {
             auto& sampler = dest.Samplers[samplerIndex++];
-            sampler.Name.assign(kvp.first);
+            sampler.Name.assign(Shader::GetIdName(kvp.first));
             sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
             sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
         }
@@ -179,7 +179,7 @@ NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
         for (auto& kvp : pass->MaterialProperties)
         {
             auto& mp = dest.MaterialProperties[mpIndex++];
-            mp.Name.assign(kvp.first);
+            mp.Name.assign(Shader::GetIdName(kvp.first));
             mp.Offset.assign(kvp.second.Offset);
             mp.Size.assign(kvp.second.Size);
         }
@@ -189,7 +189,7 @@ NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
         for (auto& kvp : pass->TextureProperties)
         {
             auto& tp = dest.TextureProperties[tpIndex++];
-            tp.Name.assign(kvp.first);
+            tp.Name.assign(Shader::GetIdName(kvp.first));
             tp.ShaderRegisterTexture.assign(kvp.second.ShaderRegisterTexture);
             tp.RegisterSpaceTexture.assign(kvp.second.RegisterSpaceTexture);
             tp.HasSampler.assign(kvp.second.HasSampler);
@@ -260,28 +260,28 @@ NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
         for (int32_t j = 0; j < src.ConstantBuffers.size(); j++)
         {
             const auto& cb = src.ConstantBuffers[j];
-            pass->ConstantBuffers[cb.Name] = { cb.ShaderRegister, cb.RegisterSpace, cb.Size };
+            pass->ConstantBuffers[Shader::GetNameId(cb.Name)] = {cb.ShaderRegister, cb.RegisterSpace, cb.Size};
         }
 
         pass->Samplers.clear();
         for (int32_t j = 0; j < src.Samplers.size(); j++)
         {
             const auto& sampler = src.Samplers[j];
-            pass->Samplers[sampler.Name] = { sampler.ShaderRegister, sampler.RegisterSpace };
+            pass->Samplers[Shader::GetNameId(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
         }
 
         pass->MaterialProperties.clear();
         for (int32_t j = 0; j < src.MaterialProperties.size(); j++)
         {
             const auto& mp = src.MaterialProperties[j];
-            pass->MaterialProperties[mp.Name] = { mp.Offset, mp.Size };
+            pass->MaterialProperties[Shader::GetNameId(mp.Name)] = { mp.Offset, mp.Size };
         }
 
         pass->TextureProperties.clear();
         for (int32_t j = 0; j < src.TextureProperties.size(); j++)
         {
             const auto& tp = src.TextureProperties[j];
-            pass->TextureProperties[tp.Name] =
+            pass->TextureProperties[Shader::GetNameId(tp.Name)] =
             {
                 tp.ShaderRegisterTexture,
                 tp.RegisterSpaceTexture,

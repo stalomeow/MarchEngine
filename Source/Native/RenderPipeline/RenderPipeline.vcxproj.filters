@@ -27,6 +27,15 @@
     <ClInclude Include="Public\Display.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\RenderGraph.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderGraphPass.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderGraphResourcePool.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp">
@@ -60,6 +69,15 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Camera.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderGraph.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderGraphResourcePool.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderGraphPass.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

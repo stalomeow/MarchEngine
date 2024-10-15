@@ -93,8 +93,8 @@ struct IntProperty
 
 NATIVE_EXPORT_AUTO Material_GetAllInts(cs<Material*> pMaterial)
 {
-    const std::unordered_map<std::string, int32_t> rawInts = MaterialInternalUtility::GetRawInts(pMaterial);
-    std::unordered_map<std::string, int32_t> allValues(rawInts.begin(), rawInts.end());
+    const std::unordered_map<int32_t, int32_t> rawInts = MaterialInternalUtility::GetRawInts(pMaterial);
+    std::unordered_map<int32_t, int32_t> allValues(rawInts.begin(), rawInts.end());
 
     for (auto& p : pMaterial->GetShader()->Properties)
     {
@@ -111,7 +111,7 @@ NATIVE_EXPORT_AUTO Material_GetAllInts(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         IntProperty& dst = props[i++];
-        dst.Name.assign(p.first);
+        dst.Name.assign(Shader::GetIdName(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -126,8 +126,8 @@ struct FloatProperty
 
 NATIVE_EXPORT_AUTO Material_GetAllFloats(cs<Material*> pMaterial)
 {
-    const std::unordered_map<std::string, float> rawFloats = MaterialInternalUtility::GetRawFloats(pMaterial);
-    std::unordered_map<std::string, float> allValues(rawFloats.begin(), rawFloats.end());
+    const std::unordered_map<int32_t, float> rawFloats = MaterialInternalUtility::GetRawFloats(pMaterial);
+    std::unordered_map<int32_t, float> allValues(rawFloats.begin(), rawFloats.end());
 
     for (auto& p : pMaterial->GetShader()->Properties)
     {
@@ -144,7 +144,7 @@ NATIVE_EXPORT_AUTO Material_GetAllFloats(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         FloatProperty& dst = props[i++];
-        dst.Name.assign(p.first);
+        dst.Name.assign(Shader::GetIdName(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -159,8 +159,8 @@ struct VectorProperty
 
 NATIVE_EXPORT_AUTO Material_GetAllVectors(cs<Material*> pMaterial)
 {
-    const std::unordered_map<std::string, XMFLOAT4> rawVectors = MaterialInternalUtility::GetRawVectors(pMaterial);
-    std::unordered_map<std::string, XMFLOAT4> allValues(rawVectors.begin(), rawVectors.end());
+    const std::unordered_map<int32_t, XMFLOAT4> rawVectors = MaterialInternalUtility::GetRawVectors(pMaterial);
+    std::unordered_map<int32_t, XMFLOAT4> allValues(rawVectors.begin(), rawVectors.end());
 
     for (auto& p : pMaterial->GetShader()->Properties)
     {
@@ -177,7 +177,7 @@ NATIVE_EXPORT_AUTO Material_GetAllVectors(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         VectorProperty& dst = props[i++];
-        dst.Name.assign(p.first);
+        dst.Name.assign(Shader::GetIdName(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -192,8 +192,8 @@ struct ColorProperty
 
 NATIVE_EXPORT_AUTO Material_GetAllColors(cs<Material*> pMaterial)
 {
-    const std::unordered_map<std::string, XMFLOAT4> rawColors = MaterialInternalUtility::GetRawColors(pMaterial);
-    std::unordered_map<std::string, XMFLOAT4> allValues(rawColors.begin(), rawColors.end());
+    const std::unordered_map<int32_t, XMFLOAT4> rawColors = MaterialInternalUtility::GetRawColors(pMaterial);
+    std::unordered_map<int32_t, XMFLOAT4> allValues(rawColors.begin(), rawColors.end());
 
     for (auto& p : pMaterial->GetShader()->Properties)
     {
@@ -210,7 +210,7 @@ NATIVE_EXPORT_AUTO Material_GetAllColors(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         ColorProperty& dst = props[i++];
-        dst.Name.assign(p.first);
+        dst.Name.assign(Shader::GetIdName(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -225,8 +225,8 @@ struct TextureProperty
 
 NATIVE_EXPORT_AUTO Material_GetAllTextures(cs<Material*> pMaterial)
 {
-    const std::unordered_map<std::string, GfxTexture*> rawTextures = MaterialInternalUtility::GetRawTextures(pMaterial);
-    std::unordered_map<std::string, GfxTexture*> allValues(rawTextures.begin(), rawTextures.end());
+    const std::unordered_map<int32_t, GfxTexture*> rawTextures = MaterialInternalUtility::GetRawTextures(pMaterial);
+    std::unordered_map<int32_t, GfxTexture*> allValues(rawTextures.begin(), rawTextures.end());
 
     for (auto& p : pMaterial->GetShader()->Properties)
     {
@@ -243,7 +243,7 @@ NATIVE_EXPORT_AUTO Material_GetAllTextures(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         TextureProperty& dst = props[i++];
-        dst.Name.assign(p.first);
+        dst.Name.assign(Shader::GetIdName(p.first));
         dst.Value.assign(p.second);
     }
 

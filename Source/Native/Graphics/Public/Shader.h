@@ -208,10 +208,10 @@ namespace march
         Microsoft::WRL::ComPtr<IDxcBlob> VertexShader;
         Microsoft::WRL::ComPtr<IDxcBlob> PixelShader;
 
-        std::unordered_map<std::string, ShaderPassConstantBuffer> ConstantBuffers;
-        std::unordered_map<std::string, ShaderPassSampler> Samplers;
-        std::unordered_map<std::string, ShaderPassMaterialProperty> MaterialProperties;
-        std::unordered_map<std::string, ShaderPassTextureProperty> TextureProperties;
+        std::unordered_map<int32_t, ShaderPassConstantBuffer> ConstantBuffers;
+        std::unordered_map<int32_t, ShaderPassSampler> Samplers;
+        std::unordered_map<int32_t, ShaderPassMaterialProperty> MaterialProperties;
+        std::unordered_map<int32_t, ShaderPassTextureProperty> TextureProperties;
 
         ShaderPassCullMode Cull;
         std::vector<ShaderPassBlendState> Blends;
@@ -252,7 +252,7 @@ namespace march
             const std::string& shaderModel,
             ShaderProgramType programType);
 
-        std::unordered_map<std::string, ShaderProperty> Properties;
+        std::unordered_map<int32_t, ShaderProperty> Properties;
         std::vector<std::unique_ptr<ShaderPass>> Passes;
         int32_t Version = 0;
 
@@ -278,8 +278,14 @@ namespace march
             return s_Compiler.Get();
         }
 
+        static int32_t GetNameId(const std::string& name);
+        static const std::string& GetIdName(int32_t id);
+
     private:
         inline static Microsoft::WRL::ComPtr<IDxcUtils> s_Utils = nullptr;
         inline static Microsoft::WRL::ComPtr<IDxcCompiler3> s_Compiler = nullptr;
+
+        static std::unordered_map<std::string, int32_t> s_NameIdMap;
+        static int32_t s_NextNameId;
     };
 }

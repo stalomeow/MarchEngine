@@ -82,14 +82,28 @@ namespace march
         DirectX::TexMetadata m_MetaData;
     };
 
+    struct GfxRenderTextureDesc
+    {
+        DXGI_FORMAT Format;
+        uint32_t Width;
+        uint32_t Height;
+        uint32_t SampleCount;
+        uint32_t SampleQuality;
+
+        bool IsCompatibleWith(const GfxRenderTextureDesc& other) const;
+    };
+
     class GfxRenderTexture : public GfxTexture
     {
     public:
+        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxRenderTextureDesc& desc);
         GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount = 1, uint32_t sampleQuality = 0);
         virtual ~GfxRenderTexture();
 
-        uint32_t GetWidth() const override { return m_Width; }
-        uint32_t GetHeight() const override { return m_Height; }
+        uint32_t GetWidth() const override;
+        uint32_t GetHeight() const override;
+        GfxRenderTextureDesc GetDesc() const;
+
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsvCpuDescriptorHandle() const { return m_RtvDsvDescriptorHandle.GetCpuHandle(); }
 
     protected:
@@ -97,8 +111,6 @@ namespace march
         static DXGI_FORMAT GetDepthStencilResFormat(DXGI_FORMAT format);
         static DXGI_FORMAT GetDepthStencilSRVFormat(DXGI_FORMAT format);
 
-        uint32_t m_Width;
-        uint32_t m_Height;
         GfxDescriptorHandle m_RtvDsvDescriptorHandle;
     };
 }

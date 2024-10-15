@@ -34,52 +34,77 @@ namespace march
         m_Textures.clear();
     }
 
+    void Material::SetInt(int32_t id, int32_t value)
+    {
+        m_Ints[id] = value;
+        SetConstantBufferValue(id, value);
+    }
+
+    void Material::SetFloat(int32_t id, float value)
+    {
+        m_Floats[id] = value;
+        SetConstantBufferValue(id, value);
+    }
+
+    void Material::SetVector(int32_t id, const XMFLOAT4& value)
+    {
+        m_Vectors[id] = value;
+        SetConstantBufferValue(id, value);
+    }
+
+    void Material::SetColor(int32_t id, const XMFLOAT4& value)
+    {
+        m_Colors[id] = value;
+        SetConstantBufferValue(id, value);
+    }
+
+    void Material::SetTexture(int32_t id, GfxTexture* texture)
+    {
+        if (texture == nullptr)
+        {
+            m_Textures.erase(id);
+        }
+        else
+        {
+            m_Textures[id] = texture;
+        }
+    }
+
     void Material::SetInt(const std::string& name, int32_t value)
     {
-        m_Ints[name] = value;
-        SetConstantBufferValue(name, value);
+        SetInt(Shader::GetNameId(name), value);
     }
 
     void Material::SetFloat(const std::string& name, float value)
     {
-        m_Floats[name] = value;
-        SetConstantBufferValue(name, value);
+        SetFloat(Shader::GetNameId(name), value);
     }
 
     void Material::SetVector(const std::string& name, const XMFLOAT4& value)
     {
-        m_Vectors[name] = value;
-        SetConstantBufferValue(name, value);
+        SetVector(Shader::GetNameId(name), value);
     }
 
     void Material::SetColor(const std::string& name, const XMFLOAT4& value)
     {
-        m_Colors[name] = value;
-        SetConstantBufferValue(name, value);
+        SetColor(Shader::GetNameId(name), value);
     }
 
     void Material::SetTexture(const std::string& name, GfxTexture* texture)
     {
-        if (texture == nullptr)
-        {
-            m_Textures.erase(name);
-        }
-        else
-        {
-            m_Textures[name] = texture;
-        }
+        SetTexture(Shader::GetNameId(name), texture);
     }
 
-    bool Material::GetInt(const std::string& name, int32_t* outValue) const
+    bool Material::GetInt(int32_t id, int32_t* outValue) const
     {
-        auto matProp = m_Ints.find(name);
+        auto matProp = m_Ints.find(id);
         if (matProp != m_Ints.end())
         {
             *outValue = matProp->second;
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(name);
+        auto shaderProp = m_Shader->Properties.find(id);
         if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Int)
         {
             *outValue = shaderProp->second.DefaultInt;
@@ -89,16 +114,16 @@ namespace march
         return false;
     }
 
-    bool Material::GetFloat(const std::string& name, float* outValue) const
+    bool Material::GetFloat(int32_t id, float* outValue) const
     {
-        auto matProp = m_Floats.find(name);
+        auto matProp = m_Floats.find(id);
         if (matProp != m_Floats.end())
         {
             *outValue = matProp->second;
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(name);
+        auto shaderProp = m_Shader->Properties.find(id);
         if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Float)
         {
             *outValue = shaderProp->second.DefaultFloat;
@@ -108,16 +133,16 @@ namespace march
         return false;
     }
 
-    bool Material::GetVector(const std::string& name, XMFLOAT4* outValue) const
+    bool Material::GetVector(int32_t id, XMFLOAT4* outValue) const
     {
-        auto matProp = m_Vectors.find(name);
+        auto matProp = m_Vectors.find(id);
         if (matProp != m_Vectors.end())
         {
             *outValue = matProp->second;
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(name);
+        auto shaderProp = m_Shader->Properties.find(id);
         if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Vector)
         {
             *outValue = shaderProp->second.DefaultVector;
@@ -127,16 +152,16 @@ namespace march
         return false;
     }
 
-    bool Material::GetColor(const std::string& name, XMFLOAT4* outValue) const
+    bool Material::GetColor(int32_t id, XMFLOAT4* outValue) const
     {
-        auto matProp = m_Colors.find(name);
+        auto matProp = m_Colors.find(id);
         if (matProp != m_Colors.end())
         {
             *outValue = matProp->second;
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(name);
+        auto shaderProp = m_Shader->Properties.find(id);
         if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Color)
         {
             *outValue = shaderProp->second.DefaultColor;
@@ -146,16 +171,16 @@ namespace march
         return false;
     }
 
-    bool Material::GetTexture(const std::string& name, GfxTexture** outValue) const
+    bool Material::GetTexture(int32_t id, GfxTexture** outValue) const
     {
-        auto matProp = m_Textures.find(name);
+        auto matProp = m_Textures.find(id);
         if (matProp != m_Textures.end())
         {
             *outValue = matProp->second;
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(name);
+        auto shaderProp = m_Shader->Properties.find(id);
         if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Texture)
         {
             *outValue = shaderProp->second.GetDefaultTexture();
@@ -163,6 +188,31 @@ namespace march
         }
 
         return false;
+    }
+
+    bool Material::GetInt(const std::string& name, int32_t* outValue) const
+    {
+        return GetInt(Shader::GetNameId(name), outValue);
+    }
+
+    bool Material::GetFloat(const std::string& name, float* outValue) const
+    {
+        return GetFloat(Shader::GetNameId(name), outValue);
+    }
+
+    bool Material::GetVector(const std::string& name, XMFLOAT4* outValue) const
+    {
+        return GetVector(Shader::GetNameId(name), outValue);
+    }
+
+    bool Material::GetColor(const std::string& name, XMFLOAT4* outValue) const
+    {
+        return GetColor(Shader::GetNameId(name), outValue);
+    }
+
+    bool Material::GetTexture(const std::string& name, GfxTexture** outValue) const
+    {
+        return GetTexture(Shader::GetNameId(name), outValue);
     }
 
     void Material::CheckShaderVersion()
@@ -189,7 +239,7 @@ namespace march
         m_ConstantBuffers.clear();
         for (auto& pass : m_Shader->Passes)
         {
-            auto matCb = pass->ConstantBuffers.find(ShaderPass::MaterialCbName);
+            auto matCb = pass->ConstantBuffers.find(Shader::GetNameId(ShaderPass::MaterialCbName));
             if (matCb == pass->ConstantBuffers.end())
             {
                 continue;
@@ -202,7 +252,7 @@ namespace march
         // 初始化 cbuffer
         for (const auto& kv : m_Shader->Properties)
         {
-            const std::string& name = kv.first;
+            int32_t id = kv.first;
             const ShaderProperty& prop = kv.second;
 
             switch (prop.Type)
@@ -210,9 +260,9 @@ namespace march
             case ShaderPropertyType::Float:
             {
                 float value;
-                if (GetFloat(name, &value))
+                if (GetFloat(id, &value))
                 {
-                    SetConstantBufferValue(name, value);
+                    SetConstantBufferValue(id, value);
                 }
                 break;
             }
@@ -220,9 +270,9 @@ namespace march
             case ShaderPropertyType::Int:
             {
                 int32_t value;
-                if (GetInt(name, &value))
+                if (GetInt(id, &value))
                 {
-                    SetConstantBufferValue(name, value);
+                    SetConstantBufferValue(id, value);
                 }
                 break;
             }
@@ -230,9 +280,9 @@ namespace march
             case ShaderPropertyType::Color:
             {
                 XMFLOAT4 value;
-                if (GetColor(name, &value))
+                if (GetColor(id, &value))
                 {
-                    SetConstantBufferValue(name, value);
+                    SetConstantBufferValue(id, value);
                 }
                 break;
             }
@@ -240,9 +290,9 @@ namespace march
             case ShaderPropertyType::Vector:
             {
                 XMFLOAT4 value;
-                if (GetVector(name, &value))
+                if (GetVector(id, &value))
                 {
-                    SetConstantBufferValue(name, value);
+                    SetConstantBufferValue(id, value);
                 }
                 break;
             }
@@ -250,6 +300,7 @@ namespace march
             case ShaderPropertyType::Texture:
                 // Ignore
                 break;
+
             default:
                 DEBUG_LOG_ERROR("Unknown shader property type");
                 break;
@@ -258,7 +309,7 @@ namespace march
     }
 
     template<typename T>
-    void Material::SetConstantBufferValue(const std::string& name, const T& value)
+    void Material::SetConstantBufferValue(int32_t id, const T& value)
     {
         CheckShaderVersion();
 
@@ -266,7 +317,7 @@ namespace march
         {
             const ShaderPass* pass = kv.first;
             const GfxConstantBuffer* cb = kv.second.get();
-            const auto prop = pass->MaterialProperties.find(name);
+            const auto prop = pass->MaterialProperties.find(id);
 
             if (prop != pass->MaterialProperties.end())
             {
@@ -310,27 +361,27 @@ namespace march
         return it == m_ConstantBuffers.end() ? defaultValue : it->second.get();
     }
 
-    const std::unordered_map<std::string, int32_t>& MaterialInternalUtility::GetRawInts(Material* m)
+    const std::unordered_map<int32_t, int32_t>& MaterialInternalUtility::GetRawInts(Material* m)
     {
         return m->m_Ints;
     }
 
-    const std::unordered_map<std::string, float>& MaterialInternalUtility::GetRawFloats(Material* m)
+    const std::unordered_map<int32_t, float>& MaterialInternalUtility::GetRawFloats(Material* m)
     {
         return m->m_Floats;
     }
 
-    const std::unordered_map<std::string, XMFLOAT4>& MaterialInternalUtility::GetRawVectors(Material* m)
+    const std::unordered_map<int32_t, XMFLOAT4>& MaterialInternalUtility::GetRawVectors(Material* m)
     {
         return m->m_Vectors;
     }
 
-    const std::unordered_map<std::string, XMFLOAT4>& MaterialInternalUtility::GetRawColors(Material* m)
+    const std::unordered_map<int32_t, XMFLOAT4>& MaterialInternalUtility::GetRawColors(Material* m)
     {
         return m->m_Colors;
     }
 
-    const std::unordered_map<std::string, GfxTexture*>& MaterialInternalUtility::GetRawTextures(Material* m)
+    const std::unordered_map<int32_t, GfxTexture*>& MaterialInternalUtility::GetRawTextures(Material* m)
     {
         return m->m_Textures;
     }

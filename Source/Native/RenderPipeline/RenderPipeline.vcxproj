@@ -15,6 +15,9 @@
     <ClInclude Include="Public\Display.h" />
     <ClInclude Include="Public\Light.h" />
     <ClInclude Include="Public\Material.h" />
+    <ClInclude Include="Public\RenderGraph.h" />
+    <ClInclude Include="Public\RenderGraphPass.h" />
+    <ClInclude Include="Public\RenderGraphResourcePool.h" />
     <ClInclude Include="Public\RenderObject.h" />
     <ClInclude Include="Public\RenderPipeline.h" />
   </ItemGroup>
@@ -26,6 +29,9 @@
     <ClCompile Include="Private\Light.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />
     <ClCompile Include="Private\Material.cpp" />
+    <ClCompile Include="Private\RenderGraph.cpp" />
+    <ClCompile Include="Private\RenderGraphPass.cpp" />
+    <ClCompile Include="Private\RenderGraphResourcePool.cpp" />
     <ClCompile Include="Private\RenderObject.binding.cpp" />
     <ClCompile Include="Private\RenderObject.cpp" />
     <ClCompile Include="Private\RenderPipeline.binding.cpp" />

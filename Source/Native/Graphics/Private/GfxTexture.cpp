@@ -191,31 +191,35 @@ namespace march
         device->CreateShaderResourceView(m_Resource, nullptr, GetSrvCpuDescriptorHandle());
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount, uint32_t sampleQuality)
-        : GfxTexture(device), m_Width(width), m_Height(height)
+    bool GfxRenderTextureDesc::IsCompatibleWith(const GfxRenderTextureDesc& other) const
+    {
+        return Format == other.Format && Width == other.Width && Height == other.Height && SampleCount == other.SampleCount && SampleQuality == other.SampleQuality;
+    }
+
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxRenderTextureDesc& desc) : GfxTexture(device)
     {
         D3D12_RESOURCE_FLAGS flags;
         D3D12_CLEAR_VALUE clearValue = {};
         DXGI_FORMAT resourceFormat;
         ID3D12Device4* d3d12Device = device->GetD3D12Device();
 
-        if (IsDepthStencilFormat(format))
+        if (IsDepthStencilFormat(desc.Format))
         {
-            clearValue.Format = format;
+            clearValue.Format = desc.Format;
             clearValue.DepthStencil.Depth = GfxSupportInfo::GetFarClipPlaneDepth();
             clearValue.DepthStencil.Stencil = 0;
 
-            resourceFormat = GetDepthStencilResFormat(format);
+            resourceFormat = GetDepthStencilResFormat(desc.Format);
 
             flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
             m_State = D3D12_RESOURCE_STATE_DEPTH_WRITE;
         }
         else
         {
-            clearValue.Format = format;
+            clearValue.Format = desc.Format;
             memcpy(clearValue.Color, Colors::Black, sizeof(clearValue.Color));
 
-            resourceFormat = format;
+            resourceFormat = desc.Format;
 
             flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
             m_State = D3D12_RESOURCE_STATE_COMMON;
@@ -225,20 +229,20 @@ namespace march
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
             &CD3DX12_RESOURCE_DESC::Tex2D(resourceFormat,
-                static_cast<UINT64>(width),
-                static_cast<UINT>(height),
+                static_cast<UINT64>(desc.Width),
+                static_cast<UINT>(desc.Height),
                 1, 1,
-                static_cast<UINT>(sampleCount),
-                static_cast<UINT>(sampleQuality),
+                static_cast<UINT>(desc.SampleCount),
+                static_cast<UINT>(desc.SampleQuality),
                 flags),
             m_State, &clearValue, IID_PPV_ARGS(&m_Resource)));
         SetD3D12ResourceName(name);
 
-        if (IsDepthStencilFormat(format))
+        if (IsDepthStencilFormat(desc.Format))
         {
             D3D12_DEPTH_STENCIL_VIEW_DESC dsDesc = {};
-            dsDesc.Format = format;
-            dsDesc.ViewDimension = sampleCount > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS : D3D12_DSV_DIMENSION_TEXTURE2D;
+            dsDesc.Format = desc.Format;
+            dsDesc.ViewDimension = desc.SampleCount > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS : D3D12_DSV_DIMENSION_TEXTURE2D;
             dsDesc.Flags = D3D12_DSV_FLAG_NONE;
             dsDesc.Texture2D.MipSlice = 0;
 
@@ -246,8 +250,8 @@ namespace march
             d3d12Device->CreateDepthStencilView(m_Resource, &dsDesc, GetRtvDsvCpuDescriptorHandle());
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-            srvDesc.Format = GetDepthStencilSRVFormat(format);
-            srvDesc.ViewDimension = sampleCount > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Format = GetDepthStencilSRVFormat(desc.Format);
+            srvDesc.ViewDimension = desc.SampleCount > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DMS : D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MostDetailedMip = 0;
             srvDesc.Texture2D.MipLevels = -1;
@@ -261,9 +265,37 @@ namespace march
         }
     }
 
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount, uint32_t sampleQuality)
+        : GfxRenderTexture(device, name, { format, width, height, sampleCount, sampleQuality }) {}
+
     GfxRenderTexture::~GfxRenderTexture()
     {
         m_Device->FreeDescriptor(m_RtvDsvDescriptorHandle);
+    }
+
+    uint32_t GfxRenderTexture::GetWidth() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+        return static_cast<uint32_t>(desc.Width);
+    }
+
+    uint32_t GfxRenderTexture::GetHeight() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+        return static_cast<uint32_t>(desc.Height);
+    }
+
+    GfxRenderTextureDesc GfxRenderTexture::GetDesc() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+
+        GfxRenderTextureDesc result = {};
+        result.Format = desc.Format;
+        result.Width = static_cast<uint32_t>(desc.Width);
+        result.Height = static_cast<uint32_t>(desc.Height);
+        result.SampleCount = static_cast<uint32_t>(desc.SampleDesc.Count);
+        result.SampleQuality = static_cast<uint32_t>(desc.SampleDesc.Quality);
+        return result;
     }
 
     bool GfxRenderTexture::IsDepthStencilFormat(DXGI_FORMAT format)

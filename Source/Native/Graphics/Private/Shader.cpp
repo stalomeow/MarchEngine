@@ -196,7 +196,7 @@ namespace march
                     D3D12_SHADER_BUFFER_DESC cbDesc = {};
                     GFX_HR(cbMat->GetDesc(&cbDesc));
 
-                    ShaderPassConstantBuffer& cb = targetPass.ConstantBuffers[bindDesc.Name];
+                    ShaderPassConstantBuffer& cb = targetPass.ConstantBuffers[GetNameId(bindDesc.Name)];
                     cb.ShaderRegister = bindDesc.BindPoint;
                     cb.RegisterSpace = bindDesc.Space;
                     cb.Size = cbDesc.Size;
@@ -205,7 +205,7 @@ namespace march
 
                 case D3D_SIT_TEXTURE:
                 {
-                    ShaderPassTextureProperty& tex = targetPass.TextureProperties[bindDesc.Name];
+                    ShaderPassTextureProperty& tex = targetPass.TextureProperties[GetNameId(bindDesc.Name)];
 
                     tex.ShaderRegisterTexture = bindDesc.BindPoint;
                     tex.RegisterSpaceTexture = bindDesc.Space;
@@ -229,7 +229,7 @@ namespace march
 
                 case D3D_SIT_SAMPLER:
                 {
-                    ShaderPassSampler& sampler = targetPass.Samplers[bindDesc.Name];
+                    ShaderPassSampler& sampler = targetPass.Samplers[GetNameId(bindDesc.Name)];
                     sampler.ShaderRegister = bindDesc.BindPoint;
                     sampler.RegisterSpace = bindDesc.Space;
                     break;
@@ -249,7 +249,7 @@ namespace march
                     D3D12_SHADER_VARIABLE_DESC varDesc = {};
                     GFX_HR(var->GetDesc(&varDesc));
 
-                    ShaderPassMaterialProperty& prop = targetPass.MaterialProperties[varDesc.Name];
+                    ShaderPassMaterialProperty& prop = targetPass.MaterialProperties[GetNameId(varDesc.Name)];
                     prop.Offset = varDesc.StartOffset;
                     prop.Size = varDesc.Size;
                 }
@@ -264,7 +264,7 @@ namespace march
         std::vector<CD3DX12_STATIC_SAMPLER_DESC> results;
         decltype(Samplers.end()) it;
 
-        if ((it = Samplers.find("sampler_PointWrap")) != Samplers.end())
+        if ((it = Samplers.find(Shader::GetNameId("sampler_PointWrap"))) != Samplers.end())
         {
             CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
                 it->second.ShaderRegister,        // shaderRegister
@@ -275,7 +275,7 @@ namespace march
             desc.RegisterSpace = it->second.RegisterSpace;
         }
 
-        if ((it = Samplers.find("sampler_PointClamp")) != Samplers.end())
+        if ((it = Samplers.find(Shader::GetNameId("sampler_PointClamp"))) != Samplers.end())
         {
             CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
                 it->second.ShaderRegister,         // shaderRegister
@@ -286,7 +286,7 @@ namespace march
             desc.RegisterSpace = it->second.RegisterSpace;
         }
 
-        if ((it = Samplers.find("sampler_LinearWrap")) != Samplers.end())
+        if ((it = Samplers.find(Shader::GetNameId("sampler_LinearWrap"))) != Samplers.end())
         {
             CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
                 it->second.ShaderRegister,        // shaderRegister
@@ -297,7 +297,7 @@ namespace march
             desc.RegisterSpace = it->second.RegisterSpace;
         }
 
-        if ((it = Samplers.find("sampler_LinearClamp")) != Samplers.end())
+        if ((it = Samplers.find(Shader::GetNameId("sampler_LinearClamp"))) != Samplers.end())
         {
             CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
                 it->second.ShaderRegister,         // shaderRegister
@@ -308,7 +308,7 @@ namespace march
             desc.RegisterSpace = it->second.RegisterSpace;
         }
 
-        if ((it = Samplers.find("sampler_AnisotropicWrap")) != Samplers.end())
+        if ((it = Samplers.find(Shader::GetNameId("sampler_AnisotropicWrap"))) != Samplers.end())
         {
             CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
                 it->second.ShaderRegister,        // shaderRegister
@@ -319,7 +319,7 @@ namespace march
             desc.RegisterSpace = it->second.RegisterSpace;
         }
 
-        if ((it = Samplers.find("sampler_AnisotropicClamp")) != Samplers.end())
+        if ((it = Samplers.find(Shader::GetNameId("sampler_AnisotropicClamp"))) != Samplers.end())
         {
             CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
                 it->second.ShaderRegister,         // shaderRegister
@@ -420,5 +420,36 @@ namespace march
 #endif
 
         return PathHelper::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
+    }
+
+    std::unordered_map<std::string, int32_t> Shader::s_NameIdMap{};
+    int32_t Shader::s_NextNameId = 0;
+
+    int32_t Shader::GetNameId(const std::string& name)
+    {
+        if (auto it = s_NameIdMap.find(name); it != s_NameIdMap.end())
+        {
+            return it->second;
+        }
+
+        int32_t result = s_NextNameId++;
+        s_NameIdMap[name] = result;
+        return result;
+    }
+
+    const std::string& Shader::GetIdName(int32_t id)
+    {
+        if (id < s_NextNameId)
+        {
+            for (const auto& it : s_NameIdMap)
+            {
+                if (it.second == id)
+                {
+                    return it.first;
+                }
+            }
+        }
+
+        return "";
     }
 }
