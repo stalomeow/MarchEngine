@@ -13,6 +13,7 @@ namespace march
     class Camera;
     class RenderObject;
     class Material;
+    class RenderGraph;
 
     struct PerObjConstants
     {
@@ -70,5 +71,6 @@ namespace march
         std::vector<RenderObject*> m_RenderObjects{};
         std::vector<Light*> m_Lights{};
         std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
+        std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
     };
 }

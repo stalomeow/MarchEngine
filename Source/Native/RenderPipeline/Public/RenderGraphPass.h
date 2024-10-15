@@ -29,10 +29,11 @@ namespace march
         RenderGraphPass(const std::string& name);
         virtual ~RenderGraphPass() = default;
 
-        const std::string& GetName() const;
-
         virtual void OnSetup(RenderGraphBuilder& builder) = 0;
         virtual void OnExecute() = 0;
+
+    public:
+        const std::string& GetName() const;
 
     private:
         std::string m_Name;

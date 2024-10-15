@@ -298,6 +298,12 @@ namespace march
         return result;
     }
 
+    bool GfxRenderTexture::IsDepthStencilTexture() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+        return IsDepthStencilFormat(desc.Format);
+    }
+
     bool GfxRenderTexture::IsDepthStencilFormat(DXGI_FORMAT format)
     {
         switch (format)

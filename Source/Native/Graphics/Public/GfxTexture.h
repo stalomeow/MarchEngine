@@ -103,6 +103,7 @@ namespace march
         uint32_t GetWidth() const override;
         uint32_t GetHeight() const override;
         GfxRenderTextureDesc GetDesc() const;
+        bool IsDepthStencilTexture() const;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsvCpuDescriptorHandle() const { return m_RtvDsvDescriptorHandle.GetCpuHandle(); }
 

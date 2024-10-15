@@ -9,6 +9,7 @@
 
 namespace march
 {
+    class GfxResource;
     class RenderGraphPass;
     class RenderGraphResourcePool;
 
@@ -24,7 +25,7 @@ namespace march
         int32_t LifeTimeMaxIndex;
 
         RenderGraphResourceType ResourceType;
-        void* ResourcePtr;
+        GfxResource* ResourcePtr;
         RenderGraphResourcePool* TransientResourcePool;
         GfxRenderTextureDesc TransientTextureDesc;
 
@@ -65,6 +66,7 @@ namespace march
         bool UpdateResourceLifeTime(int32_t sortedPassIndex, const std::unordered_set<int32_t>& resourceIds);
 
         bool CreateOrDestroyResource(int32_t id, bool isDestroy);
+        void AddPassResourceBarriers(RenderGraphPass* pass);
 
         std::vector<RenderGraphPass*> m_Passes;
         std::vector<RenderGraphPass*> m_SortedPasses;

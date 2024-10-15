@@ -1,6 +1,9 @@
 #include "RenderGraph.h"
 #include "RenderGraphPass.h"
 #include "RenderGraphResourcePool.h"
+#include "GfxDevice.h"
+#include "GfxCommandList.h"
+#include "GfxResource.h"
 #include "Debug.h"
 #include <utility>
 #include <algorithm>
@@ -115,6 +118,7 @@ namespace march
 
     bool RenderGraph::CompilePasses()
     {
+        // TODO 移到 setup pass
         for (RenderGraphPass* pass : m_Passes)
         {
             if (!RecordPassResourceCreation(pass) || !RecordPassRead(pass) || !RecordPassWrite(pass))
@@ -149,6 +153,7 @@ namespace march
                 }
             }
 
+            AddPassResourceBarriers(pass);
             pass->OnExecute();
 
             for (int32_t id : pass->m_ResourcesDead)
@@ -256,8 +261,11 @@ namespace march
     {
         // 资源是从零入度 pass 开始向后传递的，所以从零入度 pass 开始做 dfs 拓扑排序，尽可能减少资源的生命周期
 
-        for (RenderGraphPass* pass : m_Passes)
+        // 之后要对结果反转，所以倒着遍历，保证最后排序是 stable 的
+        for (int32_t i = static_cast<int32_t>(m_Passes.size() - 1); i >= 0; i--)
         {
+            RenderGraphPass* pass = m_Passes[i];
+
             if (pass->m_ResourcesRead.empty() && pass->m_SortState == RenderGraphPassSortState::None)
             {
                 if (!CullAndSortPassesDFS(pass))
@@ -276,8 +284,11 @@ namespace march
         pass->m_SortState = RenderGraphPassSortState::Visiting;
         int32_t outdegree = 0;
 
-        for (RenderGraphPass* adj : pass->m_NextPasses)
+        // 之后要对结果反转，所以倒着遍历，保证最后排序是 stable 的
+        for (int32_t i = static_cast<int32_t>(pass->m_NextPasses.size() - 1); i >= 0; i--)
         {
+            RenderGraphPass* adj = pass->m_NextPasses[i];
+
             if (adj->m_SortState == RenderGraphPassSortState::Visiting)
             {
                 DEBUG_LOG_ERROR("Cycle detected in render graph");
@@ -408,5 +419,55 @@ namespace march
         }
 
         return true;
+    }
+
+    void RenderGraph::AddPassResourceBarriers(RenderGraphPass* pass)
+    {
+        GfxCommandList* cmdList = GetGfxDevice()->GetGraphicsCommandList();
+
+        for (int32_t id : pass->m_ResourcesRead)
+        {
+            RenderGraphResourceData& res = GetResourceData(id);
+            D3D12_RESOURCE_STATES stateAfter;
+
+            if (res.ResourceType == RenderGraphResourceType::Texture)
+            {
+                stateAfter = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_SOURCE;
+            }
+            else
+            {
+                DEBUG_LOG_ERROR("Unsupported resource type");
+                continue;
+            }
+
+            cmdList->ResourceBarrier(res.ResourcePtr, stateAfter);
+        }
+
+        for (int32_t id : pass->m_ResourcesWritten)
+        {
+            RenderGraphResourceData& res = GetResourceData(id);
+            D3D12_RESOURCE_STATES stateAfter;
+
+            if (res.ResourceType == RenderGraphResourceType::Texture)
+            {
+                auto tex = static_cast<GfxRenderTexture*>(res.ResourcePtr);
+
+                if (tex->IsDepthStencilTexture())
+                {
+                    stateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                }
+                else
+                {
+                    stateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+                }
+            }
+            else
+            {
+                DEBUG_LOG_ERROR("Unsupported resource type");
+                continue;
+            }
+
+            cmdList->ResourceBarrier(res.ResourcePtr, stateAfter);
+        }
     }
 }
