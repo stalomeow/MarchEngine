@@ -25,7 +25,6 @@ Shader "SceneViewGrid"
         #pragma ps frag
 
         #include "Common.hlsl"
-        #include "Lighting.hlsl"
 
         cbuffer cbMaterial
         {
@@ -34,21 +33,6 @@ Shader "SceneViewGrid"
             float4 _LineColor;
             float _Antialiasing;
             float _FadeOut;
-        };
-
-        cbuffer cbPass
-        {
-            float4x4 _MatrixView;
-            float4x4 _MatrixProjection;
-            float4x4 _MatrixViewProjection;
-            float4x4 _MatrixInvView;
-            float4x4 _MatrixInvProjection;
-            float4x4 _MatrixInvViewProjection;
-            float4 _Time;
-            float4 _CameraPositionWS;
-
-            LightData _LightData[MAX_LIGHT_COUNT];
-            int _LightCount;
         };
 
         struct Varyings

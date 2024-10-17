@@ -6,6 +6,17 @@
 // MARCH_NEAR_CLIP_VALUE    近裁剪平面的深度
 // MARCH_FAR_CLIP_VALUE     远裁剪平面的深度
 
+cbuffer cbCamera : register(b1, space2)
+{
+    float4x4 _MatrixView;
+    float4x4 _MatrixProjection;
+    float4x4 _MatrixViewProjection;
+    float4x4 _MatrixInvView;
+    float4x4 _MatrixInvProjection;
+    float4x4 _MatrixInvViewProjection;
+    float4 _CameraPositionWS;
+};
+
 float2 GetFullScreenTriangleTexCoord(uint vertexID)
 {
     // https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl

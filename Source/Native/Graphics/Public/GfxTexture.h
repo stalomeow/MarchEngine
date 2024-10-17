@@ -102,6 +102,7 @@ namespace march
 
         uint32_t GetWidth() const override;
         uint32_t GetHeight() const override;
+        DXGI_FORMAT GetFormat() const;
         GfxRenderTextureDesc GetDesc() const;
         bool IsDepthStencilTexture() const;
 
@@ -109,9 +110,13 @@ namespace march
 
     protected:
         static bool IsDepthStencilFormat(DXGI_FORMAT format);
+        static DXGI_FORMAT GetDepthStencilFormat(DXGI_FORMAT resFormat);
         static DXGI_FORMAT GetDepthStencilResFormat(DXGI_FORMAT format);
         static DXGI_FORMAT GetDepthStencilSRVFormat(DXGI_FORMAT format);
 
         GfxDescriptorHandle m_RtvDsvDescriptorHandle;
+
+    private:
+        bool m_IsDepthStencilTexture;
     };
 }

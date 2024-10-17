@@ -213,6 +213,7 @@ namespace march
 
             flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
             m_State = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+            m_IsDepthStencilTexture = true;
         }
         else
         {
@@ -223,6 +224,7 @@ namespace march
 
             flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
             m_State = D3D12_RESOURCE_STATE_COMMON;
+            m_IsDepthStencilTexture = false;
         }
 
         GFX_HR(d3d12Device->CreateCommittedResource(
@@ -285,12 +287,18 @@ namespace march
         return static_cast<uint32_t>(desc.Height);
     }
 
+    DXGI_FORMAT GfxRenderTexture::GetFormat() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+        return m_IsDepthStencilTexture ? GetDepthStencilFormat(desc.Format) : desc.Format;
+    }
+
     GfxRenderTextureDesc GfxRenderTexture::GetDesc() const
     {
         D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
 
         GfxRenderTextureDesc result = {};
-        result.Format = desc.Format;
+        result.Format = m_IsDepthStencilTexture ? GetDepthStencilFormat(desc.Format) : desc.Format;
         result.Width = static_cast<uint32_t>(desc.Width);
         result.Height = static_cast<uint32_t>(desc.Height);
         result.SampleCount = static_cast<uint32_t>(desc.SampleDesc.Count);
@@ -300,8 +308,7 @@ namespace march
 
     bool GfxRenderTexture::IsDepthStencilTexture() const
     {
-        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
-        return IsDepthStencilFormat(desc.Format);
+        return m_IsDepthStencilTexture;
     }
 
     bool GfxRenderTexture::IsDepthStencilFormat(DXGI_FORMAT format)
@@ -316,6 +323,24 @@ namespace march
 
         default:
             return false;
+        }
+    }
+
+    DXGI_FORMAT GfxRenderTexture::GetDepthStencilFormat(DXGI_FORMAT resFormat)
+    {
+        switch (resFormat)
+        {
+        case DXGI_FORMAT_R16_TYPELESS:
+            return DXGI_FORMAT_D16_UNORM;
+        case DXGI_FORMAT_R24G8_TYPELESS:
+            return DXGI_FORMAT_D24_UNORM_S8_UINT;
+        case DXGI_FORMAT_R32_TYPELESS:
+            return DXGI_FORMAT_D32_FLOAT;
+        case DXGI_FORMAT_R32G8X24_TYPELESS:
+            return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+
+        default:
+            throw std::invalid_argument("Invalid depth stencil resource format");
         }
     }
 

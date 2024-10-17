@@ -363,6 +363,9 @@ namespace march
                 cbProp.ShaderRegister, cbProp.RegisterSpace,
                 D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
             cbProp.DescriptorTableIndex = static_cast<UINT>(cbvSrvUavRanges.size()) - 1;
+
+            DEBUG_LOG_INFO("cbuffer %s: register %d, space %d, size %d",
+                Shader::GetIdName(it->first).c_str(), cbProp.ShaderRegister, cbProp.RegisterSpace, cbProp.Size);
         }
 
         std::vector<CD3DX12_ROOT_PARAMETER> params;
@@ -450,6 +453,6 @@ namespace march
             }
         }
 
-        return "";
+        return std::string();
     }
 }

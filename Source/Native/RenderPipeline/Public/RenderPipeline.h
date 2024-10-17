@@ -1,12 +1,10 @@
 #pragma once
 
-#include <directx/d3dx12.h>
 #include "Light.h"
 #include "GfxMesh.h"
-#include <dxgi.h>
-#include <dxgi1_4.h>
 #include <vector>
 #include <memory>
+#include <stdint.h>
 
 namespace march
 {
@@ -14,13 +12,9 @@ namespace march
     class RenderObject;
     class Material;
     class RenderGraph;
+    class GfxRenderTexture;
 
-    struct PerObjConstants
-    {
-        DirectX::XMFLOAT4X4 WorldMatrix;
-    };
-
-    struct PerPassConstants
+    struct CameraConstants
     {
         DirectX::XMFLOAT4X4 ViewMatrix;
         DirectX::XMFLOAT4X4 ProjectionMatrix;
@@ -28,18 +22,20 @@ namespace march
         DirectX::XMFLOAT4X4 InvViewMatrix;
         DirectX::XMFLOAT4X4 InvProjectionMatrix;
         DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
-        DirectX::XMFLOAT4 Time; // elapsed time, delta time, unused, unused
         DirectX::XMFLOAT4 CameraPositionWS;
+    };
 
+    struct LightConstants
+    {
         LightData Lights[LightData::MaxCount];
-        int LightCount;
+        int32_t LightCount;
     };
 
     class RenderPipeline
     {
     public:
         RenderPipeline();
-        ~RenderPipeline() = default;
+        ~RenderPipeline();
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
@@ -66,6 +62,15 @@ namespace march
                 m_Lights.erase(it);
             }
         }
+
+        void ImportTextures(int32_t id, GfxRenderTexture* texture);
+        void SetCameraGlobalConstantBuffer(Camera* camera, int32_t id);
+        void SetLightGlobalConstantBuffer(int32_t id);
+        void ResolveMSAA(int32_t id, int32_t resolvedId);
+        void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
+        void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
+        void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
+        void PrepareTextureForImGui(int32_t id);
 
     private:
         std::vector<RenderObject*> m_RenderObjects{};

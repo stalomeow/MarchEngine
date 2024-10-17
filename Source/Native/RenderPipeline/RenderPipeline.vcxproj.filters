@@ -7,9 +7,6 @@
     <Filter Include="Private">
       <UniqueIdentifier>{15c44a22-78df-4f15-8e2f-c203cc818614}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Private\Passes">
-      <UniqueIdentifier>{b4846fec-b844-4029-940d-c1450b9a7c52}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Light.h">
@@ -33,17 +30,11 @@
     <ClInclude Include="Public\RenderGraph.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\RenderGraphPass.h">
+    <ClInclude Include="Public\RenderGraphResource.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\RenderGraphResourcePool.h">
+    <ClInclude Include="Public\RenderGraphContext.h">
       <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\Passes\ColorTargetGuardPass.h">
-      <Filter>Private\Passes</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\RenderGraphFrameData.h">
-      <Filter>Private</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -83,14 +74,11 @@
     <ClCompile Include="Private\RenderGraph.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\RenderGraphResourcePool.cpp">
+    <ClCompile Include="Private\RenderGraphResource.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\RenderGraphPass.cpp">
+    <ClCompile Include="Private\RenderGraphContext.cpp">
       <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Passes\ColorTargetGuardPass.cpp">
-      <Filter>Private\Passes</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

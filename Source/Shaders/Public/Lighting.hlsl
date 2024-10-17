@@ -2,15 +2,14 @@
 #define _LIGHTING_INCLUDED
 
 #define MAX_LIGHT_COUNT 16
-
 #define TEXTURE_SAMPLER(texture) SamplerState sampler##texture
 
 struct LightData
 {
-    float4 position;      // λ�ã�w==1, ���Դ/�۹�ƣ�������w==0, ƽ�й⣩
-    float4 spotDirection; // �۹�Ʒ���w Ϊ�۹�ǿ�ȣ�0 ��ʾ�Ǿ۹�ƣ�
-    float4 color;         // ��ɫ��w δʹ��
-    float4 falloff;       // ˥������ʼ�ͽ������루���Դ/�۹�ƣ���zw δʹ��
+    float4 position;
+    float4 spotDirection;
+    float4 color;
+    float4 falloff;
 };
 
 struct Light
@@ -18,6 +17,12 @@ struct Light
     float3 color;
     float3 direction;
     float attenuation;
+};
+
+cbuffer cbLight : register(b1, space1)
+{
+    LightData _LightData[MAX_LIGHT_COUNT];
+    int _LightCount;
 };
 
 void GetLights(float3 positionWS, LightData lighData[MAX_LIGHT_COUNT], int lightCount, out Light outLights[MAX_LIGHT_COUNT])

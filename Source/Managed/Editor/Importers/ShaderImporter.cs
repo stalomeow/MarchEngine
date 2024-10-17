@@ -15,7 +15,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 18;
+        protected override int Version => base.Version + 19;
 
         public override string IconNormal => FontAwesome6.Code;
 
@@ -190,26 +190,11 @@ Shader ""ErrorShader""
         #pragma vs vert
         #pragma ps frag
 
-        #include ""Lighting.hlsl""
+        #include ""Common.hlsl""
 
         cbuffer cbObject
         {
             float4x4 _MatrixWorld;
-        };
-
-        cbuffer cbPass
-        {
-            float4x4 _MatrixView;
-            float4x4 _MatrixProjection;
-            float4x4 _MatrixViewProjection;
-            float4x4 _MatrixInvView;
-            float4x4 _MatrixInvProjection;
-            float4x4 _MatrixInvViewProjection;
-            float4 _Time;
-            float4 _CameraPositionWS;
-
-            LightData _LightData[MAX_LIGHT_COUNT];
-            int _LightCount;
         };
 
         struct Attributes

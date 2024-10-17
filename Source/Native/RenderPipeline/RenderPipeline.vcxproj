@@ -11,15 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Private\Passes\ColorTargetGuardPass.h" />
-    <ClInclude Include="Private\RenderGraphFrameData.h" />
     <ClInclude Include="Public\Camera.h" />
     <ClInclude Include="Public\Display.h" />
     <ClInclude Include="Public\Light.h" />
     <ClInclude Include="Public\Material.h" />
     <ClInclude Include="Public\RenderGraph.h" />
-    <ClInclude Include="Public\RenderGraphPass.h" />
-    <ClInclude Include="Public\RenderGraphResourcePool.h" />
+    <ClInclude Include="Public\RenderGraphContext.h" />
+    <ClInclude Include="Public\RenderGraphResource.h" />
     <ClInclude Include="Public\RenderObject.h" />
     <ClInclude Include="Public\RenderPipeline.h" />
   </ItemGroup>
@@ -31,10 +29,9 @@
     <ClCompile Include="Private\Light.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />
     <ClCompile Include="Private\Material.cpp" />
-    <ClCompile Include="Private\Passes\ColorTargetGuardPass.cpp" />
     <ClCompile Include="Private\RenderGraph.cpp" />
-    <ClCompile Include="Private\RenderGraphPass.cpp" />
-    <ClCompile Include="Private\RenderGraphResourcePool.cpp" />
+    <ClCompile Include="Private\RenderGraphContext.cpp" />
+    <ClCompile Include="Private\RenderGraphResource.cpp" />
     <ClCompile Include="Private\RenderObject.binding.cpp" />
     <ClCompile Include="Private\RenderObject.cpp" />
     <ClCompile Include="Private\RenderPipeline.binding.cpp" />
@@ -78,7 +75,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_LIB;_CRTDBG_MAP_ALLOC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>Private;..\Graphics\Public;..\Scripting\Public;..\Core\Public;..\Utility\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Graphics\Public;..\Scripting\Public;..\Core\Public;..\Utility\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -91,7 +88,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>Private;..\Graphics\Public;..\Scripting\Public;..\Core\Public;..\Utility\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\Graphics\Public;..\Scripting\Public;..\Core\Public;..\Utility\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
