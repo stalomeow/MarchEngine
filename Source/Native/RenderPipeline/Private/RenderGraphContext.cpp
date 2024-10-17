@@ -304,28 +304,15 @@ namespace march
         return scissorRect;
     }
 
-    static void BindConstantBuffer(const GfxDescriptorTable& table, const ShaderPass* pass, int32_t id, D3D12_GPU_VIRTUAL_ADDRESS address)
-    {
-        if (auto it = pass->ConstantBuffers.find(id); it != pass->ConstantBuffers.end())
-        {
-            D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
-            desc.BufferLocation = address;
-            desc.SizeInBytes = GfxConstantBuffer::GetAlignedSize(it->second.Size);
-
-            auto device = GetGfxDevice()->GetD3D12Device();
-            device->CreateConstantBufferView(&desc, table.GetCpuHandle(it->second.DescriptorTableIndex));
-        }
-    }
-
     size_t RenderGraphContext::GetPipelineStateHash(GfxMesh* mesh, Material* material, int32_t shaderPassIndex)
     {
-        ShaderPass* pass = material->GetShader()->Passes[shaderPassIndex].get();
+        ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
         return HashState(&pass, 1, mesh->GetDesc().GetHash());
     }
 
     void RenderGraphContext::SetPipelineStateAndRootSignature(GfxMesh* mesh, Material* material, bool wireframe, int32_t shaderPassIndex)
     {
-        ShaderPass* pass = material->GetShader()->Passes[shaderPassIndex].get();
+        ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
         ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, mesh->GetDesc(), GetRenderPipelineDesc(wireframe));
         ID3D12GraphicsCommandList* cmd = GetGraphicsCommandList()->GetD3D12CommandList();
 
@@ -333,66 +320,96 @@ namespace march
         cmd->SetGraphicsRootSignature(pass->GetRootSignature()); // TODO ??? 不是 PSO 里已经有了吗
     }
 
+    static void BindConstantBuffer(ID3D12GraphicsCommandList* cmd, const ShaderProgram* program, int32_t id, D3D12_GPU_VIRTUAL_ADDRESS address)
+    {
+        const auto& cbMap = program->GetConstantBuffers();
+
+        if (auto it = cbMap.find(id); it != cbMap.end())
+        {
+            cmd->SetGraphicsRootConstantBufferView(it->second.RootParameterIndex, address);
+        }
+    }
+
     void RenderGraphContext::BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress,
         size_t numExtraConstantBuffers, const int32_t* extraConstantBufferIds, const D3D12_GPU_VIRTUAL_ADDRESS* extraConstantBufferAddresses)
     {
         GfxDevice* device = GetDevice();
         ID3D12GraphicsCommandList* cmd = GetGraphicsCommandList()->GetD3D12CommandList();
-        ShaderPass* pass = material->GetShader()->Passes[shaderPassIndex].get();
+        ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
 
-        if (pass->GetCbvSrvUavCount() > 0)
+        for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
         {
-            GfxDescriptorTable viewTable = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, pass->GetCbvSrvUavCount());
+            ShaderProgram* program = pass->GetProgram(static_cast<ShaderProgramType>(i));
 
-            for (auto& kv : pass->TextureProperties)
+            if (program == nullptr)
             {
-                GfxTexture* texture = nullptr;
-                if (material->GetTexture(kv.first, &texture))
-                {
-                    viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
-                }
+                continue;
             }
 
             if (perObjectConstantBufferAddress != 0)
             {
-                BindConstantBuffer(viewTable, pass, Shader::GetNameId("cbObject"), perObjectConstantBufferAddress);
+                BindConstantBuffer(cmd, program, Shader::GetNameId("cbObject"), perObjectConstantBufferAddress);
             }
 
             for (size_t i = 0; i < numExtraConstantBuffers; i++)
             {
-                BindConstantBuffer(viewTable, pass, extraConstantBufferIds[i], extraConstantBufferAddresses[i]);
+                BindConstantBuffer(cmd, program, extraConstantBufferIds[i], extraConstantBufferAddresses[i]);
             }
 
             for (const std::pair<int32_t, D3D12_GPU_VIRTUAL_ADDRESS>& kv : m_GlobalConstantBuffers)
             {
-                BindConstantBuffer(viewTable, pass, kv.first, kv.second);
+                BindConstantBuffer(cmd, program, kv.first, kv.second);
             }
 
             if (GfxConstantBuffer* cbMat = material->GetConstantBuffer(pass); cbMat != nullptr)
             {
-                BindConstantBuffer(viewTable, pass, Shader::GetNameId(ShaderPass::MaterialCbName), cbMat->GetGpuVirtualAddress(0));
+                BindConstantBuffer(cmd, program, Shader::GetMaterialConstantBufferId(), cbMat->GetGpuVirtualAddress(0));
             }
 
-            cmd->SetGraphicsRootDescriptorTable(pass->GetCbvSrvUavRootParamIndex(), viewTable.GetGpuHandle(0));
-        }
+            uint32_t srvUavCount = static_cast<uint32_t>(program->GetTextures().size());
+            uint32_t samplerCount = 0;
 
-        if (pass->GetSamplerCount() > 0)
-        {
-            GfxDescriptorTable samplerTable = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::Sampler, pass->GetSamplerCount());
-
-            for (auto& kv : pass->TextureProperties)
+            if (srvUavCount > 0)
             {
-                GfxTexture* texture = nullptr;
-                if (material->GetTexture(kv.first, &texture))
+                GfxDescriptorTable viewTable = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, srvUavCount);
+
+                for (const auto& kv : program->GetTextures())
                 {
-                    if (kv.second.HasSampler)
+                    GfxTexture* texture = nullptr;
+
+                    if (material->GetTexture(kv.first, &texture))
                     {
-                        samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                        viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
+
+                        if (kv.second.HasSampler)
+                        {
+                            samplerCount++;
+                        }
                     }
                 }
+
+                cmd->SetGraphicsRootDescriptorTable(program->GetSrvUavRootParameterIndex(), viewTable.GetGpuHandle(0));
             }
 
-            cmd->SetGraphicsRootDescriptorTable(pass->GetSamplerRootParamIndex(), samplerTable.GetGpuHandle(0));
+            if (samplerCount > 0)
+            {
+                GfxDescriptorTable samplerTable = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::Sampler, samplerCount);
+
+                for (const auto& kv : program->GetTextures())
+                {
+                    GfxTexture* texture = nullptr;
+
+                    if (material->GetTexture(kv.first, &texture))
+                    {
+                        if (kv.second.HasSampler)
+                        {
+                            samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                        }
+                    }
+                }
+
+                cmd->SetGraphicsRootDescriptorTable(program->GetSamplerRootParameterIndex(), samplerTable.GetGpuHandle(0));
+            }
         }
     }
 

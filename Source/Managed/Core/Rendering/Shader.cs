@@ -7,7 +7,177 @@ using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
-    internal enum ShaderPropertyType : int
+    internal class ShaderConstantBuffer : INativeMarshal<ShaderConstantBuffer, ShaderConstantBuffer.Native>
+    {
+        public string Name = string.Empty;
+        public uint ShaderRegister;
+        public uint RegisterSpace;
+        public uint UnalignedSize;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public uint ShaderRegister;
+            public uint RegisterSpace;
+            public uint UnalignedSize;
+        }
+
+        public static ShaderConstantBuffer FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            ShaderRegister = native.ShaderRegister,
+            RegisterSpace = native.RegisterSpace,
+            UnalignedSize = native.UnalignedSize,
+        };
+
+        public static void ToNative(ShaderConstantBuffer value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.ShaderRegister = value.ShaderRegister;
+            native.RegisterSpace = value.RegisterSpace;
+            native.UnalignedSize = value.UnalignedSize;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+        }
+    }
+
+    internal class ShaderStaticSampler : INativeMarshal<ShaderStaticSampler, ShaderStaticSampler.Native>
+    {
+        public string Name = string.Empty;
+        public uint ShaderRegister;
+        public uint RegisterSpace;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public uint ShaderRegister;
+            public uint RegisterSpace;
+        }
+
+        public static ShaderStaticSampler FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            ShaderRegister = native.ShaderRegister,
+            RegisterSpace = native.RegisterSpace,
+        };
+
+        public static void ToNative(ShaderStaticSampler value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.ShaderRegister = value.ShaderRegister;
+            native.RegisterSpace = value.RegisterSpace;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+        }
+    }
+
+    internal class ShaderTexture : INativeMarshal<ShaderTexture, ShaderTexture.Native>
+    {
+        public string Name = string.Empty;
+        public uint ShaderRegisterTexture;
+        public uint RegisterSpaceTexture;
+        public bool HasSampler;
+        public uint ShaderRegisterSampler;
+        public uint RegisterSpaceSampler;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public uint ShaderRegisterTexture;
+            public uint RegisterSpaceTexture;
+            public bool HasSampler;
+            public uint ShaderRegisterSampler;
+            public uint RegisterSpaceSampler;
+        }
+
+        public static ShaderTexture FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            ShaderRegisterTexture = native.ShaderRegisterTexture,
+            RegisterSpaceTexture = native.RegisterSpaceTexture,
+            HasSampler = native.HasSampler,
+            ShaderRegisterSampler = native.ShaderRegisterSampler,
+            RegisterSpaceSampler = native.RegisterSpaceSampler,
+        };
+
+        public static void ToNative(ShaderTexture value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.ShaderRegisterTexture = value.ShaderRegisterTexture;
+            native.RegisterSpaceTexture = value.RegisterSpaceTexture;
+            native.HasSampler = value.HasSampler;
+            native.ShaderRegisterSampler = value.ShaderRegisterSampler;
+            native.RegisterSpaceSampler = value.RegisterSpaceSampler;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+        }
+    }
+
+    internal enum ShaderProgramType
+    {
+        Vertex,
+        Pixel,
+        NumTypes,
+    };
+
+    internal class ShaderProgram : INativeMarshal<ShaderProgram, ShaderProgram.Native>
+    {
+        public ShaderProgramType Type;
+        public byte[] Binary = [];
+        public ShaderConstantBuffer[] ConstantBuffers = [];
+        public ShaderStaticSampler[] StaticSamplers = [];
+        public ShaderTexture[] Textures = [];
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public ShaderProgramType Type;
+            public NativeArray<byte> Binary;
+            public NativeArrayMarshal<ShaderConstantBuffer> ConstantBuffers;
+            public NativeArrayMarshal<ShaderStaticSampler> StaticSamplers;
+            public NativeArrayMarshal<ShaderTexture> Textures;
+        }
+
+        public static ShaderProgram FromNative(ref Native native) => new()
+        {
+            Type = native.Type,
+            Binary = native.Binary.Value,
+            ConstantBuffers = native.ConstantBuffers.Value,
+            StaticSamplers = native.StaticSamplers.Value,
+            Textures = native.Textures.Value,
+        };
+
+        public static void ToNative(ShaderProgram value, out Native native)
+        {
+            native.Type = value.Type;
+            native.Binary = value.Binary;
+            native.ConstantBuffers = value.ConstantBuffers;
+            native.StaticSamplers = value.StaticSamplers;
+            native.Textures = value.Textures;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            native.Binary.Dispose();
+            native.ConstantBuffers.Dispose();
+            native.StaticSamplers.Dispose();
+            native.Textures.Dispose();
+        }
+    }
+
+    internal enum ShaderPropertyType
     {
         Float = 0,
         Int = 1,
@@ -16,7 +186,7 @@ namespace March.Core.Rendering
         Texture = 4,
     }
 
-    internal enum ShaderDefaultTexture : int
+    internal enum ShaderDefaultTexture
     {
         Black = 0,
         White = 1
@@ -72,89 +242,7 @@ namespace March.Core.Rendering
         }
     }
 
-    internal class ShaderPassConstantBuffer : INativeMarshal<ShaderPassConstantBuffer, ShaderPassConstantBuffer.Native>
-    {
-        public string Name = string.Empty;
-        public uint ShaderRegister;
-        public uint RegisterSpace;
-        public uint Size;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Native
-        {
-            public nint Name;
-            public uint ShaderRegister;
-            public uint RegisterSpace;
-            public uint Size;
-        }
-
-        public static ShaderPassConstantBuffer FromNative(ref Native native) => new()
-        {
-            Name = NativeString.Get(native.Name),
-            ShaderRegister = native.ShaderRegister,
-            RegisterSpace = native.RegisterSpace,
-            Size = native.Size,
-        };
-
-        public static void ToNative(ShaderPassConstantBuffer value, out Native native)
-        {
-            native.Name = NativeString.New(value.Name);
-            native.ShaderRegister = value.ShaderRegister;
-            native.RegisterSpace = value.RegisterSpace;
-            native.Size = value.Size;
-        }
-
-        public static void FreeNative(ref Native native)
-        {
-            NativeString.Free(native.Name);
-        }
-
-        public static unsafe int SizeOfNative()
-        {
-            return sizeof(Native);
-        }
-    }
-
-    internal class ShaderPassSampler : INativeMarshal<ShaderPassSampler, ShaderPassSampler.Native>
-    {
-        public string Name = string.Empty;
-        public uint ShaderRegister;
-        public uint RegisterSpace;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Native
-        {
-            public nint Name;
-            public uint ShaderRegister;
-            public uint RegisterSpace;
-        }
-
-        public static ShaderPassSampler FromNative(ref Native native) => new()
-        {
-            Name = NativeString.Get(native.Name),
-            ShaderRegister = native.ShaderRegister,
-            RegisterSpace = native.RegisterSpace,
-        };
-
-        public static void ToNative(ShaderPassSampler value, out Native native)
-        {
-            native.Name = NativeString.New(value.Name);
-            native.ShaderRegister = value.ShaderRegister;
-            native.RegisterSpace = value.RegisterSpace;
-        }
-
-        public static void FreeNative(ref Native native)
-        {
-            NativeString.Free(native.Name);
-        }
-
-        public static unsafe int SizeOfNative()
-        {
-            return sizeof(Native);
-        }
-    }
-
-    internal class ShaderPassMaterialProperty : INativeMarshal<ShaderPassMaterialProperty, ShaderPassMaterialProperty.Native>
+    internal class ShaderPropertyLocation : INativeMarshal<ShaderPropertyLocation, ShaderPropertyLocation.Native>
     {
         public string Name = string.Empty;
         public uint Offset;
@@ -168,14 +256,14 @@ namespace March.Core.Rendering
             public uint Size;
         }
 
-        public static ShaderPassMaterialProperty FromNative(ref Native native) => new()
+        public static ShaderPropertyLocation FromNative(ref Native native) => new()
         {
             Name = NativeString.Get(native.Name),
             Offset = native.Offset,
             Size = native.Size,
         };
 
-        public static void ToNative(ShaderPassMaterialProperty value, out Native native)
+        public static void ToNative(ShaderPropertyLocation value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
             native.Offset = value.Offset;
@@ -186,72 +274,16 @@ namespace March.Core.Rendering
         {
             NativeString.Free(native.Name);
         }
-
-        public static unsafe int SizeOfNative()
-        {
-            return sizeof(Native);
-        }
     }
 
-    internal class ShaderPassTextureProperty : INativeMarshal<ShaderPassTextureProperty, ShaderPassTextureProperty.Native>
-    {
-        public string Name = string.Empty;
-        public uint ShaderRegisterTexture;
-        public uint RegisterSpaceTexture;
-        public bool HasSampler;
-        public uint ShaderRegisterSampler;
-        public uint RegisterSpaceSampler;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Native
-        {
-            public nint Name;
-            public uint ShaderRegisterTexture;
-            public uint RegisterSpaceTexture;
-            public bool HasSampler;
-            public uint ShaderRegisterSampler;
-            public uint RegisterSpaceSampler;
-        }
-
-        public static ShaderPassTextureProperty FromNative(ref Native native) => new()
-        {
-            Name = NativeString.Get(native.Name),
-            ShaderRegisterTexture = native.ShaderRegisterTexture,
-            RegisterSpaceTexture = native.RegisterSpaceTexture,
-            HasSampler = native.HasSampler,
-            ShaderRegisterSampler = native.ShaderRegisterSampler,
-            RegisterSpaceSampler = native.RegisterSpaceSampler,
-        };
-
-        public static void ToNative(ShaderPassTextureProperty value, out Native native)
-        {
-            native.Name = NativeString.New(value.Name);
-            native.ShaderRegisterTexture = value.ShaderRegisterTexture;
-            native.RegisterSpaceTexture = value.RegisterSpaceTexture;
-            native.HasSampler = value.HasSampler;
-            native.ShaderRegisterSampler = value.ShaderRegisterSampler;
-            native.RegisterSpaceSampler = value.RegisterSpaceSampler;
-        }
-
-        public static void FreeNative(ref Native native)
-        {
-            NativeString.Free(native.Name);
-        }
-
-        public static unsafe int SizeOfNative()
-        {
-            return sizeof(Native);
-        }
-    }
-
-    internal enum ShaderPassCullMode : int
+    internal enum ShaderPassCullMode
     {
         Off = 0,
         Front = 1,
         Back = 2,
     }
 
-    internal enum ShaderPassBlend : int
+    internal enum ShaderPassBlend
     {
         Zero = 0,
         One = 1,
@@ -266,7 +298,7 @@ namespace March.Core.Rendering
         SrcAlphaSat = 10,
     }
 
-    internal enum ShaderPassBlendOp : int
+    internal enum ShaderPassBlendOp
     {
         Add = 0,
         Subtract = 1,
@@ -276,7 +308,7 @@ namespace March.Core.Rendering
     }
 
     [Flags]
-    internal enum ShaderPassColorWriteMask : int
+    internal enum ShaderPassColorWriteMask
     {
         None = 0,
         Red = 1 << 0,
@@ -318,7 +350,7 @@ namespace March.Core.Rendering
         };
     }
 
-    internal enum ShaderPassCompareFunc : int
+    internal enum ShaderPassCompareFunc
     {
         Never = 0,
         Less = 1,
@@ -338,7 +370,7 @@ namespace March.Core.Rendering
         public ShaderPassCompareFunc Compare;
     }
 
-    internal enum ShaderPassStencilOp : int
+    internal enum ShaderPassStencilOp
     {
         Keep = 0,
         Zero = 1,
@@ -372,14 +404,8 @@ namespace March.Core.Rendering
     internal class ShaderPass : INativeMarshal<ShaderPass, ShaderPass.Native>
     {
         public string Name = string.Empty;
-
-        public byte[] VertexShader = [];
-        public byte[] PixelShader = [];
-
-        public ShaderPassConstantBuffer[] ConstantBuffers = [];
-        public ShaderPassSampler[] Samplers = [];
-        public ShaderPassMaterialProperty[] MaterialProperties = [];
-        public ShaderPassTextureProperty[] TextureProperties = [];
+        public ShaderPropertyLocation[] PropertyLocations = [];
+        public ShaderProgram[] Programs = [];
 
         public ShaderPassCullMode Cull;
         public ShaderPassBlendState[] Blends = [];
@@ -387,18 +413,11 @@ namespace March.Core.Rendering
         public ShaderPassStencilState StencilState;
 
         [StructLayout(LayoutKind.Sequential)]
-        public unsafe struct Native
+        internal unsafe struct Native
         {
             public nint Name;
-
-            public NativeArray<byte> VertexShader;
-            public NativeArray<byte> PixelShader;
-
-            public NativeArrayMarshal<ShaderPassConstantBuffer> ConstantBuffers;
-            public NativeArrayMarshal<ShaderPassSampler> Samplers;
-            public NativeArrayMarshal<ShaderPassMaterialProperty> MaterialProperties;
-            public NativeArrayMarshal<ShaderPassTextureProperty> TextureProperties;
-
+            public NativeArrayMarshal<ShaderPropertyLocation> PropertyLocations;
+            public NativeArrayMarshal<ShaderProgram> Programs;
             public ShaderPassCullMode Cull;
             public NativeArray<ShaderPassBlendState> Blends;
             public ShaderPassDepthState DepthState;
@@ -408,32 +427,19 @@ namespace March.Core.Rendering
         public static unsafe ShaderPass FromNative(ref Native native) => new()
         {
             Name = NativeString.Get(native.Name),
+            PropertyLocations = native.PropertyLocations.Value,
+            Programs = native.Programs.Value,
             Cull = native.Cull,
+            Blends = native.Blends.Value,
             DepthState = native.DepthState,
             StencilState = native.StencilState,
-            VertexShader = native.VertexShader.Value,
-            PixelShader = native.PixelShader.Value,
-
-            ConstantBuffers = native.ConstantBuffers.Value,
-            Samplers = native.Samplers.Value,
-            MaterialProperties = native.MaterialProperties.Value,
-            TextureProperties = native.TextureProperties.Value,
-
-            Blends = native.Blends.Value
         };
 
         public static unsafe void ToNative(ShaderPass value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
-
-            native.VertexShader = value.VertexShader;
-            native.PixelShader = value.PixelShader;
-
-            native.ConstantBuffers = value.ConstantBuffers;
-            native.Samplers = value.Samplers;
-            native.MaterialProperties = value.MaterialProperties;
-            native.TextureProperties = value.TextureProperties;
-
+            native.PropertyLocations = value.PropertyLocations;
+            native.Programs = value.Programs;
             native.Cull = value.Cull;
             native.Blends = value.Blends;
             native.DepthState = value.DepthState;
@@ -443,29 +449,11 @@ namespace March.Core.Rendering
         public static unsafe void FreeNative(ref Native native)
         {
             NativeString.Free(native.Name);
-
-            native.VertexShader.Dispose();
-            native.PixelShader.Dispose();
-
-            native.ConstantBuffers.Dispose();
-            native.Samplers.Dispose();
-            native.MaterialProperties.Dispose();
-            native.TextureProperties.Dispose();
-
+            native.PropertyLocations.Dispose();
+            native.Programs.Dispose();
             native.Blends.Dispose();
         }
-
-        public static unsafe int SizeOfNative()
-        {
-            return sizeof(Native);
-        }
     }
-
-    enum ShaderProgramType : int
-    {
-        Vertex = 0,
-        Pixel = 1,
-    };
 
     public unsafe partial class Shader : NativeMarchObject
     {
@@ -518,6 +506,7 @@ namespace March.Core.Rendering
             foreach (ShaderProperty prop in Properties)
             {
                 ShaderProperty.ToNative(prop, out ShaderProperty.Native native);
+
                 try
                 {
                     Shader_SetProperty(NativePtr, &native);

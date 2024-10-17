@@ -19,7 +19,7 @@ struct Light
     float attenuation;
 };
 
-cbuffer cbLight : register(b1, space1)
+cbuffer cbLight
 {
     LightData _LightData[MAX_LIGHT_COUNT];
     int _LightCount;

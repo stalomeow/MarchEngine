@@ -101,7 +101,6 @@ namespace march
         builder.AllowPassCulling(false);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            Display* display = camera->GetTargetDisplay();
             XMMATRIX view = camera->LoadViewMatrix();
             XMMATRIX proj = camera->LoadProjectionMatrix();
             XMMATRIX viewProj = XMMatrixMultiply(view, proj);

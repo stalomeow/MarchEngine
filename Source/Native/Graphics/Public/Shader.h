@@ -1,7 +1,5 @@
 #pragma once
 
-#include "GfxExcept.h"
-#include "GfxTexture.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <vector>
@@ -13,6 +11,75 @@
 
 namespace march
 {
+    class GfxTexture;
+    class Shader;
+    class ShaderPass;
+    class ShaderBinding;
+
+    struct ShaderConstantBuffer
+    {
+        uint32_t ShaderRegister;
+        uint32_t RegisterSpace;
+        uint32_t UnalignedSize;
+        uint32_t RootParameterIndex; // 始终用 RootConstantBufferView
+    };
+
+    struct ShaderStaticSampler
+    {
+        uint32_t ShaderRegister;
+        uint32_t RegisterSpace;
+    };
+
+    struct ShaderTexture
+    {
+        uint32_t ShaderRegisterTexture;
+        uint32_t RegisterSpaceTexture;
+
+        bool HasSampler;
+        uint32_t ShaderRegisterSampler;
+        uint32_t RegisterSpaceSampler;
+
+        uint32_t TextureDescriptorTableIndex;
+        uint32_t SamplerDescriptorTableIndex;
+    };
+
+    enum class ShaderProgramType
+    {
+        Vertex,
+        Pixel,
+        NumTypes,
+    };
+
+    class ShaderProgram
+    {
+        friend Shader;
+        friend ShaderPass;
+        friend ShaderBinding;
+
+    public:
+        ShaderProgram() = default;
+        ~ShaderProgram() = default;
+
+        uint8_t* GetBinaryData() const;
+        uint64_t GetBinarySize() const;
+
+        const std::unordered_map<int32_t, ShaderConstantBuffer>& GetConstantBuffers() const;
+        const std::unordered_map<int32_t, ShaderStaticSampler>& GetStaticSamplers() const;
+        const std::unordered_map<int32_t, ShaderTexture>& GetTextures() const;
+
+        uint32_t GetSrvUavRootParameterIndex() const;
+        uint32_t GetSamplerRootParameterIndex() const;
+
+    private:
+        Microsoft::WRL::ComPtr<IDxcBlob> m_Binary;
+        std::unordered_map<int32_t, ShaderConstantBuffer> m_ConstantBuffers;
+        std::unordered_map<int32_t, ShaderStaticSampler> m_StaticSamplers;
+        std::unordered_map<int32_t, ShaderTexture> m_Textures;
+
+        uint32_t m_SrvUavRootParameterIndex = 0;
+        uint32_t m_SamplerRootParameterIndex = 0;
+    };
+
     enum class ShaderPropertyType
     {
         Float = 0,
@@ -32,60 +99,22 @@ namespace march
     {
         ShaderPropertyType Type;
 
-        float DefaultFloat;
-        int32_t DefaultInt;
-        DirectX::XMFLOAT4 DefaultColor;
-        DirectX::XMFLOAT4 DefaultVector;
-        ShaderDefaultTexture DefaultTexture;
-
-        GfxTexture* GetDefaultTexture() const
+        union
         {
-            switch (DefaultTexture)
-            {
-            case march::ShaderDefaultTexture::Black:
-                return GfxTexture::GetDefaultBlack();
+            float Float;
+            int32_t Int;
+            DirectX::XMFLOAT4 Color;
+            DirectX::XMFLOAT4 Vector;
+            ShaderDefaultTexture Texture;
+        } DefaultValue;
 
-            case march::ShaderDefaultTexture::White:
-                return GfxTexture::GetDefaultWhite();
-
-            default:
-                return nullptr;
-            }
-        }
+        GfxTexture* GetDefaultTexture() const;
     };
 
-    struct ShaderPassConstantBuffer
+    struct ShaderPropertyLocation
     {
-        UINT ShaderRegister;
-        UINT RegisterSpace;
-        UINT Size; // unaligned
-
-        UINT DescriptorTableIndex;
-    };
-
-    struct ShaderPassSampler
-    {
-        UINT ShaderRegister;
-        UINT RegisterSpace;
-    };
-
-    struct ShaderPassMaterialProperty
-    {
-        UINT Offset;
-        UINT Size;
-    };
-
-    struct ShaderPassTextureProperty
-    {
-        UINT ShaderRegisterTexture;
-        UINT RegisterSpaceTexture;
-
-        bool HasSampler;
-        UINT ShaderRegisterSampler;
-        UINT RegisterSpaceSampler;
-
-        UINT TextureDescriptorTableIndex;
-        UINT SamplerDescriptorTableIndex;
+        uint32_t Offset;
+        uint32_t Size;
     };
 
     enum class ShaderPassCullMode
@@ -192,100 +221,82 @@ namespace march
         ShaderPassStencilAction BackFace;
     };
 
-    enum class ShaderProgramType
-    {
-        Vertex = 0,
-        Pixel = 1,
-    };
-
     class ShaderPass
     {
+        friend Shader;
+        friend ShaderBinding;
+
     public:
         ShaderPass() = default;
+        ~ShaderPass() = default;
 
-        std::string Name;
+        const std::string& GetName() const;
+        const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
+        ShaderProgram* GetProgram(ShaderProgramType type) const;
+        ShaderProgram* CreateProgram(ShaderProgramType type);
 
-        Microsoft::WRL::ComPtr<IDxcBlob> VertexShader;
-        Microsoft::WRL::ComPtr<IDxcBlob> PixelShader;
+        const ShaderPassCullMode& GetCull() const;
+        const std::vector<ShaderPassBlendState>& GetBlends() const;
+        const ShaderPassDepthState& GetDepthState() const;
+        const ShaderPassStencilState& GetStencilState() const;
 
-        std::unordered_map<int32_t, ShaderPassConstantBuffer> ConstantBuffers;
-        std::unordered_map<int32_t, ShaderPassSampler> Samplers;
-        std::unordered_map<int32_t, ShaderPassMaterialProperty> MaterialProperties;
-        std::unordered_map<int32_t, ShaderPassTextureProperty> TextureProperties;
-
-        ShaderPassCullMode Cull;
-        std::vector<ShaderPassBlendState> Blends;
-        ShaderPassDepthState DepthState;
-        ShaderPassStencilState StencilState;
-
-        UINT GetCbvSrvUavCount() const { return m_CbvSrvUavCount; }
-        UINT GetCbvSrvUavRootParamIndex() const { return m_CbvSrvUavRootParamIndex; }
-        UINT GetSamplerCount() const { return m_SamplerCount; }
-        UINT GetSamplerRootParamIndex() const { return m_SamplerRootParamIndex; }
-
-        ID3D12RootSignature* GetRootSignature() const { return m_RootSignature.Get(); }
-
+        ID3D12RootSignature* GetRootSignature() const;
         void CreateRootSignature();
 
     private:
-        std::vector<CD3DX12_STATIC_SAMPLER_DESC> CreateStaticSamplers();
+        static D3D12_SHADER_VISIBILITY ToShaderVisibility(ShaderProgramType type);
+        void AddStaticSamplers(std::vector<CD3DX12_STATIC_SAMPLER_DESC>& samplers, ShaderProgram* program, D3D12_SHADER_VISIBILITY visibility);
 
-        UINT m_CbvSrvUavCount = 0;
-        UINT m_CbvSrvUavRootParamIndex = 0;
+        std::string m_Name;
+        std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
+        std::unique_ptr<ShaderProgram> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
 
-        UINT m_SamplerCount = 0;
-        UINT m_SamplerRootParamIndex = 0;
+        ShaderPassCullMode m_Cull{};
+        std::vector<ShaderPassBlendState> m_Blends;
+        ShaderPassDepthState m_DepthState{};
+        ShaderPassStencilState m_StencilState{};
 
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
-
-    public:
-        static constexpr LPCSTR MaterialCbName = "cbMaterial";
     };
 
     class Shader
     {
+        friend ShaderBinding;
+
     public:
-        bool CompilePass(int passIndex,
+        const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const;
+        ShaderPass* GetPass(int32_t index) const;
+        int32_t GetPassCount() const;
+        int32_t GetVersion() const;
+
+        static std::string GetEngineShaderPathUnixStyle();
+
+        static IDxcUtils* GetDxcUtils();
+        static IDxcCompiler3* GetDxcCompiler();
+
+        static int32_t GetNameId(const std::string& name);
+        static const std::string& GetIdName(int32_t id);
+
+        static int32_t GetMaterialConstantBufferId();
+
+        bool CompilePass(int32_t passIndex,
             const std::string& filename,
             const std::string& program,
             const std::string& entrypoint,
             const std::string& shaderModel,
             ShaderProgramType programType);
 
-        std::unordered_map<int32_t, ShaderProperty> Properties;
-        std::vector<std::unique_ptr<ShaderPass>> Passes;
-        int32_t Version = 0;
-
-        static std::string GetEngineShaderPathUnixStyle();
-
-        inline static IDxcUtils* GetDxcUtils()
-        {
-            if (s_Utils == nullptr)
-            {
-                GFX_HR(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_Utils)));
-            }
-
-            return s_Utils.Get();
-        }
-
-        inline static IDxcCompiler3* GetDxcCompiler()
-        {
-            if (s_Compiler == nullptr)
-            {
-                GFX_HR(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_Compiler)));
-            }
-
-            return s_Compiler.Get();
-        }
-
-        static int32_t GetNameId(const std::string& name);
-        static const std::string& GetIdName(int32_t id);
-
     private:
-        inline static Microsoft::WRL::ComPtr<IDxcUtils> s_Utils = nullptr;
-        inline static Microsoft::WRL::ComPtr<IDxcCompiler3> s_Compiler = nullptr;
+        std::unordered_map<int32_t, ShaderProperty> m_Properties;
+        std::vector<std::unique_ptr<ShaderPass>> m_Passes;
+        int32_t m_Version = 0;
+
+        static Microsoft::WRL::ComPtr<IDxcUtils> s_Utils;
+        static Microsoft::WRL::ComPtr<IDxcCompiler3> s_Compiler;
 
         static std::unordered_map<std::string, int32_t> s_NameIdMap;
         static int32_t s_NextNameId;
+
+        static int32_t s_MaterialConstantBufferId;
     };
 }

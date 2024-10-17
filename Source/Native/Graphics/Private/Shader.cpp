@@ -3,43 +3,240 @@
 #include "StringUtility.h"
 #include "GfxDevice.h"
 #include "GfxSupportInfo.h"
+#include "GfxExcept.h"
+#include "GfxTexture.h"
 #include "PathHelper.h"
 #include <d3d12shader.h>    // Shader reflection.
 #include <algorithm>
 
 using namespace Microsoft::WRL;
+using namespace DirectX;
 
 namespace march
 {
-    namespace
+    uint8_t* ShaderProgram::GetBinaryData() const
     {
-        std::string GetTargetProfile(const std::string& shaderModel, ShaderProgramType programType)
+        return reinterpret_cast<uint8_t*>(m_Binary->GetBufferPointer());
+    }
+
+    uint64_t ShaderProgram::GetBinarySize() const
+    {
+        return static_cast<uint64_t>(m_Binary->GetBufferSize());
+    }
+
+    const std::unordered_map<int32_t, ShaderConstantBuffer>& ShaderProgram::GetConstantBuffers() const
+    {
+        return m_ConstantBuffers;
+    }
+
+    const std::unordered_map<int32_t, ShaderStaticSampler>& ShaderProgram::GetStaticSamplers() const
+    {
+        return m_StaticSamplers;
+    }
+
+    const std::unordered_map<int32_t, ShaderTexture>& ShaderProgram::GetTextures() const
+    {
+        return m_Textures;
+    }
+
+    uint32_t ShaderProgram::GetSrvUavRootParameterIndex() const
+    {
+        return m_SrvUavRootParameterIndex;
+    }
+
+    uint32_t ShaderProgram::GetSamplerRootParameterIndex() const
+    {
+        return m_SamplerRootParameterIndex;
+    }
+
+    GfxTexture* ShaderProperty::GetDefaultTexture() const
+    {
+        if (Type != ShaderPropertyType::Texture)
         {
-            std::string model = shaderModel;
-            std::replace(model.begin(), model.end(), '.', '_');
+            throw GfxException("Property is not a texture type");
+        }
 
-            std::string program;
+        switch (DefaultValue.Texture)
+        {
+        case ShaderDefaultTexture::Black:
+            return GfxTexture::GetDefaultBlack();
 
-            switch (programType)
-            {
-            case march::ShaderProgramType::Vertex:
-                program = "vs";
-                break;
+        case ShaderDefaultTexture::White:
+            return GfxTexture::GetDefaultWhite();
 
-            case march::ShaderProgramType::Pixel:
-                program = "ps";
-                break;
-
-            default:
-                program = "unknown";
-                break;
-            }
-
-            return program + "_" + model;
+        default:
+            throw GfxException("Unknown default texture type");
         }
     }
 
-    bool Shader::CompilePass(int passIndex,
+    const std::string& ShaderPass::GetName() const
+    {
+        return m_Name;
+    }
+
+    const std::unordered_map<int32_t, ShaderPropertyLocation>& ShaderPass::GetPropertyLocations() const
+    {
+        return m_PropertyLocations;
+    }
+
+    ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type) const
+    {
+        return m_Programs[static_cast<int32_t>(type)].get();
+    }
+
+    ShaderProgram* ShaderPass::CreateProgram(ShaderProgramType type)
+    {
+        int32_t index = static_cast<int32_t>(type);
+        m_Programs[index] = std::make_unique<ShaderProgram>();
+        return m_Programs[index].get();
+    }
+
+    const ShaderPassCullMode& ShaderPass::GetCull() const
+    {
+        return m_Cull;
+    }
+
+    const std::vector<ShaderPassBlendState>& ShaderPass::GetBlends() const
+    {
+        return m_Blends;
+    }
+
+    const ShaderPassDepthState& ShaderPass::GetDepthState() const
+    {
+        return m_DepthState;
+    }
+
+    const ShaderPassStencilState& ShaderPass::GetStencilState() const
+    {
+        return m_StencilState;
+    }
+
+    ID3D12RootSignature* ShaderPass::GetRootSignature() const
+    {
+        return m_RootSignature.Get();
+    }
+
+    const std::unordered_map<int32_t, ShaderProperty>& Shader::GetProperties() const
+    {
+        return m_Properties;
+    }
+
+    ShaderPass* Shader::GetPass(int32_t index) const
+    {
+        if (index < 0 || index > m_Passes.size())
+        {
+            throw GfxException("Invalid pass index");
+        }
+
+        return m_Passes[index].get();
+    }
+
+    int32_t Shader::GetPassCount() const
+    {
+        return static_cast<int32_t>(m_Passes.size());
+    }
+
+    int32_t Shader::GetVersion() const
+    {
+        return m_Version;
+    }
+
+    std::string Shader::GetEngineShaderPathUnixStyle()
+    {
+#ifdef ENGINE_SHADER_UNIX_PATH
+        return ENGINE_SHADER_UNIX_PATH;
+#endif
+
+        return PathHelper::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
+    }
+
+    Microsoft::WRL::ComPtr<IDxcUtils> Shader::s_Utils = nullptr;
+    Microsoft::WRL::ComPtr<IDxcCompiler3> Shader::s_Compiler = nullptr;
+
+    IDxcUtils* Shader::GetDxcUtils()
+    {
+        if (s_Utils == nullptr)
+        {
+            GFX_HR(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_Utils)));
+        }
+
+        return s_Utils.Get();
+    }
+
+    IDxcCompiler3* Shader::GetDxcCompiler()
+    {
+        if (s_Compiler == nullptr)
+        {
+            GFX_HR(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_Compiler)));
+        }
+
+        return s_Compiler.Get();
+    }
+
+    std::unordered_map<std::string, int32_t> Shader::s_NameIdMap{};
+    int32_t Shader::s_NextNameId = 0;
+
+    int32_t Shader::GetNameId(const std::string& name)
+    {
+        if (auto it = s_NameIdMap.find(name); it != s_NameIdMap.end())
+        {
+            return it->second;
+        }
+
+        int32_t result = s_NextNameId++;
+        s_NameIdMap[name] = result;
+        return result;
+    }
+
+    const std::string& Shader::GetIdName(int32_t id)
+    {
+        if (id < s_NextNameId)
+        {
+            for (const auto& it : s_NameIdMap)
+            {
+                if (it.second == id)
+                {
+                    return it.first;
+                }
+            }
+        }
+
+        throw std::runtime_error("Invalid shader property id");
+    }
+
+    int32_t Shader::s_MaterialConstantBufferId = Shader::GetNameId("cbMaterial");
+
+    int32_t Shader::GetMaterialConstantBufferId()
+    {
+        return s_MaterialConstantBufferId;
+    }
+
+    static std::string GetTargetProfile(const std::string& shaderModel, ShaderProgramType programType)
+    {
+        std::string model = shaderModel;
+        std::replace(model.begin(), model.end(), '.', '_');
+
+        std::string program;
+
+        switch (programType)
+        {
+        case march::ShaderProgramType::Vertex:
+            program = "vs";
+            break;
+
+        case march::ShaderProgramType::Pixel:
+            program = "ps";
+            break;
+
+        default:
+            program = "unknown";
+            break;
+        }
+
+        return program + "_" + model;
+    }
+
+    bool Shader::CompilePass(int32_t passIndex,
         const std::string& filename,
         const std::string& program,
         const std::string& entrypoint,
@@ -48,15 +245,15 @@ namespace march
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
-        ShaderPass& targetPass = *Passes[passIndex].get();
-        IDxcUtils* pUtils = GetDxcUtils();
-        IDxcCompiler3* pCompiler = GetDxcCompiler();
+        ShaderPass* pass = GetPass(passIndex);
+        IDxcUtils* utils = GetDxcUtils();
+        IDxcCompiler3* compiler = GetDxcCompiler();
 
         //
         // Create default include handler. (You can create your own...)
         //
         ComPtr<IDxcIncludeHandler> pIncludeHandler;
-        GFX_HR(pUtils->CreateDefaultIncludeHandler(&pIncludeHandler));
+        GFX_HR(utils->CreateDefaultIncludeHandler(&pIncludeHandler));
 
         std::wstring wFilename = StringUtility::Utf8ToUtf16(filename);
         std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(entrypoint);
@@ -65,13 +262,13 @@ namespace march
 
         std::vector<LPCWSTR> pszArgs =
         {
-            wFilename.c_str(),                     // Optional shader source file name for error reporting and for PIX shader source view.
-            L"-E", wEntrypoint.c_str(),            // Entry point.
-            L"-T", wTargetProfile.c_str(),         // Target.
-            // L"-D", L"MYDEFINE=1",               // A single define.
-            L"-Zi",                                // Enable debug information.
-            L"-I", wIncludePath.c_str(),           // Include directory.
-            // L"-Qstrip_reflect",                 // Strip reflection into a separate blob.
+            wFilename.c_str(),             // Optional shader source file name for error reporting and for PIX shader source view.
+            L"-E", wEntrypoint.c_str(),    // Entry point.
+            L"-T", wTargetProfile.c_str(), // Target.
+            // L"-D", L"MYDEFINE=1",       // A single define.
+            L"-Zi",                        // Enable debug information.
+            L"-I", wIncludePath.c_str(),   // Include directory.
+            // L"-Qstrip_reflect",         // Strip reflection into a separate blob.
         };
 
         if constexpr (GfxSupportInfo::UseReversedZBuffer())
@@ -96,7 +293,7 @@ namespace march
         // Open source file.
         //
         ComPtr<IDxcBlobEncoding> pSource = nullptr;
-        GFX_HR(pUtils->CreateBlob(program.data(), static_cast<UINT32>(program.size()), DXC_CP_UTF8, &pSource));
+        GFX_HR(utils->CreateBlob(program.data(), static_cast<UINT32>(program.size()), DXC_CP_UTF8, &pSource));
         DxcBuffer Source = {};
         Source.Ptr = pSource->GetBufferPointer();
         Source.Size = pSource->GetBufferSize();
@@ -106,7 +303,7 @@ namespace march
         // Compile it with specified arguments.
         //
         ComPtr<IDxcResult> pResults;
-        GFX_HR(pCompiler->Compile(
+        GFX_HR(compiler->Compile(
             &Source,                             // Source buffer.
             pszArgs.data(),                      // Array of pointers to arguments.
             static_cast<UINT32>(pszArgs.size()), // Number of arguments.
@@ -140,25 +337,9 @@ namespace march
         //
         // Save shader binary.
         //
-        ComPtr<IDxcBlob>* pShader = nullptr;
-
-        switch (programType)
-        {
-        case march::ShaderProgramType::Vertex:
-            pShader = &targetPass.VertexShader;
-            break;
-
-        case march::ShaderProgramType::Pixel:
-            pShader = &targetPass.PixelShader;
-            break;
-
-        default:
-            DEBUG_LOG_ERROR("Unknown ShaderProgramType: %d", (int)programType);
-            return false;
-        }
-
-        ComPtr<IDxcBlobUtf16> pShaderName = nullptr;
-        GFX_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(pShader->ReleaseAndGetAddressOf()), &pShaderName));
+        ShaderProgram* shaderProgram = pass->CreateProgram(programType);
+        ComPtr<IDxcBlobUtf16> shaderName = nullptr;
+        GFX_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderProgram->m_Binary), &shaderName));
 
         //
         // Get separate reflection.
@@ -167,8 +348,6 @@ namespace march
         GFX_HR(pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&pReflectionData), nullptr));
         if (pReflectionData != nullptr)
         {
-            // Optionally, save reflection blob for later here.
-
             // Create reflection interface.
             DxcBuffer ReflectionData;
             ReflectionData.Encoding = DXC_CP_ACP;
@@ -176,7 +355,7 @@ namespace march
             ReflectionData.Size = pReflectionData->GetBufferSize();
 
             ComPtr<ID3D12ShaderReflection> pReflection;
-            pUtils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection));
+            utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection));
 
             // Use reflection interface here.
 
@@ -192,44 +371,28 @@ namespace march
                 {
                 case D3D_SIT_CBUFFER:
                 {
-                    ID3D12ShaderReflectionConstantBuffer* cbMat = pReflection->GetConstantBufferByName(bindDesc.Name);
                     D3D12_SHADER_BUFFER_DESC cbDesc = {};
-                    GFX_HR(cbMat->GetDesc(&cbDesc));
+                    GFX_HR(pReflection->GetConstantBufferByName(bindDesc.Name)->GetDesc(&cbDesc));
 
-                    ShaderPassConstantBuffer& cb = targetPass.ConstantBuffers[GetNameId(bindDesc.Name)];
+                    ShaderConstantBuffer& cb = shaderProgram->m_ConstantBuffers[GetNameId(bindDesc.Name)];
                     cb.ShaderRegister = bindDesc.BindPoint;
                     cb.RegisterSpace = bindDesc.Space;
-                    cb.Size = cbDesc.Size;
+                    cb.UnalignedSize = cbDesc.Size;
                     break;
                 }
 
                 case D3D_SIT_TEXTURE:
                 {
-                    ShaderPassTextureProperty& tex = targetPass.TextureProperties[GetNameId(bindDesc.Name)];
-
+                    ShaderTexture& tex = shaderProgram->m_Textures[GetNameId(bindDesc.Name)];
                     tex.ShaderRegisterTexture = bindDesc.BindPoint;
                     tex.RegisterSpaceTexture = bindDesc.Space;
-
-                    std::string samplerName = std::string("sampler") + bindDesc.Name;
-                    D3D12_SHADER_INPUT_BIND_DESC samplerDesc = {};
-                    HRESULT hr = pReflection->GetResourceBindingDescByName(samplerName.c_str(), &samplerDesc);
-
-                    if (SUCCEEDED(hr))
-                    {
-                        tex.HasSampler = true;
-                        tex.ShaderRegisterSampler = samplerDesc.BindPoint;
-                        tex.RegisterSpaceSampler = samplerDesc.Space;
-                    }
-                    else
-                    {
-                        tex.HasSampler = false;
-                    }
                     break;
                 }
 
                 case D3D_SIT_SAMPLER:
                 {
-                    ShaderPassSampler& sampler = targetPass.Samplers[GetNameId(bindDesc.Name)];
+                    // 先假设全是 static sampler
+                    ShaderStaticSampler& sampler = shaderProgram->m_StaticSamplers[GetNameId(bindDesc.Name)];
                     sampler.ShaderRegister = bindDesc.BindPoint;
                     sampler.RegisterSpace = bindDesc.Space;
                     break;
@@ -237,21 +400,39 @@ namespace march
                 }
             }
 
-            ID3D12ShaderReflectionConstantBuffer* cbMat = pReflection->GetConstantBufferByName(ShaderPass::MaterialCbName);
-            D3D12_SHADER_BUFFER_DESC cbMatDesc = {};
-            HRESULT hr = cbMat->GetDesc(&cbMatDesc);
-
-            if (SUCCEEDED(hr))
+            // 记录 shader property location
+            if (shaderProgram->m_ConstantBuffers.count(GetMaterialConstantBufferId()) > 0)
             {
-                for (UINT i = 0; i < cbMatDesc.Variables; i++)
-                {
-                    ID3D12ShaderReflectionVariable* var = cbMat->GetVariableByIndex(i);
-                    D3D12_SHADER_VARIABLE_DESC varDesc = {};
-                    GFX_HR(var->GetDesc(&varDesc));
+                const std::string& cbName = GetIdName(GetMaterialConstantBufferId());
+                ID3D12ShaderReflectionConstantBuffer* cbMat = pReflection->GetConstantBufferByName(cbName.c_str());
 
-                    ShaderPassMaterialProperty& prop = targetPass.MaterialProperties[GetNameId(varDesc.Name)];
-                    prop.Offset = varDesc.StartOffset;
-                    prop.Size = varDesc.Size;
+                D3D12_SHADER_BUFFER_DESC cbMatDesc = {};
+                if (SUCCEEDED(cbMat->GetDesc(&cbMatDesc)))
+                {
+                    for (UINT i = 0; i < cbMatDesc.Variables; i++)
+                    {
+                        ID3D12ShaderReflectionVariable* var = cbMat->GetVariableByIndex(i);
+                        D3D12_SHADER_VARIABLE_DESC varDesc = {};
+                        GFX_HR(var->GetDesc(&varDesc));
+
+                        ShaderPropertyLocation& loc = pass->m_PropertyLocations[GetNameId(varDesc.Name)];
+                        loc.Offset = varDesc.StartOffset;
+                        loc.Size = varDesc.Size;
+                    }
+                }
+            }
+
+            // 记录 texture sampler
+            for (std::pair<const int32_t, ShaderTexture>& kv : shaderProgram->m_Textures)
+            {
+                int32_t samplerId = GetNameId("sampler" + GetIdName(kv.first));
+
+                if (auto it = shaderProgram->m_StaticSamplers.find(samplerId); it != shaderProgram->m_StaticSamplers.end())
+                {
+                    kv.second.HasSampler = true;
+                    kv.second.ShaderRegisterSampler = it->second.ShaderRegister;
+                    kv.second.RegisterSpaceSampler = it->second.RegisterSpace;
+                    shaderProgram->m_StaticSamplers.erase(it);
                 }
             }
         }
@@ -259,144 +440,85 @@ namespace march
         return true;
     }
 
-    std::vector<CD3DX12_STATIC_SAMPLER_DESC> ShaderPass::CreateStaticSamplers()
+    D3D12_SHADER_VISIBILITY ShaderPass::ToShaderVisibility(ShaderProgramType type)
     {
-        std::vector<CD3DX12_STATIC_SAMPLER_DESC> results;
-        decltype(Samplers.end()) it;
-
-        if ((it = Samplers.find(Shader::GetNameId("sampler_PointWrap"))) != Samplers.end())
+        switch (type)
         {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
-                it->second.ShaderRegister,        // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_POINT,   // filter
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-        }
+        case ShaderProgramType::Vertex:
+            return D3D12_SHADER_VISIBILITY_VERTEX;
 
-        if ((it = Samplers.find(Shader::GetNameId("sampler_PointClamp"))) != Samplers.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
-                it->second.ShaderRegister,         // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_POINT,    // filter
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-        }
+        case ShaderProgramType::Pixel:
+            return D3D12_SHADER_VISIBILITY_PIXEL;
 
-        if ((it = Samplers.find(Shader::GetNameId("sampler_LinearWrap"))) != Samplers.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
-                it->second.ShaderRegister,        // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
+        default:
+            throw GfxException("Unknown shader program type");
         }
-
-        if ((it = Samplers.find(Shader::GetNameId("sampler_LinearClamp"))) != Samplers.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
-                it->second.ShaderRegister,         // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_LINEAR,   // filter
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-        }
-
-        if ((it = Samplers.find(Shader::GetNameId("sampler_AnisotropicWrap"))) != Samplers.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
-                it->second.ShaderRegister,        // shaderRegister
-                D3D12_FILTER_ANISOTROPIC,         // filter
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-        }
-
-        if ((it = Samplers.find(Shader::GetNameId("sampler_AnisotropicClamp"))) != Samplers.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = results.emplace_back(
-                it->second.ShaderRegister,         // shaderRegister
-                D3D12_FILTER_ANISOTROPIC,          // filter
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-        }
-
-        return results;
     }
 
     void ShaderPass::CreateRootSignature()
     {
-        std::vector<CD3DX12_DESCRIPTOR_RANGE> cbvSrvUavRanges;
+        std::vector<CD3DX12_ROOT_PARAMETER> params;
+        std::vector<CD3DX12_STATIC_SAMPLER_DESC> staticSamplers;
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges;
         std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
 
-        for (auto it = TextureProperties.begin(); it != TextureProperties.end(); ++it)
+        for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
         {
-            ShaderPassTextureProperty& texProp = it->second;
+            ShaderProgram* program = m_Programs[i].get();
 
-            cbvSrvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
-                texProp.ShaderRegisterTexture, texProp.RegisterSpaceTexture,
-                D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-            texProp.TextureDescriptorTableIndex = static_cast<UINT>(cbvSrvUavRanges.size()) - 1;
-
-            if (texProp.HasSampler)
+            if (program == nullptr)
             {
-                samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
-                    texProp.ShaderRegisterSampler, texProp.RegisterSpaceSampler,
-                    D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-                texProp.SamplerDescriptorTableIndex = static_cast<UINT>(samplerRanges.size()) - 1;
+                continue;
             }
+
+            size_t srvUavStartIndex = srvUavRanges.size();
+            size_t samplerStartIndex = samplerRanges.size();
+            D3D12_SHADER_VISIBILITY visibility = ToShaderVisibility(static_cast<ShaderProgramType>(i));
+
+            for (auto& kv : program->m_Textures)
+            {
+                ShaderTexture& tex = kv.second;
+
+                srvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
+                    tex.ShaderRegisterTexture, tex.RegisterSpaceTexture, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                tex.TextureDescriptorTableIndex = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
+
+                if (tex.HasSampler)
+                {
+                    samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
+                        tex.ShaderRegisterSampler, tex.RegisterSpaceSampler, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                    tex.SamplerDescriptorTableIndex = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex - 1);
+                }
+            }
+
+            // TODO: Performance TIP: Order from most frequent to least frequent.
+
+            for (auto& kv : program->m_ConstantBuffers)
+            {
+                ShaderConstantBuffer& cb = kv.second;
+                params.emplace_back().InitAsConstantBufferView(cb.ShaderRegister, cb.RegisterSpace, visibility);
+                cb.RootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+
+            if (srvUavRanges.size() > srvUavStartIndex)
+            {
+                uint32_t count = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex);
+                params.emplace_back().InitAsDescriptorTable(count, srvUavRanges.data() + srvUavStartIndex, visibility);
+                program->m_SrvUavRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+
+            if (samplerRanges.size() > samplerStartIndex)
+            {
+                uint32_t count = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex);
+                params.emplace_back().InitAsDescriptorTable(count, samplerRanges.data() + samplerStartIndex, visibility);
+                program->m_SamplerRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+
+            AddStaticSamplers(staticSamplers, program, visibility);
         }
 
-        for (auto it = ConstantBuffers.begin(); it != ConstantBuffers.end(); ++it)
-        {
-            ShaderPassConstantBuffer& cbProp = it->second;
-            cbvSrvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1,
-                cbProp.ShaderRegister, cbProp.RegisterSpace,
-                D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-            cbProp.DescriptorTableIndex = static_cast<UINT>(cbvSrvUavRanges.size()) - 1;
-
-            DEBUG_LOG_INFO("cbuffer %s: register %d, space %d, size %d",
-                Shader::GetIdName(it->first).c_str(), cbProp.ShaderRegister, cbProp.RegisterSpace, cbProp.Size);
-        }
-
-        std::vector<CD3DX12_ROOT_PARAMETER> params;
-
-        // TODO: optimize visibility
-        // Perfomance TIP: Order from most frequent to least frequent.
-        if (cbvSrvUavRanges.size() > 0)
-        {
-            params.emplace_back().InitAsDescriptorTable(static_cast<UINT>(cbvSrvUavRanges.size()), cbvSrvUavRanges.data(), D3D12_SHADER_VISIBILITY_ALL);
-            m_CbvSrvUavCount = static_cast<UINT>(cbvSrvUavRanges.size());
-            m_CbvSrvUavRootParamIndex = static_cast<UINT>(params.size()) - 1;
-        }
-        else
-        {
-            m_CbvSrvUavCount = 0;
-        }
-
-        if (samplerRanges.size() > 0)
-        {
-            params.emplace_back().InitAsDescriptorTable(static_cast<UINT>(samplerRanges.size()), samplerRanges.data(), D3D12_SHADER_VISIBILITY_PIXEL);
-            m_SamplerCount = static_cast<UINT>(samplerRanges.size());
-            m_SamplerRootParamIndex = static_cast<UINT>(params.size()) - 1;
-        }
-        else
-        {
-            m_SamplerCount = 0;
-        }
-
-        auto staticSamplers = CreateStaticSamplers();
-
-        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(static_cast<UINT>(params.size()), params.data(),
+        CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(
+            static_cast<UINT>(params.size()), params.data(),
             static_cast<UINT>(staticSamplers.size()), staticSamplers.data(),
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -416,43 +538,81 @@ namespace march
             IID_PPV_ARGS(&m_RootSignature)));
     }
 
-    std::string Shader::GetEngineShaderPathUnixStyle()
+    void ShaderPass::AddStaticSamplers(std::vector<CD3DX12_STATIC_SAMPLER_DESC>& samplers, ShaderProgram* program, D3D12_SHADER_VISIBILITY visibility)
     {
-#ifdef ENGINE_SHADER_UNIX_PATH
-        return ENGINE_SHADER_UNIX_PATH;
-#endif
+        auto& s = program->m_StaticSamplers;
+        decltype(s.end()) it;
 
-        return PathHelper::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
-    }
-
-    std::unordered_map<std::string, int32_t> Shader::s_NameIdMap{};
-    int32_t Shader::s_NextNameId = 0;
-
-    int32_t Shader::GetNameId(const std::string& name)
-    {
-        if (auto it = s_NameIdMap.find(name); it != s_NameIdMap.end())
+        if ((it = s.find(Shader::GetNameId("sampler_PointWrap"))) != s.end())
         {
-            return it->second;
+            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                it->second.ShaderRegister,        // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_POINT,   // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+            desc.ShaderVisibility = visibility;
         }
 
-        int32_t result = s_NextNameId++;
-        s_NameIdMap[name] = result;
-        return result;
-    }
-
-    const std::string& Shader::GetIdName(int32_t id)
-    {
-        if (id < s_NextNameId)
+        if ((it = s.find(Shader::GetNameId("sampler_PointClamp"))) != s.end())
         {
-            for (const auto& it : s_NameIdMap)
-            {
-                if (it.second == id)
-                {
-                    return it.first;
-                }
-            }
+            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                it->second.ShaderRegister,         // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_POINT,    // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+            desc.ShaderVisibility = visibility;
         }
 
-        return std::string();
+        if ((it = s.find(Shader::GetNameId("sampler_LinearWrap"))) != s.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                it->second.ShaderRegister,        // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+            desc.ShaderVisibility = visibility;
+        }
+
+        if ((it = s.find(Shader::GetNameId("sampler_LinearClamp"))) != s.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                it->second.ShaderRegister,         // shaderRegister
+                D3D12_FILTER_MIN_MAG_MIP_LINEAR,   // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+            desc.ShaderVisibility = visibility;
+        }
+
+        if ((it = s.find(Shader::GetNameId("sampler_AnisotropicWrap"))) != s.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                it->second.ShaderRegister,        // shaderRegister
+                D3D12_FILTER_ANISOTROPIC,         // filter
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+            desc.ShaderVisibility = visibility;
+        }
+
+        if ((it = s.find(Shader::GetNameId("sampler_AnisotropicClamp"))) != s.end())
+        {
+            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                it->second.ShaderRegister,         // shaderRegister
+                D3D12_FILTER_ANISOTROPIC,          // filter
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+            desc.RegisterSpace = it->second.RegisterSpace;
+            desc.ShaderVisibility = visibility;
+        }
     }
 }

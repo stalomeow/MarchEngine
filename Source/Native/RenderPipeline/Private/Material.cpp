@@ -104,10 +104,10 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(id);
-        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Int)
+        auto shaderProp = m_Shader->GetProperties().find(id);
+        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Int)
         {
-            *outValue = shaderProp->second.DefaultInt;
+            *outValue = shaderProp->second.DefaultValue.Int;
             return true;
         }
 
@@ -123,10 +123,10 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(id);
-        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Float)
+        auto shaderProp = m_Shader->GetProperties().find(id);
+        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Float)
         {
-            *outValue = shaderProp->second.DefaultFloat;
+            *outValue = shaderProp->second.DefaultValue.Float;
             return true;
         }
 
@@ -142,10 +142,10 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(id);
-        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Vector)
+        auto shaderProp = m_Shader->GetProperties().find(id);
+        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Vector)
         {
-            *outValue = shaderProp->second.DefaultVector;
+            *outValue = shaderProp->second.DefaultValue.Vector;
             return true;
         }
 
@@ -161,10 +161,10 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(id);
-        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Color)
+        auto shaderProp = m_Shader->GetProperties().find(id);
+        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Color)
         {
-            *outValue = shaderProp->second.DefaultColor;
+            *outValue = shaderProp->second.DefaultValue.Color;
             return true;
         }
 
@@ -180,8 +180,8 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->Properties.find(id);
-        if (shaderProp != m_Shader->Properties.end() && shaderProp->second.Type == ShaderPropertyType::Texture)
+        auto shaderProp = m_Shader->GetProperties().find(id);
+        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Texture)
         {
             *outValue = shaderProp->second.GetDefaultTexture();
             return true;
@@ -222,12 +222,12 @@ namespace march
             return;
         }
 
-        if (m_ShaderVersion == m_Shader->Version)
+        if (m_ShaderVersion == m_Shader->GetVersion())
         {
             return;
         }
 
-        m_ShaderVersion = m_Shader->Version;
+        m_ShaderVersion = m_Shader->GetVersion();
         RecreateConstantBuffers();
     }
 
@@ -235,22 +235,47 @@ namespace march
     {
         DEBUG_LOG_INFO("Recreate material cbuffer");
 
-        // 创建 cbuffer
         m_ConstantBuffers.clear();
-        for (auto& pass : m_Shader->Passes)
+
+        // 创建 cbuffer
+        for (int32_t i = 0; i < m_Shader->GetPassCount(); i++)
         {
-            auto matCb = pass->ConstantBuffers.find(Shader::GetNameId(ShaderPass::MaterialCbName));
-            if (matCb == pass->ConstantBuffers.end())
+            ShaderPass* pass = m_Shader->GetPass(i);
+            uint32_t cbUnalignedSize = 0;
+
+            for (int32_t j = 0; j < static_cast<int32_t>(ShaderProgramType::NumTypes); j++)
             {
-                continue;
+                ShaderProgram* program = pass->GetProgram(static_cast<ShaderProgramType>(j));
+
+                if (program == nullptr)
+                {
+                    continue;
+                }
+
+                const auto& cbMap = program->GetConstantBuffers();
+                if (auto it = cbMap.find(Shader::GetMaterialConstantBufferId()); it != cbMap.end())
+                {
+                    if (cbUnalignedSize == 0)
+                    {
+                        cbUnalignedSize = it->second.UnalignedSize;
+                    }
+                    else if (cbUnalignedSize != it->second.UnalignedSize)
+                    {
+                        // 同一个 pass 下的所有 program 的 material cbuffer 大小必须一致
+                        throw std::runtime_error("Material cbuffer size mismatch");
+                    }
+                }
             }
 
-            std::string cbName = pass->Name + "ConstantBuffer";
-            m_ConstantBuffers[pass.get()] = std::make_unique<GfxConstantBuffer>(GetGfxDevice(), cbName, matCb->second.Size, 1, false);
+            if (cbUnalignedSize > 0)
+            {
+                std::string cbName = pass->GetName() + "ConstantBuffer";
+                m_ConstantBuffers[pass] = std::make_unique<GfxConstantBuffer>(GetGfxDevice(), cbName, cbUnalignedSize, 1, false);
+            }
         }
 
         // 初始化 cbuffer
-        for (const auto& kv : m_Shader->Properties)
+        for (const auto& kv : m_Shader->GetProperties())
         {
             int32_t id = kv.first;
             const ShaderProperty& prop = kv.second;
@@ -317,9 +342,9 @@ namespace march
         {
             const ShaderPass* pass = kv.first;
             const GfxConstantBuffer* cb = kv.second.get();
-            const auto prop = pass->MaterialProperties.find(id);
+            auto& locations = pass->GetPropertyLocations();
 
-            if (prop != pass->MaterialProperties.end())
+            if (const auto prop = locations.find(id); prop != locations.end())
             {
                 BYTE* p = cb->GetMappedData(0);
                 assert(sizeof(value) >= prop->second.Size); // 有时候会把 Vector4 绑定到 Vector3 上，所以用 >=
@@ -335,7 +360,7 @@ namespace march
 
     void Material::SetShader(Shader* pShader)
     {
-        if (m_Shader == pShader && m_ShaderVersion == pShader->Version)
+        if (m_Shader == pShader && m_ShaderVersion == pShader->GetVersion())
         {
             return;
         }
@@ -344,7 +369,7 @@ namespace march
 
         if (pShader != nullptr)
         {
-            m_ShaderVersion = pShader->Version;
+            m_ShaderVersion = pShader->GetVersion();
             RecreateConstantBuffers();
         }
         else

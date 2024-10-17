@@ -68,25 +68,25 @@ namespace march
         psoDesc.pRootSignature = pPass->GetRootSignature();
         psoDesc.VS =
         {
-            pPass->VertexShader->GetBufferPointer(),
-            pPass->VertexShader->GetBufferSize()
+            pPass->GetProgram(ShaderProgramType::Vertex)->GetBinaryData(),
+            pPass->GetProgram(ShaderProgramType::Vertex)->GetBinarySize()
         };
         psoDesc.PS =
         {
-            pPass->PixelShader->GetBufferPointer(),
-            pPass->PixelShader->GetBufferSize()
+            pPass->GetProgram(ShaderProgramType::Pixel)->GetBinaryData(),
+            pPass->GetProgram(ShaderProgramType::Pixel)->GetBinarySize()
         };
 
         psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-        psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(pPass->Cull) + 1);
+        psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(pPass->GetCull()) + 1);
         psoDesc.RasterizerState.FillMode = pipelineDesc.Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
 
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
         psoDesc.BlendState.IndependentBlendEnable = TRUE;
 
-        for (int i = 0; i < pPass->Blends.size(); i++)
+        for (int i = 0; i < pPass->GetBlends().size(); i++)
         {
-            const ShaderPassBlendState& b = pPass->Blends[i];
+            const ShaderPassBlendState& b = pPass->GetBlends()[i];
             D3D12_RENDER_TARGET_BLEND_DESC& blendDesc = psoDesc.BlendState.RenderTarget[i];
             blendDesc.BlendEnable = b.Enable;
             blendDesc.LogicOpEnable = FALSE;
@@ -100,21 +100,21 @@ namespace march
         }
 
         psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState.DepthEnable = pPass->DepthState.Enable;
-        psoDesc.DepthStencilState.DepthWriteMask = pPass->DepthState.Write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-        psoDesc.DepthStencilState.DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->DepthState.Compare) + 1);
+        psoDesc.DepthStencilState.DepthEnable = pPass->GetDepthState().Enable;
+        psoDesc.DepthStencilState.DepthWriteMask = pPass->GetDepthState().Write ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+        psoDesc.DepthStencilState.DepthFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->GetDepthState().Compare) + 1);
         ValidateDepthFunc(psoDesc.DepthStencilState.DepthFunc);
-        psoDesc.DepthStencilState.StencilEnable = pPass->StencilState.Enable;
-        psoDesc.DepthStencilState.StencilReadMask = static_cast<UINT8>(pPass->StencilState.ReadMask);
-        psoDesc.DepthStencilState.StencilWriteMask = static_cast<UINT8>(pPass->StencilState.WriteMask);
-        psoDesc.DepthStencilState.FrontFace.StencilFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->StencilState.FrontFace.FailOp) + 1);
-        psoDesc.DepthStencilState.FrontFace.StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->StencilState.FrontFace.DepthFailOp) + 1);
-        psoDesc.DepthStencilState.FrontFace.StencilPassOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->StencilState.FrontFace.PassOp) + 1);
-        psoDesc.DepthStencilState.FrontFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->StencilState.FrontFace.Compare) + 1);
-        psoDesc.DepthStencilState.BackFace.StencilFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->StencilState.BackFace.FailOp) + 1);
-        psoDesc.DepthStencilState.BackFace.StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->StencilState.BackFace.DepthFailOp) + 1);
-        psoDesc.DepthStencilState.BackFace.StencilPassOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->StencilState.BackFace.PassOp) + 1);
-        psoDesc.DepthStencilState.BackFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->StencilState.BackFace.Compare) + 1);
+        psoDesc.DepthStencilState.StencilEnable = pPass->GetStencilState().Enable;
+        psoDesc.DepthStencilState.StencilReadMask = static_cast<UINT8>(pPass->GetStencilState().ReadMask);
+        psoDesc.DepthStencilState.StencilWriteMask = static_cast<UINT8>(pPass->GetStencilState().WriteMask);
+        psoDesc.DepthStencilState.FrontFace.StencilFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->GetStencilState().FrontFace.FailOp) + 1);
+        psoDesc.DepthStencilState.FrontFace.StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->GetStencilState().FrontFace.DepthFailOp) + 1);
+        psoDesc.DepthStencilState.FrontFace.StencilPassOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->GetStencilState().FrontFace.PassOp) + 1);
+        psoDesc.DepthStencilState.FrontFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->GetStencilState().FrontFace.Compare) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->GetStencilState().BackFace.FailOp) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilDepthFailOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->GetStencilState().BackFace.DepthFailOp) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilPassOp = static_cast<D3D12_STENCIL_OP>(static_cast<int>(pPass->GetStencilState().BackFace.PassOp) + 1);
+        psoDesc.DepthStencilState.BackFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(pPass->GetStencilState().BackFace.Compare) + 1);
 
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = meshDesc.PrimitiveTopologyType;

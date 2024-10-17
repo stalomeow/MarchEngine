@@ -6,7 +6,12 @@
 // MARCH_NEAR_CLIP_VALUE    近裁剪平面的深度
 // MARCH_FAR_CLIP_VALUE     远裁剪平面的深度
 
-cbuffer cbCamera : register(b1, space2)
+cbuffer cbObject
+{
+    float4x4 _MatrixWorld;
+};
+
+cbuffer cbCamera
 {
     float4x4 _MatrixView;
     float4x4 _MatrixProjection;

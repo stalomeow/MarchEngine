@@ -143,6 +143,11 @@ namespace March.Core.Binding
             TManaged.FreeNative(ref Unsafe.AsRef<TNative>((void*)data));
         }
 
+        static unsafe int INativeMarshal<TManaged>.SizeOfNative()
+        {
+            return sizeof(TNative);
+        }
+
         static abstract TManaged FromNative(ref TNative native);
 
         static abstract void ToNative(TManaged value, out TNative native);
