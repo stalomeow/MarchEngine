@@ -51,6 +51,12 @@
     <ClCompile Include="Private\ImGuiDemoWindow.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\RenderGraphDebuggerWindow.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\RenderGraphDebuggerWindow.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\EditorGUI.h">
@@ -72,6 +78,9 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\ImGuiDemoWindow.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\RenderGraphDebuggerWindow.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

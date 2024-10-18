@@ -8,6 +8,7 @@
 #include <vector>
 #include <stdint.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <string>
 #include <functional>
@@ -87,6 +88,12 @@ namespace march
     class RenderGraphTextureHandle;
     class RenderGraphBuilder;
 
+    class IRenderGraphCompiledEventListener
+    {
+    public:
+        virtual void OnGraphCompiled(const RenderGraph& graph, const std::vector<int32_t>& sortedPasses) = 0;
+    };
+
     class RenderGraph final
     {
         friend RenderGraphTextureHandle;
@@ -102,6 +109,12 @@ namespace march
         RenderGraphBuilder AddPass();
         RenderGraphBuilder AddPass(const std::string& name);
         void CompileAndExecute();
+
+        const RenderGraphPass& GetPass(int32_t index) const;
+        int32_t GetPassCount() const;
+
+        static void AddGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener);
+        static void RemoveGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener);
 
     private:
         bool CompilePasses();
@@ -124,6 +137,8 @@ namespace march
         std::unordered_map<int32_t, RenderGraphResourceData> m_ResourceDataMap;
         std::unique_ptr<RenderGraphResourcePool> m_ResourcePool;
         std::unique_ptr<RenderGraphContext> m_Context;
+
+        static std::unordered_set<IRenderGraphCompiledEventListener*> s_GraphCompiledEventListeners;
     };
 
     class RenderGraphTextureHandle final

@@ -90,7 +90,7 @@ namespace march
 
     void RenderPipeline::ImportTextures(int32_t id, GfxRenderTexture* texture)
     {
-        auto builder = m_RenderGraph->AddPass();
+        auto builder = m_RenderGraph->AddPass("Import" + Shader::GetIdName(id));
         builder.ImportTexture(id, texture);
     }
 
@@ -194,7 +194,7 @@ namespace march
 
     void RenderPipeline::PrepareTextureForImGui(int32_t id)
     {
-        auto builder = m_RenderGraph->AddPass("PreserveTexture");
+        auto builder = m_RenderGraph->AddPass("PrepareTextureForImGui");
 
         builder.AllowPassCulling(false);
         builder.ReadTexture(id, ReadFlags::PixelShader);

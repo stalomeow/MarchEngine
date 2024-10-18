@@ -81,12 +81,15 @@ namespace march
 
         try
         {
-            if (!CompilePasses())
+            if (CompilePasses())
             {
-                return;
-            }
+                for (IRenderGraphCompiledEventListener* listener : s_GraphCompiledEventListeners)
+                {
+                    listener->OnGraphCompiled(*this, m_SortedPasses);
+                }
 
-            ExecutePasses();
+                ExecutePasses();
+            }
         }
         catch (std::exception& e)
         {
@@ -100,6 +103,21 @@ namespace march
         m_SortedPasses.clear();
         m_ResourceDataMap.clear();
         m_Context->Reset();
+    }
+
+    const RenderGraphPass& RenderGraph::GetPass(int32_t index) const
+    {
+        if (index < 0 || index >= static_cast<int32_t>(m_Passes.size()))
+        {
+            throw std::out_of_range("Pass index out of range");
+        }
+
+        return m_Passes[index];
+    }
+
+    int32_t RenderGraph::GetPassCount() const
+    {
+        return static_cast<int32_t>(m_Passes.size());
     }
 
     bool RenderGraph::CompilePasses()
@@ -434,6 +452,18 @@ namespace march
         {
             return it->second;
         }
+    }
+
+    std::unordered_set<IRenderGraphCompiledEventListener*> RenderGraph::s_GraphCompiledEventListeners{};
+
+    void RenderGraph::AddGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener)
+    {
+        s_GraphCompiledEventListeners.insert(listener);
+    }
+
+    void RenderGraph::RemoveGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener)
+    {
+        s_GraphCompiledEventListeners.erase(listener);
     }
 
     RenderGraphTextureHandle::RenderGraphTextureHandle(RenderGraph* graph, int32_t resourceId) : m_Graph(graph), m_ResourceId(resourceId)
