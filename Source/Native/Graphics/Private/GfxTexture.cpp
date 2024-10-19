@@ -215,7 +215,7 @@ namespace march
         GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, nullptr, image));
 
         // 在 DirectXTex 进行 Convert 时，如果输入图像是 sRGB，则会自动添加 TEX_FILTER_SRGB_IN
-        // 没办法把 sRGB 格式直接 reinterpret 为 linear 格式，一定会有一次 Gamma -> Linear 的计算转换
+        // 没办法把 sRGB 格式直接 reinterpret 为 linear 格式，一定会有一次 sRGB -> Linear 的计算转换
         // 但 linear 格式可以直接 reinterpret 为 sRGB 格式，只要手动指定了 TEX_FILTER_SRGB_IN
 
         if constexpr (GfxSupportInfo::GetColorSpace() == GfxColorSpace::Linear)

@@ -1,8 +1,8 @@
-Shader "GammaToLinearBlit"
+Shader "BlitImGui"
 {
     Pass
     {
-        Name "GammaToLinearBlit"
+        Name "BlitImGui"
 
         Cull Off
         ZTest Always
@@ -14,6 +14,7 @@ Shader "GammaToLinearBlit"
         #pragma ps frag
 
         #include "Common.hlsl"
+        #include "ColorSpace.hlsl"
 
         struct Varyings
         {
@@ -22,7 +23,7 @@ Shader "GammaToLinearBlit"
         };
 
         Texture2D _SrcTex;
-        SamplerState sampler_SrcTex;
+        SAMPLER(_SrcTex);
 
         Varyings vert(uint vertexID : SV_VertexID)
         {
@@ -32,15 +33,15 @@ Shader "GammaToLinearBlit"
             return output;
         }
 
-        float4 GammaToLinear(float4 c)
-        {
-            return float4(pow(c.rgb, 2.2), c.a);
-        }
-
         float4 frag(Varyings input) : SV_Target
         {
             float4 c = _SrcTex.Sample(sampler_SrcTex, input.uv);
-            return GammaToLinear(c);
+
+            #ifdef MARCH_COLORSPACE_GAMMA
+                return c;
+            #else
+                return SRGBToLinear(c);
+            #endif
         }
         ENDHLSL
     }

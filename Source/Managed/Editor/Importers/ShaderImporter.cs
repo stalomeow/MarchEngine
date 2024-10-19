@@ -15,7 +15,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 21;
+        protected override int Version => base.Version + 22;
 
         public override string IconNormal => FontAwesome6.Code;
 
@@ -25,15 +25,22 @@ namespace March.Editor.Importers
         [HideInInspector]
         private bool m_UseReversedZBuffer = GfxSupportInfo.UseReversedZBuffer;
 
+        [JsonProperty]
+        [HideInInspector]
+        private GfxColorSpace m_ColorSpace = GfxSupportInfo.ColorSpace;
+
         public override bool NeedReimportAsset()
         {
-            return (m_UseReversedZBuffer != GfxSupportInfo.UseReversedZBuffer) || base.NeedReimportAsset();
+            return (m_UseReversedZBuffer != GfxSupportInfo.UseReversedZBuffer)
+                || (m_ColorSpace != GfxSupportInfo.ColorSpace)
+                || base.NeedReimportAsset();
         }
 
         protected override void OnWillSaveImporter()
         {
             base.OnWillSaveImporter();
             m_UseReversedZBuffer = GfxSupportInfo.UseReversedZBuffer;
+            m_ColorSpace = GfxSupportInfo.ColorSpace;
         }
 
         protected override MarchObject CreateAsset()

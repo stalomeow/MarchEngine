@@ -277,6 +277,12 @@ namespace march
             pszArgs.push_back(L"MARCH_REVERSED_Z=1");
         }
 
+        if constexpr (GfxSupportInfo::GetColorSpace() == GfxColorSpace::Gamma)
+        {
+            pszArgs.push_back(L"-D");
+            pszArgs.push_back(L"MARCH_COLORSPACE_GAMMA=1");
+        }
+
         std::vector<std::wstring> dynamicDefines =
         {
             L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxSupportInfo::GetNearClipPlaneDepth()),

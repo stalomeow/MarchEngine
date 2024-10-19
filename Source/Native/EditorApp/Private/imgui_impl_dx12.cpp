@@ -688,10 +688,18 @@ bool    ImGui_ImplDX12_CreateDeviceObjects()
             SamplerState sampler0 : register(s0);\
             Texture2D texture0 : register(t0);\
             \
+            float LinearToSRGB1(float x)\
+            {\
+                return (x < 0.0031308) ? (12.92 * x) : (1.055 * pow(x, 1.0 / 2.4) - 0.055);\
+            }\
+            float3 LinearToSRGB3(float3 x)\
+            {\
+                return float3(LinearToSRGB1(x.r), LinearToSRGB1(x.g), LinearToSRGB1(x.b));\
+            }\
             float4 main(PS_INPUT input) : SV_Target\
             {\
               float4 tex_col = texture0.Sample(sampler0, input.uv); \
-              float4 out_col = input.col * float4(pow(tex_col.rgb, 1.0 / 2.2), tex_col.a); \
+              float4 out_col = input.col * float4(LinearToSRGB3(tex_col.rgb), tex_col.a); \
               return out_col; \
             }"
             :

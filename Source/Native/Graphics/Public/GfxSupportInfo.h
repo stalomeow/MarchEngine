@@ -45,14 +45,16 @@ namespace march
             return GfxColorSpace::Linear;
         }
 
-        static float GammaToLinearSpace(float x)
+        static float SRGBToLinearSpace(float x)
         {
-            return std::powf(x, 2.2f);
+            // Approximately pow(x, 2.2)
+            return (x < 0.04045f) ? (x / 12.92f) : std::powf((x + 0.055f) / 1.055f, 2.4f);
         }
 
-        static float LinearToGammaSpace(float x)
+        static float LinearToSRGBSpace(float x)
         {
-            return std::powf(x, 1.0f / 2.2f);
+            // Approximately pow(x, 1.0 / 2.2)
+            return (x < 0.0031308f) ? (12.92f * x) : (1.055f * std::powf(x, 1.0f / 2.4f) - 0.055f);
         }
 
         template <typename T>
@@ -60,9 +62,9 @@ namespace march
         {
             if (GetColorSpace() == GfxColorSpace::Linear && sRGB)
             {
-                float r = GammaToLinearSpace(color.x);
-                float g = GammaToLinearSpace(color.y);
-                float b = GammaToLinearSpace(color.z);
+                float r = SRGBToLinearSpace(color.x);
+                float g = SRGBToLinearSpace(color.y);
+                float b = SRGBToLinearSpace(color.z);
                 return T(r, g, b, color.w);
             }
 

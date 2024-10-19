@@ -2,7 +2,6 @@
 #define _LIGHTING_INCLUDED
 
 #define MAX_LIGHT_COUNT 16
-#define TEXTURE_SAMPLER(texture) SamplerState sampler##texture
 
 struct LightData
 {

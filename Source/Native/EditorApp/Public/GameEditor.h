@@ -42,10 +42,11 @@ namespace march
 
         void DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId);
         void BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcId, int32_t backBufferId);
+        GfxMesh* GetFullScreenTriangleMesh();
 
     private:
-        UniqueAssetPtr<Shader> m_GammaToLinearBlitShader = nullptr;
-        std::unique_ptr<Material> m_GammaToLinearBlitMaterial = nullptr;
+        UniqueAssetPtr<Shader> m_BlitImGuiShader = nullptr;
+        std::unique_ptr<Material> m_BlitImGuiMaterial = nullptr;
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
         std::unique_ptr<RenderGraph> m_ImGuiRenderGraph = nullptr;
         GfxDescriptorTable m_StaticDescriptorViewTable;

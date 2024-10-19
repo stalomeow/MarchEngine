@@ -22,6 +22,8 @@ cbuffer cbCamera
     float4 _CameraPositionWS;
 };
 
+#define SAMPLER(texture) SamplerState sampler##texture
+
 float2 GetFullScreenTriangleTexCoord(uint vertexID)
 {
     // https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl

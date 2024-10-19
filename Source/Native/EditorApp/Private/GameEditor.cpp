@@ -337,8 +337,8 @@ namespace march
         {
             m_IsScriptInitialized = false;
 
-            m_GammaToLinearBlitShader.Reset();
-            m_GammaToLinearBlitMaterial.reset();
+            m_BlitImGuiShader.Reset();
+            m_BlitImGuiMaterial.reset();
 
             // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
@@ -351,11 +351,11 @@ namespace march
             int32_t tempRenderTargetId = Shader::GetNameId("_TempImGuiRenderTarget");
             int32_t backBufferId = Shader::GetNameId("_BackBuffer");
 
-            if (!m_GammaToLinearBlitShader)
+            if (!m_BlitImGuiShader)
             {
-                m_GammaToLinearBlitShader = UniqueAssetPtr<Shader>::Make("Engine/Shaders/GammaToLinearBlit.shader");
-                m_GammaToLinearBlitMaterial = std::make_unique<Material>();
-                m_GammaToLinearBlitMaterial->SetShader(m_GammaToLinearBlitShader.Get());
+                m_BlitImGuiShader = UniqueAssetPtr<Shader>::Make("Engine/Shaders/BlitImGui.shader");
+                m_BlitImGuiMaterial = std::make_unique<Material>();
+                m_BlitImGuiMaterial->SetShader(m_BlitImGuiShader.Get());
             }
 
             DrawImGuiRenderGraph(device, tempRenderTargetId);
@@ -380,25 +380,30 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             ImGui::Render();
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), device->GetGraphicsCommandList()->GetD3D12CommandList());
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetD3D12GraphicsCommandList());
         });
     }
 
-    void GameEditor::BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcId, int32_t backBufferId)
+    void GameEditor::BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcTextureId, int32_t backBufferId)
     {
-        auto builder = m_ImGuiRenderGraph->AddPass("BlitImGui");
+        auto builder = m_ImGuiRenderGraph->AddPass("BlitImGuiToBackBuffer");
 
         builder.AllowPassCulling(false);
         builder.ImportTexture(backBufferId, device->GetBackBuffer());
         builder.SetRenderTargets(backBufferId);
 
-        TextureHandle srcTexture = builder.ReadTexture(srcId, ReadFlags::PixelShader);
+        TextureHandle srcTexture = builder.ReadTexture(srcTextureId, ReadFlags::PixelShader);
 
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            m_GammaToLinearBlitMaterial->SetTexture("_SrcTex", srcTexture.Get());
-            context.DrawMesh(m_RenderPipeline->m_FullScreenTriangleMesh.get(), m_GammaToLinearBlitMaterial.get());
+            m_BlitImGuiMaterial->SetTexture("_SrcTex", srcTexture.Get());
+            context.DrawMesh(GetFullScreenTriangleMesh(), m_BlitImGuiMaterial.get());
         });
+    }
+
+    GfxMesh* GameEditor::GetFullScreenTriangleMesh()
+    {
+        return m_RenderPipeline->m_FullScreenTriangleMesh.get();
     }
 
     void GameEditor::OnResized()
