@@ -11,6 +11,8 @@ namespace march
         EditorApplication_OnTick,
         EditorApplication_OnQuit,
         EditorApplication_OpenConsoleWindowIfNot,
+        AssetManager_NativeLoadAsset,
+        AssetManager_NativeUnloadAsset,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

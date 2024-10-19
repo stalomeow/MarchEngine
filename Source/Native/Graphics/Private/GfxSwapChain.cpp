@@ -1,6 +1,7 @@
 #include "GfxSwapChain.h"
 #include "GfxCommandQueue.h"
 #include "GfxCommandList.h"
+#include "GfxTexture.h"
 #include "GfxDevice.h"
 #include "GfxExcept.h"
 
@@ -9,7 +10,7 @@ using namespace Microsoft::WRL;
 namespace march
 {
     GfxSwapChain::GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height)
-        : m_Device(device), m_BackBuffers{}, m_BackBufferStates{}, m_BackBufferRtvHandles{}, m_CurrentBackBufferIndex(0)
+        : m_Device(device), m_BackBuffers{}, m_CurrentBackBufferIndex(0)
     {
         // https://github.com/microsoft/DirectXTK/wiki/Line-drawing-and-anti-aliasing#technical-note
         // The ability to create an MSAA DXGI swap chain is only supported for the older "bit-blt" style presentation modes,
@@ -23,7 +24,7 @@ namespace march
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         swapChainDesc.Width = static_cast<UINT>(width);
         swapChainDesc.Height = static_cast<UINT>(height);
-        swapChainDesc.Format = BackBufferFormat;
+        swapChainDesc.Format = m_BackBufferFormat;
         swapChainDesc.Stereo = FALSE;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
@@ -49,24 +50,12 @@ namespace march
         GFX_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(MaxFrameLatency)));
         m_FrameLatencyHandle = swapChain2->GetFrameLatencyWaitableObject();
 
-        // D3D12_RESOURCE_STATE_PRESENT = 0，所以 m_BackBufferStates 清零即可
-
-        for (uint32_t i = 0; i < BackBufferCount; i++)
-        {
-            m_BackBufferRtvHandles[i] = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        }
-
         CreateBackBuffers();
     }
 
     GfxSwapChain::~GfxSwapChain()
     {
         CloseHandle(m_FrameLatencyHandle);
-
-        for (uint32_t i = 0; i < BackBufferCount; i++)
-        {
-            m_Device->FreeDescriptor(m_BackBufferRtvHandles[i]);
-        }
     }
 
     void GfxSwapChain::Resize(uint32_t width, uint32_t height)
@@ -76,8 +65,10 @@ namespace march
         // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
-            m_BackBuffers[i].Reset();
+            m_BackBuffers[i].reset();
         }
+
+        m_Device->WaitForIdleAndReleaseUnusedD3D12Objects();
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         GFX_HR(m_SwapChain->GetDesc1(&swapChainDesc));
@@ -93,10 +84,10 @@ namespace march
     {
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
-            GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&m_BackBuffers[i])));
+            ID3D12Resource* backBuffer = nullptr;
+            GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
 
-            ID3D12Device4* device = m_Device->GetD3D12Device();
-            device->CreateRenderTargetView(m_BackBuffers[i].Get(), nullptr, m_BackBufferRtvHandles[i].GetCpuHandle());
+            m_BackBuffers[i] = std::make_unique<GfxRenderTextureSwapChain>(m_Device, backBuffer);
         }
     }
 
@@ -111,33 +102,13 @@ namespace march
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }
 
-    void GfxSwapChain::SetRenderTarget(GfxCommandList* commandList)
+    GfxRenderTexture* GfxSwapChain::GetBackBuffer() const
     {
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_BackBufferRtvHandles[m_CurrentBackBufferIndex].GetCpuHandle();
-
-        DoBackBufferTransition(commandList, D3D12_RESOURCE_STATE_RENDER_TARGET, true);
-        commandList->GetD3D12CommandList()->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
+        return m_BackBuffers[m_CurrentBackBufferIndex].get();
     }
 
     void GfxSwapChain::PreparePresent(GfxCommandList* commandList)
     {
-        DoBackBufferTransition(commandList, D3D12_RESOURCE_STATE_PRESENT, false);
-    }
-
-    void GfxSwapChain::DoBackBufferTransition(GfxCommandList* commandList, D3D12_RESOURCE_STATES targetState, bool flush)
-    {
-        D3D12_RESOURCE_STATES& state = m_BackBufferStates[m_CurrentBackBufferIndex];
-
-        if (state != targetState)
-        {
-            ID3D12Resource* resource = m_BackBuffers[m_CurrentBackBufferIndex].Get();
-            commandList->AddResourceBarrier(CD3DX12_RESOURCE_BARRIER::Transition(resource, state, targetState));
-            state = targetState;
-
-            if (flush)
-            {
-                commandList->FlushResourceBarriers();
-            }
-        }
+        commandList->ResourceBarrier(GetBackBuffer(), D3D12_RESOURCE_STATE_PRESENT);
     }
 }

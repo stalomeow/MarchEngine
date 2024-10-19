@@ -12,12 +12,21 @@ namespace March.Editor
     {
         private const string ImporterPathSuffix = ".meta";
 
+        private struct NativeReference
+        {
+            public NativeMarchObject Object;
+            public int RefCount;
+        }
+
         private static readonly Dictionary<string, Type> s_AssetImporterTypeMap = new();
         private static int? s_AssetImporterTypeCacheVersion;
 
         // TODO: use case-insensitive dictionary
         private static readonly Dictionary<string, string> s_Guid2PathMap = new();
         private static readonly Dictionary<string, AssetImporter> s_Path2Importers = new();
+
+        // TODO: check memory leaks
+        private static readonly Dictionary<nint, NativeReference> s_NativeRefs = new();
 
         private static readonly FileSystemWatcher s_ProjectAssetFileWatcher;
         private static readonly FileSystemWatcher s_EngineShaderWatcher;
@@ -589,6 +598,44 @@ namespace March.Editor
 
             return path;
         }
+
+        internal static nint NativeLoadAsset(string path)
+        {
+            NativeMarchObject? obj = Load<NativeMarchObject>(path);
+
+            if (obj == null)
+            {
+                Debug.LogError($"Attempting to load a non-native asset: {path}");
+                return nint.Zero;
+            }
+
+            NativeReference nativeRefs = s_NativeRefs.GetValueOrDefault(obj.NativePtr);
+            nativeRefs.Object = obj;
+            nativeRefs.RefCount++;
+            s_NativeRefs[obj.NativePtr] = nativeRefs;
+
+            return obj.NativePtr;
+        }
+
+        internal static void NativeUnloadAsset(nint nativePtr)
+        {
+            if (!s_NativeRefs.TryGetValue(nativePtr, out NativeReference nativeRefs))
+            {
+                Debug.LogError("Attempting to unload an asset that is not loaded");
+                return;
+            }
+
+            nativeRefs.RefCount--;
+
+            if (nativeRefs.RefCount <= 0)
+            {
+                s_NativeRefs.Remove(nativePtr);
+            }
+            else
+            {
+                s_NativeRefs[nativePtr] = nativeRefs;
+            }
+        }
     }
 
     file class EditorAssetManagerImpl : IAssetManagerImpl
@@ -611,6 +658,16 @@ namespace March.Editor
         public T? LoadByGuid<T>(string guid) where T : MarchObject?
         {
             return AssetDatabase.LoadByGuid<T>(guid);
+        }
+
+        public nint NativeLoadAsset(string path)
+        {
+            return AssetDatabase.NativeLoadAsset(path);
+        }
+
+        public void NativeUnloadAsset(nint nativePtr)
+        {
+            AssetDatabase.NativeUnloadAsset(nativePtr);
         }
     }
 }

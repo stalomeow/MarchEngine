@@ -74,11 +74,14 @@ namespace march
 
         uint32_t GetWidth() const override;
         uint32_t GetHeight() const override;
+        bool GetIsSRGB() const;
+        void SetIsSRGB(bool isSRGB);
         void LoadFromDDS(const std::string& name, const void* pSourceDDS, uint32_t size);
 
         const DirectX::TexMetadata& GetMetaData() const { return m_MetaData; }
 
     protected:
+        bool m_IsSRGB;
         DirectX::TexMetadata m_MetaData;
     };
 
@@ -102,8 +105,8 @@ namespace march
 
         uint32_t GetWidth() const override;
         uint32_t GetHeight() const override;
-        DXGI_FORMAT GetFormat() const;
-        GfxRenderTextureDesc GetDesc() const;
+        virtual DXGI_FORMAT GetFormat() const;
+        virtual GfxRenderTextureDesc GetDesc() const;
         bool IsDepthStencilTexture() const;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsvCpuDescriptorHandle() const { return m_RtvDsvDescriptorHandle.GetCpuHandle(); }
@@ -114,9 +117,19 @@ namespace march
         static DXGI_FORMAT GetDepthStencilResFormat(DXGI_FORMAT format);
         static DXGI_FORMAT GetDepthStencilSRVFormat(DXGI_FORMAT format);
 
-        GfxDescriptorHandle m_RtvDsvDescriptorHandle;
+        GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, bool isDepthStencilTexture);
 
-    private:
+        GfxDescriptorHandle m_RtvDsvDescriptorHandle;
         bool m_IsDepthStencilTexture;
+    };
+
+    class GfxRenderTextureSwapChain : public GfxRenderTexture
+    {
+    public:
+        GfxRenderTextureSwapChain(GfxDevice* device, ID3D12Resource* resource);
+        virtual ~GfxRenderTextureSwapChain() = default;
+
+        DXGI_FORMAT GetFormat() const override;
+        GfxRenderTextureDesc GetDesc() const override;
     };
 }

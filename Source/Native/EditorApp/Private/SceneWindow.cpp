@@ -110,8 +110,8 @@ namespace march
         GfxDevice* device = GetGfxDevice();
         ImVec2 size = ImGui::GetContentRegionAvail();
 
-        uint32_t width = std::max(static_cast<uint32_t>(size.x), 16u);
-        uint32_t height = std::max(static_cast<uint32_t>(size.y), 16u);
+        uint32_t width = static_cast<uint32_t>(std::max(size.x, 1.0f));
+        uint32_t height = static_cast<uint32_t>(std::max(size.y, 1.0f));
 
         if (m_Display == nullptr)
         {

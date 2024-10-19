@@ -107,8 +107,7 @@ namespace march
         m_ViewDescriptorTableAllocator.reset();
         m_SamplerDescriptorTableAllocator.reset();
 
-        WaitForIdle(); // 防止崩溃
-        ProcessReleaseQueue();
+        WaitForIdleAndReleaseUnusedD3D12Objects();
         assert(m_ReleaseQueue.empty());
     }
 
@@ -179,8 +178,8 @@ namespace march
                 DEBUG_LOG_INFO(L"Release D3D12Object %s", name);
             }
 
-            // 保证彻底释放
-            while (object->Release() > 0) {}
+            // 貌似不能 while (object->Release() > 0); 这样一直释放，会报 refCount < 0 的错误
+            object->Release();
         }
     }
 
@@ -195,20 +194,20 @@ namespace march
         m_GraphicsFence->Wait();
     }
 
-    void GfxDevice::ResizeBackBuffer(uint32_t width, uint32_t height)
+    void GfxDevice::WaitForIdleAndReleaseUnusedD3D12Objects()
     {
         WaitForIdle();
+        ProcessReleaseQueue();
+    }
+
+    void GfxDevice::ResizeBackBuffer(uint32_t width, uint32_t height)
+    {
         m_SwapChain->Resize(width, height);
     }
 
-    void GfxDevice::SetBackBufferAsRenderTarget()
+    GfxRenderTexture* GfxDevice::GetBackBuffer() const
     {
-        m_SwapChain->SetRenderTarget(m_GraphicsCommandList.get());
-    }
-
-    DXGI_FORMAT GfxDevice::GetBackBufferFormat() const
-    {
-        return GfxSwapChain::BackBufferFormat;
+        return m_SwapChain->GetBackBuffer();
     }
 
     uint32_t GfxDevice::GetMaxFrameLatency() const

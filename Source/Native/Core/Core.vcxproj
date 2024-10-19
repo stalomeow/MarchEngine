@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\AssetManager.cpp" />
     <ClCompile Include="Private\Component.binding.cpp" />
     <ClCompile Include="Private\Debug.binding.cpp" />
     <ClCompile Include="Private\Debug.cpp" />
@@ -22,6 +23,7 @@
     <ClCompile Include="Private\WinApplication.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Public\AssetManger.h" />
     <ClInclude Include="Public\Component.h" />
     <ClInclude Include="Public\Debug.h" />
     <ClInclude Include="Public\GameTimer.h" />

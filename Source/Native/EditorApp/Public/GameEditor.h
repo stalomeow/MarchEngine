@@ -10,7 +10,11 @@
 #include <string>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
-#include <imgui_impl_dx12.h>
+#include "imgui_impl_dx12.h"
+#include "RenderGraph.h"
+#include "AssetManger.h"
+#include "Shader.h"
+#include "Material.h"
 
 namespace march
 {
@@ -36,13 +40,20 @@ namespace march
         std::string GetFontAwesomePath(std::string fontName) const;
         void ReloadFonts();
 
+        void DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId);
+        void BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcId, int32_t backBufferId);
+
     private:
+        UniqueAssetPtr<Shader> m_GammaToLinearBlitShader = nullptr;
+        std::unique_ptr<Material> m_GammaToLinearBlitMaterial = nullptr;
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
+        std::unique_ptr<RenderGraph> m_ImGuiRenderGraph = nullptr;
         GfxDescriptorTable m_StaticDescriptorViewTable;
 
         std::string m_ImGuiIniFilename{};
         bool m_IsScriptInitialized = false;
 
+        const DXGI_FORMAT m_ImGuiRtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;
         const float m_FontSizeIcon = 13.0f;

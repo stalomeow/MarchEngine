@@ -1,6 +1,7 @@
 using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Core.Serialization;
 using Newtonsoft.Json;
 
 namespace March.Editor.Importers
@@ -10,16 +11,22 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Texture Asset";
 
-        protected override int Version => base.Version + 1;
+        protected override int Version => base.Version + 2;
 
         public override string IconNormal => FontAwesome6.Image;
 
         protected override bool UseCache => true;
 
-        [JsonProperty("Filter Mode")]
+        [JsonProperty]
+        [InspectorName("sRGB")]
+        public bool IsSRGB { get; set; } = true;
+
+        [JsonProperty]
+        [InspectorName("Filter Mode")]
         public FilterMode Filter { get; set; }
 
-        [JsonProperty("Wrap Mode")]
+        [JsonProperty]
+        [InspectorName("Wrap Mode")]
         public WrapMode Wrap { get; set; }
 
         protected override MarchObject CreateAsset()
@@ -30,6 +37,7 @@ namespace March.Editor.Importers
         protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
         {
             Texture texture = (Texture)asset;
+            texture.IsSRGB = IsSRGB;
             texture.Filter = Filter;
             texture.Wrap = Wrap;
 

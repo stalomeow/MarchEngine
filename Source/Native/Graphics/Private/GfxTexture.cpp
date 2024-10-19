@@ -7,13 +7,17 @@
 #include <stdexcept>
 #include <DirectXColors.h>
 
+#undef min
+#undef max
+
 using namespace DirectX;
 
 namespace march
 {
     GfxTexture::GfxTexture(GfxDevice* device)
         : GfxResource(device, D3D12_RESOURCE_STATE_COMMON)
-        , m_FilterMode(GfxFilterMode::Point), m_WrapMode(GfxWrapMode::Repeat)
+        , m_FilterMode(GfxFilterMode::Point)
+        , m_WrapMode(GfxWrapMode::Repeat)
     {
         m_SrvDescriptorHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         m_SamplerDescriptorHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
@@ -117,6 +121,7 @@ namespace march
         if (s_pBlackTexture == nullptr)
         {
             s_pBlackTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            s_pBlackTexture->SetIsSRGB(true);
             s_pBlackTexture->LoadFromDDS("DefaultBlackTexture", ddsData, sizeof(ddsData));
             s_pBlackTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
@@ -142,6 +147,7 @@ namespace march
         if (s_pWhiteTexture == nullptr)
         {
             s_pWhiteTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            s_pBlackTexture->SetIsSRGB(true);
             s_pWhiteTexture->LoadFromDDS("DefaultWhiteTexture", ddsData, sizeof(ddsData));
             s_pWhiteTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
@@ -149,7 +155,7 @@ namespace march
         return s_pWhiteTexture.get();
     }
 
-    GfxTexture2D::GfxTexture2D(GfxDevice* device) : GfxTexture(device), m_MetaData{}
+    GfxTexture2D::GfxTexture2D(GfxDevice* device) : GfxTexture(device), m_IsSRGB(true), m_MetaData{}
     {
     }
 
@@ -163,6 +169,42 @@ namespace march
         return static_cast<uint32_t>(m_MetaData.height);
     }
 
+    bool GfxTexture2D::GetIsSRGB() const
+    {
+        return m_IsSRGB;
+    }
+
+    void GfxTexture2D::SetIsSRGB(bool isSRGB)
+    {
+        m_IsSRGB = isSRGB;
+    }
+
+    static void ConvertImageFormat(ScratchImage& image, DXGI_FORMAT format, bool inputIsSRGB)
+    {
+        if (format == image.GetMetadata().format || format == DXGI_FORMAT_UNKNOWN)
+        {
+            return;
+        }
+
+        TEX_FILTER_FLAGS filterFlags = inputIsSRGB ? TEX_FILTER_SRGB_IN : TEX_FILTER_DEFAULT;
+        ScratchImage newImage;
+
+        if (IsCompressed(image.GetMetadata().format))
+        {
+            ScratchImage di;
+            GFX_HR(Decompress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DXGI_FORMAT_R8G8B8A8_UNORM, di));
+            ScratchImage dic;
+            GFX_HR(Convert(di.GetImages(), di.GetImageCount(), di.GetMetadata(), DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, filterFlags, TEX_THRESHOLD_DEFAULT, dic));
+            GFX_HR(Compress(dic.GetImages(), dic.GetImageCount(), dic.GetMetadata(), format, TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT, newImage));
+        }
+        else
+        {
+            GFX_HR(Convert(image.GetImages(), image.GetImageCount(), image.GetMetadata(), format, filterFlags, TEX_THRESHOLD_DEFAULT, newImage));
+        }
+
+        image = std::move(newImage);
+    }
+
     void GfxTexture2D::LoadFromDDS(const std::string& name, const void* pSourceDDS, uint32_t size)
     {
         ReleaseD3D12Resource();
@@ -170,7 +212,26 @@ namespace march
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
 
         ScratchImage image;
-        GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, &m_MetaData, image));
+        GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, nullptr, image));
+
+        // 在 DirectXTex 进行 Convert 时，如果输入图像是 sRGB，则会自动添加 TEX_FILTER_SRGB_IN
+        // 没办法把 sRGB 格式直接 reinterpret 为 linear 格式，一定会有一次 Gamma -> Linear 的计算转换
+        // 但 linear 格式可以直接 reinterpret 为 sRGB 格式，只要手动指定了 TEX_FILTER_SRGB_IN
+
+        if constexpr (GfxSupportInfo::GetColorSpace() == GfxColorSpace::Linear)
+        {
+            // 目前仅处理 sRGB 图像被保存为 linear 格式的情况
+            if (m_IsSRGB && !IsSRGB(image.GetMetadata().format))
+            {
+                ConvertImageFormat(image, MakeSRGB(image.GetMetadata().format), true);
+            }
+        }
+        else
+        {
+            // TODO 处理 Gamma Space
+        }
+
+        m_MetaData = image.GetMetadata();
 
         ID3D12Device* device = m_Device->GetD3D12Device();
         GFX_HR(CreateTexture(device, m_MetaData, &m_Resource));
@@ -203,6 +264,9 @@ namespace march
         DXGI_FORMAT resourceFormat;
         ID3D12Device4* d3d12Device = device->GetD3D12Device();
 
+        uint32_t width = std::max(1u, desc.Width);
+        uint32_t height = std::max(1u, desc.Height);
+
         if (IsDepthStencilFormat(desc.Format))
         {
             clearValue.Format = desc.Format;
@@ -231,8 +295,8 @@ namespace march
             &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
             D3D12_HEAP_FLAG_NONE,
             &CD3DX12_RESOURCE_DESC::Tex2D(resourceFormat,
-                static_cast<UINT64>(desc.Width),
-                static_cast<UINT>(desc.Height),
+                static_cast<UINT64>(width),
+                static_cast<UINT>(height),
                 1, 1,
                 static_cast<UINT>(desc.SampleCount),
                 static_cast<UINT>(desc.SampleQuality),
@@ -269,6 +333,14 @@ namespace march
 
     GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount, uint32_t sampleQuality)
         : GfxRenderTexture(device, name, { format, width, height, sampleCount, sampleQuality }) {}
+
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, bool isDepthStencilTexture)
+        : GfxTexture(device), m_IsDepthStencilTexture(isDepthStencilTexture)
+    {
+        m_Resource = resource;
+        m_RtvDsvDescriptorHandle = device->AllocateDescriptor(isDepthStencilTexture ?
+            D3D12_DESCRIPTOR_HEAP_TYPE_DSV : D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    }
 
     GfxRenderTexture::~GfxRenderTexture()
     {
@@ -378,5 +450,39 @@ namespace march
         default:
             throw std::invalid_argument("Invalid depth stencil format");
         }
+    }
+
+    GfxRenderTextureSwapChain::GfxRenderTextureSwapChain(GfxDevice* device, ID3D12Resource* resource)
+        : GfxRenderTexture(device, resource, false)
+    {
+        SetD3D12ResourceName("SwapChainBackBuffer");
+
+        // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
+        // SwapChain 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
+        D3D12_RENDER_TARGET_VIEW_DESC desc = {};
+        desc.Format = GfxSupportInfo::ToShaderFormat(resource->GetDesc().Format);
+        desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+        ID3D12Device4* d3d12Device = device->GetD3D12Device();
+        d3d12Device->CreateRenderTargetView(m_Resource, &desc, GetRtvDsvCpuDescriptorHandle());
+    }
+
+    DXGI_FORMAT GfxRenderTextureSwapChain::GetFormat() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+        return GfxSupportInfo::ToShaderFormat(desc.Format);
+    }
+
+    GfxRenderTextureDesc GfxRenderTextureSwapChain::GetDesc() const
+    {
+        D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
+
+        GfxRenderTextureDesc result = {};
+        result.Format = GfxSupportInfo::ToShaderFormat(desc.Format);
+        result.Width = static_cast<uint32_t>(desc.Width);
+        result.Height = static_cast<uint32_t>(desc.Height);
+        result.SampleCount = static_cast<uint32_t>(desc.SampleDesc.Count);
+        result.SampleQuality = static_cast<uint32_t>(desc.SampleDesc.Quality);
+        return result;
     }
 }

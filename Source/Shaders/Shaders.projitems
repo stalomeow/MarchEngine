@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)public\Common.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)public\GammaToLinearBlit.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
   </ItemGroup>

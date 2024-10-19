@@ -1,3 +1,6 @@
+using March.Core.Binding;
+using System.Runtime.InteropServices;
+
 namespace March.Core
 {
     public interface IAssetManagerImpl
@@ -9,6 +12,10 @@ namespace March.Core
         T? Load<T>(string path) where T : MarchObject?;
 
         T? LoadByGuid<T>(string guid) where T : MarchObject?;
+
+        nint NativeLoadAsset(string path);
+
+        void NativeUnloadAsset(nint nativePtr);
     }
 
     file class DefaultAssetManagerImpl : IAssetManagerImpl
@@ -32,6 +39,15 @@ namespace March.Core
         {
             return null;
         }
+
+        public nint NativeLoadAsset(string path)
+        {
+            return nint.Zero;
+        }
+
+        public void NativeUnloadAsset(nint nativePtr)
+        {
+        }
     }
 
     public static class AssetManager
@@ -49,5 +65,17 @@ namespace March.Core
         public static MarchObject? LoadByGuid(string guid) => LoadByGuid<MarchObject>(guid);
 
         public static T? LoadByGuid<T>(string guid) where T : MarchObject? => Impl.LoadByGuid<T>(guid);
+
+        [UnmanagedCallersOnly]
+        private static nint NativeLoadAsset(nint path)
+        {
+            return Impl.NativeLoadAsset(NativeString.Get(path));
+        }
+
+        [UnmanagedCallersOnly]
+        private static void NativeUnloadAsset(nint nativePtr)
+        {
+            Impl.NativeUnloadAsset(nativePtr);
+        }
     }
 }

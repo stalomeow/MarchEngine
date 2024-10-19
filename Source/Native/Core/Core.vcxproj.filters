@@ -39,6 +39,9 @@
     <ClCompile Include="Private\Transform.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\AssetManager.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Debug.h">
@@ -64,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\IconsFontAwesome6Brands.h">
       <Filter>ThirdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\AssetManger.h">
+      <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

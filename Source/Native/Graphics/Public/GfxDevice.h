@@ -21,6 +21,7 @@ namespace march
     class GfxDescriptorTable;
     class GfxDescriptorTableAllocator;
     class GfxSwapChain;
+    class GfxRenderTexture;
 
     enum class GfxDescriptorTableType;
 
@@ -54,10 +55,10 @@ namespace march
         void ReleaseD3D12Object(ID3D12Object* object);
         bool IsGraphicsFenceCompleted(uint64_t fenceValue);
         void WaitForIdle();
+        void WaitForIdleAndReleaseUnusedD3D12Objects();
 
         void ResizeBackBuffer(uint32_t width, uint32_t height);
-        void SetBackBufferAsRenderTarget();
-        DXGI_FORMAT GetBackBufferFormat() const;
+        GfxRenderTexture* GetBackBuffer() const;
         uint32_t GetMaxFrameLatency() const;
 
         GfxDescriptorHandle AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);

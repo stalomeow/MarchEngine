@@ -27,6 +27,13 @@ namespace March.Core.Rendering
         private byte[] m_SerializedDDSData = [];
 
         [JsonProperty]
+        public bool IsSRGB
+        {
+            get => Texture_GetIsSRGB(NativePtr);
+            set => Texture_SetIsSRGB(NativePtr, value);
+        }
+
+        [JsonProperty]
         public FilterMode Filter
         {
             get => Texture_GetFilterMode(NativePtr);
@@ -92,6 +99,12 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial WrapMode Texture_GetWrapMode(nint pTexture);
+
+        [NativeFunction]
+        private static partial bool Texture_GetIsSRGB(nint pTexture);
+
+        [NativeFunction]
+        private static partial void Texture_SetIsSRGB(nint pTexture, bool sRGB);
 
         #endregion
     }

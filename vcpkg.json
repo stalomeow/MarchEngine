@@ -12,7 +12,6 @@
       "name": "imgui",
       "features": [
         "docking-experimental",
-        "dx12-binding",
         "freetype",
         "win32-binding"
       ]

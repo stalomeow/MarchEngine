@@ -24,7 +24,9 @@
 #include "ConsoleWindow.h"
 #include "IconsFontAwesome6.h"
 #include "IconsFontAwesome6Brands.h"
+#include "GfxSupportInfo.h"
 #include <imgui_freetype.h>
+#include "Shader.h"
 
 using namespace DirectX;
 
@@ -77,6 +79,7 @@ namespace march
 
         Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // temp
         m_RenderPipeline = std::make_unique<RenderPipeline>();
+        m_ImGuiRenderGraph = std::make_unique<RenderGraph>(false);
         m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
 
         InitImGui();
@@ -87,9 +90,9 @@ namespace march
         // https://github.com/ocornut/imgui/issues/707
 
         constexpr auto ColorFromBytes = [](uint8_t r, uint8_t g, uint8_t b)
-            {
-                return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
-            };
+        {
+            return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
+        };
 
         auto& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
@@ -203,7 +206,7 @@ namespace march
 
         auto device = GetGfxDevice()->GetD3D12Device();
         ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
-            GetGfxDevice()->GetBackBufferFormat(), m_StaticDescriptorViewTable.GetD3D12DescriptorHeap(),
+            m_ImGuiRtvFormat, m_StaticDescriptorViewTable.GetD3D12DescriptorHeap(),
             m_StaticDescriptorViewTable.GetCpuHandle(0), m_StaticDescriptorViewTable.GetGpuHandle(0));
 
         ImGuizmo::GetStyle().RotationLineThickness = 3.0f;
@@ -219,6 +222,7 @@ namespace march
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
 
+        m_ImGuiRenderGraph.reset();
         m_RenderPipeline.reset();
         DestroyAllPipelineStates();
         Display::DestroyMainDisplay();
@@ -332,17 +336,69 @@ namespace march
         if (willQuit && m_IsScriptInitialized)
         {
             m_IsScriptInitialized = false;
+
+            m_GammaToLinearBlitShader.Reset();
+            m_GammaToLinearBlitMaterial.reset();
+
             // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
             DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
         }
 
-        // Render Dear ImGui graphics
-        ImGui::Render();
-        device->SetBackBufferAsRenderTarget();
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), device->GetGraphicsCommandList()->GetD3D12CommandList());
+        if (!willQuit)
+        {
+            // Render Dear ImGui graphics
+            int32_t tempRenderTargetId = Shader::GetNameId("_TempImGuiRenderTarget");
+            int32_t backBufferId = Shader::GetNameId("_BackBuffer");
+
+            if (!m_GammaToLinearBlitShader)
+            {
+                m_GammaToLinearBlitShader = UniqueAssetPtr<Shader>::Make("Engine/Shaders/GammaToLinearBlit.shader");
+                m_GammaToLinearBlitMaterial = std::make_unique<Material>();
+                m_GammaToLinearBlitMaterial->SetShader(m_GammaToLinearBlitShader.Get());
+            }
+
+            DrawImGuiRenderGraph(device, tempRenderTargetId);
+            BlitImGuiToBackBuffer(device, tempRenderTargetId, backBufferId);
+            m_ImGuiRenderGraph->CompileAndExecute();
+        }
 
         device->EndFrame();
+    }
+
+    void GameEditor::DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId)
+    {
+        auto builder = m_ImGuiRenderGraph->AddPass("DrawImGui");
+
+        GfxRenderTextureDesc desc = device->GetBackBuffer()->GetDesc();
+        desc.Format = m_ImGuiRtvFormat;
+
+        builder.CreateTransientTexture(renderTargetId, desc);
+        builder.SetRenderTargets(renderTargetId);
+        builder.ClearRenderTargets(ClearFlags::Color);
+
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            ImGui::Render();
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), device->GetGraphicsCommandList()->GetD3D12CommandList());
+        });
+    }
+
+    void GameEditor::BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcId, int32_t backBufferId)
+    {
+        auto builder = m_ImGuiRenderGraph->AddPass("BlitImGui");
+
+        builder.AllowPassCulling(false);
+        builder.ImportTexture(backBufferId, device->GetBackBuffer());
+        builder.SetRenderTargets(backBufferId);
+
+        TextureHandle srcTexture = builder.ReadTexture(srcId, ReadFlags::PixelShader);
+
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            m_GammaToLinearBlitMaterial->SetTexture("_SrcTex", srcTexture.Get());
+            context.DrawMesh(m_RenderPipeline->m_FullScreenTriangleMesh.get(), m_GammaToLinearBlitMaterial.get());
+        });
     }
 
     void GameEditor::OnResized()

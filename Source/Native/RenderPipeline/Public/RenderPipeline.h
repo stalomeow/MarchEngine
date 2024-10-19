@@ -72,10 +72,12 @@ namespace march
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
         void PrepareTextureForImGui(int32_t id);
 
+    public:
+        std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
+
     private:
         std::vector<RenderObject*> m_RenderObjects{};
         std::vector<Light*> m_Lights{};
-        std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
         std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
     };
 }

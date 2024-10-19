@@ -100,7 +100,7 @@ namespace march
         friend RenderGraphBuilder;
 
     public:
-        RenderGraph();
+        RenderGraph(bool emitEvents = true);
         ~RenderGraph() = default;
 
         RenderGraph(const RenderGraph&) = delete;
@@ -132,6 +132,7 @@ namespace march
 
         RenderGraphResourceData& GetResourceData(int32_t id);
 
+        bool m_EmitEvents;
         std::vector<RenderGraphPass> m_Passes;
         std::vector<int32_t> m_SortedPasses;
         std::unordered_map<int32_t, RenderGraphResourceData> m_ResourceDataMap;

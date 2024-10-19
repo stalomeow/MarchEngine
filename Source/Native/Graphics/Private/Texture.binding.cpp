@@ -37,3 +37,15 @@ NATIVE_EXPORT_AUTO Texture_GetWrapMode(cs<GfxTexture*> pTexture)
 {
     retcs pTexture->GetWrapMode();
 }
+
+NATIVE_EXPORT_AUTO Texture_GetIsSRGB(cs<GfxTexture*> pTexture)
+{
+    auto tex2D = reinterpret_cast<GfxTexture2D*>(pTexture.data);
+    retcs tex2D->GetIsSRGB();
+}
+
+NATIVE_EXPORT_AUTO Texture_SetIsSRGB(cs<GfxTexture*> pTexture, cs_bool isSRGB)
+{
+    auto tex2D = reinterpret_cast<GfxTexture2D*>(pTexture.data);
+    tex2D->SetIsSRGB(isSRGB);
+}

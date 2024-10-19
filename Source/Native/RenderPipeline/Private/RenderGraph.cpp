@@ -55,8 +55,9 @@ namespace march
     {
     }
 
-    RenderGraph::RenderGraph()
-        : m_Passes{}
+    RenderGraph::RenderGraph(bool emitEvents)
+        : m_EmitEvents(emitEvents)
+        , m_Passes{}
         , m_SortedPasses{}
         , m_ResourceDataMap{}
     {
@@ -83,9 +84,12 @@ namespace march
         {
             if (CompilePasses())
             {
-                for (IRenderGraphCompiledEventListener* listener : s_GraphCompiledEventListeners)
+                if (m_EmitEvents)
                 {
-                    listener->OnGraphCompiled(*this, m_SortedPasses);
+                    for (IRenderGraphCompiledEventListener* listener : s_GraphCompiledEventListeners)
+                    {
+                        listener->OnGraphCompiled(*this, m_SortedPasses);
+                    }
                 }
 
                 ExecutePasses();

@@ -23,6 +23,8 @@ namespace march
         { ManagedMethod::EditorApplication_OnTick                 , { L"March.Editor.EditorApplication,March.Editor", L"OnTick"                  } },
         { ManagedMethod::EditorApplication_OnQuit                 , { L"March.Editor.EditorApplication,March.Editor", L"OnQuit"                  } },
         { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { L"March.Editor.EditorApplication,March.Editor", L"OpenConsoleWindowIfNot"  } },
+        { ManagedMethod::AssetManager_NativeLoadAsset             , { L"March.Core.AssetManager,March.Core"         , L"NativeLoadAsset"         } },
+        { ManagedMethod::AssetManager_NativeUnloadAsset           , { L"March.Core.AssetManager,March.Core"         , L"NativeUnloadAsset"       } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";
