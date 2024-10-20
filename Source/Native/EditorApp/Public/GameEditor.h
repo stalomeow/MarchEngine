@@ -54,7 +54,7 @@ namespace march
         std::string m_ImGuiIniFilename{};
         bool m_IsScriptInitialized = false;
 
-        const DXGI_FORMAT m_ImGuiRtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        const DXGI_FORMAT m_ImGuiRtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;
         const float m_FontSizeIcon = 13.0f;
