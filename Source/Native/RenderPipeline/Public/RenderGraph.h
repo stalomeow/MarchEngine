@@ -46,6 +46,7 @@ namespace march
     {
         std::string Name;
 
+        bool HasSideEffects; // 如果写入了 persistent resource，那么就有副作用
         bool AllowPassCulling;
         std::unordered_map<int32_t, ReadFlags> ResourcesRead;     // 相当于进来的边
         std::unordered_map<int32_t, WriteFlags> ResourcesWritten; // 相当于出去的边

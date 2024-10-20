@@ -388,7 +388,6 @@ namespace march
     {
         auto builder = m_ImGuiRenderGraph->AddPass("BlitImGuiToBackBuffer");
 
-        builder.AllowPassCulling(false);
         builder.ImportTexture(backBufferId, device->GetBackBuffer());
         builder.SetRenderTargets(backBufferId);
 

@@ -54,7 +54,7 @@ namespace march
             {
                 for (size_t i = 0; i < pass.NumColorTargets; i++)
                 {
-                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i]));
+                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i]) + " (T)");
                     tempData.OutputIndexMap[pass.ColorTargets[i]] = static_cast<int32_t>(node.Resources.size() - 1);
 
                     if ((pass.RenderTargetsLoadFlags & LoadFlags::DiscardColors) == LoadFlags::None)
@@ -65,7 +65,7 @@ namespace march
 
                 if (pass.HasDepthStencilTarget)
                 {
-                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget));
+                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget) + " (T)");
                     tempData.OutputIndexMap[pass.DepthStencilTarget] = static_cast<int32_t>(node.Resources.size() - 1);
 
                     if ((pass.RenderTargetsLoadFlags & LoadFlags::DiscardDepthStencil) == LoadFlags::None)
@@ -77,13 +77,13 @@ namespace march
 
             for (auto& kv : pass.ResourcesRead)
             {
-                node.Resources.push_back(Shader::GetIdName(kv.first));
+                node.Resources.push_back(Shader::GetIdName(kv.first) + " (R)");
                 tempData.InputIndexMap[kv.first] = static_cast<int32_t>(node.Resources.size() - 1);
             }
 
             for (auto& kv : pass.ResourcesWritten)
             {
-                node.Resources.push_back(Shader::GetIdName(kv.first));
+                node.Resources.push_back(Shader::GetIdName(kv.first) + " (W)");
                 tempData.OutputIndexMap[kv.first] = static_cast<int32_t>(node.Resources.size() - 1);
             }
         }

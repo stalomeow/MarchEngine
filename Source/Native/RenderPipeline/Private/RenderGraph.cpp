@@ -30,6 +30,7 @@ namespace march
 
     RenderGraphPass::RenderGraphPass(const std::string& name)
         : Name(name)
+        , HasSideEffects(false)
         , AllowPassCulling(true)
         , ResourcesRead{}
         , ResourcesWritten{}
@@ -217,7 +218,7 @@ namespace march
             return false;
         }
 
-        if (outdegree == 0 && pass.AllowPassCulling)
+        if (outdegree == 0 && !pass.HasSideEffects && pass.AllowPassCulling)
         {
             pass.SortState = RenderGraphPassSortState::Culled;
             return true;
@@ -590,6 +591,7 @@ namespace march
                 throw std::runtime_error("Resource data not found");
             }
 
+            pass.HasSideEffects |= !resIt->second.IsTransient();
             pass.ResourcesWritten.emplace(id, flags);
             resIt->second.AddProducerPass(m_PassIndex);
         }
@@ -702,29 +704,32 @@ namespace march
             return;
         }
 
-        // Load Colors
-        if ((pass.RenderTargetsLoadFlags & LoadFlags::DiscardColors) == LoadFlags::None)
-        {
-            for (size_t i = 0; i < pass.NumColorTargets; i++)
-            {
-                auto it = m_Graph->m_ResourceDataMap.find(pass.ColorTargets[i]);
-                if (it == m_Graph->m_ResourceDataMap.end())
-                {
-                    throw std::runtime_error("Resource data not found");
-                }
+        bool loadColors = (pass.RenderTargetsLoadFlags & LoadFlags::DiscardColors) == LoadFlags::None;
+        bool loadDepthStencil = (pass.RenderTargetsLoadFlags & LoadFlags::DiscardDepthStencil) == LoadFlags::None;
 
+        for (size_t i = 0; i < pass.NumColorTargets; i++)
+        {
+            auto it = m_Graph->m_ResourceDataMap.find(pass.ColorTargets[i]);
+            if (it == m_Graph->m_ResourceDataMap.end())
+            {
+                throw std::runtime_error("Resource data not found");
+            }
+
+            if (loadColors)
+            {
                 // render target 可以没有 producer
                 if (int32_t producerPassIndex = it->second.GetLastProducerPass(); producerPassIndex >= 0)
                 {
                     m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
                 }
-
-                it->second.AddProducerPass(m_PassIndex);
             }
+
+            pass.HasSideEffects |= !it->second.IsTransient();
+            it->second.AddProducerPass(m_PassIndex);
         }
 
         // Load Depth Stencil
-        if (pass.HasDepthStencilTarget && (pass.RenderTargetsLoadFlags & LoadFlags::DiscardDepthStencil) == LoadFlags::None)
+        if (pass.HasDepthStencilTarget)
         {
             auto it = m_Graph->m_ResourceDataMap.find(pass.DepthStencilTarget);
             if (it == m_Graph->m_ResourceDataMap.end())
@@ -732,12 +737,16 @@ namespace march
                 throw std::runtime_error("Resource data not found");
             }
 
-            // render target 可以没有 producer
-            if (int32_t producerPassIndex = it->second.GetLastProducerPass(); producerPassIndex >= 0)
+            if (loadDepthStencil)
             {
-                m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
+                // render target 可以没有 producer
+                if (int32_t producerPassIndex = it->second.GetLastProducerPass(); producerPassIndex >= 0)
+                {
+                    m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
+                }
             }
 
+            pass.HasSideEffects |= !it->second.IsTransient();
             it->second.AddProducerPass(m_PassIndex);
         }
     }
