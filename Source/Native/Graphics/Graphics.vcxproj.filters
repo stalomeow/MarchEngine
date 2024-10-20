@@ -57,7 +57,10 @@
     <ClInclude Include="Public\Shader.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxSupportInfo.h">
+    <ClInclude Include="Public\GfxSettings.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxHelpers.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>
@@ -113,10 +116,10 @@
     <ClCompile Include="Private\Shader.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxSupportInfo.cpp">
+    <ClCompile Include="Private\GfxHelpers.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxSupportInfo.binding.cpp">
+    <ClCompile Include="Private\GfxSettings.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

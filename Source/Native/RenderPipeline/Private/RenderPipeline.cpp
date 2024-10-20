@@ -12,7 +12,6 @@
 #include "Camera.h"
 #include "RenderObject.h"
 #include "Display.h"
-#include "GfxSupportInfo.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>

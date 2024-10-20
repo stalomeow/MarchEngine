@@ -23,24 +23,24 @@ namespace March.Editor.Importers
 
         [JsonProperty]
         [HideInInspector]
-        private bool m_UseReversedZBuffer = GfxSupportInfo.UseReversedZBuffer;
+        private bool m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
 
         [JsonProperty]
         [HideInInspector]
-        private GfxColorSpace m_ColorSpace = GfxSupportInfo.ColorSpace;
+        private GraphicsColorSpace m_ColorSpace = GraphicsSettings.ColorSpace;
 
         public override bool NeedReimportAsset()
         {
-            return (m_UseReversedZBuffer != GfxSupportInfo.UseReversedZBuffer)
-                || (m_ColorSpace != GfxSupportInfo.ColorSpace)
+            return (m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer)
+                || (m_ColorSpace != GraphicsSettings.ColorSpace)
                 || base.NeedReimportAsset();
         }
 
         protected override void OnWillSaveImporter()
         {
             base.OnWillSaveImporter();
-            m_UseReversedZBuffer = GfxSupportInfo.UseReversedZBuffer;
-            m_ColorSpace = GfxSupportInfo.ColorSpace;
+            m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
+            m_ColorSpace = GraphicsSettings.ColorSpace;
         }
 
         protected override MarchObject CreateAsset()

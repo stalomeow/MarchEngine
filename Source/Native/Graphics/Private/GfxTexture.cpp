@@ -3,7 +3,8 @@
 #include "GfxBuffer.h"
 #include "GfxCommandList.h"
 #include "GfxExcept.h"
-#include "GfxSupportInfo.h"
+#include "GfxSettings.h"
+#include "GfxHelpers.h"
 #include <stdexcept>
 #include <DirectXColors.h>
 
@@ -179,32 +180,6 @@ namespace march
         m_IsSRGB = isSRGB;
     }
 
-    static void ConvertImageFormat(ScratchImage& image, DXGI_FORMAT format, bool inputIsSRGB)
-    {
-        if (format == image.GetMetadata().format || format == DXGI_FORMAT_UNKNOWN)
-        {
-            return;
-        }
-
-        TEX_FILTER_FLAGS filterFlags = inputIsSRGB ? TEX_FILTER_SRGB_IN : TEX_FILTER_DEFAULT;
-        ScratchImage newImage;
-
-        if (IsCompressed(image.GetMetadata().format))
-        {
-            ScratchImage di;
-            GFX_HR(Decompress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DXGI_FORMAT_R8G8B8A8_UNORM, di));
-            ScratchImage dic;
-            GFX_HR(Convert(di.GetImages(), di.GetImageCount(), di.GetMetadata(), DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, filterFlags, TEX_THRESHOLD_DEFAULT, dic));
-            GFX_HR(Compress(dic.GetImages(), dic.GetImageCount(), dic.GetMetadata(), format, TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT, newImage));
-        }
-        else
-        {
-            GFX_HR(Convert(image.GetImages(), image.GetImageCount(), image.GetMetadata(), format, filterFlags, TEX_THRESHOLD_DEFAULT, newImage));
-        }
-
-        image = std::move(newImage);
-    }
-
     void GfxTexture2D::LoadFromDDS(const std::string& name, const void* pSourceDDS, uint32_t size)
     {
         ReleaseD3D12Resource();
@@ -214,27 +189,29 @@ namespace march
         ScratchImage image;
         GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, nullptr, image));
 
-        // 在 DirectXTex 进行 Convert 时，如果输入图像是 sRGB，则会自动添加 TEX_FILTER_SRGB_IN
-        // 没办法把 sRGB 格式直接 reinterpret 为 linear 格式，一定会有一次 sRGB -> Linear 的计算转换
-        // 但 linear 格式可以直接 reinterpret 为 sRGB 格式，只要手动指定了 TEX_FILTER_SRGB_IN
+        // https://github.com/microsoft/DirectXTex/wiki/CreateTexture
+        // The CREATETEX_SRGB flag provides an option for working around gamma issues with content
+        // that is in the sRGB or similar color space but is not encoded explicitly as an SRGB format.
+        // This will force the resource format be one of the of DXGI_FORMAT_*_SRGB formats if it exist.
+        // Note that no pixel data conversion takes place.
+        // The CREATETEX_IGNORE_SRGB flag does the opposite;
+        // it will force the resource format to not have the _*_SRGB version.
+        CREATETEX_FLAGS createFlags;
 
-        if constexpr (GfxSupportInfo::GetColorSpace() == GfxColorSpace::Linear)
+        if constexpr (GfxSettings::GetColorSpace() == GfxColorSpace::Linear)
         {
-            // 目前仅处理 sRGB 图像被保存为 linear 格式的情况
-            if (m_IsSRGB && !IsSRGB(image.GetMetadata().format))
-            {
-                ConvertImageFormat(image, MakeSRGB(image.GetMetadata().format), true);
-            }
+            createFlags = m_IsSRGB ? CREATETEX_FORCE_SRGB : CREATETEX_IGNORE_SRGB;
         }
         else
         {
-            // TODO 处理 Gamma Space
+            // shader 中采样时不进行任何转换
+            createFlags = CREATETEX_IGNORE_SRGB;
         }
 
         m_MetaData = image.GetMetadata();
 
         ID3D12Device* device = m_Device->GetD3D12Device();
-        GFX_HR(CreateTexture(device, m_MetaData, &m_Resource));
+        GFX_HR(CreateTextureEx(device, m_MetaData, D3D12_RESOURCE_FLAG_NONE, createFlags, &m_Resource));
         m_State = D3D12_RESOURCE_STATE_COMMON; // CreateTexture 使用的 state
         SetD3D12ResourceName(name);
 
@@ -270,7 +247,7 @@ namespace march
         if (IsDepthStencilFormat(desc.Format))
         {
             clearValue.Format = desc.Format;
-            clearValue.DepthStencil.Depth = GfxSupportInfo::GetFarClipPlaneDepth();
+            clearValue.DepthStencil.Depth = GfxHelpers::GetFarClipPlaneDepth();
             clearValue.DepthStencil.Stencil = 0;
 
             resourceFormat = GetDepthStencilResFormat(desc.Format);
@@ -460,7 +437,7 @@ namespace march
         // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
         // SwapChain 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
         D3D12_RENDER_TARGET_VIEW_DESC desc = {};
-        desc.Format = GfxSupportInfo::ToShaderFormat(resource->GetDesc().Format);
+        desc.Format = GfxHelpers::ToShaderFormat(resource->GetDesc().Format);
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
         ID3D12Device4* d3d12Device = device->GetD3D12Device();
@@ -470,7 +447,7 @@ namespace march
     DXGI_FORMAT GfxRenderTextureSwapChain::GetFormat() const
     {
         D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
-        return GfxSupportInfo::ToShaderFormat(desc.Format);
+        return GfxHelpers::ToShaderFormat(desc.Format);
     }
 
     GfxRenderTextureDesc GfxRenderTextureSwapChain::GetDesc() const
@@ -478,7 +455,7 @@ namespace march
         D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
 
         GfxRenderTextureDesc result = {};
-        result.Format = GfxSupportInfo::ToShaderFormat(desc.Format);
+        result.Format = GfxHelpers::ToShaderFormat(desc.Format);
         result.Width = static_cast<uint32_t>(desc.Width);
         result.Height = static_cast<uint32_t>(desc.Height);
         result.SampleCount = static_cast<uint32_t>(desc.SampleDesc.Count);

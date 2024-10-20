@@ -2,7 +2,8 @@
 #include "Debug.h"
 #include "StringUtility.h"
 #include "GfxDevice.h"
-#include "GfxSupportInfo.h"
+#include "GfxSettings.h"
+#include "GfxHelpers.h"
 #include "GfxExcept.h"
 #include "GfxTexture.h"
 #include "PathHelper.h"
@@ -271,13 +272,13 @@ namespace march
             // L"-Qstrip_reflect",         // Strip reflection into a separate blob.
         };
 
-        if constexpr (GfxSupportInfo::UseReversedZBuffer())
+        if constexpr (GfxSettings::UseReversedZBuffer())
         {
             pszArgs.push_back(L"-D");
             pszArgs.push_back(L"MARCH_REVERSED_Z=1");
         }
 
-        if constexpr (GfxSupportInfo::GetColorSpace() == GfxColorSpace::Gamma)
+        if constexpr (GfxSettings::GetColorSpace() == GfxColorSpace::Gamma)
         {
             pszArgs.push_back(L"-D");
             pszArgs.push_back(L"MARCH_COLORSPACE_GAMMA=1");
@@ -285,8 +286,8 @@ namespace march
 
         std::vector<std::wstring> dynamicDefines =
         {
-            L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxSupportInfo::GetNearClipPlaneDepth()),
-            L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxSupportInfo::GetFarClipPlaneDepth()),
+            L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxHelpers::GetNearClipPlaneDepth()),
+            L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxHelpers::GetFarClipPlaneDepth()),
         };
 
         for (const auto& d : dynamicDefines)

@@ -44,7 +44,7 @@
 //  2018-06-08: DirectX12: Use draw_data->DisplayPos and draw_data->DisplaySize to setup projection matrix and clipping rectangle (to ease support for future multi-viewport).
 //  2018-02-22: Merged into master with all Win32 code synchronized to other examples.
 
-#include "GfxSupportInfo.h"
+#include "GfxSettings.h"
 
 #include <imgui.h>
 #ifndef IMGUI_DISABLE
@@ -678,7 +678,7 @@ bool    ImGui_ImplDX12_CreateDeviceObjects()
 
     // Create the pixel shader
     {
-        static const char* pixelShader = (march::GfxSupportInfo::GetColorSpace() == march::GfxColorSpace::Linear) ?
+        static const char* pixelShader = (march::GfxSettings::GetColorSpace() == march::GfxColorSpace::Linear) ?
             "struct PS_INPUT\
             {\
               float4 pos : SV_POSITION;\

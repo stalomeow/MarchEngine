@@ -3,7 +3,7 @@
 #include "Debug.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
-#include "GfxSupportInfo.h"
+#include "GfxHelpers.h"
 
 using namespace DirectX;
 
@@ -56,7 +56,7 @@ namespace march
     void Material::SetColor(int32_t id, const XMFLOAT4& value)
     {
         m_Colors[id] = value;
-        SetConstantBufferValue(id, GfxSupportInfo::ToShaderColor(value));
+        SetConstantBufferValue(id, GfxHelpers::ToShaderColor(value));
     }
 
     void Material::SetTexture(int32_t id, GfxTexture* texture)
@@ -308,7 +308,7 @@ namespace march
                 XMFLOAT4 value;
                 if (GetColor(id, &value))
                 {
-                    SetConstantBufferValue(id, GfxSupportInfo::ToShaderColor(value));
+                    SetConstantBufferValue(id, GfxHelpers::ToShaderColor(value));
                 }
                 break;
             }

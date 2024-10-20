@@ -24,7 +24,6 @@
 #include "ConsoleWindow.h"
 #include "IconsFontAwesome6.h"
 #include "IconsFontAwesome6Brands.h"
-#include "GfxSupportInfo.h"
 #include <imgui_freetype.h>
 #include "Shader.h"
 

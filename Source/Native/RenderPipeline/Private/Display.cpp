@@ -1,7 +1,7 @@
 #include "Display.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
-#include "GfxSupportInfo.h"
+#include "GfxHelpers.h"
 
 namespace march
 {
@@ -14,7 +14,7 @@ namespace march
         , m_ResolvedColorBuffer(nullptr)
         , m_ResolvedDepthStencilBuffer(nullptr)
     {
-        m_MSAAQuality = GfxSupportInfo::GetMSAAQuality(device, s_ColorFormat, s_MSAASampleCount);
+        m_MSAAQuality = GfxHelpers::GetMSAAQuality(device, s_ColorFormat, s_MSAASampleCount);
         CreateBuffers(width, height);
     }
 
