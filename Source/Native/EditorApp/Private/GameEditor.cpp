@@ -377,7 +377,7 @@ namespace march
         desc.Format = m_ImGuiRtvFormat;
 
         builder.CreateTransientTexture(renderTargetId, desc);
-        builder.SetRenderTargets(renderTargetId);
+        builder.SetColorTarget(renderTargetId, false);
         builder.ClearRenderTargets(ClearFlags::Color);
 
         builder.SetRenderFunc([=](RenderGraphContext& context)
@@ -392,13 +392,13 @@ namespace march
         auto builder = m_ImGuiRenderGraph->AddPass("BlitImGuiToBackBuffer");
 
         builder.ImportTexture(backBufferId, device->GetBackBuffer());
-        builder.SetRenderTargets(backBufferId);
+        builder.SetColorTarget(backBufferId, false);
 
         TextureHandle srcTexture = builder.ReadTexture(srcTextureId, ReadFlags::PixelShader);
 
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            m_BlitImGuiMaterial->SetTexture("_SrcTex", srcTexture.Get());
+            context.SetTexture("_SrcTex", srcTexture.Get());
             context.DrawMesh(GetFullScreenTriangleMesh(), m_BlitImGuiMaterial.get());
         });
     }

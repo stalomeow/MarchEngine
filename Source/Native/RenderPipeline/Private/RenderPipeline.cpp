@@ -29,10 +29,10 @@ namespace march
         m_FullScreenTriangleMesh.reset(CreateSimpleGfxMesh(GetGfxDevice()));
         m_FullScreenTriangleMesh->AddFullScreenTriangle();
 
-        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer0"));
-        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer1"));
-        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer2"));
-        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer3"));
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), GfxHelpers::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM);
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer2"), DXGI_FORMAT_R8G8B8A8_UNORM);
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer3"), DXGI_FORMAT_R32_FLOAT);
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
@@ -173,7 +173,8 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("ClearTargets");
 
-        builder.SetRenderTargets(colorTargetId, depthStencilTargetId);
+        builder.SetColorTarget(colorTargetId, false);
+        builder.SetDepthStencilTarget(depthStencilTargetId, false);
         builder.ClearRenderTargets();
     }
 
@@ -182,28 +183,17 @@ namespace march
         auto builder = m_RenderGraph->AddPass("DrawObjects");
 
         GfxRenderTextureDesc desc = builder.GetTextureDesc(colorTargetId);
-        desc.SampleCount = 1;
-        desc.SampleQuality = 0;
 
-        for (size_t i = 0; i < m_GBufferIds.size(); i++)
+        for (int32_t i = 0; i < m_GBuffers.size(); i++)
         {
-            if (i == 0)
-            {
-                desc.Format = GfxHelpers::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM);
-            }
-            else if (i == 3)
-            {
-                desc.Format = DXGI_FORMAT_R32_FLOAT;
-            }
-            else
-            {
-                desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-            }
+            auto& [id, format] = m_GBuffers[i];
 
-            builder.CreateTransientTexture(m_GBufferIds[i], desc);
+            desc.Format = format;
+            builder.CreateTransientTexture(id, desc);
+            builder.SetColorTarget(id, i, false);
         }
 
-        builder.SetRenderTargets(m_GBufferIds.size(), m_GBufferIds.data(), depthStencilTargetId);
+        builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.ClearRenderTargets(ClearFlags::Color);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
@@ -215,20 +205,23 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("DeferredLighting");
 
-        std::vector<TextureHandle> gbuffers{};
+        int32_t numGBuffers = 0;
+        TextureHandle gBuffers[8];
 
-        for (int32_t id : m_GBufferIds)
+        for (auto& [id, format] : m_GBuffers)
         {
-            gbuffers.push_back(builder.ReadTexture(id, ReadFlags::PixelShader));
+            gBuffers[numGBuffers++] = builder.ReadTexture(id, ReadFlags::PixelShader);
         }
 
-        builder.SetRenderTargets(colorTargetId, depthStencilTargetId);
+        builder.SetColorTarget(colorTargetId);
+        builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            m_DeferredLitMaterial->SetTexture("_GBuffer0", gbuffers[0].Get());
-            m_DeferredLitMaterial->SetTexture("_GBuffer1", gbuffers[1].Get());
-            m_DeferredLitMaterial->SetTexture("_GBuffer2", gbuffers[2].Get());
-            m_DeferredLitMaterial->SetTexture("_GBuffer3", gbuffers[3].Get());
+            for (int32_t i = 0; i < numGBuffers; i++)
+            {
+                context.SetTexture(gBuffers[i].Id(), gBuffers[i].Get());
+            }
+
             context.DrawMesh(m_FullScreenTriangleMesh.get(), m_DeferredLitMaterial.get());
         });
     }
@@ -237,7 +230,8 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("SceneViewGrid");
 
-        builder.SetRenderTargets(colorTargetId, depthStencilTargetId);
+        builder.SetColorTarget(colorTargetId);
+        builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             context.DrawMesh(m_FullScreenTriangleMesh.get(), material);

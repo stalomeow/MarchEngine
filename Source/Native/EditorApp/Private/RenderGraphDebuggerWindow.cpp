@@ -50,28 +50,30 @@ namespace march
                 nextNodePos.x += 250;
             }
 
-            if (pass.HasRenderTargets)
+            for (int32_t i = 0; i < pass.NumColorTargets; i++)
             {
-                for (size_t i = 0; i < pass.NumColorTargets; i++)
+                if (!pass.ColorTargets[i].IsSet)
                 {
-                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i]) + " (T)");
-                    tempData.OutputIndexMap[pass.ColorTargets[i]] = static_cast<int32_t>(node.Resources.size() - 1);
-
-                    if ((pass.RenderTargetsLoadFlags & LoadFlags::DiscardColors) == LoadFlags::None)
-                    {
-                        tempData.InputIndexMap[pass.ColorTargets[i]] = static_cast<int32_t>(node.Resources.size() - 1);
-                    }
+                    continue;
                 }
 
-                if (pass.HasDepthStencilTarget)
-                {
-                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget) + " (T)");
-                    tempData.OutputIndexMap[pass.DepthStencilTarget] = static_cast<int32_t>(node.Resources.size() - 1);
+                node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i].Id) + " (T)");
+                tempData.OutputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size() - 1);
 
-                    if ((pass.RenderTargetsLoadFlags & LoadFlags::DiscardDepthStencil) == LoadFlags::None)
-                    {
-                        tempData.InputIndexMap[pass.DepthStencilTarget] = static_cast<int32_t>(node.Resources.size() - 1);
-                    }
+                if (pass.ColorTargets[i].Load)
+                {
+                    tempData.InputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size() - 1);
+                }
+            }
+
+            if (pass.DepthStencilTarget.IsSet)
+            {
+                node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget.Id) + " (T)");
+                tempData.OutputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size() - 1);
+
+                if (pass.DepthStencilTarget.Load)
+                {
+                    tempData.InputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size() - 1);
                 }
             }
 

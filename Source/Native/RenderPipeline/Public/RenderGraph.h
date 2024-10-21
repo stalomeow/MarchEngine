@@ -16,23 +16,9 @@
 
 namespace march
 {
-    enum class RenderTargetLoadFlags
-    {
-        None = 0,
-        DiscardColors = 1 << 0,
-        DiscardDepthStencil = 1 << 1,
-        DiscardAll = DiscardColors | DiscardDepthStencil,
-    };
-
-    RenderTargetLoadFlags operator|(RenderTargetLoadFlags lhs, RenderTargetLoadFlags rhs);
-    RenderTargetLoadFlags& operator|=(RenderTargetLoadFlags& lhs, RenderTargetLoadFlags rhs);
-    RenderTargetLoadFlags operator&(RenderTargetLoadFlags lhs, RenderTargetLoadFlags rhs);
-    RenderTargetLoadFlags& operator&=(RenderTargetLoadFlags& lhs, RenderTargetLoadFlags rhs);
-
     using ReadFlags = typename RenderGraphResourceReadFlags;
     using WriteFlags = typename RenderGraphResourceWriteFlags;
     using ClearFlags = typename RenderTargetClearFlags;
-    using LoadFlags = typename RenderTargetLoadFlags;
 
     enum class RenderGraphPassSortState
     {
@@ -40,6 +26,13 @@ namespace march
         Visiting,
         Visited,
         Culled,
+    };
+
+    struct RenderTargetData
+    {
+        int32_t Id;
+        bool IsSet;
+        bool Load;
     };
 
     struct RenderGraphPass final
@@ -51,12 +44,9 @@ namespace march
         std::unordered_map<int32_t, ReadFlags> ResourcesRead;     // 相当于进来的边
         std::unordered_map<int32_t, WriteFlags> ResourcesWritten; // 相当于出去的边
 
-        bool HasRenderTargets;
-        size_t NumColorTargets;
-        int32_t ColorTargets[8];
-        bool HasDepthStencilTarget;
-        int32_t DepthStencilTarget;
-        LoadFlags RenderTargetsLoadFlags;
+        int32_t NumColorTargets;
+        RenderTargetData ColorTargets[8];
+        RenderTargetData DepthStencilTarget;
 
         ClearFlags RenderTargetsClearFlags;
         float ClearColorValue[4];
@@ -146,9 +136,11 @@ namespace march
     class RenderGraphTextureHandle final
     {
     public:
+        RenderGraphTextureHandle();
         RenderGraphTextureHandle(RenderGraph* graph, int32_t resourceId);
         ~RenderGraphTextureHandle() = default;
 
+        int32_t Id() const;
         GfxRenderTextureDesc GetDesc() const;
         GfxRenderTexture* Get() const;
         GfxRenderTexture* operator->() const;
@@ -174,10 +166,9 @@ namespace march
         TextureHandle ReadTexture(int32_t id, ReadFlags flags);
         TextureHandle WriteTexture(int32_t id, WriteFlags flags);
 
-        void SetRenderTargets(int32_t colorTarget, LoadFlags flags = LoadFlags::None);
-        void SetRenderTargets(int32_t colorTarget, int32_t depthStencilTarget, LoadFlags flags = LoadFlags::None);
-        void SetRenderTargets(size_t numColorTargets, const int32_t* colorTargets, LoadFlags flags = LoadFlags::None);
-        void SetRenderTargets(size_t numColorTargets, const int32_t* colorTargets, int32_t depthStencilTarget, LoadFlags flags = LoadFlags::None);
+        void SetColorTarget(int32_t id, bool load);
+        void SetColorTarget(int32_t id, int32_t index = 0, bool load = true);
+        void SetDepthStencilTarget(int32_t id, bool load = true);
         void ClearRenderTargets(ClearFlags flags = ClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxHelpers::GetFarClipPlaneDepth(), uint8_t stencil = 0);
         void SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
         void SetScissorRect(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
@@ -186,7 +177,6 @@ namespace march
 
     private:
         RenderGraphBuilder(RenderGraph* graph, int32_t passIndex);
-        void PostSetRenderTargets();
         RenderGraphPass& GetPass();
 
         RenderGraph* m_Graph;

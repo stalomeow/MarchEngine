@@ -82,7 +82,7 @@ namespace march
         void PrepareTextureForImGui(int32_t id);
 
     public:
-        std::vector<int32_t> m_GBufferIds{};
+        std::vector<std::tuple<int32_t, DXGI_FORMAT>> m_GBuffers{};
         std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;

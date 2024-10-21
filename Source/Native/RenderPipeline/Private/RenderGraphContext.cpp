@@ -41,6 +41,7 @@ namespace march
         , m_Viewport{}
         , m_ScissorRect{}
         , m_GlobalConstantBuffers{}
+        , m_PassTextures{}
     {
     }
 
@@ -98,6 +99,16 @@ namespace march
     void RenderGraphContext::SetGlobalConstantBuffer(int32_t id, D3D12_GPU_VIRTUAL_ADDRESS address)
     {
         m_GlobalConstantBuffers[id] = address;
+    }
+
+    void RenderGraphContext::SetTexture(const std::string& name, GfxTexture* texture)
+    {
+        SetTexture(Shader::GetNameId(name), texture);
+    }
+
+    void RenderGraphContext::SetTexture(int32_t id, GfxTexture* texture)
+    {
+        m_PassTextures[id] = texture;
     }
 
     void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, bool wireframe,
@@ -180,10 +191,15 @@ namespace march
         }
     }
 
-    void RenderGraphContext::SetRenderTargets(size_t numColorTargets, GfxRenderTexture* const* colorTargets,
+    void RenderGraphContext::SetRenderTargets(int32_t numColorTargets, GfxRenderTexture* const* colorTargets,
         GfxRenderTexture* depthStencilTarget, const D3D12_VIEWPORT* viewport, const D3D12_RECT* scissorRect)
     {
-        if (numColorTargets <= 0 || numColorTargets > 8)
+        if (numColorTargets == 0 && depthStencilTarget == nullptr)
+        {
+            return;
+        }
+
+        if (numColorTargets < 0 || numColorTargets > 8)
         {
             throw std::out_of_range("Invalid number of color targets");
         }
@@ -209,7 +225,7 @@ namespace march
             D3D12_CPU_DESCRIPTOR_HANDLE rtv[8]{}; // 目前最多 8 个
             m_ColorTargets.clear();
 
-            for (int i = 0; i < numColorTargets; i++)
+            for (int32_t i = 0; i < numColorTargets; i++)
             {
                 rtv[i] = colorTargets[i]->GetRtvDsvCpuDescriptorHandle();
                 m_ColorTargets.push_back(colorTargets[i]);
@@ -377,7 +393,16 @@ namespace march
                 {
                     GfxTexture* texture = nullptr;
 
-                    if (material->GetTexture(kv.first, &texture))
+                    if (auto it = m_PassTextures.find(kv.first); it != m_PassTextures.end())
+                    {
+                        texture = it->second;
+                    }
+                    else
+                    {
+                        material->GetTexture(kv.first, &texture);
+                    }
+
+                    if (texture != nullptr)
                     {
                         viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
 
@@ -397,14 +422,25 @@ namespace march
 
                 for (const auto& kv : program->GetTextures())
                 {
+                    if (!kv.second.HasSampler)
+                    {
+                        continue;
+                    }
+
                     GfxTexture* texture = nullptr;
 
-                    if (material->GetTexture(kv.first, &texture))
+                    if (auto it = m_PassTextures.find(kv.first); it != m_PassTextures.end())
                     {
-                        if (kv.second.HasSampler)
-                        {
-                            samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
-                        }
+                        texture = it->second;
+                    }
+                    else
+                    {
+                        material->GetTexture(kv.first, &texture);
+                    }
+
+                    if (texture != nullptr)
+                    {
+                        samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
                     }
                 }
 
@@ -418,10 +454,16 @@ namespace march
         }
     }
 
+    void RenderGraphContext::ClearPreviousPassData()
+    {
+        m_PassTextures.clear();
+    }
+
     void RenderGraphContext::Reset()
     {
         m_ColorTargets.clear();
         m_DepthStencilTarget = nullptr;
         m_GlobalConstantBuffers.clear();
+        m_PassTextures.clear();
     }
 }

@@ -55,6 +55,9 @@ namespace march
         void SetGlobalConstantBuffer(const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address);
         void SetGlobalConstantBuffer(int32_t id, D3D12_GPU_VIRTUAL_ADDRESS address);
 
+        void SetTexture(const std::string& name, GfxTexture* texture);
+        void SetTexture(int32_t id, GfxTexture* texture);
+
         // 如果 subMeshIndex 为 -1，则绘制所有子网格
         void DrawMesh(GfxMesh* mesh, Material* material, bool wireframe = false,
             int32_t subMeshIndex = -1, int32_t shaderPassIndex = 0,
@@ -66,7 +69,7 @@ namespace march
     private:
         // 如果 viewport 为 nullptr，则使用默认 viewport
         // 如果 scissorRect 为 nullptr，则使用默认 scissorRect
-        void SetRenderTargets(size_t numColorTargets, GfxRenderTexture* const* colorTargets,
+        void SetRenderTargets(int32_t numColorTargets, GfxRenderTexture* const* colorTargets,
             GfxRenderTexture* depthStencilTarget, const D3D12_VIEWPORT* viewport, const D3D12_RECT* scissorRect);
         void ClearRenderTargets(RenderTargetClearFlags flags, const float color[4], float depth, uint8_t stencil);
 
@@ -78,6 +81,7 @@ namespace march
         void BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress,
             size_t numExtraConstantBuffers, const int32_t* extraConstantBufferIds, const D3D12_GPU_VIRTUAL_ADDRESS* extraConstantBufferAddresses);
 
+        void ClearPreviousPassData();
         void Reset();
 
         std::vector<GfxRenderTexture*> m_ColorTargets;
@@ -85,5 +89,6 @@ namespace march
         D3D12_VIEWPORT m_Viewport;
         D3D12_RECT m_ScissorRect;
         std::unordered_map<int32_t, D3D12_GPU_VIRTUAL_ADDRESS> m_GlobalConstantBuffers;
+        std::unordered_map<int32_t, GfxTexture*> m_PassTextures;
     };
 }

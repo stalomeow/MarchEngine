@@ -6,40 +6,20 @@
 #include <utility>
 #include <stdexcept>
 
+#undef min
+#undef max
+
 namespace march
 {
-    RenderTargetLoadFlags operator|(RenderTargetLoadFlags lhs, RenderTargetLoadFlags rhs)
-    {
-        return static_cast<RenderTargetLoadFlags>(static_cast<int>(lhs) | static_cast<int>(rhs));
-    }
-
-    RenderTargetLoadFlags& operator|=(RenderTargetLoadFlags& lhs, RenderTargetLoadFlags rhs)
-    {
-        return lhs = lhs | rhs;
-    }
-
-    RenderTargetLoadFlags operator&(RenderTargetLoadFlags lhs, RenderTargetLoadFlags rhs)
-    {
-        return static_cast<RenderTargetLoadFlags>(static_cast<int>(lhs) & static_cast<int>(rhs));
-    }
-
-    RenderTargetLoadFlags& operator&=(RenderTargetLoadFlags& lhs, RenderTargetLoadFlags rhs)
-    {
-        return lhs = lhs & rhs;
-    }
-
     RenderGraphPass::RenderGraphPass(const std::string& name)
         : Name(name)
         , HasSideEffects(false)
         , AllowPassCulling(true)
         , ResourcesRead{}
         , ResourcesWritten{}
-        , HasRenderTargets(false)
         , NumColorTargets(0)
         , ColorTargets{}
-        , HasDepthStencilTarget(false)
-        , DepthStencilTarget(0)
-        , RenderTargetsLoadFlags(RenderTargetLoadFlags::None)
+        , DepthStencilTarget{}
         , RenderTargetsClearFlags(ClearFlags::None)
         , ClearColorValue{}
         , ClearDepthValue(0)
@@ -136,6 +116,8 @@ namespace march
 
         for (int32_t passIndex : m_SortedPasses)
         {
+            context.ClearPreviousPassData();
+
             RenderGraphPass& pass = m_Passes[passIndex];
 
             if (!RentOrReturnResources(pass.ResourcesBorn, false))
@@ -253,22 +235,25 @@ namespace march
                 }
             }
 
-            if (pass.HasRenderTargets)
+            for (int32_t j = 0; j < pass.NumColorTargets; j++)
             {
-                for (size_t j = 0; j < pass.NumColorTargets; j++)
+                if (!pass.ColorTargets[j].IsSet)
                 {
-                    if (!UpdateResourceLifeTime(i, pass.ColorTargets[j]))
-                    {
-                        return false;
-                    }
+                    DEBUG_LOG_ERROR("Color target %d is not set", i);
+                    continue;
                 }
 
-                if (pass.HasDepthStencilTarget)
+                if (!UpdateResourceLifeTime(i, pass.ColorTargets[j].Id))
                 {
-                    if (!UpdateResourceLifeTime(i, pass.DepthStencilTarget))
-                    {
-                        return false;
-                    }
+                    return false;
+                }
+            }
+
+            if (pass.DepthStencilTarget.IsSet)
+            {
+                if (!UpdateResourceLifeTime(i, pass.DepthStencilTarget.Id))
+                {
+                    return false;
                 }
             }
         }
@@ -331,22 +316,23 @@ namespace march
 
     void RenderGraph::SetPassRenderTargets(RenderGraphPass& pass)
     {
-        if (!pass.HasRenderTargets)
-        {
-            return;
-        }
-
         GfxRenderTexture* colorTargets[8]{};
         GfxRenderTexture* depthStencilTarget = nullptr;
 
-        for (size_t i = 0; i < pass.NumColorTargets; i++)
+        for (int32_t i = 0; i < pass.NumColorTargets; i++)
         {
-            colorTargets[i] = static_cast<GfxRenderTexture*>(GetResourceData(pass.ColorTargets[i]).GetResourcePtr());
+            if (!pass.ColorTargets[i].IsSet)
+            {
+                DEBUG_LOG_ERROR("Color target %d is not set", i);
+                continue;
+            }
+
+            colorTargets[i] = static_cast<GfxRenderTexture*>(GetResourceData(pass.ColorTargets[i].Id).GetResourcePtr());
         }
 
-        if (pass.HasDepthStencilTarget)
+        if (pass.DepthStencilTarget.IsSet)
         {
-            depthStencilTarget = static_cast<GfxRenderTexture*>(GetResourceData(pass.DepthStencilTarget).GetResourcePtr());
+            depthStencilTarget = static_cast<GfxRenderTexture*>(GetResourceData(pass.DepthStencilTarget.Id).GetResourcePtr());
         }
 
         m_Context->SetRenderTargets(pass.NumColorTargets, colorTargets, depthStencilTarget,
@@ -371,19 +357,22 @@ namespace march
             cmdList->ResourceBarrier(res.GetResourcePtr(), GetResourceWriteState(res, kv.second));
         }
 
-        if (pass.HasRenderTargets)
+        for (int32_t i = 0; i < pass.NumColorTargets; i++)
         {
-            for (size_t i = 0; i < pass.NumColorTargets; i++)
+            if (!pass.ColorTargets[i].IsSet)
             {
-                RenderGraphResourceData& res = GetResourceData(pass.ColorTargets[i]);
-                cmdList->ResourceBarrier(res.GetResourcePtr(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+                DEBUG_LOG_ERROR("Color target %d is not set", i);
+                continue;
             }
 
-            if (pass.HasDepthStencilTarget)
-            {
-                RenderGraphResourceData& res = GetResourceData(pass.DepthStencilTarget);
-                cmdList->ResourceBarrier(res.GetResourcePtr(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-            }
+            RenderGraphResourceData& res = GetResourceData(pass.ColorTargets[i].Id);
+            cmdList->ResourceBarrier(res.GetResourcePtr(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+        }
+
+        if (pass.DepthStencilTarget.IsSet)
+        {
+            RenderGraphResourceData& res = GetResourceData(pass.DepthStencilTarget.Id);
+            cmdList->ResourceBarrier(res.GetResourcePtr(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
         }
 
         cmdList->FlushResourceBarriers();
@@ -471,8 +460,17 @@ namespace march
         s_GraphCompiledEventListeners.erase(listener);
     }
 
+    RenderGraphTextureHandle::RenderGraphTextureHandle() :RenderGraphTextureHandle(nullptr, -1)
+    {
+    }
+
     RenderGraphTextureHandle::RenderGraphTextureHandle(RenderGraph* graph, int32_t resourceId) : m_Graph(graph), m_ResourceId(resourceId)
     {
+    }
+
+    int32_t RenderGraphTextureHandle::Id() const
+    {
+        return m_ResourceId;
     }
 
     GfxRenderTextureDesc RenderGraphTextureHandle::GetDesc() const
@@ -611,156 +609,89 @@ namespace march
         return TextureHandle(m_Graph, id);
     }
 
-    void RenderGraphBuilder::SetRenderTargets(int32_t colorTarget, LoadFlags flags)
+    void RenderGraphBuilder::SetColorTarget(int32_t id, bool load)
     {
-        RenderGraphPass& pass = GetPass();
-
-        if (pass.HasRenderTargets)
-        {
-            throw std::runtime_error("Render targets already set");
-        }
-
-        pass.HasRenderTargets = true;
-        pass.NumColorTargets = 1;
-        pass.ColorTargets[0] = colorTarget;
-        pass.HasDepthStencilTarget = false;
-        pass.RenderTargetsLoadFlags = flags;
-
-        PostSetRenderTargets();
+        SetColorTarget(id, 0, load);
     }
 
-    void RenderGraphBuilder::SetRenderTargets(int32_t colorTarget, int32_t depthStencilTarget, LoadFlags flags)
+    void RenderGraphBuilder::SetColorTarget(int32_t id, int32_t index, bool load)
     {
         RenderGraphPass& pass = GetPass();
 
-        if (pass.HasRenderTargets)
+        if (index < 0)
         {
-            throw std::runtime_error("Render targets already set");
+            DEBUG_LOG_ERROR("Invalid color target index");
+            return;
         }
 
-        pass.HasRenderTargets = true;
-        pass.NumColorTargets = 1;
-        pass.ColorTargets[0] = colorTarget;
-        pass.HasDepthStencilTarget = true;
-        pass.DepthStencilTarget = depthStencilTarget;
-        pass.RenderTargetsLoadFlags = flags;
-
-        PostSetRenderTargets();
-    }
-
-    void RenderGraphBuilder::SetRenderTargets(size_t numColorTargets, const int32_t* colorTargets, LoadFlags flags)
-    {
-        RenderGraphPass& pass = GetPass();
-
-        if (pass.HasRenderTargets)
-        {
-            throw std::runtime_error("Render targets already set");
-        }
-
-        if (numColorTargets > std::size(pass.ColorTargets))
+        if (index >= std::size(pass.ColorTargets))
         {
             DEBUG_LOG_ERROR("Too many color targets");
             return;
         }
 
-        pass.HasRenderTargets = true;
-        pass.NumColorTargets = numColorTargets;
+        pass.NumColorTargets = std::max(pass.NumColorTargets, index + 1);
+        RenderTargetData& data = pass.ColorTargets[index];
 
-        if (numColorTargets > 0)
+        if (data.IsSet)
         {
-            std::copy_n(colorTargets, numColorTargets, pass.ColorTargets);
+            throw std::runtime_error("Color target already set");
         }
 
-        pass.HasDepthStencilTarget = false;
-        pass.RenderTargetsLoadFlags = flags;
+        data.Id = id;
+        data.IsSet = true;
+        data.Load = load;
 
-        PostSetRenderTargets();
+        auto resIt = m_Graph->m_ResourceDataMap.find(id);
+        if (resIt == m_Graph->m_ResourceDataMap.end())
+        {
+            throw std::runtime_error("Resource data not found");
+        }
+
+        if (load)
+        {
+            // render target 可以没有 producer
+            if (int32_t producerPassIndex = resIt->second.GetLastProducerPass(); producerPassIndex >= 0)
+            {
+                m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
+            }
+        }
+
+        pass.HasSideEffects |= !resIt->second.IsTransient();
+        resIt->second.AddProducerPass(m_PassIndex);
     }
 
-    void RenderGraphBuilder::SetRenderTargets(size_t numColorTargets, const int32_t* colorTargets, int32_t depthStencilTarget, LoadFlags flags)
+    void RenderGraphBuilder::SetDepthStencilTarget(int32_t id, bool load)
     {
         RenderGraphPass& pass = GetPass();
+        RenderTargetData& data = pass.DepthStencilTarget;
 
-        if (pass.HasRenderTargets)
+        if (data.IsSet)
         {
-            throw std::runtime_error("Render targets already set");
+            throw std::runtime_error("Depth stencil target already set");
         }
 
-        if (numColorTargets > std::size(pass.ColorTargets))
+        data.Id = id;
+        data.IsSet = true;
+        data.Load = load;
+
+        auto resIt = m_Graph->m_ResourceDataMap.find(id);
+        if (resIt == m_Graph->m_ResourceDataMap.end())
         {
-            DEBUG_LOG_ERROR("Too many color targets");
-            return;
+            throw std::runtime_error("Resource data not found");
         }
 
-        pass.HasRenderTargets = true;
-        pass.NumColorTargets = numColorTargets;
-
-        if (numColorTargets > 0)
+        if (load)
         {
-            std::copy_n(colorTargets, numColorTargets, pass.ColorTargets);
-        }
-
-        pass.HasDepthStencilTarget = true;
-        pass.DepthStencilTarget = depthStencilTarget;
-        pass.RenderTargetsLoadFlags = flags;
-
-        PostSetRenderTargets();
-    }
-
-    void RenderGraphBuilder::PostSetRenderTargets()
-    {
-        RenderGraphPass& pass = GetPass();
-
-        if (!pass.HasRenderTargets)
-        {
-            return;
-        }
-
-        bool loadColors = (pass.RenderTargetsLoadFlags & LoadFlags::DiscardColors) == LoadFlags::None;
-        bool loadDepthStencil = (pass.RenderTargetsLoadFlags & LoadFlags::DiscardDepthStencil) == LoadFlags::None;
-
-        for (size_t i = 0; i < pass.NumColorTargets; i++)
-        {
-            auto it = m_Graph->m_ResourceDataMap.find(pass.ColorTargets[i]);
-            if (it == m_Graph->m_ResourceDataMap.end())
+            // render target 可以没有 producer
+            if (int32_t producerPassIndex = resIt->second.GetLastProducerPass(); producerPassIndex >= 0)
             {
-                throw std::runtime_error("Resource data not found");
+                m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
             }
-
-            if (loadColors)
-            {
-                // render target 可以没有 producer
-                if (int32_t producerPassIndex = it->second.GetLastProducerPass(); producerPassIndex >= 0)
-                {
-                    m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
-                }
-            }
-
-            pass.HasSideEffects |= !it->second.IsTransient();
-            it->second.AddProducerPass(m_PassIndex);
         }
 
-        // Load Depth Stencil
-        if (pass.HasDepthStencilTarget)
-        {
-            auto it = m_Graph->m_ResourceDataMap.find(pass.DepthStencilTarget);
-            if (it == m_Graph->m_ResourceDataMap.end())
-            {
-                throw std::runtime_error("Resource data not found");
-            }
-
-            if (loadDepthStencil)
-            {
-                // render target 可以没有 producer
-                if (int32_t producerPassIndex = it->second.GetLastProducerPass(); producerPassIndex >= 0)
-                {
-                    m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
-                }
-            }
-
-            pass.HasSideEffects |= !it->second.IsTransient();
-            it->second.AddProducerPass(m_PassIndex);
-        }
+        pass.HasSideEffects |= !resIt->second.IsTransient();
+        resIt->second.AddProducerPass(m_PassIndex);
     }
 
     void RenderGraphBuilder::ClearRenderTargets(ClearFlags flags, const float color[4], float depth, uint8_t stencil)
