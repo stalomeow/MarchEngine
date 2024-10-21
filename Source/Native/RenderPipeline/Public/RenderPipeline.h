@@ -2,6 +2,9 @@
 
 #include "Light.h"
 #include "GfxMesh.h"
+#include "AssetManger.h"
+#include "Material.h"
+#include "Shader.h"
 #include <vector>
 #include <memory>
 #include <stdint.h>
@@ -10,7 +13,6 @@ namespace march
 {
     class Camera;
     class RenderObject;
-    class Material;
     class RenderGraph;
     class GfxRenderTexture;
 
@@ -36,6 +38,12 @@ namespace march
     public:
         RenderPipeline();
         ~RenderPipeline();
+
+        void ReleaseAssets()
+        {
+            m_DeferredLitMaterial.reset();
+            m_DeferredLitShader.reset();
+        }
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
@@ -68,12 +76,16 @@ namespace march
         void SetLightGlobalConstantBuffer(int32_t id);
         void ResolveMSAA(int32_t id, int32_t resolvedId);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
+        void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
         void PrepareTextureForImGui(int32_t id);
 
     public:
+        std::vector<int32_t> m_GBufferIds{};
         std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
+        asset_ptr<Shader> m_DeferredLitShader = nullptr;
+        std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
 
     private:
         std::vector<RenderObject*> m_RenderObjects{};

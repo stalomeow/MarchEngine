@@ -170,6 +170,7 @@ namespace march
         void ImportTexture(int32_t id, GfxRenderTexture* texture);
         void CreateTransientTexture(int32_t id, const GfxRenderTextureDesc& desc);
 
+        GfxRenderTextureDesc GetTextureDesc(int32_t id) const;
         TextureHandle ReadTexture(int32_t id, ReadFlags flags);
         TextureHandle WriteTexture(int32_t id, WriteFlags flags);
 

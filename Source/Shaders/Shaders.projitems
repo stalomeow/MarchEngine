@@ -9,10 +9,16 @@
     <Import_RootNamespace>Shaders</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)public\ColorSpace.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)public\Common.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)public\BlitImGui.shader" />
-    <None Include="$(MSBuildThisFileDirectory)Public\Lighting.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\BlinnPhong.shader" />
+    <None Include="$(MSBuildThisFileDirectory)public\DeferredLight.shader" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Includes\Common.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\BlitImGui.shader" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\GBuffer.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Public\Includes\" />
   </ItemGroup>
 </Project>

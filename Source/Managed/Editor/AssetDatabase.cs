@@ -32,10 +32,10 @@ namespace March.Editor
         private static readonly FileSystemWatcher s_EngineShaderWatcher;
         private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileSystemEvents = new();
 
-        public static event Action<string>? OnProjectAssetChanged;
-        public static event Action<string>? OnProjectAssetImported;
-        public static event Action<string>? OnProjectAssetRemoved;
-        public static event Action<string, string>? OnProjectAssetRenamed;
+        public static event Action<AssetCategory, string>? OnChanged;
+        public static event Action<AssetCategory, string>? OnImported;
+        public static event Action<AssetCategory, string>? OnRemoved;
+        public static event Action<AssetCategory, string, AssetCategory, string>? OnRenamed;
 
         static AssetDatabase()
         {
@@ -166,16 +166,13 @@ namespace March.Editor
             return path == null ? null : Load<T>(path);
         }
 
-        public static string[] GetAllProjectAssetPaths()
+        public static (AssetCategory, string)[] GetAllAssetCategoriesAndPaths()
         {
-            using var list = ListPool<string>.Get();
+            using var list = ListPool<(AssetCategory, string)>.Get();
 
             foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
             {
-                if (kv.Value.Category == AssetCategory.ProjectAsset)
-                {
-                    list.Value.Add(kv.Value.AssetPath);
-                }
+                list.Value.Add((kv.Value.Category, kv.Value.AssetPath));
             }
 
             return list.Value.ToArray();
@@ -197,11 +194,7 @@ namespace March.Editor
 
             PersistentManager.Save(asset, fullPath);
             MustCreateAssetImporter(path, asset);
-
-            if (category == AssetCategory.ProjectAsset)
-            {
-                OnProjectAssetImported?.Invoke(path);
-            }
+            OnImported?.Invoke(category, path);
         }
 
         private static void OnAssetChanged(FileSystemEventArgs e)
@@ -221,11 +214,7 @@ namespace March.Editor
             if (importer != null && importer.NeedReimportAsset())
             {
                 importer.SaveImporterAndReimportAsset();
-
-                if (category == AssetCategory.ProjectAsset)
-                {
-                    OnProjectAssetChanged?.Invoke(path);
-                }
+                OnChanged?.Invoke(category, path);
             }
         }
 
@@ -294,30 +283,11 @@ namespace March.Editor
                 Debug.LogWarning("Asset already exists at new path. It will be deleted.");
                 AssetCategory assetCategory = newImporter.Category;
                 DeleteImporter(newImporter, true);
-
-                if (assetCategory == AssetCategory.ProjectAsset)
-                {
-                    OnProjectAssetRemoved?.Invoke(newPath);
-                }
+                OnRemoved?.Invoke(assetCategory, newPath);
             }
 
             newImporter = MustCreateAssetImporter(newPath, asset);
-
-            bool oldIsProjectAsset = oldCategory == AssetCategory.ProjectAsset;
-            bool newIsProjectAsset = newCategory == AssetCategory.ProjectAsset;
-
-            if (oldIsProjectAsset && newIsProjectAsset)
-            {
-                OnProjectAssetRenamed?.Invoke(oldPath, newPath);
-            }
-            else if (oldIsProjectAsset)
-            {
-                OnProjectAssetRemoved?.Invoke(oldPath);
-            }
-            else if (newIsProjectAsset)
-            {
-                OnProjectAssetImported?.Invoke(newPath);
-            }
+            OnRenamed?.Invoke(oldCategory, oldPath, newCategory, newPath);
         }
 
         private static void OnAssetCreated(FileSystemEventArgs e)
@@ -337,11 +307,9 @@ namespace March.Editor
                 return;
             }
 
-            AssetImporter? importer = GetAssetImporter(path);
-
-            if (importer != null && category == AssetCategory.ProjectAsset)
+            if (GetAssetImporter(path) != null)
             {
-                OnProjectAssetImported?.Invoke(path);
+                OnImported?.Invoke(category, path);
             }
         }
 
@@ -362,11 +330,7 @@ namespace March.Editor
             if (importer != null)
             {
                 DeleteImporter(importer, true);
-
-                if (category == AssetCategory.ProjectAsset)
-                {
-                    OnProjectAssetRemoved?.Invoke(path);
-                }
+                OnRemoved?.Invoke(category, path);
             }
         }
 

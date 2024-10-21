@@ -411,6 +411,11 @@ namespace march
                 cmd->SetGraphicsRootDescriptorTable(program->GetSamplerRootParameterIndex(), samplerTable.GetGpuHandle(0));
             }
         }
+
+        if (pass->GetStencilState().Enable)
+        {
+            cmd->OMSetStencilRef(static_cast<UINT>(pass->GetStencilState().Ref));
+        }
     }
 
     void RenderGraphContext::Reset()

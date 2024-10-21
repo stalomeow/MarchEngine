@@ -28,7 +28,7 @@ namespace march
 
     SceneWindow::SceneWindow()
         : m_LastWindowSize(0, 0)
-        , m_EnableMSAA(true)
+        , m_EnableMSAA(false)
         , m_Display(nullptr)
         , m_MouseSensitivity(0.00833f) // 鼠标相关操作需要乘灵敏度，不能乘 deltaTime
         , m_RotateDegSpeed(16.0f)

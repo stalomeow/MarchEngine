@@ -13,8 +13,8 @@ Shader "BlitImGui"
         #pragma vs vert
         #pragma ps frag
 
-        #include "Common.hlsl"
-        #include "ColorSpace.hlsl"
+        #include "Includes/Common.hlsl"
+        #include "Includes/ColorSpace.hlsl"
 
         struct Varyings
         {

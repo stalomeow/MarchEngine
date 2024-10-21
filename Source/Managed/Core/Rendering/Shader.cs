@@ -394,11 +394,34 @@ namespace March.Core.Rendering
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassStencilState
     {
+        public byte Ref;
         public bool Enable;
         public byte ReadMask;
         public byte WriteMask;
         public ShaderPassStencilAction FrontFace;
         public ShaderPassStencilAction BackFace;
+
+        public static readonly ShaderPassStencilState Default = new()
+        {
+            Ref = 0,
+            Enable = false,
+            ReadMask = 0xFF,
+            WriteMask = 0xFF,
+            FrontFace = new()
+            {
+                Compare = ShaderPassCompareFunc.Always,
+                PassOp = ShaderPassStencilOp.Keep,
+                FailOp = ShaderPassStencilOp.Keep,
+                DepthFailOp = ShaderPassStencilOp.Keep,
+            },
+            BackFace = new()
+            {
+                Compare = ShaderPassCompareFunc.Always,
+                PassOp = ShaderPassStencilOp.Keep,
+                FailOp = ShaderPassStencilOp.Keep,
+                DepthFailOp = ShaderPassStencilOp.Keep,
+            },
+        };
     }
 
     internal class ShaderPass : INativeMarshal<ShaderPass, ShaderPass.Native>

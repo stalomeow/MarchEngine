@@ -89,6 +89,7 @@ struct CSharpShaderPassStencilAction
 
 struct CSharpShaderPassStencilState
 {
+    march::cs_byte Ref;
     cs_bool Enable;
     march::cs_byte ReadMask;
     march::cs_byte WriteMask;
@@ -239,6 +240,7 @@ namespace march
 
                 pass->m_StencilState =
                 {
+                    src.StencilState.Ref,
                     src.StencilState.Enable,
                     src.StencilState.ReadMask,
                     src.StencilState.WriteMask,
@@ -381,6 +383,7 @@ NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
         dest.DepthState.Enable.assign(pass->GetDepthState().Enable);
         dest.DepthState.Write.assign(pass->GetDepthState().Write);
         dest.DepthState.Compare.assign(pass->GetDepthState().Compare);
+        dest.StencilState.Ref.assign(pass->GetStencilState().Ref);
         dest.StencilState.Enable.assign(pass->GetStencilState().Enable);
         dest.StencilState.ReadMask.assign(pass->GetStencilState().ReadMask);
         dest.StencilState.WriteMask.assign(pass->GetStencilState().WriteMask);

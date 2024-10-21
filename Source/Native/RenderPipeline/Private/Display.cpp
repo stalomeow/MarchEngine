@@ -8,7 +8,7 @@ namespace march
     Display::Display(GfxDevice* device, const std::string& name, uint32_t width, uint32_t height)
         : m_Device(device)
         , m_Name(name)
-        , m_EnableMSAA(true)
+        , m_EnableMSAA(false)
         , m_ColorBuffer(nullptr)
         , m_DepthStencilBuffer(nullptr)
         , m_ResolvedColorBuffer(nullptr)

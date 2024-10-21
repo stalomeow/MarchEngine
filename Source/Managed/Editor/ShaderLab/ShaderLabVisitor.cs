@@ -34,7 +34,7 @@ namespace March.Editor.ShaderLab
         public ShaderPassCompareFunc? ZTest = ShaderPassCompareFunc.Less;
         public bool ZWrite = true;
         public Dictionary<int, ShaderPassBlendState> Blends = [];
-        public ShaderPassStencilState Stencil = new();
+        public ShaderPassStencilState Stencil = ShaderPassStencilState.Default;
     }
 
     internal class ParsedShaderData
@@ -272,6 +272,12 @@ namespace March.Editor.ShaderLab
         {
             CurrentPass.Stencil.Enable = true;
             return base.VisitStencilBlock(context);
+        }
+
+        public override int VisitStencilRefDeclaration([NotNull] ShaderLabParser.StencilRefDeclarationContext context)
+        {
+            CurrentPass.Stencil.Ref = byte.Parse(context.IntegerLiteral().GetText());
+            return base.VisitStencilRefDeclaration(context);
         }
 
         public override int VisitStencilReadMaskDeclaration([NotNull] ShaderLabParser.StencilReadMaskDeclarationContext context)

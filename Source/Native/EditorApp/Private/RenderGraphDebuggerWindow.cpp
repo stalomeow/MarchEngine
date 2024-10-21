@@ -94,15 +94,16 @@ namespace march
             const RenderGraphPass& pass = graph.GetPass(passIndex);
             const RenderPassTempData& srcData = tempMap[passIndex];
 
-            for (int32_t nextPassIndex : pass.NextPasses)
+            for (auto& kv : srcData.OutputIndexMap)
             {
-                const RenderPassTempData& dstData = tempMap[nextPassIndex];
-
-                for (auto& kv : srcData.OutputIndexMap)
+                for (int32_t nextPassIndex : pass.NextPasses)
                 {
+                    const RenderPassTempData& dstData = tempMap[nextPassIndex];
+
                     if (auto it = dstData.InputIndexMap.find(kv.first); it != dstData.InputIndexMap.end())
                     {
                         m_Links.emplace_back(srcData.NodeIndex, kv.second, dstData.NodeIndex, it->second);
+                        break;
                     }
                 }
             }

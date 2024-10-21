@@ -6,7 +6,8 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/General/Project")]
     internal class ProjectWindow : EditorWindow
     {
-        private readonly ProjectFileTree m_FileTree = new();
+        private readonly ProjectFileTree m_ProjectTree = new();
+        private readonly ProjectFileTree m_EngineFileTree = new();
 
         public ProjectWindow() : base($"{FontAwesome6.Folder} Project")
         {
@@ -17,21 +18,21 @@ namespace March.Editor.Windows
         {
             base.OnOpen();
 
-            foreach (string path in AssetDatabase.GetAllProjectAssetPaths())
+            foreach ((AssetCategory category, string path) in AssetDatabase.GetAllAssetCategoriesAndPaths())
             {
-                AddPath(path);
+                AddPath(category, path);
             }
 
-            AssetDatabase.OnProjectAssetImported += AddPath;
-            AssetDatabase.OnProjectAssetRemoved += RemovePath;
-            AssetDatabase.OnProjectAssetRenamed += OnAssetRenamed;
+            AssetDatabase.OnImported += AddPath;
+            AssetDatabase.OnRemoved += RemovePath;
+            AssetDatabase.OnRenamed += OnAssetRenamed;
         }
 
         protected override void OnClose()
         {
-            AssetDatabase.OnProjectAssetImported -= AddPath;
-            AssetDatabase.OnProjectAssetRemoved -= RemovePath;
-            AssetDatabase.OnProjectAssetRenamed -= OnAssetRenamed;
+            AssetDatabase.OnImported -= AddPath;
+            AssetDatabase.OnRemoved -= RemovePath;
+            AssetDatabase.OnRenamed -= OnAssetRenamed;
 
             base.OnClose();
         }
@@ -39,23 +40,38 @@ namespace March.Editor.Windows
         protected override void OnDraw()
         {
             base.OnDraw();
-            m_FileTree.Draw();
+            m_ProjectTree.Draw();
+            m_EngineFileTree.Draw();
         }
 
-        private void AddPath(string path)
+        private void AddPath(AssetCategory category, string path)
         {
-            m_FileTree.Add(path, AssetDatabase.IsFolder(path));
+            if (category == AssetCategory.ProjectAsset)
+            {
+                m_ProjectTree.Add(path, AssetDatabase.IsFolder(path));
+            }
+            else if (category == AssetCategory.EngineShader)
+            {
+                m_EngineFileTree.Add(path, AssetDatabase.IsFolder(path));
+            }
         }
 
-        private void RemovePath(string path)
+        private void RemovePath(AssetCategory category, string path)
         {
-            m_FileTree.Remove(path, AssetDatabase.IsFolder(path));
+            if (category == AssetCategory.ProjectAsset)
+            {
+                m_ProjectTree.Remove(path, AssetDatabase.IsFolder(path));
+            }
+            else if (category == AssetCategory.EngineShader)
+            {
+                m_EngineFileTree.Remove(path, AssetDatabase.IsFolder(path));
+            }
         }
 
-        private void OnAssetRenamed(string oldPath, string newPath)
+        private void OnAssetRenamed(AssetCategory oldCategory, string oldPath, AssetCategory newCategory, string newPath)
         {
-            RemovePath(oldPath);
-            AddPath(newPath);
+            RemovePath(oldCategory, oldPath);
+            AddPath(newCategory, newPath);
         }
     }
 }

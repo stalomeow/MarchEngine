@@ -24,7 +24,7 @@ Shader "SceneViewGrid"
         #pragma vs vert
         #pragma ps frag
 
-        #include "Common.hlsl"
+        #include "Includes/Common.hlsl"
 
         cbuffer cbMaterial
         {

@@ -15,7 +15,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 22;
+        protected override int Version => base.Version + 24;
 
         public override string IconNormal => FontAwesome6.Code;
 
@@ -197,27 +197,15 @@ Shader ""ErrorShader""
         #pragma vs vert
         #pragma ps frag
 
-        #include ""Common.hlsl""
+        #include ""Includes/Common.hlsl""
 
-        struct Attributes
+        float4 vert(float3 positionOS : POSITION) : SV_Position
         {
-            float3 positionOS : POSITION;
-        };
-
-        struct Varyings
-        {
-            float4 positionCS : SV_Position;
-        };
-
-        Varyings vert(Attributes input)
-        {
-            Varyings output;
-            float4 positionWS = mul(_MatrixWorld, float4(input.positionOS, 1.0));
-            output.positionCS = mul(_MatrixViewProjection, positionWS);
-            return output;
+            float3 positionWS = TransformObjectToWorld(positionOS);
+            return TransformWorldToHClip(positionWS);
         }
 
-        float4 frag(Varyings input) : SV_Target
+        float4 frag() : SV_Target
         {
             return float4(1, 0, 1, 1);
         }

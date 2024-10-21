@@ -18,6 +18,7 @@
 #include <array>
 #include <fstream>
 #include "RenderGraph.h"
+#include "GfxHelpers.h"
 
 using namespace DirectX;
 
@@ -28,12 +29,18 @@ namespace march
         m_FullScreenTriangleMesh.reset(CreateSimpleGfxMesh(GetGfxDevice()));
         m_FullScreenTriangleMesh->AddFullScreenTriangle();
 
+        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer0"));
+        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer1"));
+        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer2"));
+        m_GBufferIds.push_back(Shader::GetNameId("_GBuffer3"));
+        m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
+        m_DeferredLitMaterial = std::make_unique<Material>();
+        m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
+
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
 
-    RenderPipeline::~RenderPipeline()
-    {
-    }
+    RenderPipeline::~RenderPipeline() {}
 
     void RenderPipeline::Render(Camera* camera, Material* gridGizmoMaterial)
     {
@@ -63,6 +70,7 @@ namespace march
 
             ClearTargets(colorTargetId, depthStencilTargetId);
             DrawObjects(colorTargetId, depthStencilTargetId, camera->GetEnableWireframe());
+            DeferredLighting(colorTargetId, depthStencilTargetId);
 
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
             {
@@ -173,10 +181,55 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("DrawObjects");
 
-        builder.SetRenderTargets(colorTargetId, depthStencilTargetId);
+        GfxRenderTextureDesc desc = builder.GetTextureDesc(colorTargetId);
+        desc.SampleCount = 1;
+        desc.SampleQuality = 0;
+
+        for (size_t i = 0; i < m_GBufferIds.size(); i++)
+        {
+            if (i == 0)
+            {
+                desc.Format = GfxHelpers::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM);
+            }
+            else if (i == 3)
+            {
+                desc.Format = DXGI_FORMAT_R32_FLOAT;
+            }
+            else
+            {
+                desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            }
+
+            builder.CreateTransientTexture(m_GBufferIds[i], desc);
+        }
+
+        builder.SetRenderTargets(m_GBufferIds.size(), m_GBufferIds.data(), depthStencilTargetId);
+        builder.ClearRenderTargets(ClearFlags::Color);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), wireframe);
+        });
+    }
+
+    void RenderPipeline::DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId)
+    {
+        auto builder = m_RenderGraph->AddPass("DeferredLighting");
+
+        std::vector<TextureHandle> gbuffers{};
+
+        for (int32_t id : m_GBufferIds)
+        {
+            gbuffers.push_back(builder.ReadTexture(id, ReadFlags::PixelShader));
+        }
+
+        builder.SetRenderTargets(colorTargetId, depthStencilTargetId);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            m_DeferredLitMaterial->SetTexture("_GBuffer0", gbuffers[0].Get());
+            m_DeferredLitMaterial->SetTexture("_GBuffer1", gbuffers[1].Get());
+            m_DeferredLitMaterial->SetTexture("_GBuffer2", gbuffers[2].Get());
+            m_DeferredLitMaterial->SetTexture("_GBuffer3", gbuffers[3].Get());
+            context.DrawMesh(m_FullScreenTriangleMesh.get(), m_DeferredLitMaterial.get());
         });
     }
 

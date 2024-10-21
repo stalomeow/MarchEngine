@@ -361,7 +361,7 @@ namespace march
 
     void Material::SetShader(Shader* pShader)
     {
-        if (m_Shader == pShader && m_ShaderVersion == pShader->GetVersion())
+        if (m_Shader == pShader && (pShader == nullptr || m_ShaderVersion == pShader->GetVersion()))
         {
             return;
         }

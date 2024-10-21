@@ -1,7 +1,7 @@
 #include "PipelineState.h"
 #include "GfxDevice.h"
 #include "GfxExcept.h"
-#include "GfxSupportInfo.h"
+#include "GfxSettings.h"
 #include "Debug.h"
 #include <unordered_map>
 #include <wrl.h>
@@ -16,7 +16,7 @@ namespace march
 
         inline void ValidateDepthFunc(D3D12_COMPARISON_FUNC& func)
         {
-            if constexpr (!GfxSupportInfo::UseReversedZBuffer())
+            if constexpr (!GfxSettings::UseReversedZBuffer())
             {
                 return;
             }

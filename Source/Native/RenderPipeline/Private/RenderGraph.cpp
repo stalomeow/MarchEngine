@@ -533,6 +533,18 @@ namespace march
         resMap.emplace(std::move(id), RenderGraphResourceData(m_Graph->m_ResourcePool.get(), desc));
     }
 
+    GfxRenderTextureDesc RenderGraphBuilder::GetTextureDesc(int32_t id) const
+    {
+        if (auto it = m_Graph->m_ResourceDataMap.find(id); it == m_Graph->m_ResourceDataMap.end())
+        {
+            throw std::runtime_error("Resource data not found");
+        }
+        else
+        {
+            return it->second.GetTextureDesc();
+        }
+    }
+
     TextureHandle RenderGraphBuilder::ReadTexture(int32_t id, ReadFlags flags)
     {
         RenderGraphPass& pass = GetPass();

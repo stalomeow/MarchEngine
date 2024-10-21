@@ -214,6 +214,7 @@ namespace march
 
     struct ShaderPassStencilState
     {
+        uint8_t Ref;
         bool Enable;
         uint8_t ReadMask;
         uint8_t WriteMask;

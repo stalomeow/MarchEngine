@@ -77,7 +77,6 @@ namespace march
         InitGfxDevice(desc);
 
         Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // temp
-        m_RenderPipeline = std::make_unique<RenderPipeline>();
         m_ImGuiRenderGraph = std::make_unique<RenderGraph>(false);
         m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
 
@@ -222,7 +221,6 @@ namespace march
         ImGui::DestroyContext();
 
         m_ImGuiRenderGraph.reset();
-        m_RenderPipeline.reset();
         DestroyAllPipelineStates();
         Display::DestroyMainDisplay();
         DestroyGfxDevice();
@@ -324,6 +322,8 @@ namespace march
             // 初始化代码可能也会用到 GfxDevice，所以放在 tick 里
             DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
+
+            m_RenderPipeline = std::make_unique<RenderPipeline>();
             m_IsScriptInitialized = true;
         }
 
@@ -339,9 +339,13 @@ namespace march
             m_BlitImGuiShader.reset();
             m_BlitImGuiMaterial.reset();
 
+            m_RenderPipeline->ReleaseAssets();
+
             // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
             DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
+
+            m_RenderPipeline.reset();
         }
 
         if (!willQuit)
