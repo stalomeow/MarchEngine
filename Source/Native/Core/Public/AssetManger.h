@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 namespace march
 {
@@ -12,94 +13,60 @@ namespace march
     };
 
     template <typename T>
-    class UniqueAssetPtr final
+    class asset_ptr final
     {
     public:
-        UniqueAssetPtr() : m_Asset(nullptr) {}
-        UniqueAssetPtr(nullptr_t) : m_Asset(nullptr) {}
+        constexpr asset_ptr() noexcept : m_Asset(nullptr) {}
 
-        ~UniqueAssetPtr()
+        constexpr asset_ptr(nullptr_t) noexcept : m_Asset(nullptr) {}
+
+        asset_ptr& operator=(nullptr_t) noexcept
         {
-            if (m_Asset != nullptr)
-            {
-                AssetManager::UnloadAsset(m_Asset);
-                m_Asset = nullptr;
-            }
-        }
-
-        UniqueAssetPtr(const UniqueAssetPtr& other) = delete;
-        UniqueAssetPtr& operator=(const UniqueAssetPtr& other) = delete;
-
-        UniqueAssetPtr(UniqueAssetPtr&& other) noexcept
-        {
-            m_Asset = other.m_Asset;
-            other.m_Asset = nullptr;
-        }
-
-        UniqueAssetPtr& operator=(UniqueAssetPtr&& other) noexcept
-        {
-            if (this != &other)
-            {
-                if (m_Asset != nullptr)
-                {
-                    AssetManager::UnloadAsset(m_Asset);
-                }
-
-                m_Asset = other.m_Asset;
-                other.m_Asset = nullptr;
-            }
-
+            reset();
             return *this;
         }
 
-        T* operator->() const noexcept
-        {
-            return m_Asset;
-        }
+        asset_ptr(asset_ptr&& other) noexcept : m_Asset(other.release()) {}
 
-        T* Get() const noexcept
+        asset_ptr& operator=(asset_ptr&& other) noexcept
         {
-            return m_Asset;
-        }
-
-        UniqueAssetPtr& operator=(nullptr_t)
-        {
-            if (m_Asset != nullptr)
-            {
-                AssetManager::UnloadAsset(m_Asset);
-                m_Asset = nullptr;
-            }
-
+            reset(other.release()); // 这里不用检查 this != &other
             return *this;
         }
 
-        void Reset()
+        ~asset_ptr() noexcept { reset(); }
+
+        T* release() noexcept { return std::exchange(m_Asset, nullptr); }
+
+        void reset(T* asset = nullptr) noexcept
         {
-            if (m_Asset != nullptr)
+            if (T* old = std::exchange(m_Asset, asset); old != nullptr)
             {
-                AssetManager::UnloadAsset(m_Asset);
-                m_Asset = nullptr;
+                AssetManager::UnloadAsset(old);
             }
         }
 
-        bool operator==(nullptr_t) const noexcept
+        void reset(const std::string& path)
         {
-            return m_Asset == nullptr;
+            reset(static_cast<T*>(AssetManager::LoadAsset(path)));
         }
 
-        operator bool() const noexcept
-        {
-            return m_Asset != nullptr;
-        }
+        T* get() const noexcept { return m_Asset; }
 
-        static UniqueAssetPtr Make(const std::string& path)
-        {
-            return UniqueAssetPtr(static_cast<T*>(AssetManager::LoadAsset(path)));
-        }
+        T* operator->() const noexcept { return m_Asset; }
+
+        T& operator*() const noexcept { return *m_Asset; }
+
+        bool operator==(nullptr_t) const noexcept { return m_Asset == nullptr; }
+
+        bool operator!=(nullptr_t) const noexcept { return m_Asset != nullptr; }
+
+        operator bool() const noexcept { return m_Asset != nullptr; }
+
+        asset_ptr(const asset_ptr& other) = delete;
+        asset_ptr& operator=(const asset_ptr& other) = delete;
 
     private:
-        UniqueAssetPtr(T* asset) : m_Asset(asset) {}
-
         T* m_Asset;
     };
 }

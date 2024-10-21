@@ -336,7 +336,7 @@ namespace march
         {
             m_IsScriptInitialized = false;
 
-            m_BlitImGuiShader.Reset();
+            m_BlitImGuiShader.reset();
             m_BlitImGuiMaterial.reset();
 
             // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
@@ -352,9 +352,9 @@ namespace march
 
             if (!m_BlitImGuiShader)
             {
-                m_BlitImGuiShader = UniqueAssetPtr<Shader>::Make("Engine/Shaders/BlitImGui.shader");
+                m_BlitImGuiShader.reset("Engine/Shaders/BlitImGui.shader");
                 m_BlitImGuiMaterial = std::make_unique<Material>();
-                m_BlitImGuiMaterial->SetShader(m_BlitImGuiShader.Get());
+                m_BlitImGuiMaterial->SetShader(m_BlitImGuiShader.get());
             }
 
             DrawImGuiRenderGraph(device, tempRenderTargetId);

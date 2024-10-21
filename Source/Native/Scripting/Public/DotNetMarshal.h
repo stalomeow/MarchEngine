@@ -342,6 +342,21 @@ namespace march
         }
     };
 
+    template<typename T, typename = void, typename = void>
+    struct cs_defer_destroy;
+
+    template<typename T>
+    struct cs_defer_destroy<T, typename std::enable_if_t<is_cs_type_v<T>>, typename std::void_t<decltype(&T::destroy)>> final
+    {
+        T v;
+
+        cs_defer_destroy() : v() {}
+        ~cs_defer_destroy() { T::destroy(v); }
+
+        cs_defer_destroy(const cs_defer_destroy&) = delete;
+        cs_defer_destroy& operator=(const cs_defer_destroy&) = delete;
+    };
+
     using cs_void = cs<void>;
     using cs_byte = cs<uint8_t>;
     using cs_sbyte = cs<int8_t>;

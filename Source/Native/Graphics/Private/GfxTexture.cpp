@@ -187,7 +187,7 @@ namespace march
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
 
         ScratchImage image;
-        GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, nullptr, image));
+        GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, &m_MetaData, image));
 
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture
         // The CREATETEX_SRGB flag provides an option for working around gamma issues with content
@@ -207,8 +207,6 @@ namespace march
             // shader 中采样时不进行任何转换
             createFlags = CREATETEX_IGNORE_SRGB;
         }
-
-        m_MetaData = image.GetMetadata();
 
         ID3D12Device* device = m_Device->GetD3D12Device();
         GFX_HR(CreateTextureEx(device, m_MetaData, D3D12_RESOURCE_FLAG_NONE, createFlags, &m_Resource));

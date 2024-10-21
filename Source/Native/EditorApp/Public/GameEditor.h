@@ -45,7 +45,7 @@ namespace march
         GfxMesh* GetFullScreenTriangleMesh();
 
     private:
-        UniqueAssetPtr<Shader> m_BlitImGuiShader = nullptr;
+        asset_ptr<Shader> m_BlitImGuiShader = nullptr;
         std::unique_ptr<Material> m_BlitImGuiMaterial = nullptr;
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
         std::unique_ptr<RenderGraph> m_ImGuiRenderGraph = nullptr;
