@@ -162,10 +162,9 @@ namespace march
 
     class RenderGraphBuilder final
     {
-    public:
-        RenderGraphBuilder(RenderGraph* graph, int32_t passIndex);
-        ~RenderGraphBuilder() = default;
+        friend RenderGraph;
 
+    public:
         void AllowPassCulling(bool value);
 
         void ImportTexture(int32_t id, GfxRenderTexture* texture);
@@ -185,6 +184,7 @@ namespace march
         void SetRenderFunc(std::function<void(RenderGraphContext&)> func);
 
     private:
+        RenderGraphBuilder(RenderGraph* graph, int32_t passIndex);
         void PostSetRenderTargets();
         RenderGraphPass& GetPass();
 

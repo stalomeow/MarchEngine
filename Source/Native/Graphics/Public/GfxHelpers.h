@@ -19,7 +19,7 @@ namespace march
         static constexpr float GetFarClipPlaneDepth()  { return GfxSettings::UseReversedZBuffer() ? 0.0f : 1.0f; }
 
         template <typename T>
-        static T ToShaderColor(const T& color, bool sRGB = true)
+        static T GetShaderColor(const T& color, bool sRGB = true)
         {
             if (GfxSettings::GetColorSpace() == GfxColorSpace::Linear && sRGB)
             {
@@ -32,7 +32,7 @@ namespace march
             return color;
         }
 
-        static constexpr DXGI_FORMAT ToShaderFormat(DXGI_FORMAT format, bool sRGB = true)
+        static constexpr DXGI_FORMAT GetShaderColorTextureFormat(DXGI_FORMAT format, bool sRGB = true)
         {
             if (GfxSettings::GetColorSpace() == GfxColorSpace::Linear && sRGB)
             {

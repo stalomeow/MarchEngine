@@ -56,7 +56,7 @@ namespace march
     void Material::SetColor(int32_t id, const XMFLOAT4& value)
     {
         m_Colors[id] = value;
-        SetConstantBufferValue(id, GfxHelpers::ToShaderColor(value));
+        SetConstantBufferValue(id, GfxHelpers::GetShaderColor(value));
     }
 
     void Material::SetTexture(int32_t id, GfxTexture* texture)
@@ -308,7 +308,7 @@ namespace march
                 XMFLOAT4 value;
                 if (GetColor(id, &value))
                 {
-                    SetConstantBufferValue(id, GfxHelpers::ToShaderColor(value));
+                    SetConstantBufferValue(id, GfxHelpers::GetShaderColor(value));
                 }
                 break;
             }
