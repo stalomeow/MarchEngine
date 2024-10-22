@@ -229,44 +229,9 @@ namespace march
 
     void GameEditor::DrawBaseImGui()
     {
+        // Main Menu Bar 占位
         if (EditorGUI::BeginMainMenuBar())
         {
-            if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
-            {
-                RenderDoc::CaptureSingleFrame();
-            }
-
-            if (ImGui::BeginMenu("RenderDoc"))
-            {
-                if (ImGui::MenuItem("Capture", "Alt+C", nullptr, RenderDoc::IsLoaded()))
-                {
-                    RenderDoc::CaptureSingleFrame();
-                }
-
-                ImGui::SeparatorText("Information");
-
-                if (ImGui::BeginMenu("Library"))
-                {
-                    ImGui::TextUnformatted(RenderDoc::GetLibraryPath().c_str());
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::BeginMenu("API Version"))
-                {
-                    auto [major, minor, patch] = RenderDoc::GetVersion();
-                    ImGui::Text("%d.%d.%d", major, minor, patch);
-                    ImGui::EndMenu();
-                }
-
-                if (ImGui::BeginMenu("Num Captures"))
-                {
-                    ImGui::Text("%d", RenderDoc::GetNumCaptures());
-                    ImGui::EndMenu();
-                }
-
-                ImGui::EndMenu();
-            }
-
             EditorGUI::EndMainMenuBar();
         }
 
@@ -289,8 +254,15 @@ namespace march
             ImGui::Button(ICON_FA_FORWARD_STEP, ImVec2(width3, ImGui::GetFrameHeight()));
             ImGui::SameLine();
 
+            if (RenderDoc::IsLoaded() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
+            {
+                RenderDoc::CaptureSingleFrame();
+            }
+
             ImGui::BeginDisabled(!RenderDoc::IsLoaded());
-            if (ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight())))
+            bool capture = ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
+            ImGui::SetItemTooltip("Capture Frame (Alt+C)");
+            if (capture)
             {
                 RenderDoc::CaptureSingleFrame();
             }
