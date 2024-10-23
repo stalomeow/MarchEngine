@@ -17,7 +17,7 @@ Shader "SceneViewGrid"
         ZTest Less
         ZWrite Off
 
-        Blend 0 SrcAlpha OneMinusSrcAlpha, Zero One
+        Blend SrcAlpha OneMinusSrcAlpha, Zero One
 
         HLSLPROGRAM
         #pragma target 6.0

@@ -403,9 +403,17 @@ NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
     ShaderBinding::SetPasses(pShader, passes);
 }
 
-NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string program, cs_string entrypoint, cs_string shaderModel, cs<ShaderProgramType> programType)
+NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string program, cs_string entrypoint, cs_string shaderModel, cs<ShaderProgramType> programType, cs<cs_string*> outErrors)
 {
-    retcs pShader->CompilePass(passIndex, filename, program, entrypoint, shaderModel, programType);
+    std::string errors{};
+    bool ret = pShader->CompilePass(passIndex, filename, program, entrypoint, shaderModel, programType, errors);
+
+    if (!errors.empty())
+    {
+        outErrors->assign(std::move(errors));
+    }
+
+    retcs ret;
 }
 
 NATIVE_EXPORT_AUTO Shader_CreatePassRootSignature(cs<Shader*> pShader, cs_int passIndex)

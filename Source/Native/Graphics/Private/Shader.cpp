@@ -242,7 +242,8 @@ namespace march
         const std::string& program,
         const std::string& entrypoint,
         const std::string& shaderModel,
-        ShaderProgramType programType)
+        ShaderProgramType programType,
+        std::string& outErrors)
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
@@ -328,7 +329,7 @@ namespace march
         // will be zero if there are no warnings or errors.
         if (pErrors != nullptr && pErrors->GetStringLength() != 0)
         {
-            DEBUG_LOG_ERROR(pErrors->GetStringPointer());
+            outErrors = pErrors->GetStringPointer();
         }
 
         //

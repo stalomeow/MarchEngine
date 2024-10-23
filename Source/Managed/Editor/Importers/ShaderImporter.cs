@@ -15,7 +15,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 24;
+        protected override int Version => base.Version + 28;
 
         public override string IconNormal => FontAwesome6.Code;
 
@@ -54,15 +54,15 @@ namespace March.Editor.Importers
 
             try
             {
-                CompileShader(asset, shaderCode);
+                CompileShader(asset, shaderCode, clearWarningsAndErrors: true);
             }
             catch
             {
-                CompileShader(asset, s_ErrorShader);
+                CompileShader(asset, s_ErrorShader, clearWarningsAndErrors: false);
             }
         }
 
-        private void CompileShader(MarchObject asset, string shaderCode)
+        private void CompileShader(MarchObject asset, string shaderCode, bool clearWarningsAndErrors)
         {
             AntlrInputStream inputStream = new(shaderCode);
             ShaderLabLexer lexer = new(inputStream);
@@ -88,88 +88,38 @@ namespace March.Editor.Importers
                 DefaultVector = p.DefaultVector,
                 DefaultTexture = p.DefaultTexture
             }).ToArray();
-            shader.Passes = result.Passes.Select(p =>
+            shader.Passes = result.Passes.Select(p => new ShaderPass()
             {
-                var pass = new ShaderPass()
-                {
-                    Name = p.Name,
-                    Cull = p.Cull,
-                    StencilState = p.Stencil
-                };
-
-                if (p.ZTest == null)
-                {
-                    pass.DepthState = new ShaderPassDepthState
-                    {
-                        Enable = p.ZWrite,
-                        Compare = ShaderPassCompareFunc.Always,
-                        Write = p.ZWrite,
-                    };
-                }
-                else
-                {
-                    pass.DepthState = new ShaderPassDepthState
-                    {
-                        Enable = true,
-                        Compare = p.ZTest.Value,
-                        Write = p.ZWrite,
-                    };
-                }
-
-                int blendCount = 1;
-
-                if (p.Blends.Count > 0)
-                {
-                    blendCount = p.Blends.Keys.Max() + 1;
-                }
-
-                var blends = new ShaderPassBlendState[blendCount];
-
-                for (int i = 0; i < blends.Length; i++)
-                {
-                    if (p.Blends.TryGetValue(i, out blends[i]))
-                    {
-                        if (blends[i].WriteMask != ShaderPassColorWriteMask.All)
-                        {
-                            blends[i].Enable = true;
-                        }
-                    }
-                    else
-                    {
-                        blends[i] = ShaderPassBlendState.Default;
-                    }
-                }
-
-                pass.Blends = blends;
-                return pass;
+                Name = p.Name,
+                Cull = p.GetCull(result),
+                Blends = p.GetBlendStates(result),
+                DepthState = p.GetDepthState(result),
+                StencilState = p.GetStencilState(result),
             }).ToArray();
 
             shader.UploadPropertyDataToNative();
 
+            if (clearWarningsAndErrors)
+            {
+                shader.ClearWarningsAndErrors();
+            }
+
             for (int i = 0; i < result.Passes.Count; i++)
             {
-                ParsedShaderPass pass = result.Passes[i];
+                string code = result.GetShaderProgramCode(i, out string shaderModel,
+                    out Dictionary<ShaderProgramType, string> entrypoints);
 
-                if (pass.HlslProgram == null)
+                if (entrypoints.TryGetValue(ShaderProgramType.Vertex, out string? vs))
                 {
-                    throw new NotSupportedException("Shader pass HLSL program is required.");
-                }
-
-                if (pass.VsEntrypoint != null)
-                {
-                    bool success = shader.CompilePass(i, AssetFullPath, pass.HlslProgram, pass.VsEntrypoint, pass.ShaderModel, ShaderProgramType.Vertex);
-
-                    if (!success)
+                    if (!shader.CompilePass(i, AssetFullPath, code, vs, shaderModel, ShaderProgramType.Vertex))
                     {
                         throw new Exception();
                     }
                 }
 
-                if (pass.PsEntrypoint != null)
+                if (entrypoints.TryGetValue(ShaderProgramType.Pixel, out string? ps))
                 {
-                    bool success = shader.CompilePass(i, AssetFullPath, pass.HlslProgram, pass.PsEntrypoint, pass.ShaderModel, ShaderProgramType.Pixel);
-
-                    if (!success)
+                    if (!shader.CompilePass(i, AssetFullPath, code, ps, shaderModel, ShaderProgramType.Pixel))
                     {
                         throw new Exception();
                     }

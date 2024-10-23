@@ -12,15 +12,10 @@ Shader "DeferredLight"
         {
             Ref 1
 
-            CompFront Equal
-            PassFront Keep
-            FailFront Keep
-            ZFailFront Keep
-
-            CompBack Equal
-            PassBack Keep
-            FailBack Keep
-            ZFailBack Keep
+            Comp Equal
+            Pass Keep
+            Fail Keep
+            ZFail Keep
         }
 
         HLSLPROGRAM

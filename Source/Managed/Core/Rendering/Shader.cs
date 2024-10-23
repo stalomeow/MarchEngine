@@ -319,11 +319,28 @@ namespace March.Core.Rendering
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct ShaderPassBlendFormula
+    internal struct ShaderPassBlendFormula : IEquatable<ShaderPassBlendFormula>
     {
         public ShaderPassBlend Src;
         public ShaderPassBlend Dest;
         public ShaderPassBlendOp Op;
+
+        public readonly override bool Equals(object? obj)
+        {
+            return obj is ShaderPassBlendFormula formula && Equals(formula);
+        }
+
+        public readonly bool Equals(ShaderPassBlendFormula other)
+        {
+            return Src == other.Src &&
+                   Dest == other.Dest &&
+                   Op == other.Op;
+        }
+
+        public readonly override int GetHashCode()
+        {
+            return HashCode.Combine(Src, Dest, Op);
+        }
 
         public static readonly ShaderPassBlendFormula Default = new()
         {
@@ -334,12 +351,30 @@ namespace March.Core.Rendering
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct ShaderPassBlendState
+    internal struct ShaderPassBlendState : IEquatable<ShaderPassBlendState>
     {
         public bool Enable;
         public ShaderPassColorWriteMask WriteMask;
         public ShaderPassBlendFormula Rgb;
         public ShaderPassBlendFormula Alpha;
+
+        public readonly override bool Equals(object? obj)
+        {
+            return obj is ShaderPassBlendState state && Equals(state);
+        }
+
+        public readonly bool Equals(ShaderPassBlendState other)
+        {
+            return Enable == other.Enable &&
+                   WriteMask == other.WriteMask &&
+                   Rgb.Equals(other.Rgb) &&
+                   Alpha.Equals(other.Alpha);
+        }
+
+        public readonly override int GetHashCode()
+        {
+            return HashCode.Combine(Enable, WriteMask, Rgb, Alpha);
+        }
 
         public static readonly ShaderPassBlendState Default = new()
         {
@@ -431,7 +466,7 @@ namespace March.Core.Rendering
         public ShaderProgram[] Programs = [];
 
         public ShaderPassCullMode Cull;
-        public ShaderPassBlendState[] Blends = [];
+        public ShaderPassBlendState[] Blends = []; // 如果长度大于 1 则使用 Independent Blend
         public ShaderPassDepthState DepthState;
         public ShaderPassStencilState StencilState;
 
@@ -480,6 +515,12 @@ namespace March.Core.Rendering
 
     public unsafe partial class Shader : NativeMarchObject
     {
+        [JsonProperty]
+        private List<string> m_Warnings = [];
+
+        [JsonProperty]
+        private List<string> m_Errors = [];
+
         [JsonProperty]
         internal string Name { get; set; } = string.Empty;
 
@@ -543,6 +584,27 @@ namespace March.Core.Rendering
 
         internal int GetPassCount() => Shader_GetPassCount(NativePtr);
 
+        internal void ClearWarningsAndErrors()
+        {
+            m_Warnings.Clear();
+            m_Errors.Clear();
+        }
+
+        internal IReadOnlyList<string> GetWarnings()
+        {
+            return m_Warnings;
+        }
+
+        internal IReadOnlyList<string> GetErrors()
+        {
+            return m_Errors;
+        }
+
+        internal bool HasWarningsOrErrors()
+        {
+            return m_Warnings.Count > 0 || m_Errors.Count > 0;
+        }
+
         internal bool CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel, ShaderProgramType programType)
         {
             using NativeString f = filename;
@@ -550,7 +612,27 @@ namespace March.Core.Rendering
             using NativeString e = entrypoint;
             using NativeString s = shaderModel;
 
-            return Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType);
+            nint nativeErrors = nint.Zero;
+            bool success = Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType, &nativeErrors);
+
+            if (nativeErrors != nint.Zero)
+            {
+                string errors = NativeString.GetAndFree(nativeErrors);
+
+                // 如果编译成功，就是警告，否则是错误
+                if (success)
+                {
+                    Debug.LogWarning(errors);
+                    m_Warnings.Add(errors);
+                }
+                else
+                {
+                    Debug.LogError(errors);
+                    m_Errors.Add(errors);
+                }
+            }
+
+            return success;
         }
 
         internal void CreatePassRootSignature(int passIndex)
@@ -595,7 +677,7 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial bool Shader_CompilePass(nint pShader, int passIndex,
-            nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType);
+            nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType, nint* outErrors);
 
         [NativeFunction]
         private static partial void Shader_CreatePassRootSignature(nint pShader, int passIndex);

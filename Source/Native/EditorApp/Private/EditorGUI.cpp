@@ -34,9 +34,9 @@ namespace march
 
         ImVec2 pos = ImGui::GetCursorPos();
 
-        ImGui::PushTextWrapPos(labelWidth - ImGui::GetStyle().FramePadding.x);
+        //ImGui::PushTextWrapPos(labelWidth - ImGui::GetStyle().FramePadding.x);
         ImGui::TextUnformatted(label.c_str());
-        ImGui::PopTextWrapPos();
+        //ImGui::PopTextWrapPos();
 
         if (!tooltip.empty())
         {

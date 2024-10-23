@@ -253,7 +253,7 @@ namespace march
         std::unique_ptr<ShaderProgram> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
 
         ShaderPassCullMode m_Cull{};
-        std::vector<ShaderPassBlendState> m_Blends;
+        std::vector<ShaderPassBlendState> m_Blends; // 如果长度大于 1 则使用 Independent Blend
         ShaderPassDepthState m_DepthState{};
         ShaderPassStencilState m_StencilState{};
 
@@ -285,7 +285,8 @@ namespace march
             const std::string& program,
             const std::string& entrypoint,
             const std::string& shaderModel,
-            ShaderProgramType programType);
+            ShaderProgramType programType,
+            std::string& outErrors);
 
     private:
         std::unordered_map<int32_t, ShaderProperty> m_Properties;

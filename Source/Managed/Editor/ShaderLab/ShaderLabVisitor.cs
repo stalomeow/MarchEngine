@@ -23,25 +23,254 @@ namespace March.Editor.ShaderLab
         public ShaderDefaultTexture DefaultTexture;
     }
 
-    internal class ParsedShaderPass
+    internal struct ParsedBlend
     {
-        public string Name = "<Unnamed Pass>";
-        public string ShaderModel = "6.0";
-        public string? HlslProgram;
-        public string? VsEntrypoint;
-        public string? PsEntrypoint;
-        public ShaderPassCullMode Cull = ShaderPassCullMode.Back;
-        public ShaderPassCompareFunc? ZTest = ShaderPassCompareFunc.Less;
-        public bool ZWrite = true;
-        public Dictionary<int, ShaderPassBlendState> Blends = [];
-        public ShaderPassStencilState Stencil = ShaderPassStencilState.Default;
+        public bool Enable;
+        public ShaderPassBlend SrcRgb;
+        public ShaderPassBlend DstRgb;
+        public ShaderPassBlend SrcAlpha;
+        public ShaderPassBlend DstAlpha;
+
+        public static readonly ParsedBlend Default = new()
+        {
+            Enable = false,
+            SrcRgb = ShaderPassBlend.One,
+            DstRgb = ShaderPassBlend.Zero,
+            SrcAlpha = ShaderPassBlend.One,
+            DstAlpha = ShaderPassBlend.Zero,
+        };
     }
 
-    internal class ParsedShaderData
+    internal struct ParsedBlendOp
+    {
+        public ShaderPassBlendOp OpRgb;
+        public ShaderPassBlendOp OpAlpha;
+
+        public static readonly ParsedBlendOp Default = new()
+        {
+            OpRgb = ShaderPassBlendOp.Add,
+            OpAlpha = ShaderPassBlendOp.Add,
+        };
+    }
+
+    internal abstract class ParsedRenderStateContainer
+    {
+        private ShaderPassCullMode? m_Cull;
+
+        private bool? m_ZWrite;
+        private bool? m_IsZTestDisabled;
+        private ShaderPassCompareFunc? m_ZTest;
+
+        private ParsedBlend[]? m_Blends;
+        private ParsedBlendOp[]? m_BlendOps;
+        private ShaderPassColorWriteMask[]? m_ColorMasks;
+
+        private bool m_IsStencilSet = false;
+        private ShaderPassStencilState m_Stencil = ShaderPassStencilState.Default;
+
+        public void SetCull(ShaderPassCullMode cull)
+        {
+            m_Cull = cull;
+        }
+
+        public void SetZWrite(bool zWrite)
+        {
+            m_ZWrite = zWrite;
+        }
+
+        public void SetZTest(ShaderPassCompareFunc zTest)
+        {
+            m_IsZTestDisabled = false;
+            m_ZTest = zTest;
+        }
+
+        public void DisableZTest()
+        {
+            m_IsZTestDisabled = true;
+            m_ZTest = ShaderPassCompareFunc.Always;
+        }
+
+        public ParsedBlend[] SetBlends()
+        {
+            return m_Blends ??= Enumerable.Repeat(ParsedBlend.Default, 8).ToArray();
+        }
+
+        public ParsedBlendOp[] SetBlendOps()
+        {
+            return m_BlendOps ??= Enumerable.Repeat(ParsedBlendOp.Default, 8).ToArray();
+        }
+
+        public ShaderPassColorWriteMask[] SetColorMasks()
+        {
+            return m_ColorMasks ??= Enumerable.Repeat(ShaderPassColorWriteMask.All, 8).ToArray();
+        }
+
+        public ref ShaderPassStencilState SetStencilState()
+        {
+            m_IsStencilSet = true;
+            return ref m_Stencil;
+        }
+
+        public ShaderPassCullMode GetCull(ParsedRenderStateContainer parent)
+        {
+            return m_Cull ?? parent.m_Cull ?? ShaderPassCullMode.Back;
+        }
+
+        public ShaderPassDepthState GetDepthState(ParsedRenderStateContainer parent)
+        {
+            bool zWrite = m_ZWrite ?? parent.m_ZWrite ?? true;
+
+            if (m_IsZTestDisabled ?? parent.m_IsZTestDisabled ?? false)
+            {
+                return new ShaderPassDepthState
+                {
+                    Enable = false,
+                    Write = zWrite,
+                    Compare = ShaderPassCompareFunc.Always,
+                };
+            }
+            else
+            {
+                return new ShaderPassDepthState
+                {
+                    Enable = true,
+                    Write = zWrite,
+                    Compare = m_ZTest ?? parent.m_ZTest ?? ShaderPassCompareFunc.Less,
+                };
+            }
+        }
+
+        public ShaderPassBlendState[] GetBlendStates(ParsedRenderStateContainer parent)
+        {
+            ShaderPassBlendState[] blends = Enumerable.Repeat(ShaderPassBlendState.Default, 8).ToArray();
+
+            ParsedBlend[]? parsedBlends = m_Blends ?? parent.m_Blends;
+            ParsedBlendOp[]? parsedOps = m_BlendOps ?? parent.m_BlendOps;
+            ShaderPassColorWriteMask[]? writeMasks = m_ColorMasks ?? parent.m_ColorMasks;
+
+            if (parsedBlends != null)
+            {
+                for (int i = 0; i < blends.Length; i++)
+                {
+                    blends[i].Enable = parsedBlends[i].Enable;
+                    blends[i].Rgb.Src = parsedBlends[i].SrcRgb;
+                    blends[i].Rgb.Dest = parsedBlends[i].DstRgb;
+                    blends[i].Alpha.Src = parsedBlends[i].SrcAlpha;
+                    blends[i].Alpha.Dest = parsedBlends[i].DstAlpha;
+                }
+            }
+
+            if (parsedOps != null)
+            {
+                for (int i = 0; i < blends.Length; i++)
+                {
+                    blends[i].Rgb.Op = parsedOps[i].OpRgb;
+                    blends[i].Alpha.Op = parsedOps[i].OpAlpha;
+                }
+            }
+
+            if (writeMasks != null)
+            {
+                for (int i = 0; i < blends.Length; i++)
+                {
+                    blends[i].WriteMask = writeMasks[i];
+                }
+            }
+
+            if (blends.All(b => b.Equals(blends[0])))
+            {
+                return blends[..1]; // 所有的都一样，所以只保留一个
+            }
+            else
+            {
+                return blends;
+            }
+        }
+
+        public ShaderPassStencilState GetStencilState(ParsedRenderStateContainer parent)
+        {
+            if (m_IsStencilSet)
+            {
+                return m_Stencil;
+            }
+
+            if (parent.m_IsStencilSet)
+            {
+                return parent.m_Stencil;
+            }
+
+            return ShaderPassStencilState.Default;
+        }
+    }
+
+    internal class ParsedShaderPass : ParsedRenderStateContainer
+    {
+        public string Name = "<Unnamed Pass>";
+        public string? HlslProgram;
+    }
+
+    internal class ParsedShaderData : ParsedRenderStateContainer
     {
         public string? Name;
         public List<ParsedShaderProperty> Properties = [];
+        public List<string> HlslIncludes = [];
         public List<ParsedShaderPass> Passes = [];
+
+        public string GetShaderProgramCode(int passIndex, out string shaderModel, out Dictionary<ShaderProgramType, string> entrypoints)
+        {
+            shaderModel = "6.0"; // 默认
+            entrypoints = new Dictionary<ShaderProgramType, string>();
+
+            if (passIndex < 0 || passIndex >= Passes.Count)
+            {
+                return string.Empty;
+            }
+
+            ParsedShaderPass pass = Passes[passIndex];
+            string code = string.Join("\n", HlslIncludes);
+
+            if (pass.HlslProgram != null)
+            {
+                code += "\n" + pass.HlslProgram;
+            }
+
+            foreach (string line in code.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] segments = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+
+                // #pragma command ...args，至少要 2 个 segments
+                if (segments.Length >= 2 && segments[0] == "#pragma")
+                {
+                    switch (segments[1])
+                    {
+                        case "target":
+                            shaderModel = MustGet(segments, 2, "Missing shader model version");
+                            break;
+                        case "vs":
+                            entrypoints[ShaderProgramType.Vertex] = MustGet(segments, 2, "Missing vertex shader entrypoint");
+                            break;
+                        case "ps":
+                            entrypoints[ShaderProgramType.Pixel] = MustGet(segments, 2, "Missing pixel shader entrypoint");
+                            break;
+                        default:
+                            // 未知指令，忽略，可能是 hlsl 编译器的指令
+                            break;
+                    }
+                }
+            }
+
+            return code;
+
+            static string MustGet(string[] arr, int i, string error)
+            {
+                if (i >= arr.Length)
+                {
+                    throw new InvalidOperationException(error);
+                }
+
+                return arr[i];
+            }
+        }
     }
 
     internal sealed partial class ShaderLabVisitor : ShaderLabBaseVisitor<int>
@@ -51,6 +280,19 @@ namespace March.Editor.ShaderLab
         private int m_CurrentPassIndex = -1;
 
         private ParsedShaderPass CurrentPass => Data.Passes[m_CurrentPassIndex];
+
+        private ParsedRenderStateContainer CurrentStateContainer
+        {
+            get
+            {
+                if (m_CurrentPassIndex == -1)
+                {
+                    return Data;
+                }
+
+                return Data.Passes[m_CurrentPassIndex];
+            }
+        }
 
         public override int VisitShader([NotNull] ShaderLabParser.ShaderContext context)
         {
@@ -137,6 +379,19 @@ namespace March.Editor.ShaderLab
             return 0;
         }
 
+        public override int VisitHlslIncludeDeclaration([NotNull] ShaderLabParser.HlslIncludeDeclarationContext context)
+        {
+            // Remove HLSLINCLUDE and ENDHLSL，但要保留换行，不要 Trim，后面要设置行号
+            string code = context.HlslInclude().GetText()[11..^7];
+
+            // 保证行号和源文件一致
+            // 注意：#line 设置的是下一行的行号
+            int startLineNumber = context.HlslInclude().Symbol.Line;
+            Data.HlslIncludes.Add($"#line {startLineNumber}\n" + code);
+
+            return base.VisitHlslIncludeDeclaration(context);
+        }
+
         public override int VisitPassBlock([NotNull] ShaderLabParser.PassBlockContext context)
         {
             Data.Passes.Add(new ParsedShaderPass());
@@ -154,13 +409,14 @@ namespace March.Editor.ShaderLab
 
         public override int VisitCullDeclaration([NotNull] ShaderLabParser.CullDeclarationContext context)
         {
-            CurrentPass.Cull = context.cullModeValue().GetChild<ITerminalNode>(0).Symbol.Type switch
+            CurrentStateContainer.SetCull(context.cullModeValue().GetChild<ITerminalNode>(0).Symbol.Type switch
             {
                 ShaderLabParser.Back => ShaderPassCullMode.Back,
                 ShaderLabParser.Front => ShaderPassCullMode.Front,
                 ShaderLabParser.Off => ShaderPassCullMode.Off,
                 _ => throw new NotSupportedException("Unknown cull mode"),
-            };
+            });
+
             return base.VisitCullDeclaration(context);
         }
 
@@ -168,11 +424,11 @@ namespace March.Editor.ShaderLab
         {
             if (context.Disabled() != null)
             {
-                CurrentPass.ZTest = null;
+                CurrentStateContainer.DisableZTest();
             }
             else
             {
-                CurrentPass.ZTest = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+                CurrentStateContainer.SetZTest(ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0)));
             }
 
             return base.VisitZTestDeclaration(context);
@@ -180,103 +436,192 @@ namespace March.Editor.ShaderLab
 
         public override int VisitZWriteDeclaration([NotNull] ShaderLabParser.ZWriteDeclarationContext context)
         {
-            if (context.Off() != null)
-            {
-                CurrentPass.ZWrite = false;
-            }
-            else
-            {
-                CurrentPass.ZWrite = true;
-            }
-
+            CurrentStateContainer.SetZWrite(context.On() != null);
             return base.VisitZWriteDeclaration(context);
         }
 
         public override int VisitBlendDeclaration([NotNull] ShaderLabParser.BlendDeclarationContext context)
         {
-            int rtvIndex = int.Parse(context.IntegerLiteral().GetText());
-            ShaderPassBlendState blend = CurrentPass.Blends.GetValueOrDefault(rtvIndex, ShaderPassBlendState.Default);
+            ParsedBlend[] blends = CurrentStateContainer.SetBlends();
 
-            if (context.Off() != null)
+            // 默认设置所有 Target
+            int begin = 0;
+            int end = blends.Length;
+
+            if (context.IntegerLiteral() != null)
             {
-                blend.Enable = false;
-            }
-            else
-            {
-                blend.Enable = true;
-                blend.Rgb.Src = ParseBlendFactor(context.blendFactorValue(0).GetChild<ITerminalNode>(0));
-                blend.Rgb.Dest = ParseBlendFactor(context.blendFactorValue(1).GetChild<ITerminalNode>(0));
-                blend.Alpha.Src = ParseBlendFactor(context.blendFactorValue(2).GetChild<ITerminalNode>(0));
-                blend.Alpha.Dest = ParseBlendFactor(context.blendFactorValue(3).GetChild<ITerminalNode>(0));
+                begin = int.Parse(context.IntegerLiteral().GetText());
+                end = begin + 1;
+
+                if (begin < 0 || begin >= blends.Length)
+                {
+                    throw new NotSupportedException("Invalid render target index");
+                }
             }
 
-            CurrentPass.Blends[rtvIndex] = blend;
+            for (int i = begin; i < end; i++)
+            {
+                ref ParsedBlend blend = ref blends[i];
+
+                if (context.Off() != null)
+                {
+                    blend.Enable = false;
+                }
+                else
+                {
+                    blend.Enable = true;
+                    blend.SrcRgb = ParseBlendFactor(context.blendFactorValue(0).GetChild<ITerminalNode>(0));
+                    blend.DstRgb = ParseBlendFactor(context.blendFactorValue(1).GetChild<ITerminalNode>(0));
+
+                    if (context.blendFactorValue(2) != null && context.blendFactorValue(3) != null)
+                    {
+                        blend.SrcAlpha = ParseBlendFactor(context.blendFactorValue(2).GetChild<ITerminalNode>(0));
+                        blend.DstAlpha = ParseBlendFactor(context.blendFactorValue(3).GetChild<ITerminalNode>(0));
+                    }
+                    else
+                    {
+                        blend.SrcAlpha = blend.SrcRgb;
+                        blend.DstAlpha = blend.DstRgb;
+                    }
+                }
+            }
+
             return base.VisitBlendDeclaration(context);
         }
 
         public override int VisitBlendOpDeclaration([NotNull] ShaderLabParser.BlendOpDeclarationContext context)
         {
-            int rtvIndex = int.Parse(context.IntegerLiteral().GetText());
-            ShaderPassBlendState blend = CurrentPass.Blends.GetValueOrDefault(rtvIndex, ShaderPassBlendState.Default);
+            ParsedBlendOp[] blendOps = CurrentStateContainer.SetBlendOps();
 
-            blend.Rgb.Op = ParseBlendOp(context.blendOpValue(0).GetChild<ITerminalNode>(0));
-            blend.Alpha.Op = ParseBlendOp(context.blendOpValue(1).GetChild<ITerminalNode>(0));
+            // 默认设置所有 Target
+            int begin = 0;
+            int end = blendOps.Length;
 
-            CurrentPass.Blends[rtvIndex] = blend;
+            if (context.IntegerLiteral() != null)
+            {
+                begin = int.Parse(context.IntegerLiteral().GetText());
+                end = begin + 1;
+
+                if (begin < 0 || begin >= blendOps.Length)
+                {
+                    throw new NotSupportedException("Invalid render target index");
+                }
+            }
+
+            for (int i = begin; i < end; i++)
+            {
+                ref ParsedBlendOp blend = ref blendOps[i];
+
+                blend.OpRgb = ParseBlendOp(context.blendOpValue(0).GetChild<ITerminalNode>(0));
+
+                if (context.blendOpValue(1) != null)
+                {
+                    blend.OpAlpha = ParseBlendOp(context.blendOpValue(1).GetChild<ITerminalNode>(0));
+                }
+                else
+                {
+                    blend.OpAlpha = blend.OpRgb;
+                }
+            }
+
             return base.VisitBlendOpDeclaration(context);
         }
 
-        public override int VisitColorMaskDeclaration([NotNull] ShaderLabParser.ColorMaskDeclarationContext context)
+        public override int VisitColorMaskInt1Declaration([NotNull] ShaderLabParser.ColorMaskInt1DeclarationContext context)
         {
-            int rtvIndex = int.Parse(context.IntegerLiteral(0).GetText());
-            ShaderPassBlendState blend = CurrentPass.Blends.GetValueOrDefault(rtvIndex, ShaderPassBlendState.Default);
-
-            if (context.IntegerLiteral(1) != null)
+            if (context.IntegerLiteral().GetText() != "0")
             {
-                if (context.IntegerLiteral(1).GetText() != "0")
+                throw new NotSupportedException("Invalid color write mask");
+            }
+
+            ShaderPassColorWriteMask[] colorMasks = CurrentStateContainer.SetColorMasks();
+
+            for (int i = 0; i < colorMasks.Length; i++)
+            {
+                colorMasks[i] = ShaderPassColorWriteMask.None;
+            }
+
+            return base.VisitColorMaskInt1Declaration(context);
+        }
+
+        public override int VisitColorMaskInt2Declaration([NotNull] ShaderLabParser.ColorMaskInt2DeclarationContext context)
+        {
+            ShaderPassColorWriteMask[] colorMasks = CurrentStateContainer.SetColorMasks();
+
+            int i = int.Parse(context.IntegerLiteral(0).GetText());
+
+            if (i < 0 || i >= colorMasks.Length)
+            {
+                throw new NotSupportedException("Invalid render target index");
+            }
+
+            if (context.IntegerLiteral(1).GetText() != "0")
+            {
+                throw new NotSupportedException("Invalid color write mask");
+            }
+
+            colorMasks[i] = ShaderPassColorWriteMask.None;
+
+            return base.VisitColorMaskInt2Declaration(context);
+        }
+
+        public override int VisitColorMaskIdentifierDeclaration([NotNull] ShaderLabParser.ColorMaskIdentifierDeclarationContext context)
+        {
+            ShaderPassColorWriteMask[] colorMasks = CurrentStateContainer.SetColorMasks();
+
+            // 默认设置所有 Target
+            int begin = 0;
+            int end = colorMasks.Length;
+
+            if (context.IntegerLiteral() != null)
+            {
+                begin = int.Parse(context.IntegerLiteral().GetText());
+                end = begin + 1;
+
+                if (begin < 0 || begin >= colorMasks.Length)
+                {
+                    throw new NotSupportedException("Invalid render target index");
+                }
+            }
+
+            ShaderPassColorWriteMask mask = ShaderPassColorWriteMask.None;
+            HashSet<char> chars = [];
+
+            foreach (char c in context.Identifier().GetText().ToLower())
+            {
+                if (!chars.Add(c) || (c != 'r' && c != 'g' && c != 'b' && c != 'a'))
                 {
                     throw new NotSupportedException("Invalid color write mask");
                 }
 
-                blend.WriteMask = ShaderPassColorWriteMask.None;
-            }
-            else
-            {
-                blend.WriteMask = ShaderPassColorWriteMask.None;
-
-                string writeMask = context.Identifier().GetText();
-                HashSet<char> chars = [];
-
-                foreach (char c in writeMask.ToLower())
+                switch (c)
                 {
-                    if (!chars.Add(c) || (c != 'r' && c != 'g' && c != 'b' && c != 'a'))
-                    {
-                        throw new NotSupportedException("Invalid color write mask");
-                    }
-
-                    switch (c)
-                    {
-                        case 'r': blend.WriteMask |= ShaderPassColorWriteMask.Red; break;
-                        case 'g': blend.WriteMask |= ShaderPassColorWriteMask.Green; break;
-                        case 'b': blend.WriteMask |= ShaderPassColorWriteMask.Blue; break;
-                        case 'a': blend.WriteMask |= ShaderPassColorWriteMask.Alpha; break;
-                    }
+                    case 'r': mask |= ShaderPassColorWriteMask.Red; break;
+                    case 'g': mask |= ShaderPassColorWriteMask.Green; break;
+                    case 'b': mask |= ShaderPassColorWriteMask.Blue; break;
+                    case 'a': mask |= ShaderPassColorWriteMask.Alpha; break;
                 }
             }
 
-            CurrentPass.Blends[rtvIndex] = blend;
-            return base.VisitColorMaskDeclaration(context);
+            for (int i = begin; i < end; i++)
+            {
+                colorMasks[i] = mask;
+            }
+
+            return base.VisitColorMaskIdentifierDeclaration(context);
         }
 
         public override int VisitStencilBlock([NotNull] ShaderLabParser.StencilBlockContext context)
         {
-            CurrentPass.Stencil.Enable = true;
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.Enable = true;
             return base.VisitStencilBlock(context);
         }
 
         public override int VisitStencilRefDeclaration([NotNull] ShaderLabParser.StencilRefDeclarationContext context)
         {
-            CurrentPass.Stencil.Ref = byte.Parse(context.IntegerLiteral().GetText());
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.Ref = byte.Parse(context.IntegerLiteral().GetText());
             return base.VisitStencilRefDeclaration(context);
         }
 
@@ -291,7 +636,8 @@ namespace March.Editor.ShaderLab
                 mask = mask[2..];
             }
 
-            CurrentPass.Stencil.ReadMask = Convert.ToByte(mask, numBase);
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.ReadMask = Convert.ToByte(mask, numBase);
             return base.VisitStencilReadMaskDeclaration(context);
         }
 
@@ -306,55 +652,100 @@ namespace March.Editor.ShaderLab
                 mask = mask[2..];
             }
 
-            CurrentPass.Stencil.WriteMask = Convert.ToByte(mask, numBase);
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.WriteMask = Convert.ToByte(mask, numBase);
             return base.VisitStencilWriteMaskDeclaration(context);
+        }
+
+        public override int VisitStencilCompDeclaration([NotNull] ShaderLabParser.StencilCompDeclarationContext context)
+        {
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ShaderPassCompareFunc compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+            stencil.FrontFace.Compare = compare;
+            stencil.BackFace.Compare = compare;
+            return base.VisitStencilCompDeclaration(context);
+        }
+
+        public override int VisitStencilPassDeclaration([NotNull] ShaderLabParser.StencilPassDeclarationContext context)
+        {
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            stencil.FrontFace.PassOp = op;
+            stencil.BackFace.PassOp = op;
+            return base.VisitStencilPassDeclaration(context);
+        }
+
+        public override int VisitStencilFailDeclaration([NotNull] ShaderLabParser.StencilFailDeclarationContext context)
+        {
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            stencil.FrontFace.FailOp = op;
+            stencil.BackFace.FailOp = op;
+            return base.VisitStencilFailDeclaration(context);
+        }
+
+        public override int VisitStencilZFailDeclaration([NotNull] ShaderLabParser.StencilZFailDeclarationContext context)
+        {
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            stencil.FrontFace.DepthFailOp = op;
+            stencil.BackFace.DepthFailOp = op;
+            return base.VisitStencilZFailDeclaration(context);
         }
 
         public override int VisitStencilCompFrontDeclaration([NotNull] ShaderLabParser.StencilCompFrontDeclarationContext context)
         {
-            CurrentPass.Stencil.FrontFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.FrontFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilCompFrontDeclaration(context);
         }
 
         public override int VisitStencilPassFrontDeclaration([NotNull] ShaderLabParser.StencilPassFrontDeclarationContext context)
         {
-            CurrentPass.Stencil.FrontFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.FrontFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilPassFrontDeclaration(context);
         }
 
         public override int VisitStencilFailFrontDeclaration([NotNull] ShaderLabParser.StencilFailFrontDeclarationContext context)
         {
-            CurrentPass.Stencil.FrontFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.FrontFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilFailFrontDeclaration(context);
         }
 
         public override int VisitStencilZFailFrontDeclaration([NotNull] ShaderLabParser.StencilZFailFrontDeclarationContext context)
         {
-            CurrentPass.Stencil.FrontFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.FrontFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilZFailFrontDeclaration(context);
         }
 
         public override int VisitStencilCompBackDeclaration([NotNull] ShaderLabParser.StencilCompBackDeclarationContext context)
         {
-            CurrentPass.Stencil.BackFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.BackFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilCompBackDeclaration(context);
         }
 
         public override int VisitStencilPassBackDeclaration([NotNull] ShaderLabParser.StencilPassBackDeclarationContext context)
         {
-            CurrentPass.Stencil.BackFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.BackFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilPassBackDeclaration(context);
         }
 
         public override int VisitStencilFailBackDeclaration([NotNull] ShaderLabParser.StencilFailBackDeclarationContext context)
         {
-            CurrentPass.Stencil.BackFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.BackFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilFailBackDeclaration(context);
         }
 
         public override int VisitStencilZFailBackDeclaration([NotNull] ShaderLabParser.StencilZFailBackDeclarationContext context)
         {
-            CurrentPass.Stencil.BackFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            stencil.BackFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilZFailBackDeclaration(context);
         }
 
@@ -363,47 +754,12 @@ namespace March.Editor.ShaderLab
             // Remove HLSLPROGRAM and ENDHLSL，但要保留换行，不要 Trim，后面要设置行号
             string code = context.HlslProgram().GetText()[11..^7];
 
-            foreach (string line in code.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
-            {
-                string[] segments = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-
-                // #pragma command ...args，至少要 2 个 segments
-                if (segments.Length >= 2 && segments[0] == "#pragma")
-                {
-                    switch (segments[1])
-                    {
-                        case "target":
-                            CurrentPass.ShaderModel = MustGet(segments, 2, "Missing shader model version");
-                            break;
-                        case "vs":
-                            CurrentPass.VsEntrypoint = MustGet(segments, 2, "Missing vertex shader entrypoint");
-                            break;
-                        case "ps":
-                            CurrentPass.PsEntrypoint = MustGet(segments, 2, "Missing pixel shader entrypoint");
-                            break;
-                        default:
-                            // 未知指令，忽略，可能是 hlsl 编译器的指令
-                            break;
-                    }
-                }
-            }
-
             // 保证行号和源文件一致
             // 注意：#line 设置的是下一行的行号
             int startLineNumber = context.HlslProgram().Symbol.Line;
             CurrentPass.HlslProgram = $"#line {startLineNumber}\n" + code;
 
             return base.VisitHlslProgramDeclaration(context);
-
-            static string MustGet(string[] arr, int i, string error)
-            {
-                if (i >= arr.Length)
-                {
-                    throw new InvalidOperationException(error);
-                }
-
-                return arr[i];
-            }
         }
 
         private static Color ParseColor(ShaderLabParser.VectorLiteralExpressionContext context)

@@ -40,41 +40,46 @@ public partial class ShaderLabParser : Parser {
 		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9, 
 		T__9=10, T__10=11, T__11=12, T__12=13, T__13=14, T__14=15, T__15=16, T__16=17, 
 		T__17=18, T__18=19, T__19=20, T__20=21, T__21=22, T__22=23, T__23=24, 
-		T__24=25, HlslProgram=26, Assign=27, LeftBrace=28, RightBrace=29, StringLiteral=30, 
-		BracketLiteral=31, IntegerLiteral=32, FloatLiteral=33, Float=34, Int=35, 
-		Color=36, Vector=37, Texture=38, On=39, Off=40, Disabled=41, Front=42, 
-		Back=43, Zero=44, One=45, SrcColor=46, OneMinusSrcColor=47, SrcAlpha=48, 
-		OneMinusSrcAlpha=49, DstAlpha=50, OneMinusDstAlpha=51, DstColor=52, OneMinusDstColor=53, 
-		SrcAlphaSaturate=54, Add=55, Sub=56, RevSub=57, Min=58, Max=59, Never=60, 
-		Less=61, Equal=62, LEqual=63, Greater=64, NotEqual=65, GEqual=66, Always=67, 
-		Keep=68, Replace=69, IncrSat=70, DecrSat=71, Invert=72, IncrWrap=73, DecrWrap=74, 
-		Identifier=75, Whitespace=76, Newline=77, BlockComment=78, LineComment=79;
+		T__24=25, T__25=26, T__26=27, T__27=28, HlslInclude=29, HlslProgram=30, 
+		Assign=31, LeftBrace=32, RightBrace=33, StringLiteral=34, BracketLiteral=35, 
+		IntegerLiteral=36, FloatLiteral=37, Float=38, Int=39, Color=40, Vector=41, 
+		Texture=42, On=43, Off=44, Disabled=45, Front=46, Back=47, Zero=48, One=49, 
+		SrcColor=50, OneMinusSrcColor=51, SrcAlpha=52, OneMinusSrcAlpha=53, DstAlpha=54, 
+		OneMinusDstAlpha=55, DstColor=56, OneMinusDstColor=57, SrcAlphaSaturate=58, 
+		Add=59, Sub=60, RevSub=61, Min=62, Max=63, Never=64, Less=65, Equal=66, 
+		LEqual=67, Greater=68, NotEqual=69, GEqual=70, Always=71, Keep=72, Replace=73, 
+		IncrSat=74, DecrSat=75, Invert=76, IncrWrap=77, DecrWrap=78, Identifier=79, 
+		Whitespace=80, Newline=81, BlockComment=82, LineComment=83;
 	public const int
 		RULE_shader = 0, RULE_shaderDeclaration = 1, RULE_propertiesBlock = 2, 
 		RULE_passBlock = 3, RULE_passDeclaration = 4, RULE_attributeDeclaration = 5, 
 		RULE_numberLiteralExpression = 6, RULE_vectorLiteralExpression = 7, RULE_textureLiteralExpression = 8, 
 		RULE_propertyDefaultValueExpression = 9, RULE_propertyTypeDeclaration = 10, 
-		RULE_propertyDeclaration = 11, RULE_nameDeclaration = 12, RULE_cullDeclaration = 13, 
-		RULE_zTestDeclaration = 14, RULE_zWriteDeclaration = 15, RULE_blendDeclaration = 16, 
-		RULE_blendOpDeclaration = 17, RULE_colorMaskDeclaration = 18, RULE_stencilBlock = 19, 
-		RULE_stencilDeclaration = 20, RULE_stencilRefDeclaration = 21, RULE_stencilReadMaskDeclaration = 22, 
-		RULE_stencilWriteMaskDeclaration = 23, RULE_stencilCompFrontDeclaration = 24, 
-		RULE_stencilPassFrontDeclaration = 25, RULE_stencilFailFrontDeclaration = 26, 
-		RULE_stencilZFailFrontDeclaration = 27, RULE_stencilCompBackDeclaration = 28, 
-		RULE_stencilPassBackDeclaration = 29, RULE_stencilFailBackDeclaration = 30, 
-		RULE_stencilZFailBackDeclaration = 31, RULE_hlslProgramDeclaration = 32, 
-		RULE_cullModeValue = 33, RULE_blendFactorValue = 34, RULE_blendOpValue = 35, 
-		RULE_compareFuncValue = 36, RULE_stencilOpValue = 37;
+		RULE_propertyDeclaration = 11, RULE_nameDeclaration = 12, RULE_renderStateDeclaration = 13, 
+		RULE_cullDeclaration = 14, RULE_zTestDeclaration = 15, RULE_zWriteDeclaration = 16, 
+		RULE_blendDeclaration = 17, RULE_blendOpDeclaration = 18, RULE_colorMaskDeclaration = 19, 
+		RULE_stencilBlock = 20, RULE_stencilDeclaration = 21, RULE_stencilRefDeclaration = 22, 
+		RULE_stencilReadMaskDeclaration = 23, RULE_stencilWriteMaskDeclaration = 24, 
+		RULE_stencilCompDeclaration = 25, RULE_stencilPassDeclaration = 26, RULE_stencilFailDeclaration = 27, 
+		RULE_stencilZFailDeclaration = 28, RULE_stencilCompFrontDeclaration = 29, 
+		RULE_stencilPassFrontDeclaration = 30, RULE_stencilFailFrontDeclaration = 31, 
+		RULE_stencilZFailFrontDeclaration = 32, RULE_stencilCompBackDeclaration = 33, 
+		RULE_stencilPassBackDeclaration = 34, RULE_stencilFailBackDeclaration = 35, 
+		RULE_stencilZFailBackDeclaration = 36, RULE_hlslIncludeDeclaration = 37, 
+		RULE_hlslProgramDeclaration = 38, RULE_cullModeValue = 39, RULE_blendFactorValue = 40, 
+		RULE_blendOpValue = 41, RULE_compareFuncValue = 42, RULE_stencilOpValue = 43;
 	public static readonly string[] ruleNames = {
 		"shader", "shaderDeclaration", "propertiesBlock", "passBlock", "passDeclaration", 
 		"attributeDeclaration", "numberLiteralExpression", "vectorLiteralExpression", 
 		"textureLiteralExpression", "propertyDefaultValueExpression", "propertyTypeDeclaration", 
-		"propertyDeclaration", "nameDeclaration", "cullDeclaration", "zTestDeclaration", 
-		"zWriteDeclaration", "blendDeclaration", "blendOpDeclaration", "colorMaskDeclaration", 
-		"stencilBlock", "stencilDeclaration", "stencilRefDeclaration", "stencilReadMaskDeclaration", 
-		"stencilWriteMaskDeclaration", "stencilCompFrontDeclaration", "stencilPassFrontDeclaration", 
-		"stencilFailFrontDeclaration", "stencilZFailFrontDeclaration", "stencilCompBackDeclaration", 
-		"stencilPassBackDeclaration", "stencilFailBackDeclaration", "stencilZFailBackDeclaration", 
+		"propertyDeclaration", "nameDeclaration", "renderStateDeclaration", "cullDeclaration", 
+		"zTestDeclaration", "zWriteDeclaration", "blendDeclaration", "blendOpDeclaration", 
+		"colorMaskDeclaration", "stencilBlock", "stencilDeclaration", "stencilRefDeclaration", 
+		"stencilReadMaskDeclaration", "stencilWriteMaskDeclaration", "stencilCompDeclaration", 
+		"stencilPassDeclaration", "stencilFailDeclaration", "stencilZFailDeclaration", 
+		"stencilCompFrontDeclaration", "stencilPassFrontDeclaration", "stencilFailFrontDeclaration", 
+		"stencilZFailFrontDeclaration", "stencilCompBackDeclaration", "stencilPassBackDeclaration", 
+		"stencilFailBackDeclaration", "stencilZFailBackDeclaration", "hlslIncludeDeclaration", 
 		"hlslProgramDeclaration", "cullModeValue", "blendFactorValue", "blendOpValue", 
 		"compareFuncValue", "stencilOpValue"
 	};
@@ -82,29 +87,30 @@ public partial class ShaderLabParser : Parser {
 	private static readonly string[] _LiteralNames = {
 		null, "'Shader'", "'Properties'", "'Pass'", "'('", "','", "')'", "'Name'", 
 		"'Cull'", "'ZTest'", "'ZWrite'", "'Blend'", "'BlendOp'", "'ColorMask'", 
-		"'Stencil'", "'Ref'", "'ReadMask'", "'WriteMask'", "'CompFront'", "'PassFront'", 
-		"'FailFront'", "'ZFailFront'", "'CompBack'", "'PassBack'", "'FailBack'", 
-		"'ZFailBack'", null, "'='", "'{'", "'}'", null, null, null, null, "'Float'", 
-		"'Int'", "'Color'", "'Vector'", "'2D'", "'On'", "'Off'", "'Disabled'", 
-		"'Front'", "'Back'", "'Zero'", "'One'", "'SrcColor'", "'OneMinusSrcColor'", 
-		"'SrcAlpha'", "'OneMinusSrcAlpha'", "'DstAlpha'", "'OneMinusDstAlpha'", 
-		"'DstColor'", "'OneMinusDstColor'", "'SrcAlphaSaturate'", "'Add'", "'Sub'", 
-		"'RevSub'", "'Min'", "'Max'", "'Never'", "'Less'", "'Equal'", "'LEqual'", 
-		"'Greater'", "'NotEqual'", "'GEqual'", "'Always'", "'Keep'", "'Replace'", 
-		"'IncrSat'", "'DecrSat'", "'Invert'", "'IncrWrap'", "'DecrWrap'"
+		"'Stencil'", "'Ref'", "'ReadMask'", "'WriteMask'", "'Comp'", "'Fail'", 
+		"'ZFail'", "'CompFront'", "'PassFront'", "'FailFront'", "'ZFailFront'", 
+		"'CompBack'", "'PassBack'", "'FailBack'", "'ZFailBack'", null, null, "'='", 
+		"'{'", "'}'", null, null, null, null, "'Float'", "'Int'", "'Color'", "'Vector'", 
+		"'2D'", "'On'", "'Off'", "'Disabled'", "'Front'", "'Back'", "'Zero'", 
+		"'One'", "'SrcColor'", "'OneMinusSrcColor'", "'SrcAlpha'", "'OneMinusSrcAlpha'", 
+		"'DstAlpha'", "'OneMinusDstAlpha'", "'DstColor'", "'OneMinusDstColor'", 
+		"'SrcAlphaSaturate'", "'Add'", "'Sub'", "'RevSub'", "'Min'", "'Max'", 
+		"'Never'", "'Less'", "'Equal'", "'LEqual'", "'Greater'", "'NotEqual'", 
+		"'GEqual'", "'Always'", "'Keep'", "'Replace'", "'IncrSat'", "'DecrSat'", 
+		"'Invert'", "'IncrWrap'", "'DecrWrap'"
 	};
 	private static readonly string[] _SymbolicNames = {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, "HlslProgram", "Assign", "LeftBrace", "RightBrace", "StringLiteral", 
-		"BracketLiteral", "IntegerLiteral", "FloatLiteral", "Float", "Int", "Color", 
-		"Vector", "Texture", "On", "Off", "Disabled", "Front", "Back", "Zero", 
-		"One", "SrcColor", "OneMinusSrcColor", "SrcAlpha", "OneMinusSrcAlpha", 
-		"DstAlpha", "OneMinusDstAlpha", "DstColor", "OneMinusDstColor", "SrcAlphaSaturate", 
-		"Add", "Sub", "RevSub", "Min", "Max", "Never", "Less", "Equal", "LEqual", 
-		"Greater", "NotEqual", "GEqual", "Always", "Keep", "Replace", "IncrSat", 
-		"DecrSat", "Invert", "IncrWrap", "DecrWrap", "Identifier", "Whitespace", 
-		"Newline", "BlockComment", "LineComment"
+		null, null, null, null, null, "HlslInclude", "HlslProgram", "Assign", 
+		"LeftBrace", "RightBrace", "StringLiteral", "BracketLiteral", "IntegerLiteral", 
+		"FloatLiteral", "Float", "Int", "Color", "Vector", "Texture", "On", "Off", 
+		"Disabled", "Front", "Back", "Zero", "One", "SrcColor", "OneMinusSrcColor", 
+		"SrcAlpha", "OneMinusSrcAlpha", "DstAlpha", "OneMinusDstAlpha", "DstColor", 
+		"OneMinusDstColor", "SrcAlphaSaturate", "Add", "Sub", "RevSub", "Min", 
+		"Max", "Never", "Less", "Equal", "LEqual", "Greater", "NotEqual", "GEqual", 
+		"Always", "Keep", "Replace", "IncrSat", "DecrSat", "Invert", "IncrWrap", 
+		"DecrWrap", "Identifier", "Whitespace", "Newline", "BlockComment", "LineComment"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -169,27 +175,27 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 76;
+			State = 88;
 			Match(T__0);
-			State = 77;
+			State = 89;
 			Match(StringLiteral);
-			State = 78;
+			State = 90;
 			Match(LeftBrace);
-			State = 82;
+			State = 94;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while (_la==T__1 || _la==T__2) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 536903436L) != 0)) {
 				{
 				{
-				State = 79;
+				State = 91;
 				shaderDeclaration();
 				}
 				}
-				State = 84;
+				State = 96;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 85;
+			State = 97;
 			Match(RightBrace);
 			}
 		}
@@ -207,6 +213,12 @@ public partial class ShaderLabParser : Parser {
 	public partial class ShaderDeclarationContext : ParserRuleContext {
 		[System.Diagnostics.DebuggerNonUserCode] public PropertiesBlockContext propertiesBlock() {
 			return GetRuleContext<PropertiesBlockContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public HlslIncludeDeclarationContext hlslIncludeDeclaration() {
+			return GetRuleContext<HlslIncludeDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public RenderStateDeclarationContext renderStateDeclaration() {
+			return GetRuleContext<RenderStateDeclarationContext>(0);
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public PassBlockContext passBlock() {
 			return GetRuleContext<PassBlockContext>(0);
@@ -229,20 +241,40 @@ public partial class ShaderLabParser : Parser {
 		ShaderDeclarationContext _localctx = new ShaderDeclarationContext(Context, State);
 		EnterRule(_localctx, 2, RULE_shaderDeclaration);
 		try {
-			State = 89;
+			State = 103;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 87;
+				State = 99;
 				propertiesBlock();
 				}
 				break;
-			case T__2:
+			case HlslInclude:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 88;
+				State = 100;
+				hlslIncludeDeclaration();
+				}
+				break;
+			case T__7:
+			case T__8:
+			case T__9:
+			case T__10:
+			case T__11:
+			case T__12:
+			case T__13:
+				EnterOuterAlt(_localctx, 3);
+				{
+				State = 101;
+				renderStateDeclaration();
+				}
+				break;
+			case T__2:
+				EnterOuterAlt(_localctx, 4);
+				{
+				State = 102;
 				passBlock();
 				}
 				break;
@@ -291,25 +323,25 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 91;
+			State = 105;
 			Match(T__1);
-			State = 92;
+			State = 106;
 			Match(LeftBrace);
-			State = 96;
+			State = 110;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==BracketLiteral || _la==Identifier) {
 				{
 				{
-				State = 93;
+				State = 107;
 				propertyDeclaration();
 				}
 				}
-				State = 98;
+				State = 112;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 99;
+			State = 113;
 			Match(RightBrace);
 			}
 		}
@@ -354,25 +386,25 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 101;
+			State = 115;
 			Match(T__2);
-			State = 102;
+			State = 116;
 			Match(LeftBrace);
-			State = 106;
+			State = 120;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 67141504L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 1073774464L) != 0)) {
 				{
 				{
-				State = 103;
+				State = 117;
 				passDeclaration();
 				}
 				}
-				State = 108;
+				State = 122;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 109;
+			State = 123;
 			Match(RightBrace);
 			}
 		}
@@ -391,26 +423,8 @@ public partial class ShaderLabParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public NameDeclarationContext nameDeclaration() {
 			return GetRuleContext<NameDeclarationContext>(0);
 		}
-		[System.Diagnostics.DebuggerNonUserCode] public CullDeclarationContext cullDeclaration() {
-			return GetRuleContext<CullDeclarationContext>(0);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public ZTestDeclarationContext zTestDeclaration() {
-			return GetRuleContext<ZTestDeclarationContext>(0);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public ZWriteDeclarationContext zWriteDeclaration() {
-			return GetRuleContext<ZWriteDeclarationContext>(0);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public BlendDeclarationContext blendDeclaration() {
-			return GetRuleContext<BlendDeclarationContext>(0);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public BlendOpDeclarationContext blendOpDeclaration() {
-			return GetRuleContext<BlendOpDeclarationContext>(0);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public ColorMaskDeclarationContext colorMaskDeclaration() {
-			return GetRuleContext<ColorMaskDeclarationContext>(0);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public StencilBlockContext stencilBlock() {
-			return GetRuleContext<StencilBlockContext>(0);
+		[System.Diagnostics.DebuggerNonUserCode] public RenderStateDeclarationContext renderStateDeclaration() {
+			return GetRuleContext<RenderStateDeclarationContext>(0);
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public HlslProgramDeclarationContext hlslProgramDeclaration() {
 			return GetRuleContext<HlslProgramDeclarationContext>(0);
@@ -433,69 +447,33 @@ public partial class ShaderLabParser : Parser {
 		PassDeclarationContext _localctx = new PassDeclarationContext(Context, State);
 		EnterRule(_localctx, 8, RULE_passDeclaration);
 		try {
-			State = 120;
+			State = 128;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__6:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 111;
+				State = 125;
 				nameDeclaration();
 				}
 				break;
 			case T__7:
+			case T__8:
+			case T__9:
+			case T__10:
+			case T__11:
+			case T__12:
+			case T__13:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 112;
-				cullDeclaration();
-				}
-				break;
-			case T__8:
-				EnterOuterAlt(_localctx, 3);
-				{
-				State = 113;
-				zTestDeclaration();
-				}
-				break;
-			case T__9:
-				EnterOuterAlt(_localctx, 4);
-				{
-				State = 114;
-				zWriteDeclaration();
-				}
-				break;
-			case T__10:
-				EnterOuterAlt(_localctx, 5);
-				{
-				State = 115;
-				blendDeclaration();
-				}
-				break;
-			case T__11:
-				EnterOuterAlt(_localctx, 6);
-				{
-				State = 116;
-				blendOpDeclaration();
-				}
-				break;
-			case T__12:
-				EnterOuterAlt(_localctx, 7);
-				{
-				State = 117;
-				colorMaskDeclaration();
-				}
-				break;
-			case T__13:
-				EnterOuterAlt(_localctx, 8);
-				{
-				State = 118;
-				stencilBlock();
+				State = 126;
+				renderStateDeclaration();
 				}
 				break;
 			case HlslProgram:
-				EnterOuterAlt(_localctx, 9);
+				EnterOuterAlt(_localctx, 3);
 				{
-				State = 119;
+				State = 127;
 				hlslProgramDeclaration();
 				}
 				break;
@@ -536,7 +514,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 122;
+			State = 130;
 			Match(BracketLiteral);
 			}
 		}
@@ -575,7 +553,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 124;
+			State = 132;
 			_la = TokenStream.LA(1);
 			if ( !(_la==IntegerLiteral || _la==FloatLiteral) ) {
 			ErrorHandler.RecoverInline(this);
@@ -624,23 +602,23 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 126;
-			Match(T__3);
-			State = 127;
-			numberLiteralExpression();
-			State = 128;
-			Match(T__4);
-			State = 129;
-			numberLiteralExpression();
-			State = 130;
-			Match(T__4);
-			State = 131;
-			numberLiteralExpression();
-			State = 132;
-			Match(T__4);
-			State = 133;
-			numberLiteralExpression();
 			State = 134;
+			Match(T__3);
+			State = 135;
+			numberLiteralExpression();
+			State = 136;
+			Match(T__4);
+			State = 137;
+			numberLiteralExpression();
+			State = 138;
+			Match(T__4);
+			State = 139;
+			numberLiteralExpression();
+			State = 140;
+			Match(T__4);
+			State = 141;
+			numberLiteralExpression();
+			State = 142;
 			Match(T__5);
 			}
 		}
@@ -679,11 +657,11 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 136;
+			State = 144;
 			Match(StringLiteral);
-			State = 137;
+			State = 145;
 			Match(LeftBrace);
-			State = 138;
+			State = 146;
 			Match(RightBrace);
 			}
 		}
@@ -726,28 +704,28 @@ public partial class ShaderLabParser : Parser {
 		PropertyDefaultValueExpressionContext _localctx = new PropertyDefaultValueExpressionContext(Context, State);
 		EnterRule(_localctx, 18, RULE_propertyDefaultValueExpression);
 		try {
-			State = 143;
+			State = 151;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case IntegerLiteral:
 			case FloatLiteral:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 140;
+				State = 148;
 				numberLiteralExpression();
 				}
 				break;
 			case T__3:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 141;
+				State = 149;
 				vectorLiteralExpression();
 				}
 				break;
 			case StringLiteral:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 142;
+				State = 150;
 				textureLiteralExpression();
 				}
 				break;
@@ -793,9 +771,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 145;
+			State = 153;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 532575944704L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 8521215115264L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -852,35 +830,35 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 150;
+			State = 158;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==BracketLiteral) {
 				{
 				{
-				State = 147;
+				State = 155;
 				attributeDeclaration();
 				}
 				}
-				State = 152;
+				State = 160;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 153;
+			State = 161;
 			Match(Identifier);
-			State = 154;
+			State = 162;
 			Match(T__3);
-			State = 155;
+			State = 163;
 			Match(StringLiteral);
-			State = 156;
+			State = 164;
 			Match(T__4);
-			State = 157;
+			State = 165;
 			propertyTypeDeclaration();
-			State = 158;
+			State = 166;
 			Match(T__5);
-			State = 159;
+			State = 167;
 			Match(Assign);
-			State = 160;
+			State = 168;
 			propertyDefaultValueExpression();
 			}
 		}
@@ -917,10 +895,117 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 162;
+			State = 170;
 			Match(T__6);
-			State = 163;
+			State = 171;
 			Match(StringLiteral);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class RenderStateDeclarationContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public CullDeclarationContext cullDeclaration() {
+			return GetRuleContext<CullDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ZTestDeclarationContext zTestDeclaration() {
+			return GetRuleContext<ZTestDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ZWriteDeclarationContext zWriteDeclaration() {
+			return GetRuleContext<ZWriteDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public BlendDeclarationContext blendDeclaration() {
+			return GetRuleContext<BlendDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public BlendOpDeclarationContext blendOpDeclaration() {
+			return GetRuleContext<BlendOpDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public ColorMaskDeclarationContext colorMaskDeclaration() {
+			return GetRuleContext<ColorMaskDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public StencilBlockContext stencilBlock() {
+			return GetRuleContext<StencilBlockContext>(0);
+		}
+		public RenderStateDeclarationContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_renderStateDeclaration; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitRenderStateDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public RenderStateDeclarationContext renderStateDeclaration() {
+		RenderStateDeclarationContext _localctx = new RenderStateDeclarationContext(Context, State);
+		EnterRule(_localctx, 26, RULE_renderStateDeclaration);
+		try {
+			State = 180;
+			ErrorHandler.Sync(this);
+			switch (TokenStream.LA(1)) {
+			case T__7:
+				EnterOuterAlt(_localctx, 1);
+				{
+				State = 173;
+				cullDeclaration();
+				}
+				break;
+			case T__8:
+				EnterOuterAlt(_localctx, 2);
+				{
+				State = 174;
+				zTestDeclaration();
+				}
+				break;
+			case T__9:
+				EnterOuterAlt(_localctx, 3);
+				{
+				State = 175;
+				zWriteDeclaration();
+				}
+				break;
+			case T__10:
+				EnterOuterAlt(_localctx, 4);
+				{
+				State = 176;
+				blendDeclaration();
+				}
+				break;
+			case T__11:
+				EnterOuterAlt(_localctx, 5);
+				{
+				State = 177;
+				blendOpDeclaration();
+				}
+				break;
+			case T__12:
+				EnterOuterAlt(_localctx, 6);
+				{
+				State = 178;
+				colorMaskDeclaration();
+				}
+				break;
+			case T__13:
+				EnterOuterAlt(_localctx, 7);
+				{
+				State = 179;
+				stencilBlock();
+				}
+				break;
+			default:
+				throw new NoViableAltException(this);
 			}
 		}
 		catch (RecognitionException re) {
@@ -954,13 +1039,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public CullDeclarationContext cullDeclaration() {
 		CullDeclarationContext _localctx = new CullDeclarationContext(Context, State);
-		EnterRule(_localctx, 26, RULE_cullDeclaration);
+		EnterRule(_localctx, 28, RULE_cullDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 165;
+			State = 182;
 			Match(T__7);
-			State = 166;
+			State = 183;
 			cullModeValue();
 			}
 		}
@@ -996,18 +1081,18 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public ZTestDeclarationContext zTestDeclaration() {
 		ZTestDeclarationContext _localctx = new ZTestDeclarationContext(Context, State);
-		EnterRule(_localctx, 28, RULE_zTestDeclaration);
+		EnterRule(_localctx, 30, RULE_zTestDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 168;
+			State = 185;
 			Match(T__8);
-			State = 171;
+			State = 188;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Disabled:
 				{
-				State = 169;
+				State = 186;
 				Match(Disabled);
 				}
 				break;
@@ -1020,7 +1105,7 @@ public partial class ShaderLabParser : Parser {
 			case GEqual:
 			case Always:
 				{
-				State = 170;
+				State = 187;
 				compareFuncValue();
 				}
 				break;
@@ -1059,14 +1144,14 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public ZWriteDeclarationContext zWriteDeclaration() {
 		ZWriteDeclarationContext _localctx = new ZWriteDeclarationContext(Context, State);
-		EnterRule(_localctx, 30, RULE_zWriteDeclaration);
+		EnterRule(_localctx, 32, RULE_zWriteDeclaration);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 173;
+			State = 190;
 			Match(T__9);
-			State = 174;
+			State = 191;
 			_la = TokenStream.LA(1);
 			if ( !(_la==On || _la==Off) ) {
 			ErrorHandler.RecoverInline(this);
@@ -1089,8 +1174,8 @@ public partial class ShaderLabParser : Parser {
 	}
 
 	public partial class BlendDeclarationContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral() { return GetToken(ShaderLabParser.IntegerLiteral, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Off() { return GetToken(ShaderLabParser.Off, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral() { return GetToken(ShaderLabParser.IntegerLiteral, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public BlendFactorValueContext[] blendFactorValue() {
 			return GetRuleContexts<BlendFactorValueContext>();
 		}
@@ -1113,20 +1198,29 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public BlendDeclarationContext blendDeclaration() {
 		BlendDeclarationContext _localctx = new BlendDeclarationContext(Context, State);
-		EnterRule(_localctx, 32, RULE_blendDeclaration);
+		EnterRule(_localctx, 34, RULE_blendDeclaration);
+		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 176;
+			State = 193;
 			Match(T__10);
-			State = 177;
-			Match(IntegerLiteral);
-			State = 185;
+			State = 195;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if (_la==IntegerLiteral) {
+				{
+				State = 194;
+				Match(IntegerLiteral);
+				}
+			}
+
+			State = 206;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Off:
 				{
-				State = 178;
+				State = 197;
 				Match(Off);
 				}
 				break;
@@ -1143,16 +1237,24 @@ public partial class ShaderLabParser : Parser {
 			case SrcAlphaSaturate:
 				{
 				{
-				State = 179;
+				State = 198;
 				blendFactorValue();
-				State = 180;
+				State = 199;
 				blendFactorValue();
-				State = 181;
-				Match(T__4);
-				State = 182;
-				blendFactorValue();
-				State = 183;
-				blendFactorValue();
+				State = 204;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				if (_la==T__4) {
+					{
+					State = 200;
+					Match(T__4);
+					State = 201;
+					blendFactorValue();
+					State = 202;
+					blendFactorValue();
+					}
+				}
+
 				}
 				}
 				break;
@@ -1173,13 +1275,13 @@ public partial class ShaderLabParser : Parser {
 	}
 
 	public partial class BlendOpDeclarationContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral() { return GetToken(ShaderLabParser.IntegerLiteral, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public BlendOpValueContext[] blendOpValue() {
 			return GetRuleContexts<BlendOpValueContext>();
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public BlendOpValueContext blendOpValue(int i) {
 			return GetRuleContext<BlendOpValueContext>(i);
 		}
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral() { return GetToken(ShaderLabParser.IntegerLiteral, 0); }
 		public BlendOpDeclarationContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -1196,20 +1298,37 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public BlendOpDeclarationContext blendOpDeclaration() {
 		BlendOpDeclarationContext _localctx = new BlendOpDeclarationContext(Context, State);
-		EnterRule(_localctx, 34, RULE_blendOpDeclaration);
+		EnterRule(_localctx, 36, RULE_blendOpDeclaration);
+		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 187;
+			State = 208;
 			Match(T__11);
-			State = 188;
-			Match(IntegerLiteral);
-			State = 189;
+			State = 210;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if (_la==IntegerLiteral) {
+				{
+				State = 209;
+				Match(IntegerLiteral);
+				}
+			}
+
+			State = 212;
 			blendOpValue();
-			State = 190;
-			Match(T__4);
-			State = 191;
-			blendOpValue();
+			State = 215;
+			ErrorHandler.Sync(this);
+			_la = TokenStream.LA(1);
+			if (_la==T__4) {
+				{
+				State = 213;
+				Match(T__4);
+				State = 214;
+				blendOpValue();
+				}
+			}
+
 			}
 		}
 		catch (RecognitionException re) {
@@ -1224,20 +1343,48 @@ public partial class ShaderLabParser : Parser {
 	}
 
 	public partial class ColorMaskDeclarationContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] IntegerLiteral() { return GetTokens(ShaderLabParser.IntegerLiteral); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral(int i) {
-			return GetToken(ShaderLabParser.IntegerLiteral, i);
-		}
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Identifier() { return GetToken(ShaderLabParser.Identifier, 0); }
 		public ColorMaskDeclarationContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
 		}
 		public override int RuleIndex { get { return RULE_colorMaskDeclaration; } }
+	 
+		public ColorMaskDeclarationContext() { }
+		public virtual void CopyFrom(ColorMaskDeclarationContext context) {
+			base.CopyFrom(context);
+		}
+	}
+	public partial class ColorMaskInt1DeclarationContext : ColorMaskDeclarationContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral() { return GetToken(ShaderLabParser.IntegerLiteral, 0); }
+		public ColorMaskInt1DeclarationContext(ColorMaskDeclarationContext context) { CopyFrom(context); }
 		[System.Diagnostics.DebuggerNonUserCode]
 		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
 			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
-			if (typedVisitor != null) return typedVisitor.VisitColorMaskDeclaration(this);
+			if (typedVisitor != null) return typedVisitor.VisitColorMaskInt1Declaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+	public partial class ColorMaskIdentifierDeclarationContext : ColorMaskDeclarationContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Identifier() { return GetToken(ShaderLabParser.Identifier, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral() { return GetToken(ShaderLabParser.IntegerLiteral, 0); }
+		public ColorMaskIdentifierDeclarationContext(ColorMaskDeclarationContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitColorMaskIdentifierDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+	public partial class ColorMaskInt2DeclarationContext : ColorMaskDeclarationContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] IntegerLiteral() { return GetTokens(ShaderLabParser.IntegerLiteral); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode IntegerLiteral(int i) {
+			return GetToken(ShaderLabParser.IntegerLiteral, i);
+		}
+		public ColorMaskInt2DeclarationContext(ColorMaskDeclarationContext context) { CopyFrom(context); }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitColorMaskInt2Declaration(this);
 			else return visitor.VisitChildren(this);
 		}
 	}
@@ -1245,24 +1392,54 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public ColorMaskDeclarationContext colorMaskDeclaration() {
 		ColorMaskDeclarationContext _localctx = new ColorMaskDeclarationContext(Context, State);
-		EnterRule(_localctx, 36, RULE_colorMaskDeclaration);
+		EnterRule(_localctx, 38, RULE_colorMaskDeclaration);
 		int _la;
 		try {
-			EnterOuterAlt(_localctx, 1);
-			{
-			State = 193;
-			Match(T__12);
-			State = 194;
-			Match(IntegerLiteral);
-			State = 195;
-			_la = TokenStream.LA(1);
-			if ( !(_la==IntegerLiteral || _la==Identifier) ) {
-			ErrorHandler.RecoverInline(this);
-			}
-			else {
-				ErrorHandler.ReportMatch(this);
-			    Consume();
-			}
+			State = 227;
+			ErrorHandler.Sync(this);
+			switch ( Interpreter.AdaptivePredict(TokenStream,15,Context) ) {
+			case 1:
+				_localctx = new ColorMaskInt1DeclarationContext(_localctx);
+				EnterOuterAlt(_localctx, 1);
+				{
+				State = 217;
+				Match(T__12);
+				State = 218;
+				Match(IntegerLiteral);
+				}
+				break;
+			case 2:
+				_localctx = new ColorMaskInt2DeclarationContext(_localctx);
+				EnterOuterAlt(_localctx, 2);
+				{
+				State = 219;
+				Match(T__12);
+				State = 220;
+				Match(IntegerLiteral);
+				State = 221;
+				Match(IntegerLiteral);
+				}
+				break;
+			case 3:
+				_localctx = new ColorMaskIdentifierDeclarationContext(_localctx);
+				EnterOuterAlt(_localctx, 3);
+				{
+				State = 222;
+				Match(T__12);
+				State = 224;
+				ErrorHandler.Sync(this);
+				_la = TokenStream.LA(1);
+				if (_la==IntegerLiteral) {
+					{
+					State = 223;
+					Match(IntegerLiteral);
+					}
+				}
+
+				State = 226;
+				Match(Identifier);
+				}
+				break;
 			}
 		}
 		catch (RecognitionException re) {
@@ -1301,30 +1478,30 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilBlockContext stencilBlock() {
 		StencilBlockContext _localctx = new StencilBlockContext(Context, State);
-		EnterRule(_localctx, 38, RULE_stencilBlock);
+		EnterRule(_localctx, 40, RULE_stencilBlock);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 197;
+			State = 229;
 			Match(T__13);
-			State = 198;
+			State = 230;
 			Match(LeftBrace);
-			State = 202;
+			State = 234;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 67076096L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 536838152L) != 0)) {
 				{
 				{
-				State = 199;
+				State = 231;
 				stencilDeclaration();
 				}
 				}
-				State = 204;
+				State = 236;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 205;
+			State = 237;
 			Match(RightBrace);
 			}
 		}
@@ -1348,6 +1525,18 @@ public partial class ShaderLabParser : Parser {
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public StencilWriteMaskDeclarationContext stencilWriteMaskDeclaration() {
 			return GetRuleContext<StencilWriteMaskDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public StencilCompDeclarationContext stencilCompDeclaration() {
+			return GetRuleContext<StencilCompDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public StencilPassDeclarationContext stencilPassDeclaration() {
+			return GetRuleContext<StencilPassDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public StencilFailDeclarationContext stencilFailDeclaration() {
+			return GetRuleContext<StencilFailDeclarationContext>(0);
+		}
+		[System.Diagnostics.DebuggerNonUserCode] public StencilZFailDeclarationContext stencilZFailDeclaration() {
+			return GetRuleContext<StencilZFailDeclarationContext>(0);
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public StencilCompFrontDeclarationContext stencilCompFrontDeclaration() {
 			return GetRuleContext<StencilCompFrontDeclarationContext>(0);
@@ -1389,85 +1578,113 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilDeclarationContext stencilDeclaration() {
 		StencilDeclarationContext _localctx = new StencilDeclarationContext(Context, State);
-		EnterRule(_localctx, 40, RULE_stencilDeclaration);
+		EnterRule(_localctx, 42, RULE_stencilDeclaration);
 		try {
-			State = 218;
+			State = 254;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__14:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 207;
+				State = 239;
 				stencilRefDeclaration();
 				}
 				break;
 			case T__15:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 208;
+				State = 240;
 				stencilReadMaskDeclaration();
 				}
 				break;
 			case T__16:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 209;
+				State = 241;
 				stencilWriteMaskDeclaration();
 				}
 				break;
 			case T__17:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 210;
-				stencilCompFrontDeclaration();
+				State = 242;
+				stencilCompDeclaration();
+				}
+				break;
+			case T__2:
+				EnterOuterAlt(_localctx, 5);
+				{
+				State = 243;
+				stencilPassDeclaration();
 				}
 				break;
 			case T__18:
-				EnterOuterAlt(_localctx, 5);
+				EnterOuterAlt(_localctx, 6);
 				{
-				State = 211;
-				stencilPassFrontDeclaration();
+				State = 244;
+				stencilFailDeclaration();
 				}
 				break;
 			case T__19:
-				EnterOuterAlt(_localctx, 6);
+				EnterOuterAlt(_localctx, 7);
 				{
-				State = 212;
-				stencilFailFrontDeclaration();
+				State = 245;
+				stencilZFailDeclaration();
 				}
 				break;
 			case T__20:
-				EnterOuterAlt(_localctx, 7);
+				EnterOuterAlt(_localctx, 8);
 				{
-				State = 213;
-				stencilZFailFrontDeclaration();
+				State = 246;
+				stencilCompFrontDeclaration();
 				}
 				break;
 			case T__21:
-				EnterOuterAlt(_localctx, 8);
+				EnterOuterAlt(_localctx, 9);
 				{
-				State = 214;
-				stencilCompBackDeclaration();
+				State = 247;
+				stencilPassFrontDeclaration();
 				}
 				break;
 			case T__22:
-				EnterOuterAlt(_localctx, 9);
+				EnterOuterAlt(_localctx, 10);
 				{
-				State = 215;
-				stencilPassBackDeclaration();
+				State = 248;
+				stencilFailFrontDeclaration();
 				}
 				break;
 			case T__23:
-				EnterOuterAlt(_localctx, 10);
+				EnterOuterAlt(_localctx, 11);
 				{
-				State = 216;
-				stencilFailBackDeclaration();
+				State = 249;
+				stencilZFailFrontDeclaration();
 				}
 				break;
 			case T__24:
-				EnterOuterAlt(_localctx, 11);
+				EnterOuterAlt(_localctx, 12);
 				{
-				State = 217;
+				State = 250;
+				stencilCompBackDeclaration();
+				}
+				break;
+			case T__25:
+				EnterOuterAlt(_localctx, 13);
+				{
+				State = 251;
+				stencilPassBackDeclaration();
+				}
+				break;
+			case T__26:
+				EnterOuterAlt(_localctx, 14);
+				{
+				State = 252;
+				stencilFailBackDeclaration();
+				}
+				break;
+			case T__27:
+				EnterOuterAlt(_localctx, 15);
+				{
+				State = 253;
 				stencilZFailBackDeclaration();
 				}
 				break;
@@ -1504,13 +1721,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilRefDeclarationContext stencilRefDeclaration() {
 		StencilRefDeclarationContext _localctx = new StencilRefDeclarationContext(Context, State);
-		EnterRule(_localctx, 42, RULE_stencilRefDeclaration);
+		EnterRule(_localctx, 44, RULE_stencilRefDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 220;
+			State = 256;
 			Match(T__14);
-			State = 221;
+			State = 257;
 			Match(IntegerLiteral);
 			}
 		}
@@ -1543,13 +1760,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilReadMaskDeclarationContext stencilReadMaskDeclaration() {
 		StencilReadMaskDeclarationContext _localctx = new StencilReadMaskDeclarationContext(Context, State);
-		EnterRule(_localctx, 44, RULE_stencilReadMaskDeclaration);
+		EnterRule(_localctx, 46, RULE_stencilReadMaskDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 223;
+			State = 259;
 			Match(T__15);
-			State = 224;
+			State = 260;
 			Match(IntegerLiteral);
 			}
 		}
@@ -1582,14 +1799,178 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilWriteMaskDeclarationContext stencilWriteMaskDeclaration() {
 		StencilWriteMaskDeclarationContext _localctx = new StencilWriteMaskDeclarationContext(Context, State);
-		EnterRule(_localctx, 46, RULE_stencilWriteMaskDeclaration);
+		EnterRule(_localctx, 48, RULE_stencilWriteMaskDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 226;
+			State = 262;
 			Match(T__16);
-			State = 227;
+			State = 263;
 			Match(IntegerLiteral);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class StencilCompDeclarationContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public CompareFuncValueContext compareFuncValue() {
+			return GetRuleContext<CompareFuncValueContext>(0);
+		}
+		public StencilCompDeclarationContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_stencilCompDeclaration; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitStencilCompDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public StencilCompDeclarationContext stencilCompDeclaration() {
+		StencilCompDeclarationContext _localctx = new StencilCompDeclarationContext(Context, State);
+		EnterRule(_localctx, 50, RULE_stencilCompDeclaration);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 265;
+			Match(T__17);
+			State = 266;
+			compareFuncValue();
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class StencilPassDeclarationContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public StencilOpValueContext stencilOpValue() {
+			return GetRuleContext<StencilOpValueContext>(0);
+		}
+		public StencilPassDeclarationContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_stencilPassDeclaration; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitStencilPassDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public StencilPassDeclarationContext stencilPassDeclaration() {
+		StencilPassDeclarationContext _localctx = new StencilPassDeclarationContext(Context, State);
+		EnterRule(_localctx, 52, RULE_stencilPassDeclaration);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 268;
+			Match(T__2);
+			State = 269;
+			stencilOpValue();
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class StencilFailDeclarationContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public StencilOpValueContext stencilOpValue() {
+			return GetRuleContext<StencilOpValueContext>(0);
+		}
+		public StencilFailDeclarationContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_stencilFailDeclaration; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitStencilFailDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public StencilFailDeclarationContext stencilFailDeclaration() {
+		StencilFailDeclarationContext _localctx = new StencilFailDeclarationContext(Context, State);
+		EnterRule(_localctx, 54, RULE_stencilFailDeclaration);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 271;
+			Match(T__18);
+			State = 272;
+			stencilOpValue();
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class StencilZFailDeclarationContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public StencilOpValueContext stencilOpValue() {
+			return GetRuleContext<StencilOpValueContext>(0);
+		}
+		public StencilZFailDeclarationContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_stencilZFailDeclaration; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitStencilZFailDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public StencilZFailDeclarationContext stencilZFailDeclaration() {
+		StencilZFailDeclarationContext _localctx = new StencilZFailDeclarationContext(Context, State);
+		EnterRule(_localctx, 56, RULE_stencilZFailDeclaration);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 274;
+			Match(T__19);
+			State = 275;
+			stencilOpValue();
 			}
 		}
 		catch (RecognitionException re) {
@@ -1623,13 +2004,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilCompFrontDeclarationContext stencilCompFrontDeclaration() {
 		StencilCompFrontDeclarationContext _localctx = new StencilCompFrontDeclarationContext(Context, State);
-		EnterRule(_localctx, 48, RULE_stencilCompFrontDeclaration);
+		EnterRule(_localctx, 58, RULE_stencilCompFrontDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 229;
-			Match(T__17);
-			State = 230;
+			State = 277;
+			Match(T__20);
+			State = 278;
 			compareFuncValue();
 			}
 		}
@@ -1664,13 +2045,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilPassFrontDeclarationContext stencilPassFrontDeclaration() {
 		StencilPassFrontDeclarationContext _localctx = new StencilPassFrontDeclarationContext(Context, State);
-		EnterRule(_localctx, 50, RULE_stencilPassFrontDeclaration);
+		EnterRule(_localctx, 60, RULE_stencilPassFrontDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 232;
-			Match(T__18);
-			State = 233;
+			State = 280;
+			Match(T__21);
+			State = 281;
 			stencilOpValue();
 			}
 		}
@@ -1705,13 +2086,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilFailFrontDeclarationContext stencilFailFrontDeclaration() {
 		StencilFailFrontDeclarationContext _localctx = new StencilFailFrontDeclarationContext(Context, State);
-		EnterRule(_localctx, 52, RULE_stencilFailFrontDeclaration);
+		EnterRule(_localctx, 62, RULE_stencilFailFrontDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 235;
-			Match(T__19);
-			State = 236;
+			State = 283;
+			Match(T__22);
+			State = 284;
 			stencilOpValue();
 			}
 		}
@@ -1746,13 +2127,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilZFailFrontDeclarationContext stencilZFailFrontDeclaration() {
 		StencilZFailFrontDeclarationContext _localctx = new StencilZFailFrontDeclarationContext(Context, State);
-		EnterRule(_localctx, 54, RULE_stencilZFailFrontDeclaration);
+		EnterRule(_localctx, 64, RULE_stencilZFailFrontDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 238;
-			Match(T__20);
-			State = 239;
+			State = 286;
+			Match(T__23);
+			State = 287;
 			stencilOpValue();
 			}
 		}
@@ -1787,13 +2168,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilCompBackDeclarationContext stencilCompBackDeclaration() {
 		StencilCompBackDeclarationContext _localctx = new StencilCompBackDeclarationContext(Context, State);
-		EnterRule(_localctx, 56, RULE_stencilCompBackDeclaration);
+		EnterRule(_localctx, 66, RULE_stencilCompBackDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 241;
-			Match(T__21);
-			State = 242;
+			State = 289;
+			Match(T__24);
+			State = 290;
 			compareFuncValue();
 			}
 		}
@@ -1828,13 +2209,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilPassBackDeclarationContext stencilPassBackDeclaration() {
 		StencilPassBackDeclarationContext _localctx = new StencilPassBackDeclarationContext(Context, State);
-		EnterRule(_localctx, 58, RULE_stencilPassBackDeclaration);
+		EnterRule(_localctx, 68, RULE_stencilPassBackDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 244;
-			Match(T__22);
-			State = 245;
+			State = 292;
+			Match(T__25);
+			State = 293;
 			stencilOpValue();
 			}
 		}
@@ -1869,13 +2250,13 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilFailBackDeclarationContext stencilFailBackDeclaration() {
 		StencilFailBackDeclarationContext _localctx = new StencilFailBackDeclarationContext(Context, State);
-		EnterRule(_localctx, 60, RULE_stencilFailBackDeclaration);
+		EnterRule(_localctx, 70, RULE_stencilFailBackDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 247;
-			Match(T__23);
-			State = 248;
+			State = 295;
+			Match(T__26);
+			State = 296;
 			stencilOpValue();
 			}
 		}
@@ -1910,14 +2291,51 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilZFailBackDeclarationContext stencilZFailBackDeclaration() {
 		StencilZFailBackDeclarationContext _localctx = new StencilZFailBackDeclarationContext(Context, State);
-		EnterRule(_localctx, 62, RULE_stencilZFailBackDeclaration);
+		EnterRule(_localctx, 72, RULE_stencilZFailBackDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 250;
-			Match(T__24);
-			State = 251;
+			State = 298;
+			Match(T__27);
+			State = 299;
 			stencilOpValue();
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class HlslIncludeDeclarationContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode HlslInclude() { return GetToken(ShaderLabParser.HlslInclude, 0); }
+		public HlslIncludeDeclarationContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_hlslIncludeDeclaration; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IShaderLabVisitor<TResult> typedVisitor = visitor as IShaderLabVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitHlslIncludeDeclaration(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public HlslIncludeDeclarationContext hlslIncludeDeclaration() {
+		HlslIncludeDeclarationContext _localctx = new HlslIncludeDeclarationContext(Context, State);
+		EnterRule(_localctx, 74, RULE_hlslIncludeDeclaration);
+		try {
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 301;
+			Match(HlslInclude);
 			}
 		}
 		catch (RecognitionException re) {
@@ -1949,11 +2367,11 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public HlslProgramDeclarationContext hlslProgramDeclaration() {
 		HlslProgramDeclarationContext _localctx = new HlslProgramDeclarationContext(Context, State);
-		EnterRule(_localctx, 64, RULE_hlslProgramDeclaration);
+		EnterRule(_localctx, 76, RULE_hlslProgramDeclaration);
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 253;
+			State = 303;
 			Match(HlslProgram);
 			}
 		}
@@ -1988,14 +2406,14 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public CullModeValueContext cullModeValue() {
 		CullModeValueContext _localctx = new CullModeValueContext(Context, State);
-		EnterRule(_localctx, 66, RULE_cullModeValue);
+		EnterRule(_localctx, 78, RULE_cullModeValue);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 255;
+			State = 305;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 14293651161088L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 228698418577408L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2043,14 +2461,14 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public BlendFactorValueContext blendFactorValue() {
 		BlendFactorValueContext _localctx = new BlendFactorValueContext(Context, State);
-		EnterRule(_localctx, 68, RULE_blendFactorValue);
+		EnterRule(_localctx, 80, RULE_blendFactorValue);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 257;
+			State = 307;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 36011204832919552L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 576179277326712832L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2092,14 +2510,14 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public BlendOpValueContext blendOpValue() {
 		BlendOpValueContext _localctx = new BlendOpValueContext(Context, State);
-		EnterRule(_localctx, 70, RULE_blendOpValue);
+		EnterRule(_localctx, 82, RULE_blendOpValue);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 259;
+			State = 309;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 1116892707587883008L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & -576460752303423488L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2144,14 +2562,14 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public CompareFuncValueContext compareFuncValue() {
 		CompareFuncValueContext _localctx = new CompareFuncValueContext(Context, State);
-		EnterRule(_localctx, 72, RULE_compareFuncValue);
+		EnterRule(_localctx, 84, RULE_compareFuncValue);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 261;
+			State = 311;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 60)) & ~0x3f) == 0 && ((1L << (_la - 60)) & 255L) != 0)) ) {
+			if ( !(((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & 255L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2196,14 +2614,14 @@ public partial class ShaderLabParser : Parser {
 	[RuleVersion(0)]
 	public StencilOpValueContext stencilOpValue() {
 		StencilOpValueContext _localctx = new StencilOpValueContext(Context, State);
-		EnterRule(_localctx, 74, RULE_stencilOpValue);
+		EnterRule(_localctx, 86, RULE_stencilOpValue);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 263;
+			State = 313;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 44)) & ~0x3f) == 0 && ((1L << (_la - 44)) & 2130706433L) != 0)) ) {
+			if ( !(((((_la - 48)) & ~0x3f) == 0 && ((1L << (_la - 48)) & 2130706433L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2224,86 +2642,105 @@ public partial class ShaderLabParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,79,266,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,83,316,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,21,
 		2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,2,27,7,27,2,28,7,28,
 		2,29,7,29,2,30,7,30,2,31,7,31,2,32,7,32,2,33,7,33,2,34,7,34,2,35,7,35,
-		2,36,7,36,2,37,7,37,1,0,1,0,1,0,1,0,5,0,81,8,0,10,0,12,0,84,9,0,1,0,1,
-		0,1,1,1,1,3,1,90,8,1,1,2,1,2,1,2,5,2,95,8,2,10,2,12,2,98,9,2,1,2,1,2,1,
-		3,1,3,1,3,5,3,105,8,3,10,3,12,3,108,9,3,1,3,1,3,1,4,1,4,1,4,1,4,1,4,1,
-		4,1,4,1,4,1,4,3,4,121,8,4,1,5,1,5,1,6,1,6,1,7,1,7,1,7,1,7,1,7,1,7,1,7,
-		1,7,1,7,1,7,1,8,1,8,1,8,1,8,1,9,1,9,1,9,3,9,144,8,9,1,10,1,10,1,11,5,11,
-		149,8,11,10,11,12,11,152,9,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,
-		1,11,1,12,1,12,1,12,1,13,1,13,1,13,1,14,1,14,1,14,3,14,172,8,14,1,15,1,
-		15,1,15,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,1,16,3,16,186,8,16,1,17,
-		1,17,1,17,1,17,1,17,1,17,1,18,1,18,1,18,1,18,1,19,1,19,1,19,5,19,201,8,
-		19,10,19,12,19,204,9,19,1,19,1,19,1,20,1,20,1,20,1,20,1,20,1,20,1,20,1,
-		20,1,20,1,20,1,20,3,20,219,8,20,1,21,1,21,1,21,1,22,1,22,1,22,1,23,1,23,
-		1,23,1,24,1,24,1,24,1,25,1,25,1,25,1,26,1,26,1,26,1,27,1,27,1,27,1,28,
-		1,28,1,28,1,29,1,29,1,29,1,30,1,30,1,30,1,31,1,31,1,31,1,32,1,32,1,33,
-		1,33,1,34,1,34,1,35,1,35,1,36,1,36,1,37,1,37,1,37,0,0,38,0,2,4,6,8,10,
-		12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,
-		60,62,64,66,68,70,72,74,0,9,1,0,32,33,1,0,34,38,1,0,39,40,2,0,32,32,75,
-		75,2,0,40,40,42,43,1,0,44,54,1,0,55,59,1,0,60,67,2,0,44,44,68,74,255,0,
-		76,1,0,0,0,2,89,1,0,0,0,4,91,1,0,0,0,6,101,1,0,0,0,8,120,1,0,0,0,10,122,
-		1,0,0,0,12,124,1,0,0,0,14,126,1,0,0,0,16,136,1,0,0,0,18,143,1,0,0,0,20,
-		145,1,0,0,0,22,150,1,0,0,0,24,162,1,0,0,0,26,165,1,0,0,0,28,168,1,0,0,
-		0,30,173,1,0,0,0,32,176,1,0,0,0,34,187,1,0,0,0,36,193,1,0,0,0,38,197,1,
-		0,0,0,40,218,1,0,0,0,42,220,1,0,0,0,44,223,1,0,0,0,46,226,1,0,0,0,48,229,
-		1,0,0,0,50,232,1,0,0,0,52,235,1,0,0,0,54,238,1,0,0,0,56,241,1,0,0,0,58,
-		244,1,0,0,0,60,247,1,0,0,0,62,250,1,0,0,0,64,253,1,0,0,0,66,255,1,0,0,
-		0,68,257,1,0,0,0,70,259,1,0,0,0,72,261,1,0,0,0,74,263,1,0,0,0,76,77,5,
-		1,0,0,77,78,5,30,0,0,78,82,5,28,0,0,79,81,3,2,1,0,80,79,1,0,0,0,81,84,
-		1,0,0,0,82,80,1,0,0,0,82,83,1,0,0,0,83,85,1,0,0,0,84,82,1,0,0,0,85,86,
-		5,29,0,0,86,1,1,0,0,0,87,90,3,4,2,0,88,90,3,6,3,0,89,87,1,0,0,0,89,88,
-		1,0,0,0,90,3,1,0,0,0,91,92,5,2,0,0,92,96,5,28,0,0,93,95,3,22,11,0,94,93,
-		1,0,0,0,95,98,1,0,0,0,96,94,1,0,0,0,96,97,1,0,0,0,97,99,1,0,0,0,98,96,
-		1,0,0,0,99,100,5,29,0,0,100,5,1,0,0,0,101,102,5,3,0,0,102,106,5,28,0,0,
-		103,105,3,8,4,0,104,103,1,0,0,0,105,108,1,0,0,0,106,104,1,0,0,0,106,107,
-		1,0,0,0,107,109,1,0,0,0,108,106,1,0,0,0,109,110,5,29,0,0,110,7,1,0,0,0,
-		111,121,3,24,12,0,112,121,3,26,13,0,113,121,3,28,14,0,114,121,3,30,15,
-		0,115,121,3,32,16,0,116,121,3,34,17,0,117,121,3,36,18,0,118,121,3,38,19,
-		0,119,121,3,64,32,0,120,111,1,0,0,0,120,112,1,0,0,0,120,113,1,0,0,0,120,
-		114,1,0,0,0,120,115,1,0,0,0,120,116,1,0,0,0,120,117,1,0,0,0,120,118,1,
-		0,0,0,120,119,1,0,0,0,121,9,1,0,0,0,122,123,5,31,0,0,123,11,1,0,0,0,124,
-		125,7,0,0,0,125,13,1,0,0,0,126,127,5,4,0,0,127,128,3,12,6,0,128,129,5,
-		5,0,0,129,130,3,12,6,0,130,131,5,5,0,0,131,132,3,12,6,0,132,133,5,5,0,
-		0,133,134,3,12,6,0,134,135,5,6,0,0,135,15,1,0,0,0,136,137,5,30,0,0,137,
-		138,5,28,0,0,138,139,5,29,0,0,139,17,1,0,0,0,140,144,3,12,6,0,141,144,
-		3,14,7,0,142,144,3,16,8,0,143,140,1,0,0,0,143,141,1,0,0,0,143,142,1,0,
-		0,0,144,19,1,0,0,0,145,146,7,1,0,0,146,21,1,0,0,0,147,149,3,10,5,0,148,
-		147,1,0,0,0,149,152,1,0,0,0,150,148,1,0,0,0,150,151,1,0,0,0,151,153,1,
-		0,0,0,152,150,1,0,0,0,153,154,5,75,0,0,154,155,5,4,0,0,155,156,5,30,0,
-		0,156,157,5,5,0,0,157,158,3,20,10,0,158,159,5,6,0,0,159,160,5,27,0,0,160,
-		161,3,18,9,0,161,23,1,0,0,0,162,163,5,7,0,0,163,164,5,30,0,0,164,25,1,
-		0,0,0,165,166,5,8,0,0,166,167,3,66,33,0,167,27,1,0,0,0,168,171,5,9,0,0,
-		169,172,5,41,0,0,170,172,3,72,36,0,171,169,1,0,0,0,171,170,1,0,0,0,172,
-		29,1,0,0,0,173,174,5,10,0,0,174,175,7,2,0,0,175,31,1,0,0,0,176,177,5,11,
-		0,0,177,185,5,32,0,0,178,186,5,40,0,0,179,180,3,68,34,0,180,181,3,68,34,
-		0,181,182,5,5,0,0,182,183,3,68,34,0,183,184,3,68,34,0,184,186,1,0,0,0,
-		185,178,1,0,0,0,185,179,1,0,0,0,186,33,1,0,0,0,187,188,5,12,0,0,188,189,
-		5,32,0,0,189,190,3,70,35,0,190,191,5,5,0,0,191,192,3,70,35,0,192,35,1,
-		0,0,0,193,194,5,13,0,0,194,195,5,32,0,0,195,196,7,3,0,0,196,37,1,0,0,0,
-		197,198,5,14,0,0,198,202,5,28,0,0,199,201,3,40,20,0,200,199,1,0,0,0,201,
-		204,1,0,0,0,202,200,1,0,0,0,202,203,1,0,0,0,203,205,1,0,0,0,204,202,1,
-		0,0,0,205,206,5,29,0,0,206,39,1,0,0,0,207,219,3,42,21,0,208,219,3,44,22,
-		0,209,219,3,46,23,0,210,219,3,48,24,0,211,219,3,50,25,0,212,219,3,52,26,
-		0,213,219,3,54,27,0,214,219,3,56,28,0,215,219,3,58,29,0,216,219,3,60,30,
-		0,217,219,3,62,31,0,218,207,1,0,0,0,218,208,1,0,0,0,218,209,1,0,0,0,218,
-		210,1,0,0,0,218,211,1,0,0,0,218,212,1,0,0,0,218,213,1,0,0,0,218,214,1,
-		0,0,0,218,215,1,0,0,0,218,216,1,0,0,0,218,217,1,0,0,0,219,41,1,0,0,0,220,
-		221,5,15,0,0,221,222,5,32,0,0,222,43,1,0,0,0,223,224,5,16,0,0,224,225,
-		5,32,0,0,225,45,1,0,0,0,226,227,5,17,0,0,227,228,5,32,0,0,228,47,1,0,0,
-		0,229,230,5,18,0,0,230,231,3,72,36,0,231,49,1,0,0,0,232,233,5,19,0,0,233,
-		234,3,74,37,0,234,51,1,0,0,0,235,236,5,20,0,0,236,237,3,74,37,0,237,53,
-		1,0,0,0,238,239,5,21,0,0,239,240,3,74,37,0,240,55,1,0,0,0,241,242,5,22,
-		0,0,242,243,3,72,36,0,243,57,1,0,0,0,244,245,5,23,0,0,245,246,3,74,37,
-		0,246,59,1,0,0,0,247,248,5,24,0,0,248,249,3,74,37,0,249,61,1,0,0,0,250,
-		251,5,25,0,0,251,252,3,74,37,0,252,63,1,0,0,0,253,254,5,26,0,0,254,65,
-		1,0,0,0,255,256,7,4,0,0,256,67,1,0,0,0,257,258,7,5,0,0,258,69,1,0,0,0,
-		259,260,7,6,0,0,260,71,1,0,0,0,261,262,7,7,0,0,262,73,1,0,0,0,263,264,
-		7,8,0,0,264,75,1,0,0,0,11,82,89,96,106,120,143,150,171,185,202,218
+		2,36,7,36,2,37,7,37,2,38,7,38,2,39,7,39,2,40,7,40,2,41,7,41,2,42,7,42,
+		2,43,7,43,1,0,1,0,1,0,1,0,5,0,93,8,0,10,0,12,0,96,9,0,1,0,1,0,1,1,1,1,
+		1,1,1,1,3,1,104,8,1,1,2,1,2,1,2,5,2,109,8,2,10,2,12,2,112,9,2,1,2,1,2,
+		1,3,1,3,1,3,5,3,119,8,3,10,3,12,3,122,9,3,1,3,1,3,1,4,1,4,1,4,3,4,129,
+		8,4,1,5,1,5,1,6,1,6,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,8,1,8,1,
+		8,1,8,1,9,1,9,1,9,3,9,152,8,9,1,10,1,10,1,11,5,11,157,8,11,10,11,12,11,
+		160,9,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,12,1,12,1,12,1,
+		13,1,13,1,13,1,13,1,13,1,13,1,13,3,13,181,8,13,1,14,1,14,1,14,1,15,1,15,
+		1,15,3,15,189,8,15,1,16,1,16,1,16,1,17,1,17,3,17,196,8,17,1,17,1,17,1,
+		17,1,17,1,17,1,17,1,17,3,17,205,8,17,3,17,207,8,17,1,18,1,18,3,18,211,
+		8,18,1,18,1,18,1,18,3,18,216,8,18,1,19,1,19,1,19,1,19,1,19,1,19,1,19,3,
+		19,225,8,19,1,19,3,19,228,8,19,1,20,1,20,1,20,5,20,233,8,20,10,20,12,20,
+		236,9,20,1,20,1,20,1,21,1,21,1,21,1,21,1,21,1,21,1,21,1,21,1,21,1,21,1,
+		21,1,21,1,21,1,21,1,21,3,21,255,8,21,1,22,1,22,1,22,1,23,1,23,1,23,1,24,
+		1,24,1,24,1,25,1,25,1,25,1,26,1,26,1,26,1,27,1,27,1,27,1,28,1,28,1,28,
+		1,29,1,29,1,29,1,30,1,30,1,30,1,31,1,31,1,31,1,32,1,32,1,32,1,33,1,33,
+		1,33,1,34,1,34,1,34,1,35,1,35,1,35,1,36,1,36,1,36,1,37,1,37,1,38,1,38,
+		1,39,1,39,1,40,1,40,1,41,1,41,1,42,1,42,1,43,1,43,1,43,0,0,44,0,2,4,6,
+		8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,
+		56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,0,8,1,0,36,37,1,0,38,42,
+		1,0,43,44,2,0,44,44,46,47,1,0,48,58,1,0,59,63,1,0,64,71,2,0,48,48,72,78,
+		312,0,88,1,0,0,0,2,103,1,0,0,0,4,105,1,0,0,0,6,115,1,0,0,0,8,128,1,0,0,
+		0,10,130,1,0,0,0,12,132,1,0,0,0,14,134,1,0,0,0,16,144,1,0,0,0,18,151,1,
+		0,0,0,20,153,1,0,0,0,22,158,1,0,0,0,24,170,1,0,0,0,26,180,1,0,0,0,28,182,
+		1,0,0,0,30,185,1,0,0,0,32,190,1,0,0,0,34,193,1,0,0,0,36,208,1,0,0,0,38,
+		227,1,0,0,0,40,229,1,0,0,0,42,254,1,0,0,0,44,256,1,0,0,0,46,259,1,0,0,
+		0,48,262,1,0,0,0,50,265,1,0,0,0,52,268,1,0,0,0,54,271,1,0,0,0,56,274,1,
+		0,0,0,58,277,1,0,0,0,60,280,1,0,0,0,62,283,1,0,0,0,64,286,1,0,0,0,66,289,
+		1,0,0,0,68,292,1,0,0,0,70,295,1,0,0,0,72,298,1,0,0,0,74,301,1,0,0,0,76,
+		303,1,0,0,0,78,305,1,0,0,0,80,307,1,0,0,0,82,309,1,0,0,0,84,311,1,0,0,
+		0,86,313,1,0,0,0,88,89,5,1,0,0,89,90,5,34,0,0,90,94,5,32,0,0,91,93,3,2,
+		1,0,92,91,1,0,0,0,93,96,1,0,0,0,94,92,1,0,0,0,94,95,1,0,0,0,95,97,1,0,
+		0,0,96,94,1,0,0,0,97,98,5,33,0,0,98,1,1,0,0,0,99,104,3,4,2,0,100,104,3,
+		74,37,0,101,104,3,26,13,0,102,104,3,6,3,0,103,99,1,0,0,0,103,100,1,0,0,
+		0,103,101,1,0,0,0,103,102,1,0,0,0,104,3,1,0,0,0,105,106,5,2,0,0,106,110,
+		5,32,0,0,107,109,3,22,11,0,108,107,1,0,0,0,109,112,1,0,0,0,110,108,1,0,
+		0,0,110,111,1,0,0,0,111,113,1,0,0,0,112,110,1,0,0,0,113,114,5,33,0,0,114,
+		5,1,0,0,0,115,116,5,3,0,0,116,120,5,32,0,0,117,119,3,8,4,0,118,117,1,0,
+		0,0,119,122,1,0,0,0,120,118,1,0,0,0,120,121,1,0,0,0,121,123,1,0,0,0,122,
+		120,1,0,0,0,123,124,5,33,0,0,124,7,1,0,0,0,125,129,3,24,12,0,126,129,3,
+		26,13,0,127,129,3,76,38,0,128,125,1,0,0,0,128,126,1,0,0,0,128,127,1,0,
+		0,0,129,9,1,0,0,0,130,131,5,35,0,0,131,11,1,0,0,0,132,133,7,0,0,0,133,
+		13,1,0,0,0,134,135,5,4,0,0,135,136,3,12,6,0,136,137,5,5,0,0,137,138,3,
+		12,6,0,138,139,5,5,0,0,139,140,3,12,6,0,140,141,5,5,0,0,141,142,3,12,6,
+		0,142,143,5,6,0,0,143,15,1,0,0,0,144,145,5,34,0,0,145,146,5,32,0,0,146,
+		147,5,33,0,0,147,17,1,0,0,0,148,152,3,12,6,0,149,152,3,14,7,0,150,152,
+		3,16,8,0,151,148,1,0,0,0,151,149,1,0,0,0,151,150,1,0,0,0,152,19,1,0,0,
+		0,153,154,7,1,0,0,154,21,1,0,0,0,155,157,3,10,5,0,156,155,1,0,0,0,157,
+		160,1,0,0,0,158,156,1,0,0,0,158,159,1,0,0,0,159,161,1,0,0,0,160,158,1,
+		0,0,0,161,162,5,79,0,0,162,163,5,4,0,0,163,164,5,34,0,0,164,165,5,5,0,
+		0,165,166,3,20,10,0,166,167,5,6,0,0,167,168,5,31,0,0,168,169,3,18,9,0,
+		169,23,1,0,0,0,170,171,5,7,0,0,171,172,5,34,0,0,172,25,1,0,0,0,173,181,
+		3,28,14,0,174,181,3,30,15,0,175,181,3,32,16,0,176,181,3,34,17,0,177,181,
+		3,36,18,0,178,181,3,38,19,0,179,181,3,40,20,0,180,173,1,0,0,0,180,174,
+		1,0,0,0,180,175,1,0,0,0,180,176,1,0,0,0,180,177,1,0,0,0,180,178,1,0,0,
+		0,180,179,1,0,0,0,181,27,1,0,0,0,182,183,5,8,0,0,183,184,3,78,39,0,184,
+		29,1,0,0,0,185,188,5,9,0,0,186,189,5,45,0,0,187,189,3,84,42,0,188,186,
+		1,0,0,0,188,187,1,0,0,0,189,31,1,0,0,0,190,191,5,10,0,0,191,192,7,2,0,
+		0,192,33,1,0,0,0,193,195,5,11,0,0,194,196,5,36,0,0,195,194,1,0,0,0,195,
+		196,1,0,0,0,196,206,1,0,0,0,197,207,5,44,0,0,198,199,3,80,40,0,199,204,
+		3,80,40,0,200,201,5,5,0,0,201,202,3,80,40,0,202,203,3,80,40,0,203,205,
+		1,0,0,0,204,200,1,0,0,0,204,205,1,0,0,0,205,207,1,0,0,0,206,197,1,0,0,
+		0,206,198,1,0,0,0,207,35,1,0,0,0,208,210,5,12,0,0,209,211,5,36,0,0,210,
+		209,1,0,0,0,210,211,1,0,0,0,211,212,1,0,0,0,212,215,3,82,41,0,213,214,
+		5,5,0,0,214,216,3,82,41,0,215,213,1,0,0,0,215,216,1,0,0,0,216,37,1,0,0,
+		0,217,218,5,13,0,0,218,228,5,36,0,0,219,220,5,13,0,0,220,221,5,36,0,0,
+		221,228,5,36,0,0,222,224,5,13,0,0,223,225,5,36,0,0,224,223,1,0,0,0,224,
+		225,1,0,0,0,225,226,1,0,0,0,226,228,5,79,0,0,227,217,1,0,0,0,227,219,1,
+		0,0,0,227,222,1,0,0,0,228,39,1,0,0,0,229,230,5,14,0,0,230,234,5,32,0,0,
+		231,233,3,42,21,0,232,231,1,0,0,0,233,236,1,0,0,0,234,232,1,0,0,0,234,
+		235,1,0,0,0,235,237,1,0,0,0,236,234,1,0,0,0,237,238,5,33,0,0,238,41,1,
+		0,0,0,239,255,3,44,22,0,240,255,3,46,23,0,241,255,3,48,24,0,242,255,3,
+		50,25,0,243,255,3,52,26,0,244,255,3,54,27,0,245,255,3,56,28,0,246,255,
+		3,58,29,0,247,255,3,60,30,0,248,255,3,62,31,0,249,255,3,64,32,0,250,255,
+		3,66,33,0,251,255,3,68,34,0,252,255,3,70,35,0,253,255,3,72,36,0,254,239,
+		1,0,0,0,254,240,1,0,0,0,254,241,1,0,0,0,254,242,1,0,0,0,254,243,1,0,0,
+		0,254,244,1,0,0,0,254,245,1,0,0,0,254,246,1,0,0,0,254,247,1,0,0,0,254,
+		248,1,0,0,0,254,249,1,0,0,0,254,250,1,0,0,0,254,251,1,0,0,0,254,252,1,
+		0,0,0,254,253,1,0,0,0,255,43,1,0,0,0,256,257,5,15,0,0,257,258,5,36,0,0,
+		258,45,1,0,0,0,259,260,5,16,0,0,260,261,5,36,0,0,261,47,1,0,0,0,262,263,
+		5,17,0,0,263,264,5,36,0,0,264,49,1,0,0,0,265,266,5,18,0,0,266,267,3,84,
+		42,0,267,51,1,0,0,0,268,269,5,3,0,0,269,270,3,86,43,0,270,53,1,0,0,0,271,
+		272,5,19,0,0,272,273,3,86,43,0,273,55,1,0,0,0,274,275,5,20,0,0,275,276,
+		3,86,43,0,276,57,1,0,0,0,277,278,5,21,0,0,278,279,3,84,42,0,279,59,1,0,
+		0,0,280,281,5,22,0,0,281,282,3,86,43,0,282,61,1,0,0,0,283,284,5,23,0,0,
+		284,285,3,86,43,0,285,63,1,0,0,0,286,287,5,24,0,0,287,288,3,86,43,0,288,
+		65,1,0,0,0,289,290,5,25,0,0,290,291,3,84,42,0,291,67,1,0,0,0,292,293,5,
+		26,0,0,293,294,3,86,43,0,294,69,1,0,0,0,295,296,5,27,0,0,296,297,3,86,
+		43,0,297,71,1,0,0,0,298,299,5,28,0,0,299,300,3,86,43,0,300,73,1,0,0,0,
+		301,302,5,29,0,0,302,75,1,0,0,0,303,304,5,30,0,0,304,77,1,0,0,0,305,306,
+		7,3,0,0,306,79,1,0,0,0,307,308,7,4,0,0,308,81,1,0,0,0,309,310,7,5,0,0,
+		310,83,1,0,0,0,311,312,7,6,0,0,312,85,1,0,0,0,313,314,7,7,0,0,314,87,1,
+		0,0,0,18,94,103,110,120,128,151,158,180,188,195,204,206,210,215,224,227,
+		234,254
 	};
 
 	public static readonly ATN _ATN =

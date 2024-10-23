@@ -82,7 +82,7 @@ namespace march
         psoDesc.RasterizerState.FillMode = pipelineDesc.Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
 
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        psoDesc.BlendState.IndependentBlendEnable = TRUE;
+        psoDesc.BlendState.IndependentBlendEnable = pPass->GetBlends().size() > 1 ? TRUE : FALSE;
 
         for (int i = 0; i < pPass->GetBlends().size(); i++)
         {

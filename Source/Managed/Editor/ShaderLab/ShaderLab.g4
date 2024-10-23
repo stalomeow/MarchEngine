@@ -6,6 +6,8 @@ shader
 
 shaderDeclaration
     : propertiesBlock
+    | hlslIncludeDeclaration
+    | renderStateDeclaration
     | passBlock
     ;
 
@@ -19,13 +21,7 @@ passBlock
 
 passDeclaration
     : nameDeclaration
-    | cullDeclaration
-    | zTestDeclaration
-    | zWriteDeclaration
-    | blendDeclaration
-    | blendOpDeclaration
-    | colorMaskDeclaration
-    | stencilBlock
+    | renderStateDeclaration
     | hlslProgramDeclaration
     ;
 
@@ -68,6 +64,16 @@ nameDeclaration
     : 'Name' StringLiteral
     ;
 
+renderStateDeclaration
+    : cullDeclaration
+    | zTestDeclaration
+    | zWriteDeclaration
+    | blendDeclaration
+    | blendOpDeclaration
+    | colorMaskDeclaration
+    | stencilBlock
+    ;
+
 cullDeclaration
     : 'Cull' cullModeValue
     ;
@@ -81,15 +87,17 @@ zWriteDeclaration
     ;
 
 blendDeclaration
-    : 'Blend' IntegerLiteral (Off | (blendFactorValue blendFactorValue ',' blendFactorValue blendFactorValue))
+    : 'Blend' IntegerLiteral? (Off | (blendFactorValue blendFactorValue (',' blendFactorValue blendFactorValue)?))
     ;
 
 blendOpDeclaration
-    : 'BlendOp' IntegerLiteral blendOpValue ',' blendOpValue
+    : 'BlendOp' IntegerLiteral? blendOpValue (',' blendOpValue)?
     ;
 
 colorMaskDeclaration
-    : 'ColorMask' IntegerLiteral (IntegerLiteral | Identifier)
+    : 'ColorMask' IntegerLiteral                # colorMaskInt1Declaration
+    | 'ColorMask' IntegerLiteral IntegerLiteral # colorMaskInt2Declaration
+    | 'ColorMask' IntegerLiteral? Identifier    # colorMaskIdentifierDeclaration
     ;
 
 stencilBlock
@@ -100,6 +108,10 @@ stencilDeclaration
     : stencilRefDeclaration
     | stencilReadMaskDeclaration
     | stencilWriteMaskDeclaration
+    | stencilCompDeclaration
+    | stencilPassDeclaration
+    | stencilFailDeclaration
+    | stencilZFailDeclaration
     | stencilCompFrontDeclaration
     | stencilPassFrontDeclaration
     | stencilFailFrontDeclaration
@@ -120,6 +132,22 @@ stencilReadMaskDeclaration
 
 stencilWriteMaskDeclaration
     : 'WriteMask' IntegerLiteral
+    ;
+
+stencilCompDeclaration
+    : 'Comp' compareFuncValue
+    ;
+
+stencilPassDeclaration
+    : 'Pass' stencilOpValue
+    ;
+
+stencilFailDeclaration
+    : 'Fail' stencilOpValue
+    ;
+
+stencilZFailDeclaration
+    : 'ZFail' stencilOpValue
     ;
 
 stencilCompFrontDeclaration
@@ -154,8 +182,16 @@ stencilZFailBackDeclaration
     : 'ZFailBack' stencilOpValue
     ;
 
+hlslIncludeDeclaration
+    : HlslInclude
+    ;
+
 hlslProgramDeclaration
     : HlslProgram
+    ;
+
+HlslInclude
+    : 'HLSLINCLUDE' .*? 'ENDHLSL'
     ;
 
 HlslProgram

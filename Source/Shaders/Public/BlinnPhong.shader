@@ -25,15 +25,10 @@ Shader "BlinnPhong"
         {
             Ref 1
 
-            CompFront Always
-            PassFront Replace
-            FailFront Keep
-            ZFailFront Keep
-
-            CompBack Always
-            PassBack Replace
-            FailBack Keep
-            ZFailBack Keep
+            Comp Always
+            Pass Replace
+            Fail Keep
+            ZFail Keep
         }
 
         HLSLPROGRAM

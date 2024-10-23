@@ -26,4 +26,9 @@ namespace march
         static ImRect CanvasRect;
         static DirectX::XMFLOAT4X4 ViewProjectionMatrix;
     };
+
+    class GizmoUI final
+    {
+
+    };
 }

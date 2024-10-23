@@ -111,6 +111,12 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitNameDeclaration([NotNull] ShaderLabParser.NameDeclarationContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.renderStateDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitRenderStateDeclaration([NotNull] ShaderLabParser.RenderStateDeclarationContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.cullDeclaration"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -141,11 +147,26 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitBlendOpDeclaration([NotNull] ShaderLabParser.BlendOpDeclarationContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="ShaderLabParser.colorMaskDeclaration"/>.
+	/// Visit a parse tree produced by the <c>colorMaskInt1Declaration</c>
+	/// labeled alternative in <see cref="ShaderLabParser.colorMaskDeclaration"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitColorMaskDeclaration([NotNull] ShaderLabParser.ColorMaskDeclarationContext context);
+	Result VisitColorMaskInt1Declaration([NotNull] ShaderLabParser.ColorMaskInt1DeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by the <c>colorMaskInt2Declaration</c>
+	/// labeled alternative in <see cref="ShaderLabParser.colorMaskDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitColorMaskInt2Declaration([NotNull] ShaderLabParser.ColorMaskInt2DeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by the <c>colorMaskIdentifierDeclaration</c>
+	/// labeled alternative in <see cref="ShaderLabParser.colorMaskDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitColorMaskIdentifierDeclaration([NotNull] ShaderLabParser.ColorMaskIdentifierDeclarationContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilBlock"/>.
 	/// </summary>
@@ -176,6 +197,30 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitStencilWriteMaskDeclaration([NotNull] ShaderLabParser.StencilWriteMaskDeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilCompDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitStencilCompDeclaration([NotNull] ShaderLabParser.StencilCompDeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilPassDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitStencilPassDeclaration([NotNull] ShaderLabParser.StencilPassDeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilFailDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitStencilFailDeclaration([NotNull] ShaderLabParser.StencilFailDeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilZFailDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitStencilZFailDeclaration([NotNull] ShaderLabParser.StencilZFailDeclarationContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilCompFrontDeclaration"/>.
 	/// </summary>
@@ -224,6 +269,12 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitStencilZFailBackDeclaration([NotNull] ShaderLabParser.StencilZFailBackDeclarationContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.hlslIncludeDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitHlslIncludeDeclaration([NotNull] ShaderLabParser.HlslIncludeDeclarationContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.hlslProgramDeclaration"/>.
 	/// </summary>
