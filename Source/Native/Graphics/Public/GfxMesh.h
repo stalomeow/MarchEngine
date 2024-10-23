@@ -43,6 +43,34 @@ namespace march
 
         GfxDevice* GetDevice() const { return m_Device; }
 
+        static constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType(D3D12_PRIMITIVE_TOPOLOGY topology)
+        {
+            switch (topology)
+            {
+            case D3D_PRIMITIVE_TOPOLOGY_UNDEFINED:
+                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+
+            case D3D_PRIMITIVE_TOPOLOGY_POINTLIST:
+                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+
+            case D3D_PRIMITIVE_TOPOLOGY_LINELIST:
+            case D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
+            case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP:
+            case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
+                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+
+            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
+            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
+            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
+            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
+            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN:
+                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+            default:
+                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+            }
+        }
+
     private:
         GfxDevice* m_Device;
     };

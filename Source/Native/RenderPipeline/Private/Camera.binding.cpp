@@ -101,6 +101,11 @@ NATIVE_EXPORT_AUTO Camera_GetProjectionMatrix(cs<Camera*> camera)
     retcs camera->GetProjectionMatrix();
 }
 
+NATIVE_EXPORT_AUTO Camera_GetViewProjectionMatrix(cs<Camera*> camera)
+{
+    retcs camera->GetViewProjectionMatrix();
+}
+
 NATIVE_EXPORT_AUTO Camera_SetCustomTargetDisplay(cs<Camera*> camera, cs<Display*> display)
 {
     CameraInternalUtility::SetCustomTargetDisplay(camera, display);

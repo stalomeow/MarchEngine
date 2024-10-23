@@ -112,6 +112,13 @@ namespace march
         return result;
     }
 
+    XMFLOAT4X4 Camera::GetViewProjectionMatrix() const
+    {
+        XMFLOAT4X4 result;
+        XMStoreFloat4x4(&result, LoadViewProjectionMatrix());
+        return result;
+    }
+
     XMMATRIX Camera::LoadViewMatrix() const
     {
         const Transform* trans = GetTransform();
@@ -142,6 +149,12 @@ namespace march
         {
             return XMMatrixPerspectiveFovLH(m_FovY, GetAspectRatio(), m_NearZ, m_FarZ);
         }
+    }
+
+    XMMATRIX Camera::LoadViewProjectionMatrix() const
+    {
+        // DirectX 中使用的是行向量
+        return XMMatrixMultiply(LoadViewMatrix(), LoadProjectionMatrix());
     }
 
     const std::vector<Camera*>& Camera::GetAllCameras()

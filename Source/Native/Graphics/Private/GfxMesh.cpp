@@ -208,30 +208,7 @@ namespace march
     template<typename TVertex, typename TIndex>
     D3D12_PRIMITIVE_TOPOLOGY_TYPE GfxMeshImpl<TVertex, TIndex>::GetTopologyType() const
     {
-        switch (m_Topology)
-        {
-        case D3D_PRIMITIVE_TOPOLOGY_UNDEFINED:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
-
-        case D3D_PRIMITIVE_TOPOLOGY_POINTLIST:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-
-        case D3D_PRIMITIVE_TOPOLOGY_LINELIST:
-        case D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
-        case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP:
-        case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
-        default:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-        }
+        return GfxMesh::GetTopologyType(m_Topology);
     }
 
     template<typename TVertex, typename TIndex>

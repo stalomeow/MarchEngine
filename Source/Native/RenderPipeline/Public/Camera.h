@@ -32,9 +32,11 @@ namespace march
 
         DirectX::XMFLOAT4X4 GetViewMatrix() const;
         DirectX::XMFLOAT4X4 GetProjectionMatrix() const;
+        DirectX::XMFLOAT4X4 GetViewProjectionMatrix() const;
 
         DirectX::XMMATRIX LoadViewMatrix() const;
         DirectX::XMMATRIX LoadProjectionMatrix() const;
+        DirectX::XMMATRIX LoadViewProjectionMatrix() const;
 
         static const std::vector<Camera*>& GetAllCameras();
 

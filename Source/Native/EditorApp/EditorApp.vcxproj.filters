@@ -57,9 +57,6 @@
     <ClCompile Include="Private\RenderGraphDebuggerWindow.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\imgui_impl_dx12.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\GraphicsDebuggerWindow.cpp">
       <Filter>Private</Filter>
     </ClCompile>
@@ -90,9 +87,6 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\RenderGraphDebuggerWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\imgui_impl_dx12.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GraphicsDebuggerWindow.h">

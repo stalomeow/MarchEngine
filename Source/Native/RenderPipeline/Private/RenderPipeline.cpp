@@ -36,6 +36,9 @@ namespace march
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
+        m_GizmosShader.reset("Engine/Shaders/Gizmos.shader");
+        m_GizmosMaterial = std::make_unique<Material>();
+        m_GizmosMaterial->SetShader(m_GizmosShader.get());
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -75,6 +78,7 @@ namespace march
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
             {
                 DrawSceneViewGrid(colorTargetId, depthStencilTargetId, gridGizmoMaterial);
+                DrawGizmoLineStrips(colorTargetId, depthStencilTargetId);
             }
 
             if (display->GetEnableMSAA())
@@ -110,7 +114,7 @@ namespace march
         {
             XMMATRIX view = camera->LoadViewMatrix();
             XMMATRIX proj = camera->LoadProjectionMatrix();
-            XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+            XMMATRIX viewProj = camera->LoadViewProjectionMatrix();
 
             GfxDevice* device = context.GetDevice();
             auto cb = device->AllocateTransientUploadMemory(sizeof(CameraConstants), 1, GfxConstantBuffer::Alignment);
@@ -235,6 +239,64 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             context.DrawMesh(m_FullScreenTriangleMesh.get(), material);
+        });
+    }
+
+    static constexpr D3D12_INPUT_ELEMENT_DESC InputDesc[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT   , 0, 0 , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "COLOR"   , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+    };
+
+    void RenderPipeline::DrawGizmoLineStrips(int32_t colorTargetId, int32_t depthStencilTargetId)
+    {
+        auto builder = m_RenderGraph->AddPass("Gizmos");
+
+        builder.SetColorTarget(colorTargetId);
+        builder.SetDepthStencilTarget(depthStencilTargetId);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            std::vector<MeshBufferDesc> meshes{};
+            std::vector<uint16_t> indices{};
+            size_t vertexOffset = 0;
+
+            D3D12_INPUT_LAYOUT_DESC inputLayout = {};
+            inputLayout.NumElements = static_cast<UINT>(std::size(InputDesc));
+            inputLayout.pInputElementDescs = InputDesc;
+
+            for (size_t i = 0; i < m_GizmoVertexEnds.size(); i++)
+            {
+                size_t vertexEnd = m_GizmoVertexEnds[i];
+
+                if (vertexOffset == vertexEnd)
+                {
+                    continue;
+                }
+
+                size_t vertexCount = vertexEnd - vertexOffset;
+
+                while (indices.size() < vertexCount)
+                {
+                    indices.push_back(static_cast<uint16_t>(indices.size()));
+                }
+
+                MeshBufferDesc& bufferDesc = meshes.emplace_back();
+                bufferDesc.VertexBufferView = context.CreateTransientVertexBuffer(vertexCount, sizeof(GizmoVertex), alignof(GizmoVertex), m_GizmoLineListVertices.data() + vertexOffset);
+                bufferDesc.IndexBufferView = context.CreateTransientIndexBuffer(indices.size(), indices.data());
+                vertexOffset = vertexEnd;
+            }
+
+            // Visible part
+            for (const MeshBufferDesc& mesh : meshes)
+            {
+                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, m_GizmosMaterial.get(), false, 0);
+            }
+
+            // Invisible part
+            for (const MeshBufferDesc& mesh : meshes)
+            {
+                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, m_GizmosMaterial.get(), false, 1);
+            }
         });
     }
 

@@ -40,6 +40,8 @@ namespace march
         , m_DepthStencilTarget(nullptr)
         , m_Viewport{}
         , m_ScissorRect{}
+        , m_CurrentPipelineState(nullptr)
+        , m_CurrentRootSignature(nullptr)
         , m_GlobalConstantBuffers{}
         , m_PassTextures{}
     {
@@ -111,12 +113,15 @@ namespace march
         m_PassTextures[id] = texture;
     }
 
-    void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, bool wireframe,
-        int32_t subMeshIndex, int32_t shaderPassIndex,
-        size_t numConstantBuffers, int32_t* constantBufferIds, D3D12_GPU_VIRTUAL_ADDRESS* constantBufferAddresses)
+    struct PerObjectConstants
     {
-        SetPipelineStateAndRootSignature(mesh, material, wireframe, shaderPassIndex);
-        BindResources(material, shaderPassIndex, 0, numConstantBuffers, constantBufferIds, constantBufferAddresses);
+        XMFLOAT4X4 WorldMatrix;
+    };
+
+    void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, bool wireframe, int32_t subMeshIndex, int32_t shaderPassIndex)
+    {
+        SetPipelineStateAndRootSignature(mesh->GetDesc(), material, wireframe, shaderPassIndex);
+        BindResources(material, shaderPassIndex, 0);
 
         if (subMeshIndex == -1)
         {
@@ -128,13 +133,85 @@ namespace march
         }
     }
 
-    struct PerObjectConstants
+    D3D12_VERTEX_BUFFER_VIEW RenderGraphContext::CreateTransientVertexBuffer(size_t vertexCount, size_t vertexStride, size_t vertexAlignment, const void* verticesData)
     {
-        XMFLOAT4X4 WorldMatrix;
-    };
+        GfxDevice* device = GetDevice();
+        GfxUploadMemory m = device->AllocateTransientUploadMemory(static_cast<uint32_t>(vertexStride), static_cast<uint32_t>(vertexCount));
 
-    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, bool wireframe, int32_t shaderPassIndex,
-        size_t numConstantBuffers, const int32_t* constantBufferIds, const D3D12_GPU_VIRTUAL_ADDRESS* constantBufferAddresses)
+        memcpy(m.GetMappedData(0), verticesData, m.GetSize());
+
+        D3D12_VERTEX_BUFFER_VIEW view = {};
+        view.BufferLocation = m.GetGpuVirtualAddress(0);
+        view.SizeInBytes = static_cast<UINT>(m.GetSize());
+        view.StrideInBytes = static_cast<UINT>(m.GetStride());
+        return view;
+    }
+
+    D3D12_INDEX_BUFFER_VIEW RenderGraphContext::CreateTransientIndexBuffer(size_t indexCount, const uint16_t* indexData)
+    {
+        GfxDevice* device = GetDevice();
+        GfxUploadMemory m = device->AllocateTransientUploadMemory(sizeof(uint16_t), static_cast<uint32_t>(indexCount));
+
+        size_t sizeInBytes = indexCount * sizeof(uint16_t);
+        memcpy(m.GetMappedData(0), indexData, sizeInBytes);
+
+        D3D12_INDEX_BUFFER_VIEW view = {};
+        view.BufferLocation = m.GetGpuVirtualAddress(0);
+        view.SizeInBytes = static_cast<UINT>(sizeInBytes);
+        view.Format = DXGI_FORMAT_R16_UINT;
+        return view;
+    }
+
+    D3D12_INDEX_BUFFER_VIEW RenderGraphContext::CreateTransientIndexBuffer(size_t indexCount, const uint32_t* indexData)
+    {
+        GfxDevice* device = GetDevice();
+        GfxUploadMemory m = device->AllocateTransientUploadMemory(sizeof(uint32_t), static_cast<uint32_t>(indexCount));
+
+        size_t sizeInBytes = indexCount * sizeof(uint32_t);
+        memcpy(m.GetMappedData(0), indexData, sizeInBytes);
+
+        D3D12_INDEX_BUFFER_VIEW view = {};
+        view.BufferLocation = m.GetGpuVirtualAddress(0);
+        view.SizeInBytes = static_cast<UINT>(sizeInBytes);
+        view.Format = DXGI_FORMAT_R32_UINT;
+        return view;
+    }
+
+    void RenderGraphContext::DrawMesh(const D3D12_INPUT_LAYOUT_DESC* inputLayout, D3D12_PRIMITIVE_TOPOLOGY topology, const MeshBufferDesc* bufferDesc, Material* material, bool wireframe, int32_t shaderPassIndex)
+    {
+        MeshDesc desc = {};
+        desc.InputLayout = *inputLayout;
+        desc.PrimitiveTopologyType = GfxMesh::GetTopologyType(topology);
+
+        SetPipelineStateAndRootSignature(desc, material, wireframe, shaderPassIndex);
+        BindResources(material, shaderPassIndex, 0);
+
+        ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
+        cmd->IASetVertexBuffers(0, 1, &bufferDesc->VertexBufferView);
+        cmd->IASetIndexBuffer(&bufferDesc->IndexBufferView);
+        cmd->IASetPrimitiveTopology(topology);
+
+        UINT indexStride;
+
+        switch (bufferDesc->IndexBufferView.Format)
+        {
+        case DXGI_FORMAT_R16_UINT:
+            indexStride = 2;
+            break;
+
+        case DXGI_FORMAT_R32_UINT:
+            indexStride = 4;
+            break;
+
+        default:
+            throw std::runtime_error("Invalid index buffer format");
+        }
+
+        UINT indexCount = bufferDesc->IndexBufferView.SizeInBytes / indexStride;
+        cmd->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+    }
+
+    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, bool wireframe, int32_t shaderPassIndex)
     {
         if (numObjects <= 0)
         {
@@ -150,7 +227,7 @@ namespace march
 
             if (obj->GetIsActiveAndEnabled() && obj->Mesh != nullptr && obj->Mat != nullptr)
             {
-                size_t hash = GetPipelineStateHash(obj->Mesh, obj->Mat, shaderPassIndex);
+                size_t hash = GetPipelineStateHash(obj->Mesh->GetDesc(), obj->Mat, shaderPassIndex);
                 psoHashMap[hash].push_back(i);
                 activeObjectCount++;
             }
@@ -177,13 +254,12 @@ namespace march
                 if (isFirst)
                 {
                     isFirst = false;
-                    SetPipelineStateAndRootSignature(obj->Mesh, obj->Mat, wireframe, shaderPassIndex);
+                    SetPipelineStateAndRootSignature(obj->Mesh->GetDesc(), obj->Mat, wireframe, shaderPassIndex);
                 }
 
                 PerObjectConstants& consts = *reinterpret_cast<PerObjectConstants*>(cbPerObj.GetMappedData(cbIndex));
                 XMStoreFloat4x4(&consts.WorldMatrix, obj->GetTransform()->LoadLocalToWorldMatrix());
-                BindResources(obj->Mat, shaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndex),
-                    numConstantBuffers, constantBufferIds, constantBufferAddresses);
+                BindResources(obj->Mat, shaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndex));
 
                 obj->Mesh->Draw();
                 cbIndex++;
@@ -320,20 +396,33 @@ namespace march
         return scissorRect;
     }
 
-    size_t RenderGraphContext::GetPipelineStateHash(GfxMesh* mesh, Material* material, int32_t shaderPassIndex)
+    size_t RenderGraphContext::GetPipelineStateHash(const MeshDesc& meshDesc, Material* material, int32_t shaderPassIndex)
     {
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        return HashState(&pass, 1, mesh->GetDesc().GetHash());
+        return HashState(&pass, 1, meshDesc.GetHash());
     }
 
-    void RenderGraphContext::SetPipelineStateAndRootSignature(GfxMesh* mesh, Material* material, bool wireframe, int32_t shaderPassIndex)
+    void RenderGraphContext::SetPipelineStateAndRootSignature(const MeshDesc& meshDesc, Material* material, bool wireframe, int32_t shaderPassIndex)
     {
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, mesh->GetDesc(), GetRenderPipelineDesc(wireframe));
-        ID3D12GraphicsCommandList* cmd = GetGraphicsCommandList()->GetD3D12CommandList();
+        ID3D12PipelineState* pso = GetGraphicsPipelineState(pass, meshDesc, GetRenderPipelineDesc(wireframe));
 
-        cmd->SetPipelineState(pso);
-        cmd->SetGraphicsRootSignature(pass->GetRootSignature()); // TODO ??? 不是 PSO 里已经有了吗
+        if (pso != m_CurrentPipelineState)
+        {
+            m_CurrentPipelineState = pso;
+            m_CurrentRootSignature = pass->GetRootSignature();
+
+            ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
+            cmd->SetPipelineState(pso);
+            cmd->SetGraphicsRootSignature(pass->GetRootSignature()); // TODO ??? 不是 PSO 里已经有了吗
+        }
+        else if (m_CurrentRootSignature != pass->GetRootSignature())
+        {
+            m_CurrentRootSignature = pass->GetRootSignature();
+
+            ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
+            cmd->SetGraphicsRootSignature(pass->GetRootSignature()); // TODO ??? 不是 PSO 里已经有了吗
+        }
     }
 
     static void BindConstantBuffer(ID3D12GraphicsCommandList* cmd, const ShaderProgram* program, int32_t id, D3D12_GPU_VIRTUAL_ADDRESS address)
@@ -346,8 +435,7 @@ namespace march
         }
     }
 
-    void RenderGraphContext::BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress,
-        size_t numExtraConstantBuffers, const int32_t* extraConstantBufferIds, const D3D12_GPU_VIRTUAL_ADDRESS* extraConstantBufferAddresses)
+    void RenderGraphContext::BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress)
     {
         GfxDevice* device = GetDevice();
         ID3D12GraphicsCommandList* cmd = GetGraphicsCommandList()->GetD3D12CommandList();
@@ -365,11 +453,6 @@ namespace march
             if (perObjectConstantBufferAddress != 0)
             {
                 BindConstantBuffer(cmd, program, Shader::GetNameId("cbObject"), perObjectConstantBufferAddress);
-            }
-
-            for (size_t i = 0; i < numExtraConstantBuffers; i++)
-            {
-                BindConstantBuffer(cmd, program, extraConstantBufferIds[i], extraConstantBufferAddresses[i]);
             }
 
             for (const std::pair<int32_t, D3D12_GPU_VIRTUAL_ADDRESS>& kv : m_GlobalConstantBuffers)
@@ -463,6 +546,8 @@ namespace march
     {
         m_ColorTargets.clear();
         m_DepthStencilTarget = nullptr;
+        m_CurrentPipelineState = nullptr;
+        m_CurrentRootSignature = nullptr;
         m_GlobalConstantBuffers.clear();
         m_PassTextures.clear();
     }

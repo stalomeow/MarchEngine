@@ -2,6 +2,7 @@ using March.Core.Binding;
 using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Numerics;
+using March.Core.IconFonts;
 
 namespace March.Core.Rendering
 {
@@ -77,6 +78,8 @@ namespace March.Core.Rendering
 
         public Matrix4x4 ProjectionMatrix => Camera_GetProjectionMatrix(NativePtr);
 
+        public Matrix4x4 ViewProjectionMatrix => Camera_GetViewProjectionMatrix(NativePtr);
+
         internal void SetCustomTargetDisplay(nint display)
         {
             Camera_SetCustomTargetDisplay(NativePtr, display);
@@ -85,6 +88,44 @@ namespace March.Core.Rendering
         internal void ResetTargetDisplay()
         {
             SetCustomTargetDisplay(nint.Zero);
+        }
+
+        protected override void OnDrawGizmos(bool isSelected)
+        {
+            base.OnDrawGizmos(isSelected);
+
+            Vector3 position = gameObject.transform.Position;
+            Gizmos.DrawText(position, FontAwesome6.Video);
+
+            Vector3 forward = gameObject.transform.Forward;
+            Vector3 up = gameObject.transform.Up;
+            Vector3 right = gameObject.transform.Right;
+
+            Vector3 forwardNear = forward * NearClipPlane;
+            Vector3 forwardFar = forward * FarClipPlane;
+
+            float tanHalfVerticalFov = MathF.Tan(float.DegreesToRadians(VerticalFieldOfView * 0.5f));
+            float tanHalfHorizontalFov = MathF.Tan(float.DegreesToRadians(HorizontalFieldOfView * 0.5f));
+
+            Vector3 upNear = tanHalfVerticalFov * NearClipPlane * up;
+            Vector3 upFar = tanHalfVerticalFov * FarClipPlane * up;
+            Vector3 rightNear = tanHalfHorizontalFov * NearClipPlane * right;
+            Vector3 rightFar = tanHalfHorizontalFov * FarClipPlane * right;
+
+            Gizmos.DrawLine(position + forwardNear + upNear - rightNear, position + forwardNear + upNear + rightNear);
+            Gizmos.DrawLine(position + forwardNear - upNear - rightNear, position + forwardNear - upNear + rightNear);
+            Gizmos.DrawLine(position + forwardNear + upNear - rightNear, position + forwardNear - upNear - rightNear);
+            Gizmos.DrawLine(position + forwardNear + upNear + rightNear, position + forwardNear - upNear + rightNear);
+
+            Gizmos.DrawLine(position + forwardFar + upFar - rightFar, position + forwardFar + upFar + rightFar);
+            Gizmos.DrawLine(position + forwardFar - upFar - rightFar, position + forwardFar - upFar + rightFar);
+            Gizmos.DrawLine(position + forwardFar + upFar - rightFar, position + forwardFar - upFar - rightFar);
+            Gizmos.DrawLine(position + forwardFar + upFar + rightFar, position + forwardFar - upFar + rightFar);
+
+            Gizmos.DrawLine(position + forwardNear - upNear - rightNear, position + forwardFar - upFar - rightFar);
+            Gizmos.DrawLine(position + forwardNear + upNear - rightNear, position + forwardFar + upFar - rightFar);
+            Gizmos.DrawLine(position + forwardNear - upNear + rightNear, position + forwardFar - upFar + rightFar);
+            Gizmos.DrawLine(position + forwardNear + upNear + rightNear, position + forwardFar + upFar + rightFar);
         }
 
         #region Bindings
@@ -148,6 +189,9 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial Matrix4x4 Camera_GetProjectionMatrix(nint camera);
+
+        [NativeFunction]
+        private static partial Matrix4x4 Camera_GetViewProjectionMatrix(nint camera);
 
         [NativeFunction]
         private static partial void Camera_SetCustomTargetDisplay(nint camera, nint display);

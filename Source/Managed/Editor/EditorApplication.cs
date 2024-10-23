@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.Windows;
 using Newtonsoft.Json;
@@ -33,6 +34,10 @@ namespace March.Editor
         private static void OnTick()
         {
             AssetDatabase.Update();
+
+            RenderPipeline.ClearGizmos();
+            SceneManager.CurrentScene.DrawGizmos(selected: go => Selection.Active == go);
+
             ShowWindowMenu();
             DrawWindows();
         }

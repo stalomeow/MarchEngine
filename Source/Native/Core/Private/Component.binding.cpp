@@ -50,3 +50,8 @@ NATIVE_EXPORT_AUTO Component_OnUpdate(cs<Component*> component)
 {
     ComponentInternalUtility::InvokeOnUpdate(component);
 }
+
+NATIVE_EXPORT_AUTO Component_OnDrawGizmos(cs<Component*> component, cs_bool isSelected)
+{
+    ComponentInternalUtility::InvokeOnDrawGizmos(component, isSelected);
+}

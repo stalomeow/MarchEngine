@@ -282,9 +282,27 @@ namespace march
         return false;
     }
 
+    static bool IsTransformVisibleInScreen(const Camera* camera, const XMFLOAT4X4& localToWorldMatrix)
+    {
+        XMVECTOR posWS = XMVectorSet(localToWorldMatrix._41, localToWorldMatrix._42, localToWorldMatrix._43, 1);
+
+        // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
+        // The w component of the returned vector will always be 1.0.
+        XMVECTOR posNDC = XMVector3TransformCoord(posWS, camera->LoadViewProjectionMatrix());
+
+        float z = XMVectorGetZ(posNDC);
+        return z >= 0.0f && z <= 1.0f;
+    }
+
     bool SceneWindow::ManipulateTransform(const Camera* camera, XMFLOAT4X4& localToWorldMatrix)
     {
         if (m_GizmoOperation == SceneGizmoOperation::Pan)
+        {
+            return false;
+        }
+
+        // 避免显示背后的物体；ImGuizmo 没有做这个检查 ...
+        if (!IsTransformVisibleInScreen(camera, localToWorldMatrix))
         {
             return false;
         }
@@ -353,6 +371,40 @@ namespace march
         // 避免多个窗口相互干扰
         ImGuizmo::SetID(static_cast<int>(GetImGuiID())); // TODO: 换成 ImGuizmo::PushID 和 ImGuizmo::PopID，假如之后它们被公开的话
         return ImGuizmo::Manipulate(view, proj, operation, mode, matrix, nullptr, snap);
+    }
+
+    void SceneWindow::DrawGizmoTexts(const Camera* camera)
+    {
+        RenderPipeline* rp = GetApp().GetEngine()->GetRenderPipeline();
+        XMMATRIX viewProjMatrix = camera->LoadViewProjectionMatrix();
+        ImRect canvasRect = GetSceneViewImageRect();
+
+        for (const GizmoText& t : rp->GetGizmoTexts())
+        {
+            // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
+            // The w component of the returned vector will always be 1.0.
+            XMVECTOR posNDC = XMVector3TransformCoord(XMLoadFloat3(&t.CenterWS), viewProjMatrix);
+
+            if (XMVectorGetZ(posNDC) < 0.0f || XMVectorGetZ(posNDC) > 1.0f)
+            {
+                continue;
+            }
+
+            XMFLOAT2 posViewport = {};
+            XMVECTOR half = XMVectorReplicate(0.5f);
+            XMStoreFloat2(&posViewport, XMVectorMultiplyAdd(posNDC, half, half)); // NDC XY 范围 [-1, 1] 转到 [0, 1]
+
+            float x = posViewport.x * canvasRect.GetWidth() + canvasRect.Min.x;
+            float y = (1 - posViewport.y) * canvasRect.GetHeight() + canvasRect.Min.y; // NDC Y 向上，ImGui Y 向下
+
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec2 size = ImGui::CalcTextSize(t.Text.c_str());
+
+            x -= size.x * 0.5f;
+            y -= size.y * 0.5f;
+
+            drawList->AddText(ImVec2(x, y), t.Color, t.Text.c_str());
+        }
     }
 
     void SceneWindow::DrawWindowSettings()
@@ -556,6 +608,11 @@ namespace march
     bool SceneWindowInternalUtility::ManipulateTransform(SceneWindow* window, const Camera* camera, XMFLOAT4X4& localToWorldMatrix)
     {
         return window->ManipulateTransform(camera, localToWorldMatrix);
+    }
+
+    void SceneWindowInternalUtility::DrawGizmoTexts(SceneWindow* window, const Camera* camera)
+    {
+        window->DrawGizmoTexts(camera);
     }
 
     void SceneWindowInternalUtility::DrawWindowSettings(SceneWindow* window)

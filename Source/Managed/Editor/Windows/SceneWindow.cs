@@ -248,6 +248,7 @@ namespace March.Editor.Windows
                 SceneWindow_DrawSceneView(NativePtr);
                 TravelScene();
                 ManipulateTransform();
+                SceneWindow_DrawGizmoTexts(NativePtr, m_SceneViewCamera.NativePtr);
             }
             else
             {
@@ -334,6 +335,9 @@ namespace March.Editor.Windows
 
         [NativeFunction]
         private static partial bool SceneWindow_ManipulateTransform(nint w, nint camera, Matrix4x4* transform);
+
+        [NativeFunction]
+        private static partial void SceneWindow_DrawGizmoTexts(nint w, nint camera);
 
         [NativeFunction]
         private static partial void SceneWindow_DrawWindowSettings(nint w);

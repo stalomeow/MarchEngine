@@ -6,6 +6,8 @@
 
 namespace march
 {
+    // TODO refactor
+
     struct MeshDesc
     {
         D3D12_INPUT_LAYOUT_DESC InputLayout;

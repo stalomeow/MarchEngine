@@ -129,7 +129,6 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <ClCompile Include="Private\GraphicsDebuggerWindow.cpp" />
     <ClCompile Include="Private\ImGuiDemoWindow.binding.cpp" />
     <ClCompile Include="Private\ImGuiDemoWindow.cpp" />
-    <ClCompile Include="Private\imgui_impl_dx12.cpp" />
     <ClCompile Include="Private\RenderGraphDebuggerWindow.binding.cpp" />
     <ClCompile Include="Private\RenderGraphDebuggerWindow.cpp" />
     <ClCompile Include="Private\SceneWindow.binding.cpp" />
@@ -144,7 +143,6 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <ClInclude Include="Public\GameEditor.h" />
     <ClInclude Include="Public\GraphicsDebuggerWindow.h" />
     <ClInclude Include="Public\ImGuiDemoWindow.h" />
-    <ClInclude Include="Public\imgui_impl_dx12.h" />
     <ClInclude Include="Public\RenderGraphDebuggerWindow.h" />
     <ClInclude Include="Public\SceneWindow.h" />
   </ItemGroup>

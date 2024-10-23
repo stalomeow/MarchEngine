@@ -1,4 +1,5 @@
 using March.Core.Binding;
+using March.Core.Rendering;
 using System.Runtime.InteropServices;
 
 namespace March.Core
@@ -33,10 +34,7 @@ namespace March.Core
         [UnmanagedCallersOnly]
         private static void OnTick()
         {
-            foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
-            {
-                gameObject.UpdateRecursive();
-            }
+            SceneManager.CurrentScene.Update();
         }
 
         [UnmanagedCallersOnly]

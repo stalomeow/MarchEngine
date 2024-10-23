@@ -135,7 +135,7 @@ namespace march
         GfxUploadMemory Allocate(uint32_t size, uint32_t count = 1, uint32_t alignment = 1);
 
     public:
-        static const uint32_t PageSize = 4096;
+        static const uint32_t PageSize = 2 * 1024 * 1024; // 2MB
 
     private:
         GfxDevice* m_Device;

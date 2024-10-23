@@ -26,3 +26,8 @@ NATIVE_EXPORT_AUTO RenderPipeline_Render(cs<RenderPipeline*> pPipeline, cs<Camer
 {
     pPipeline->Render(camera, gridGizmoMaterial);
 }
+
+NATIVE_EXPORT_AUTO RenderPipeline_ClearGizmos(cs<RenderPipeline*> pPipeline)
+{
+    pPipeline->ClearGizmos();
+}

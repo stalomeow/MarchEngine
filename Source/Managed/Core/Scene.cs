@@ -67,6 +67,22 @@ namespace March.Core
             return current;
         }
 
+        public void Update()
+        {
+            foreach (GameObject go in RootGameObjects)
+            {
+                go.UpdateRecursive();
+            }
+        }
+
+        public void DrawGizmos(Func<GameObject, bool> selected)
+        {
+            foreach (GameObject go in RootGameObjects)
+            {
+                go.DrawGizmosRecursive(selected);
+            }
+        }
+
         public void Dispose()
         {
             foreach (GameObject go in RootGameObjects)

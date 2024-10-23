@@ -42,6 +42,15 @@
     <ClCompile Include="Private\AssetManager.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\imgui_impl_dx12.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Gizmos.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Gizmos.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Debug.h">
@@ -69,6 +78,12 @@
       <Filter>ThirdParty</Filter>
     </ClInclude>
     <ClInclude Include="Public\AssetManger.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\imgui_impl_dx12.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Gizmos.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

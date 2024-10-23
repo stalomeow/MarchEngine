@@ -51,6 +51,7 @@ namespace march
         void TravelScene(DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);
         bool AllowTravellingScene();
         bool ManipulateTransform(const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix);
+        void DrawGizmoTexts(const Camera* camera);
         void DrawWindowSettings();
         void DrawMenuGizmoModeCombo();
         void DrawMenuRightButtons();
@@ -95,6 +96,7 @@ namespace march
         static void DrawSceneView(SceneWindow* window);
         static void TravelScene(SceneWindow* window, DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);
         static bool ManipulateTransform(SceneWindow* window, const Camera* camera, DirectX::XMFLOAT4X4& localToWorldMatrix);
+        static void DrawGizmoTexts(SceneWindow* window, const Camera* camera);
         static void DrawWindowSettings(SceneWindow* window);
 
         static bool GetEnableMSAA(SceneWindow* window);
