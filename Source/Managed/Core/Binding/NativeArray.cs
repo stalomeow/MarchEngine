@@ -158,57 +158,77 @@ namespace March.Core.Binding
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct NativeArrayMarshal<T> : IDisposable where T : INativeMarshal<T>
     {
-        public NativeArray<byte> Array;
+        public nint Data;
 
         public NativeArrayMarshal(int length)
         {
-            Array = new NativeArray<byte>(T.SizeOfNative() * length);
-        }
-
-        public NativeArrayMarshal(T[] array) : this(array.Length)
-        {
-            for (int i = 0; i < array.Length; i++)
-            {
-                T.ToNative(array[i], (nint)Unsafe.AsPointer(ref Array[i * T.SizeOfNative()]));
-            }
+            Data = NativeArrayBindings.NewArray(length * T.SizeOfNative());
         }
 
         public void Dispose()
         {
-            int nativeSize = T.SizeOfNative();
-            int elementCount = Array.Length / nativeSize;
-
-            for (int i = 0; i < elementCount; i++)
-            {
-                T.FreeNative((nint)Unsafe.AsPointer(ref Array[i * nativeSize]));
-            }
-
-            Array.Dispose();
+            Free(Data);
+            Data = nint.Zero;
         }
 
         public T[] GetAndDispose()
         {
-            T[] result = Value;
+            T[] result = Get(Data);
             Dispose();
             return result;
         }
 
-        public readonly T[] Value
+        public readonly T[] Value => Get(Data);
+
+        public static implicit operator NativeArrayMarshal<T>(T[] value) => new() { Data = New(value) };
+
+        public static explicit operator NativeArrayMarshal<T>(nint data) => new() { Data = data };
+
+        public static nint New(T[] array)
         {
-            get
+            var data = new NativeArray<byte>(T.SizeOfNative() * array.Length);
+
+            for (int i = 0; i < array.Length; i++)
             {
-                int nativeSize = T.SizeOfNative();
-                T[] result = new T[Array.Length / nativeSize];
-
-                for (int i = 0; i < result.Length; i++)
-                {
-                    result[i] = T.FromNative((nint)Unsafe.AsPointer(ref Array[i * nativeSize]));
-                }
-
-                return result;
+                T.ToNative(array[i], (nint)Unsafe.AsPointer(ref data[i * T.SizeOfNative()]));
             }
+
+            return data.Data;
         }
 
-        public static implicit operator NativeArrayMarshal<T>(T[] value) => new(value);
+        public static T[] Get(nint data)
+        {
+            var array = (NativeArray<byte>)data;
+            int nativeSize = T.SizeOfNative();
+            T[] result = new T[array.Length / nativeSize];
+
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = T.FromNative((nint)Unsafe.AsPointer(ref array[i * nativeSize]));
+            }
+
+            return result;
+        }
+
+        public static T[] GetAndFree(nint data)
+        {
+            T[] result = Get(data);
+            Free(data);
+            return result;
+        }
+
+        public static void Free(nint data)
+        {
+            var array = (NativeArray<byte>)data;
+            int nativeSize = T.SizeOfNative();
+            int elementCount = array.Length / nativeSize;
+
+            for (int i = 0; i < elementCount; i++)
+            {
+                T.FreeNative((nint)Unsafe.AsPointer(ref array[i * nativeSize]));
+            }
+
+            array.Dispose();
+        }
     }
 }

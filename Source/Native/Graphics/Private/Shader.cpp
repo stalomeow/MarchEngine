@@ -7,7 +7,7 @@
 #include "GfxExcept.h"
 #include "GfxTexture.h"
 #include "PathHelper.h"
-#include <d3d12shader.h>    // Shader reflection.
+#include <d3d12shader.h> // Shader reflection
 #include <algorithm>
 
 using namespace Microsoft::WRL;
@@ -75,6 +75,11 @@ namespace march
         return m_Name;
     }
 
+    const std::unordered_map<std::string, std::string>& ShaderPass::GetTags() const
+    {
+        return m_Tags;
+    }
+
     const std::unordered_map<int32_t, ShaderPropertyLocation>& ShaderPass::GetPropertyLocations() const
     {
         return m_PropertyLocations;
@@ -130,6 +135,27 @@ namespace march
         }
 
         return m_Passes[index].get();
+    }
+
+    int32_t Shader::GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const
+    {
+        for (int32_t i = 0; i < m_Passes.size(); i++)
+        {
+            const std::unordered_map<std::string, std::string>& tags = m_Passes[i]->GetTags();
+
+            if (auto it = tags.find(tag); it != tags.end() && it->second == value)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    ShaderPass* Shader::GetFirstPassWithTagValue(const std::string& tag, const std::string& value) const
+    {
+        int32_t i = GetFirstPassIndexWithTagValue(tag, value);
+        return i == -1 ? nullptr : m_Passes[i].get();
     }
 
     int32_t Shader::GetPassCount() const

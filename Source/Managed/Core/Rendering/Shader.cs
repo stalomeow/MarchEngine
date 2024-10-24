@@ -1,6 +1,7 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using System.Collections.Immutable;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -459,9 +460,43 @@ namespace March.Core.Rendering
         };
     }
 
+    internal class ShaderPassTag(string key, string value) : INativeMarshal<ShaderPassTag, ShaderPassTag.Native>
+    {
+        public string Key = key;
+        public string Value = value;
+
+        public ShaderPassTag() : this(string.Empty, string.Empty) { }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal unsafe struct Native
+        {
+            public nint Key;
+            public nint Value;
+        }
+
+        public static ShaderPassTag FromNative(ref Native native) => new()
+        {
+            Key = NativeString.Get(native.Key),
+            Value = NativeString.Get(native.Value),
+        };
+
+        public static void ToNative(ShaderPassTag value, out Native native)
+        {
+            native.Key = NativeString.New(value.Key);
+            native.Value = NativeString.New(value.Value);
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Key);
+            NativeString.Free(native.Value);
+        }
+    }
+
     internal class ShaderPass : INativeMarshal<ShaderPass, ShaderPass.Native>
     {
         public string Name = string.Empty;
+        public ShaderPassTag[] Tags = [];
         public ShaderPropertyLocation[] PropertyLocations = [];
         public ShaderProgram[] Programs = [];
 
@@ -474,6 +509,7 @@ namespace March.Core.Rendering
         internal unsafe struct Native
         {
             public nint Name;
+            public NativeArrayMarshal<ShaderPassTag> Tags;
             public NativeArrayMarshal<ShaderPropertyLocation> PropertyLocations;
             public NativeArrayMarshal<ShaderProgram> Programs;
             public ShaderPassCullMode Cull;
@@ -485,6 +521,7 @@ namespace March.Core.Rendering
         public static unsafe ShaderPass FromNative(ref Native native) => new()
         {
             Name = NativeString.Get(native.Name),
+            Tags = native.Tags.Value,
             PropertyLocations = native.PropertyLocations.Value,
             Programs = native.Programs.Value,
             Cull = native.Cull,
@@ -496,6 +533,7 @@ namespace March.Core.Rendering
         public static unsafe void ToNative(ShaderPass value, out Native native)
         {
             native.Name = NativeString.New(value.Name);
+            native.Tags = value.Tags;
             native.PropertyLocations = value.PropertyLocations;
             native.Programs = value.Programs;
             native.Cull = value.Cull;
@@ -507,6 +545,7 @@ namespace March.Core.Rendering
         public static unsafe void FreeNative(ref Native native)
         {
             NativeString.Free(native.Name);
+            native.Tags.Dispose();
             native.PropertyLocations.Dispose();
             native.Programs.Dispose();
             native.Blends.Dispose();
@@ -515,27 +554,51 @@ namespace March.Core.Rendering
 
     public unsafe partial class Shader : NativeMarchObject
     {
-        [JsonProperty]
-        private List<string> m_Warnings = [];
+        private ShaderProperty[] m_Properties = [];
 
         [JsonProperty]
-        private List<string> m_Errors = [];
+        public string Name { get; internal set; } = string.Empty;
 
         [JsonProperty]
-        internal string Name { get; set; } = string.Empty;
+        public ImmutableArray<string> Warnings { get; private set; } = [];
 
         [JsonProperty]
-        internal ShaderProperty[] Properties { get; set; } = [];
+        public ImmutableArray<string> Errors { get; private set; } = [];
+
+        [JsonProperty]
+        internal ShaderProperty[] Properties
+        {
+            get => m_Properties;
+
+            set
+            {
+                m_Properties = value;
+                Shader_ClearProperties(NativePtr);
+
+                foreach (ShaderProperty prop in value)
+                {
+                    ShaderProperty.ToNative(prop, out ShaderProperty.Native native);
+
+                    try
+                    {
+                        Shader_SetProperty(NativePtr, &native);
+                    }
+                    finally
+                    {
+                        ShaderProperty.FreeNative(ref native);
+                    }
+                }
+            }
+        }
 
         [JsonProperty]
         internal ShaderPass[] Passes
         {
             get
             {
-                int count = Shader_GetPassCount(NativePtr);
-                using var buffer = new NativeArrayMarshal<ShaderPass>(count);
-                Shader_GetPasses(NativePtr, buffer);
-                return buffer.Value;
+                nint passes = nint.Zero;
+                Shader_GetPasses(NativePtr, &passes);
+                return NativeArrayMarshal<ShaderPass>.GetAndFree(passes);
             }
 
             set
@@ -555,54 +618,37 @@ namespace March.Core.Rendering
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            UploadPropertyDataToNative();
-
-            for (int i = 0; i < GetPassCount(); i++)
-            {
-                CreatePassRootSignature(i);
-            }
+            CreateRootSignatures();
         }
 
-        internal void UploadPropertyDataToNative()
-        {
-            Shader_ClearProperties(NativePtr);
-
-            foreach (ShaderProperty prop in Properties)
-            {
-                ShaderProperty.ToNative(prop, out ShaderProperty.Native native);
-
-                try
-                {
-                    Shader_SetProperty(NativePtr, &native);
-                }
-                finally
-                {
-                    ShaderProperty.FreeNative(ref native);
-                }
-            }
-        }
-
-        internal int GetPassCount() => Shader_GetPassCount(NativePtr);
+        public bool HasWarningOrError => !Warnings.IsEmpty || !Errors.IsEmpty;
 
         internal void ClearWarningsAndErrors()
         {
-            m_Warnings.Clear();
-            m_Errors.Clear();
+            Warnings = Warnings.Clear();
+            Errors = Errors.Clear();
         }
 
-        internal IReadOnlyList<string> GetWarnings()
+        internal bool AddWarning(string warning)
         {
-            return m_Warnings;
+            if (!Warnings.Contains(warning))
+            {
+                Warnings = Warnings.Add(warning);
+                return true;
+            }
+
+            return false;
         }
 
-        internal IReadOnlyList<string> GetErrors()
+        internal bool AddError(string error)
         {
-            return m_Errors;
-        }
+            if (!Errors.Contains(error))
+            {
+                Errors = Errors.Add(error);
+                return true;
+            }
 
-        internal bool HasWarningsOrErrors()
-        {
-            return m_Warnings.Count > 0 || m_Errors.Count > 0;
+            return false;
         }
 
         internal bool CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel, ShaderProgramType programType)
@@ -622,23 +668,31 @@ namespace March.Core.Rendering
                 // 如果编译成功，就是警告，否则是错误
                 if (success)
                 {
-                    Debug.LogWarning(errors);
-                    m_Warnings.Add(errors);
+                    if (AddWarning(errors))
+                    {
+                        Debug.LogWarning(errors);
+                    }
                 }
                 else
                 {
-                    Debug.LogError(errors);
-                    m_Errors.Add(errors);
+                    if (AddError(errors))
+                    {
+                        Debug.LogError(errors);
+                    }
                 }
             }
 
             return success;
         }
 
-        internal void CreatePassRootSignature(int passIndex)
+        internal void CreateRootSignatures()
         {
-            Shader_CreatePassRootSignature(NativePtr, passIndex);
+            Shader_CreateRootSignatures(NativePtr);
         }
+
+        #region EngineShaderPath
+
+        private static string? s_CachedEngineShaderPath;
 
         /// <summary>
         /// 引擎内置 Shader 的路径 (Unix Style)
@@ -647,10 +701,17 @@ namespace March.Core.Rendering
         {
             get
             {
-                nint s = Shader_GetEngineShaderPathUnixStyle();
-                return NativeString.GetAndFree(s);
+                if (s_CachedEngineShaderPath == null)
+                {
+                    nint s = Shader_GetEngineShaderPathUnixStyle();
+                    s_CachedEngineShaderPath = NativeString.GetAndFree(s);
+                }
+
+                return s_CachedEngineShaderPath;
             }
         }
+
+        #endregion
 
         #region Native
 
@@ -667,10 +728,7 @@ namespace March.Core.Rendering
         private static partial void Shader_SetProperty(nint pShader, ShaderProperty.Native* prop);
 
         [NativeFunction]
-        private static partial int Shader_GetPassCount(nint pShader);
-
-        [NativeFunction]
-        private static partial void Shader_GetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
+        private static partial void Shader_GetPasses(nint pShader, nint* passes);
 
         [NativeFunction]
         private static partial void Shader_SetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
@@ -680,7 +738,7 @@ namespace March.Core.Rendering
             nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType, nint* outErrors);
 
         [NativeFunction]
-        private static partial void Shader_CreatePassRootSignature(nint pShader, int passIndex);
+        private static partial void Shader_CreateRootSignatures(nint pShader);
 
         [NativeFunction]
         private static partial nint Shader_GetEngineShaderPathUnixStyle();

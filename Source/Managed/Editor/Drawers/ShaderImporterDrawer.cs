@@ -12,17 +12,17 @@ namespace March.Editor.Drawers
 
             Shader shader = (Shader)Target.Asset;
 
-            EditorGUI.LabelField("Warnings", string.Empty, shader.GetWarnings().Count.ToString());
-            EditorGUI.LabelField("Errors", string.Empty, shader.GetErrors().Count.ToString());
+            EditorGUI.LabelField("Warnings", string.Empty, shader.Warnings.Length.ToString());
+            EditorGUI.LabelField("Errors", string.Empty, shader.Errors.Length.ToString());
 
             if (EditorGUI.ButtonRight("Show Warnings and Errors"))
             {
-                foreach (string warning in shader.GetWarnings())
+                foreach (string warning in shader.Warnings)
                 {
                     Debug.LogWarning(warning);
                 }
 
-                foreach (string error in shader.GetErrors())
+                foreach (string error in shader.Errors)
                 {
                     Debug.LogError(error);
                 }
@@ -32,7 +32,7 @@ namespace March.Editor.Drawers
             EditorGUI.Separator();
             EditorGUI.Space();
 
-            if (EditorGUI.Foldout("Properties", string.Empty))
+            if (EditorGUI.Foldout("Properties", string.Empty, defaultOpen: true))
             {
                 using (new EditorGUI.IndentedScope())
                 {

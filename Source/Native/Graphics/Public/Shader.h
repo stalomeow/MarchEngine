@@ -232,6 +232,7 @@ namespace march
         ~ShaderPass() = default;
 
         const std::string& GetName() const;
+        const std::unordered_map<std::string, std::string>& GetTags() const;
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
         ShaderProgram* GetProgram(ShaderProgramType type) const;
         ShaderProgram* CreateProgram(ShaderProgramType type);
@@ -249,6 +250,7 @@ namespace march
         void AddStaticSamplers(std::vector<CD3DX12_STATIC_SAMPLER_DESC>& samplers, ShaderProgram* program, D3D12_SHADER_VISIBILITY visibility);
 
         std::string m_Name;
+        std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
         std::unique_ptr<ShaderProgram> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
 
@@ -267,6 +269,8 @@ namespace march
     public:
         const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const;
         ShaderPass* GetPass(int32_t index) const;
+        int32_t GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const;
+        ShaderPass* GetFirstPassWithTagValue(const std::string& tag, const std::string& value) const;
         int32_t GetPassCount() const;
         int32_t GetVersion() const;
 

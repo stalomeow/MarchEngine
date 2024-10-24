@@ -6,8 +6,9 @@ shader
 
 shaderDeclaration
     : propertiesBlock
-    | hlslIncludeDeclaration
+    | tagsBlock
     | renderStateDeclaration
+    | hlslIncludeDeclaration
     | passBlock
     ;
 
@@ -21,6 +22,7 @@ passBlock
 
 passDeclaration
     : nameDeclaration
+    | tagsBlock
     | renderStateDeclaration
     | hlslProgramDeclaration
     ;
@@ -72,6 +74,14 @@ renderStateDeclaration
     | blendOpDeclaration
     | colorMaskDeclaration
     | stencilBlock
+    ;
+
+tagsBlock
+    : 'Tags' LeftBrace tagDeclaration* RightBrace
+    ;
+
+tagDeclaration
+    : StringLiteral Assign StringLiteral
     ;
 
 cullDeclaration

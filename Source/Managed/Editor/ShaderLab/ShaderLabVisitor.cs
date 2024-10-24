@@ -53,7 +53,7 @@ namespace March.Editor.ShaderLab
         };
     }
 
-    internal abstract class ParsedRenderStateContainer
+    internal abstract class ParsedMetadataContainer
     {
         private ShaderPassCullMode? m_Cull;
 
@@ -67,6 +67,8 @@ namespace March.Editor.ShaderLab
 
         private bool m_IsStencilSet = false;
         private ShaderPassStencilState m_Stencil = ShaderPassStencilState.Default;
+
+        private readonly Dictionary<string, string> m_Tags = [];
 
         public void SetCull(ShaderPassCullMode cull)
         {
@@ -111,22 +113,30 @@ namespace March.Editor.ShaderLab
             return ref m_Stencil;
         }
 
-        public ShaderPassCullMode GetCull(ParsedRenderStateContainer parent)
+        public void SetTag(string key, string value)
+        {
+            m_Tags[key] = value;
+        }
+
+        public ShaderPassCullMode GetCull(ParsedMetadataContainer parent)
         {
             return m_Cull ?? parent.m_Cull ?? ShaderPassCullMode.Back;
         }
 
-        public ShaderPassDepthState GetDepthState(ParsedRenderStateContainer parent)
+        public ShaderPassDepthState GetDepthState(ParsedMetadataContainer parent)
         {
-            bool zWrite = m_ZWrite ?? parent.m_ZWrite ?? true;
-
             if (m_IsZTestDisabled ?? parent.m_IsZTestDisabled ?? false)
             {
+                // 禁用 ZTest 时，ZWrite 默认为 Off
+                bool write = m_ZWrite ?? parent.m_ZWrite ?? false;
+
+                // https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-depth-stencil
+                // Set DepthEnable to FALSE to disable depth testing and prevent writing to the depth buffer.
                 return new ShaderPassDepthState
                 {
-                    Enable = false,
-                    Write = zWrite,
-                    Compare = ShaderPassCompareFunc.Always,
+                    Enable = write, // 如果强制要求写入深度，则启用深度测试，否则写不进去
+                    Write = write,
+                    Compare = ShaderPassCompareFunc.Always, // 深度测试关闭时，默认通过
                 };
             }
             else
@@ -134,13 +144,13 @@ namespace March.Editor.ShaderLab
                 return new ShaderPassDepthState
                 {
                     Enable = true,
-                    Write = zWrite,
+                    Write = m_ZWrite ?? parent.m_ZWrite ?? true,
                     Compare = m_ZTest ?? parent.m_ZTest ?? ShaderPassCompareFunc.Less,
                 };
             }
         }
 
-        public ShaderPassBlendState[] GetBlendStates(ParsedRenderStateContainer parent)
+        public ShaderPassBlendState[] GetBlendStates(ParsedMetadataContainer parent)
         {
             ShaderPassBlendState[] blends = Enumerable.Repeat(ShaderPassBlendState.Default, 8).ToArray();
 
@@ -187,7 +197,7 @@ namespace March.Editor.ShaderLab
             }
         }
 
-        public ShaderPassStencilState GetStencilState(ParsedRenderStateContainer parent)
+        public ShaderPassStencilState GetStencilState(ParsedMetadataContainer parent)
         {
             if (m_IsStencilSet)
             {
@@ -201,15 +211,27 @@ namespace March.Editor.ShaderLab
 
             return ShaderPassStencilState.Default;
         }
+
+        public ShaderPassTag[] GetTags(ParsedMetadataContainer parent)
+        {
+            Dictionary<string, string> results = new(parent.m_Tags);
+
+            foreach (KeyValuePair<string, string> kv in m_Tags)
+            {
+                results[kv.Key] = kv.Value;
+            }
+
+            return results.Select(kv => new ShaderPassTag(kv.Key, kv.Value)).OrderBy(tag => tag.Key).ToArray();
+        }
     }
 
-    internal class ParsedShaderPass : ParsedRenderStateContainer
+    internal class ParsedShaderPass : ParsedMetadataContainer
     {
-        public string Name = "<Unnamed Pass>";
+        public string Name = "UnnamedPass";
         public string? HlslProgram;
     }
 
-    internal class ParsedShaderData : ParsedRenderStateContainer
+    internal class ParsedShaderData : ParsedMetadataContainer
     {
         public string? Name;
         public List<ParsedShaderProperty> Properties = [];
@@ -273,7 +295,7 @@ namespace March.Editor.ShaderLab
         }
     }
 
-    internal sealed partial class ShaderLabVisitor : ShaderLabBaseVisitor<int>
+    internal sealed partial class ShaderLabVisitor(ShaderLabErrorListener errorListener) : ShaderLabBaseVisitor<int>
     {
         public ParsedShaderData Data { get; } = new();
 
@@ -281,7 +303,7 @@ namespace March.Editor.ShaderLab
 
         private ParsedShaderPass CurrentPass => Data.Passes[m_CurrentPassIndex];
 
-        private ParsedRenderStateContainer CurrentStateContainer
+        private ParsedMetadataContainer CurrentMetadataContainer
         {
             get
             {
@@ -292,6 +314,25 @@ namespace March.Editor.ShaderLab
 
                 return Data.Passes[m_CurrentPassIndex];
             }
+        }
+
+        protected override bool ShouldVisitNextChild(IRuleNode node, int currentResult)
+        {
+            return !errorListener.HasError;
+        }
+
+        public override int Visit(IParseTree tree)
+        {
+            try
+            {
+                return base.Visit(tree);
+            }
+            catch (Exception e)
+            {
+                errorListener.AddException(e);
+            }
+
+            return DefaultResult;
         }
 
         public override int VisitShader([NotNull] ShaderLabParser.ShaderContext context)
@@ -407,9 +448,17 @@ namespace March.Editor.ShaderLab
             return base.VisitNameDeclaration(context);
         }
 
+        public override int VisitTagDeclaration([NotNull] ShaderLabParser.TagDeclarationContext context)
+        {
+            string key = context.StringLiteral(0).GetText()[1..^1]; // remove quotes
+            string value = context.StringLiteral(1).GetText()[1..^1]; // remove quotes
+            CurrentMetadataContainer.SetTag(key, value);
+            return base.VisitTagDeclaration(context);
+        }
+
         public override int VisitCullDeclaration([NotNull] ShaderLabParser.CullDeclarationContext context)
         {
-            CurrentStateContainer.SetCull(context.cullModeValue().GetChild<ITerminalNode>(0).Symbol.Type switch
+            CurrentMetadataContainer.SetCull(context.cullModeValue().GetChild<ITerminalNode>(0).Symbol.Type switch
             {
                 ShaderLabParser.Back => ShaderPassCullMode.Back,
                 ShaderLabParser.Front => ShaderPassCullMode.Front,
@@ -424,11 +473,11 @@ namespace March.Editor.ShaderLab
         {
             if (context.Disabled() != null)
             {
-                CurrentStateContainer.DisableZTest();
+                CurrentMetadataContainer.DisableZTest();
             }
             else
             {
-                CurrentStateContainer.SetZTest(ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0)));
+                CurrentMetadataContainer.SetZTest(ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0)));
             }
 
             return base.VisitZTestDeclaration(context);
@@ -436,13 +485,13 @@ namespace March.Editor.ShaderLab
 
         public override int VisitZWriteDeclaration([NotNull] ShaderLabParser.ZWriteDeclarationContext context)
         {
-            CurrentStateContainer.SetZWrite(context.On() != null);
+            CurrentMetadataContainer.SetZWrite(context.On() != null);
             return base.VisitZWriteDeclaration(context);
         }
 
         public override int VisitBlendDeclaration([NotNull] ShaderLabParser.BlendDeclarationContext context)
         {
-            ParsedBlend[] blends = CurrentStateContainer.SetBlends();
+            ParsedBlend[] blends = CurrentMetadataContainer.SetBlends();
 
             // 默认设置所有 Target
             int begin = 0;
@@ -491,7 +540,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitBlendOpDeclaration([NotNull] ShaderLabParser.BlendOpDeclarationContext context)
         {
-            ParsedBlendOp[] blendOps = CurrentStateContainer.SetBlendOps();
+            ParsedBlendOp[] blendOps = CurrentMetadataContainer.SetBlendOps();
 
             // 默认设置所有 Target
             int begin = 0;
@@ -534,7 +583,7 @@ namespace March.Editor.ShaderLab
                 throw new NotSupportedException("Invalid color write mask");
             }
 
-            ShaderPassColorWriteMask[] colorMasks = CurrentStateContainer.SetColorMasks();
+            ShaderPassColorWriteMask[] colorMasks = CurrentMetadataContainer.SetColorMasks();
 
             for (int i = 0; i < colorMasks.Length; i++)
             {
@@ -546,7 +595,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitColorMaskInt2Declaration([NotNull] ShaderLabParser.ColorMaskInt2DeclarationContext context)
         {
-            ShaderPassColorWriteMask[] colorMasks = CurrentStateContainer.SetColorMasks();
+            ShaderPassColorWriteMask[] colorMasks = CurrentMetadataContainer.SetColorMasks();
 
             int i = int.Parse(context.IntegerLiteral(0).GetText());
 
@@ -567,7 +616,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitColorMaskIdentifierDeclaration([NotNull] ShaderLabParser.ColorMaskIdentifierDeclarationContext context)
         {
-            ShaderPassColorWriteMask[] colorMasks = CurrentStateContainer.SetColorMasks();
+            ShaderPassColorWriteMask[] colorMasks = CurrentMetadataContainer.SetColorMasks();
 
             // 默认设置所有 Target
             int begin = 0;
@@ -613,14 +662,14 @@ namespace March.Editor.ShaderLab
 
         public override int VisitStencilBlock([NotNull] ShaderLabParser.StencilBlockContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.Enable = true;
             return base.VisitStencilBlock(context);
         }
 
         public override int VisitStencilRefDeclaration([NotNull] ShaderLabParser.StencilRefDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.Ref = byte.Parse(context.IntegerLiteral().GetText());
             return base.VisitStencilRefDeclaration(context);
         }
@@ -636,7 +685,7 @@ namespace March.Editor.ShaderLab
                 mask = mask[2..];
             }
 
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.ReadMask = Convert.ToByte(mask, numBase);
             return base.VisitStencilReadMaskDeclaration(context);
         }
@@ -652,14 +701,14 @@ namespace March.Editor.ShaderLab
                 mask = mask[2..];
             }
 
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.WriteMask = Convert.ToByte(mask, numBase);
             return base.VisitStencilWriteMaskDeclaration(context);
         }
 
         public override int VisitStencilCompDeclaration([NotNull] ShaderLabParser.StencilCompDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             ShaderPassCompareFunc compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
             stencil.FrontFace.Compare = compare;
             stencil.BackFace.Compare = compare;
@@ -668,7 +717,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitStencilPassDeclaration([NotNull] ShaderLabParser.StencilPassDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             stencil.FrontFace.PassOp = op;
             stencil.BackFace.PassOp = op;
@@ -677,7 +726,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitStencilFailDeclaration([NotNull] ShaderLabParser.StencilFailDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             stencil.FrontFace.FailOp = op;
             stencil.BackFace.FailOp = op;
@@ -686,7 +735,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitStencilZFailDeclaration([NotNull] ShaderLabParser.StencilZFailDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             stencil.FrontFace.DepthFailOp = op;
             stencil.BackFace.DepthFailOp = op;
@@ -695,56 +744,56 @@ namespace March.Editor.ShaderLab
 
         public override int VisitStencilCompFrontDeclaration([NotNull] ShaderLabParser.StencilCompFrontDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.FrontFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilCompFrontDeclaration(context);
         }
 
         public override int VisitStencilPassFrontDeclaration([NotNull] ShaderLabParser.StencilPassFrontDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.FrontFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilPassFrontDeclaration(context);
         }
 
         public override int VisitStencilFailFrontDeclaration([NotNull] ShaderLabParser.StencilFailFrontDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.FrontFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilFailFrontDeclaration(context);
         }
 
         public override int VisitStencilZFailFrontDeclaration([NotNull] ShaderLabParser.StencilZFailFrontDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.FrontFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilZFailFrontDeclaration(context);
         }
 
         public override int VisitStencilCompBackDeclaration([NotNull] ShaderLabParser.StencilCompBackDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.BackFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilCompBackDeclaration(context);
         }
 
         public override int VisitStencilPassBackDeclaration([NotNull] ShaderLabParser.StencilPassBackDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.BackFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilPassBackDeclaration(context);
         }
 
         public override int VisitStencilFailBackDeclaration([NotNull] ShaderLabParser.StencilFailBackDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.BackFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilFailBackDeclaration(context);
         }
 
         public override int VisitStencilZFailBackDeclaration([NotNull] ShaderLabParser.StencilZFailBackDeclarationContext context)
         {
-            ref ShaderPassStencilState stencil = ref CurrentStateContainer.SetStencilState();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
             stencil.BackFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
             return base.VisitStencilZFailBackDeclaration(context);
         }

@@ -17,6 +17,11 @@ Shader "BlinnPhong"
         ZTest Less
         ZWrite On
 
+        Tags
+        {
+            "LightMode" = "GBuffer"
+        }
+
         // Blend 0 SrcAlpha OneMinusSrcAlpha, One Zero
         // BlendOp 0 Add, Add
         // ColorMask 0 RGBA

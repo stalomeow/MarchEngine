@@ -117,6 +117,18 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitRenderStateDeclaration([NotNull] ShaderLabParser.RenderStateDeclarationContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.tagsBlock"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitTagsBlock([NotNull] ShaderLabParser.TagsBlockContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.tagDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitTagDeclaration([NotNull] ShaderLabParser.TagDeclarationContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.cullDeclaration"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>

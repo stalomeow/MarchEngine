@@ -97,9 +97,16 @@ struct CSharpShaderPassStencilState
     CSharpShaderPassStencilAction BackFace;
 };
 
+struct CSharpShaderPassTag
+{
+    cs_string Key;
+    cs_string Value;
+};
+
 struct CSharpShaderPass
 {
     cs_string Name;
+    cs<CSharpShaderPassTag[]> Tags;
     cs<CSharpShaderPropertyLocation[]> PropertyLocations;
     cs<CSharpShaderProgram[]> Programs;
 
@@ -163,6 +170,13 @@ namespace march
                 ShaderPass* pass = pShader->m_Passes[i].get();
 
                 pass->m_Name = src.Name;
+
+                pass->m_Tags.clear();
+                for (int32_t j = 0; j < src.Tags.size(); j++)
+                {
+                    const auto& t = src.Tags[j];
+                    pass->m_Tags[t.Key] = t.Value;
+                }
 
                 pass->m_PropertyLocations.clear();
                 for (int32_t j = 0; j < src.PropertyLocations.size(); j++)
@@ -282,19 +296,25 @@ NATIVE_EXPORT_AUTO Shader_SetProperty(cs<Shader*> pShader, cs<CSharpShaderProper
     ShaderBinding::SetProperty(pShader, prop);
 }
 
-NATIVE_EXPORT_AUTO Shader_GetPassCount(cs<Shader*> pShader)
+NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<cs<CSharpShaderPass[]>*> passes)
 {
-    retcs pShader->GetPassCount();
-}
+    passes->assign(pShader->GetPassCount());
 
-NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> passes)
-{
     for (int32_t i = 0; i < pShader->GetPassCount(); i++)
     {
         ShaderPass* pass = pShader->GetPass(i);
-        CSharpShaderPass& dest = passes[i];
+        CSharpShaderPass& dest = (*passes)[i];
 
         dest.Name.assign(pass->GetName());
+
+        dest.Tags.assign(static_cast<int32_t>(pass->GetTags().size()));
+        int32_t tagIndex = 0;
+        for (auto& kvp : pass->GetTags())
+        {
+            auto& tag = dest.Tags[tagIndex++];
+            tag.Key.assign(kvp.first);
+            tag.Value.assign(kvp.second);
+        }
 
         dest.PropertyLocations.assign(static_cast<int32_t>(pass->GetPropertyLocations().size()));
         int32_t propLocIndex = 0;
@@ -416,9 +436,12 @@ NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_
     retcs ret;
 }
 
-NATIVE_EXPORT_AUTO Shader_CreatePassRootSignature(cs<Shader*> pShader, cs_int passIndex)
+NATIVE_EXPORT_AUTO Shader_CreateRootSignatures(cs<Shader*> pShader)
 {
-    pShader->GetPass(passIndex)->CreateRootSignature();
+    for (int32_t i = 0; i < pShader->GetPassCount(); i++)
+    {
+        pShader->GetPass(i)->CreateRootSignature();
+    }
 }
 
 NATIVE_EXPORT_AUTO Shader_GetEngineShaderPathUnixStyle()
