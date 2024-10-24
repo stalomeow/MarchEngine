@@ -94,38 +94,46 @@ namespace March.Core.Rendering
         {
             base.OnDrawGizmos(isSelected);
 
-            Vector3 position = gameObject.transform.Position;
-            Gizmos.DrawText(position, FontAwesome6.Video);
+            if (!Matrix4x4.Invert(ViewMatrix, out Matrix4x4 invViewMatrix))
+            {
+                return;
+            }
 
-            Vector3 forward = gameObject.transform.Forward;
-            Vector3 up = gameObject.transform.Up;
-            Vector3 right = gameObject.transform.Right;
+            using (new Gizmos.MatrixScope(invViewMatrix))
+            {
+                float tanHalfVerticalFov = MathF.Tan(float.DegreesToRadians(VerticalFieldOfView * 0.5f));
+                float tanHalfHorizontalFov = MathF.Tan(float.DegreesToRadians(HorizontalFieldOfView * 0.5f));
 
-            Vector3 forwardNear = forward * NearClipPlane;
-            Vector3 forwardFar = forward * FarClipPlane;
+                Vector3 forwardNear = NearClipPlane * Vector3.UnitZ;
+                Vector3 forwardFar = FarClipPlane * Vector3.UnitZ;
+                Vector3 upNear = tanHalfVerticalFov * NearClipPlane * Vector3.UnitY;
+                Vector3 upFar = tanHalfVerticalFov * FarClipPlane * Vector3.UnitY;
+                Vector3 rightNear = tanHalfHorizontalFov * NearClipPlane * Vector3.UnitX;
+                Vector3 rightFar = tanHalfHorizontalFov * FarClipPlane * Vector3.UnitX;
 
-            float tanHalfVerticalFov = MathF.Tan(float.DegreesToRadians(VerticalFieldOfView * 0.5f));
-            float tanHalfHorizontalFov = MathF.Tan(float.DegreesToRadians(HorizontalFieldOfView * 0.5f));
+                Gizmos.AddLine(forwardNear + upNear - rightNear, forwardNear + upNear + rightNear);
+                Gizmos.AddLine(forwardNear - upNear - rightNear, forwardNear - upNear + rightNear);
+                Gizmos.AddLine(forwardNear + upNear - rightNear, forwardNear - upNear - rightNear);
+                Gizmos.AddLine(forwardNear + upNear + rightNear, forwardNear - upNear + rightNear);
 
-            Vector3 upNear = tanHalfVerticalFov * NearClipPlane * up;
-            Vector3 upFar = tanHalfVerticalFov * FarClipPlane * up;
-            Vector3 rightNear = tanHalfHorizontalFov * NearClipPlane * right;
-            Vector3 rightFar = tanHalfHorizontalFov * FarClipPlane * right;
+                Gizmos.AddLine(forwardFar + upFar - rightFar, forwardFar + upFar + rightFar);
+                Gizmos.AddLine(forwardFar - upFar - rightFar, forwardFar - upFar + rightFar);
+                Gizmos.AddLine(forwardFar + upFar - rightFar, forwardFar - upFar - rightFar);
+                Gizmos.AddLine(forwardFar + upFar + rightFar, forwardFar - upFar + rightFar);
 
-            Gizmos.DrawLine(position + forwardNear + upNear - rightNear, position + forwardNear + upNear + rightNear);
-            Gizmos.DrawLine(position + forwardNear - upNear - rightNear, position + forwardNear - upNear + rightNear);
-            Gizmos.DrawLine(position + forwardNear + upNear - rightNear, position + forwardNear - upNear - rightNear);
-            Gizmos.DrawLine(position + forwardNear + upNear + rightNear, position + forwardNear - upNear + rightNear);
+                Gizmos.AddLine(forwardNear - upNear - rightNear, forwardFar - upFar - rightFar);
+                Gizmos.AddLine(forwardNear + upNear - rightNear, forwardFar + upFar - rightFar);
+                Gizmos.AddLine(forwardNear - upNear + rightNear, forwardFar - upFar + rightFar);
+                Gizmos.AddLine(forwardNear + upNear + rightNear, forwardFar + upFar + rightFar);
 
-            Gizmos.DrawLine(position + forwardFar + upFar - rightFar, position + forwardFar + upFar + rightFar);
-            Gizmos.DrawLine(position + forwardFar - upFar - rightFar, position + forwardFar - upFar + rightFar);
-            Gizmos.DrawLine(position + forwardFar + upFar - rightFar, position + forwardFar - upFar - rightFar);
-            Gizmos.DrawLine(position + forwardFar + upFar + rightFar, position + forwardFar - upFar + rightFar);
+                Gizmos.FlushAndDrawLines();
+            }
+        }
 
-            Gizmos.DrawLine(position + forwardNear - upNear - rightNear, position + forwardFar - upFar - rightFar);
-            Gizmos.DrawLine(position + forwardNear + upNear - rightNear, position + forwardFar + upFar - rightFar);
-            Gizmos.DrawLine(position + forwardNear - upNear + rightNear, position + forwardFar - upFar + rightFar);
-            Gizmos.DrawLine(position + forwardNear + upNear + rightNear, position + forwardFar + upFar + rightFar);
+        protected override void OnDrawGizmosGUI(bool isSelected)
+        {
+            base.OnDrawGizmosGUI(isSelected);
+            GizmosGUI.DrawText(gameObject.transform.Position, FontAwesome6.Video);
         }
 
         #region Bindings

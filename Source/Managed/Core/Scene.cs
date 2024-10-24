@@ -83,6 +83,14 @@ namespace March.Core
             }
         }
 
+        public void DrawGizmosGUI(Func<GameObject, bool> selected)
+        {
+            foreach (GameObject go in RootGameObjects)
+            {
+                go.DrawGizmosGUIRecursive(selected);
+            }
+        }
+
         public void Dispose()
         {
             foreach (GameObject go in RootGameObjects)

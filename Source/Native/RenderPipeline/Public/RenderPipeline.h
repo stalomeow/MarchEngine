@@ -37,19 +37,6 @@ namespace march
         int32_t LightCount;
     };
 
-    struct GizmoText
-    {
-        DirectX::XMFLOAT3 CenterWS;
-        std::string Text;
-        ImU32 Color;
-    };
-
-    struct GizmoVertex
-    {
-        DirectX::XMFLOAT3 PositionWS;
-        DirectX::XMFLOAT4 Color;
-    };
-
     class RenderPipeline
     {
     public:
@@ -60,8 +47,6 @@ namespace march
         {
             m_DeferredLitMaterial.reset();
             m_DeferredLitShader.reset();
-            m_GizmosMaterial.reset();
-            m_GizmosShader.reset();
         }
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
@@ -90,38 +75,6 @@ namespace march
             }
         }
 
-        void ClearGizmos()
-        {
-            m_GizmoLineListVertices.clear();
-            m_GizmoVertexEnds.clear();
-            m_GizmoTexts.clear();
-        }
-
-        void BeginGizmoLineList() {}
-
-        void EndGizmoLineList()
-        {
-            m_GizmoVertexEnds.push_back(m_GizmoLineListVertices.size());
-        }
-
-        void AddGizmoLine(const DirectX::XMFLOAT3& vertex1, const DirectX::XMFLOAT3& vertex2, const DirectX::XMFLOAT4& color)
-        {
-            DirectX::XMFLOAT4 c = GfxHelpers::GetShaderColor(color);
-            m_GizmoLineListVertices.push_back({ vertex1, c });
-            m_GizmoLineListVertices.push_back({ vertex2, c });
-        }
-
-        void AddGizmoText(const DirectX::XMFLOAT3& centerWS, const std::string& text, const DirectX::XMFLOAT4& color)
-        {
-            GizmoText gizmoText;
-            gizmoText.CenterWS = centerWS;
-            gizmoText.Text = text;
-            gizmoText.Color = ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w));
-            m_GizmoTexts.push_back(gizmoText);
-        }
-
-        const std::vector<GizmoText>& GetGizmoTexts() const { return m_GizmoTexts; }
-
         void ImportTextures(int32_t id, GfxRenderTexture* texture);
         void SetCameraGlobalConstantBuffer(Camera* camera, int32_t id);
         void SetLightGlobalConstantBuffer(int32_t id);
@@ -130,7 +83,6 @@ namespace march
         void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
-        void DrawGizmoLineStrips(int32_t colorTargetId, int32_t depthStencilTargetId);
         void PrepareTextureForImGui(int32_t id);
 
     public:
@@ -138,18 +90,10 @@ namespace march
         std::unique_ptr<GfxMesh> m_FullScreenTriangleMesh = nullptr;
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
-        asset_ptr<Shader> m_GizmosShader = nullptr;
-        std::unique_ptr<Material> m_GizmosMaterial = nullptr;
 
     private:
         std::vector<RenderObject*> m_RenderObjects{};
         std::vector<Light*> m_Lights{};
-
-        // TODO color
-        std::vector<GizmoVertex> m_GizmoLineListVertices{};
-        std::vector<size_t> m_GizmoVertexEnds{}; // endVertex
-        std::vector<GizmoText> m_GizmoTexts{};
-
         std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
     };
 }

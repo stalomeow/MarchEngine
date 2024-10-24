@@ -9,7 +9,7 @@ using System.Numerics;
 
 namespace March.Editor.Windows
 {
-    enum SceneGizmoOperation
+    internal enum SceneGizmoOperation
     {
         Pan = 0,
         Translate = 1,
@@ -17,13 +17,13 @@ namespace March.Editor.Windows
         Scale = 3
     }
 
-    enum SceneGizmoMode
+    internal enum SceneGizmoMode
     {
         Local = 0,
         World = 1
     }
 
-    enum SceneWindowMode
+    internal enum SceneWindowMode
     {
         SceneView = 0,
         Settings = 1
@@ -249,6 +249,7 @@ namespace March.Editor.Windows
                 TravelScene();
                 ManipulateTransform();
                 SceneWindow_DrawGizmoTexts(NativePtr, m_SceneViewCamera.NativePtr);
+                SceneManager.CurrentScene.DrawGizmosGUI(go => Selection.Active == go);
             }
             else
             {

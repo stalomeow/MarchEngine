@@ -35,7 +35,7 @@ namespace March.Editor
         {
             AssetDatabase.Update();
 
-            RenderPipeline.ClearGizmos();
+            Gizmos.Clear();
             SceneManager.CurrentScene.DrawGizmos(selected: go => Selection.Active == go);
 
             ShowWindowMenu();

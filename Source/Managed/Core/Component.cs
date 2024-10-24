@@ -119,6 +119,14 @@ namespace March.Core
             }
         }
 
+        internal void TryDrawGizmosGUI(bool isSelected)
+        {
+            if (m_IsMounted && IsActiveAndEnabled)
+            {
+                OnDrawGizmosGUI(isSelected);
+            }
+        }
+
         /// <summary>
         /// 在组件被挂载且 <see cref="GameObject"/> 处于激活状态时被调用，只被调用一次；
         /// 即使 <see cref="Component"/> 没有被启用，这个方法也会被调用
@@ -140,6 +148,8 @@ namespace March.Core
         protected virtual void OnUpdate() => Component_OnUpdate(NativePtr);
 
         protected virtual void OnDrawGizmos(bool isSelected) => Component_OnDrawGizmos(NativePtr, isSelected);
+
+        protected virtual void OnDrawGizmosGUI(bool isSelected) => Component_OnDrawGizmosGUI(NativePtr, isSelected);
 
         #region Bindings
 
@@ -175,6 +185,9 @@ namespace March.Core
 
         [NativeFunction]
         private static partial void Component_OnDrawGizmos(nint component, bool isSelected);
+
+        [NativeFunction]
+        private static partial void Component_OnDrawGizmosGUI(nint component, bool isSelected);
 
         #endregion
     }

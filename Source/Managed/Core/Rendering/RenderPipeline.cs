@@ -29,11 +29,6 @@ namespace March.Core.Rendering
             RenderPipeline_Render(GetInstance(), camera.NativePtr, gridGizmoMaterial?.NativePtr ?? nint.Zero);
         }
 
-        public static void ClearGizmos()
-        {
-            RenderPipeline_ClearGizmos(GetInstance());
-        }
-
         private static nint GetInstance()
         {
             nint engine = Application_GetEngine();
@@ -62,9 +57,6 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void RenderPipeline_Render(nint self, nint camera, nint gridGizmoMaterial);
-
-        [NativeFunction]
-        private static partial void RenderPipeline_ClearGizmos(nint self);
 
         #endregion
     }

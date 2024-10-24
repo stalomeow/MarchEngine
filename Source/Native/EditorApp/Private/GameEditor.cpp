@@ -26,6 +26,7 @@
 #include "IconsFontAwesome6Brands.h"
 #include <imgui_freetype.h>
 #include "Shader.h"
+#include "Gizmos.h"
 
 using namespace DirectX;
 
@@ -296,6 +297,7 @@ namespace march
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
 
             m_RenderPipeline = std::make_unique<RenderPipeline>();
+            Gizmos::InitResources();
             m_IsScriptInitialized = true;
         }
 
@@ -312,6 +314,7 @@ namespace march
             m_BlitImGuiMaterial.reset();
 
             m_RenderPipeline->ReleaseAssets();
+            Gizmos::ReleaseResources();
 
             // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);

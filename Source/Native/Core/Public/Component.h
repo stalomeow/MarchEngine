@@ -28,6 +28,7 @@ namespace march
         virtual void OnDisable() {}
         virtual void OnUpdate() {}
         virtual void OnDrawGizmos(bool isSelected) {}
+        virtual void OnDrawGizmosGUI(bool isSelected) {}
 
     private:
         bool m_IsActiveAndEnabled = false;
@@ -46,5 +47,6 @@ namespace march
         static void InvokeOnDisable(Component* component) { component->OnDisable(); }
         static void InvokeOnUpdate(Component* component) { component->OnUpdate(); }
         static void InvokeOnDrawGizmos(Component* component, bool isSelected) { component->OnDrawGizmos(isSelected); }
+        static void InvokeOnDrawGizmosGUI(Component* component, bool isSelected) { component->OnDrawGizmosGUI(isSelected); }
     };
 }

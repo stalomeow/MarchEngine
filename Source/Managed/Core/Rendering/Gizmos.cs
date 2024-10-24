@@ -5,74 +5,133 @@ namespace March.Core.Rendering
 {
     public static partial class Gizmos
     {
-        public static void DrawText(Vector3 centerWS, string text)
+        public readonly ref struct MatrixScope
         {
-            DrawText(centerWS, text, Color.White);
+            [Obsolete("Use other constructors", error: true)]
+            public MatrixScope() { }
+
+            public MatrixScope(Matrix4x4 matrix)
+            {
+                Gizmos_PushMatrix(matrix);
+            }
+
+            public void Dispose()
+            {
+                Gizmos_PopMatrix();
+            }
         }
 
-        public static void DrawText(Vector3 centerWS, string text, Color color)
+        public readonly ref struct ColorScope
+        {
+            [Obsolete("Use other constructors", error: true)]
+            public ColorScope() { }
+
+            public ColorScope(Color color)
+            {
+                Gizmos_PushColor(color);
+            }
+
+            public void Dispose()
+            {
+                Gizmos_PopColor();
+            }
+        }
+
+        #region Bindings
+
+        [NativeFunction(Name = "Gizmos_Clear")]
+        internal static partial void Clear();
+
+        [NativeFunction]
+        private static partial void Gizmos_PushMatrix(Matrix4x4 matrix);
+
+        [NativeFunction]
+        private static partial void Gizmos_PopMatrix();
+
+        [NativeFunction]
+        private static partial void Gizmos_PushColor(Color color);
+
+        [NativeFunction]
+        private static partial void Gizmos_PopColor();
+
+        [NativeFunction(Name = "Gizmos_AddLine")]
+        public static partial void AddLine(Vector3 p1, Vector3 p2);
+
+        [NativeFunction(Name = "Gizmos_FlushAndDrawLines")]
+        public static partial void FlushAndDrawLines();
+
+        [NativeFunction(Name = "Gizmos_DrawWireArc")]
+        public static partial void DrawWireArc(Vector3 center, Vector3 normal, Vector3 startDir, float radians, float radius);
+
+        [NativeFunction(Name = "Gizmos_DrawWireCircle")]
+        public static partial void DrawWireCircle(Vector3 center, Vector3 normal, float radius);
+
+        [NativeFunction(Name = "Gizmos_DrawWireSphere")]
+        public static partial void DrawWireSphere(Vector3 center, float radius);
+
+        [NativeFunction(Name = "Gizmos_DrawWireCube")]
+        public static partial void DrawWireCube(Vector3 center, Vector3 size);
+
+        #endregion
+    }
+
+    public static partial class GizmosGUI
+    {
+        public static void DrawText(Vector3 center, string text)
         {
             using NativeString t = text;
 
-            Gizmos_DrawText(centerWS, t.Data, color);
+            GizmosGUI_DrawText(center, t.Data);
         }
 
-        public static void DrawWireArc(Vector3 centerWS, Vector3 normalWS, Vector3 startDirWS, float angleDeg, float radius)
+        public readonly ref struct MatrixScope
         {
-            DrawWireArc(centerWS, normalWS, startDirWS, angleDeg, radius, Color.White);
+            [Obsolete("Use other constructors", error: true)]
+            public MatrixScope() { }
+
+            public MatrixScope(Matrix4x4 matrix)
+            {
+                GizmosGUI_PushMatrix(matrix);
+            }
+
+            public void Dispose()
+            {
+                GizmosGUI_PopMatrix();
+            }
         }
 
-        public static void DrawWireArc(Vector3 centerWS, Vector3 normalWS, Vector3 startDirWS, float angleDeg, float radius, Color color)
+        public readonly ref struct ColorScope
         {
-            Gizmos_DrawWireArc(centerWS, normalWS, startDirWS, angleDeg, radius, color);
-        }
+            [Obsolete("Use other constructors", error: true)]
+            public ColorScope() { }
 
-        public static void DrawWireCircle(Vector3 centerWS, Vector3 normalWS, float radius)
-        {
-            DrawWireCircle(centerWS, normalWS, radius, Color.White);
-        }
+            public ColorScope(Color color)
+            {
+                GizmosGUI_PushColor(color);
+            }
 
-        public static void DrawWireCircle(Vector3 centerWS, Vector3 normalWS, float radius, Color color)
-        {
-            Gizmos_DrawWireCircle(centerWS, normalWS, radius, color);
-        }
-
-        public static void DrawWireSphere(Vector3 centerWS, float radius)
-        {
-            DrawWireSphere(centerWS, radius, Color.White);
-        }
-
-        public static void DrawWireSphere(Vector3 centerWS, float radius, Color color)
-        {
-            Gizmos_DrawWireSphere(centerWS, radius, color);
-        }
-
-        public static void DrawLine(Vector3 posWS1, Vector3 posWS2)
-        {
-            DrawLine(posWS1, posWS2, Color.White);
-        }
-
-        public static void DrawLine(Vector3 posWS1, Vector3 posWS2, Color color)
-        {
-            Gizmos_DrawLine(posWS1, posWS2, color);
+            public void Dispose()
+            {
+                GizmosGUI_PopColor();
+            }
         }
 
         #region Bindings
 
         [NativeFunction]
-        private static partial void Gizmos_DrawText(Vector3 centerWS, nint text, Color color);
+        private static partial void GizmosGUI_PushMatrix(Matrix4x4 matrix);
 
         [NativeFunction]
-        private static partial void Gizmos_DrawWireArc(Vector3 centerWS, Vector3 normalWS, Vector3 startDirWS, float angleDeg, float radius, Color color);
+        private static partial void GizmosGUI_PopMatrix();
 
         [NativeFunction]
-        private static partial void Gizmos_DrawWireCircle(Vector3 centerWS, Vector3 normalWS, float radius, Color color);
+        private static partial void GizmosGUI_PushColor(Color color);
 
         [NativeFunction]
-        private static partial void Gizmos_DrawWireSphere(Vector3 centerWS, float radius, Color color);
+        private static partial void GizmosGUI_PopColor();
 
         [NativeFunction]
-        private static partial void Gizmos_DrawLine(Vector3 posWS1, Vector3 posWS2, Color color);
+        private static partial void GizmosGUI_DrawText(Vector3 center, nint text);
 
         #endregion
     }

@@ -55,3 +55,8 @@ NATIVE_EXPORT_AUTO Component_OnDrawGizmos(cs<Component*> component, cs_bool isSe
 {
     ComponentInternalUtility::InvokeOnDrawGizmos(component, isSelected);
 }
+
+NATIVE_EXPORT_AUTO Component_OnDrawGizmosGUI(cs<Component*> component, cs_bool isSelected)
+{
+    ComponentInternalUtility::InvokeOnDrawGizmosGUI(component, isSelected);
+}
