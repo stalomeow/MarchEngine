@@ -136,6 +136,7 @@ namespace March.Core.Rendering
     internal class ShaderProgram : INativeMarshal<ShaderProgram, ShaderProgram.Native>
     {
         public ShaderProgramType Type;
+        public byte[] Hash = [];
         public byte[] Binary = [];
         public ShaderConstantBuffer[] ConstantBuffers = [];
         public ShaderStaticSampler[] StaticSamplers = [];
@@ -145,6 +146,7 @@ namespace March.Core.Rendering
         internal struct Native
         {
             public ShaderProgramType Type;
+            public NativeArray<byte> Hash;
             public NativeArray<byte> Binary;
             public NativeArrayMarshal<ShaderConstantBuffer> ConstantBuffers;
             public NativeArrayMarshal<ShaderStaticSampler> StaticSamplers;
@@ -154,6 +156,7 @@ namespace March.Core.Rendering
         public static ShaderProgram FromNative(ref Native native) => new()
         {
             Type = native.Type,
+            Hash = native.Hash.Value,
             Binary = native.Binary.Value,
             ConstantBuffers = native.ConstantBuffers.Value,
             StaticSamplers = native.StaticSamplers.Value,
@@ -163,6 +166,7 @@ namespace March.Core.Rendering
         public static void ToNative(ShaderProgram value, out Native native)
         {
             native.Type = value.Type;
+            native.Hash = value.Hash;
             native.Binary = value.Binary;
             native.ConstantBuffers = value.ConstantBuffers;
             native.StaticSamplers = value.StaticSamplers;
@@ -171,6 +175,7 @@ namespace March.Core.Rendering
 
         public static void FreeNative(ref Native native)
         {
+            native.Hash.Dispose();
             native.Binary.Dispose();
             native.ConstantBuffers.Dispose();
             native.StaticSamplers.Dispose();
@@ -651,7 +656,8 @@ namespace March.Core.Rendering
             return false;
         }
 
-        internal bool CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel, ShaderProgramType programType)
+        internal bool CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel,
+            ShaderProgramType programType, bool enableDebugInfo)
         {
             using NativeString f = filename;
             using NativeString p = program;
@@ -659,7 +665,7 @@ namespace March.Core.Rendering
             using NativeString s = shaderModel;
 
             nint nativeErrors = nint.Zero;
-            bool success = Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType, &nativeErrors);
+            bool success = Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType, enableDebugInfo, &nativeErrors);
 
             if (nativeErrors != nint.Zero)
             {
@@ -735,7 +741,7 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial bool Shader_CompilePass(nint pShader, int passIndex,
-            nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType, nint* outErrors);
+            nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType, bool enableDebugInfo, nint* outErrors);
 
         [NativeFunction]
         private static partial void Shader_CreateRootSignatures(nint pShader);

@@ -32,6 +32,7 @@ struct CSharpShaderTexture
 struct CSharpShaderProgram
 {
     cs<ShaderProgramType> Type;
+    cs<march::cs_byte[]> Hash;
     cs<march::cs_byte[]> Binary;
     cs<CSharpShaderConstantBuffer[]> ConstantBuffers;
     cs<CSharpShaderStaticSampler[]> StaticSamplers;
@@ -194,6 +195,8 @@ namespace march
                     const auto& p = src.Programs[j];
                     std::unique_ptr<ShaderProgram> program = std::make_unique<ShaderProgram>();
 
+                    std::copy(p.Hash.begin(), p.Hash.end(), program->m_Hash);
+
                     try
                     {
                         GFX_HR(Shader::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
@@ -348,7 +351,8 @@ NATIVE_EXPORT_AUTO Shader_GetPasses(cs<Shader*> pShader, cs<cs<CSharpShaderPass[
 
             auto& p = dest.Programs[j];
             p.Type.assign(static_cast<ShaderProgramType>(j));
-            p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<march::cs_byte*>(program->GetBinaryData()));
+            p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash())), reinterpret_cast<const march::cs_byte*>(program->GetHash()));
+            p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<const march::cs_byte*>(program->GetBinaryData()));
 
             p.ConstantBuffers.assign(static_cast<int32_t>(program->GetConstantBuffers().size()));
             int32_t cbIndex = 0;
@@ -423,10 +427,10 @@ NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
     ShaderBinding::SetPasses(pShader, passes);
 }
 
-NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string program, cs_string entrypoint, cs_string shaderModel, cs<ShaderProgramType> programType, cs<cs_string*> outErrors)
+NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string program, cs_string entrypoint, cs_string shaderModel, cs<ShaderProgramType> programType, cs_bool enableDebugInfo, cs<cs_string*> outErrors)
 {
     std::string errors{};
-    bool ret = pShader->CompilePass(passIndex, filename, program, entrypoint, shaderModel, programType, errors);
+    bool ret = pShader->CompilePass(passIndex, filename, program, entrypoint, shaderModel, programType, enableDebugInfo, errors);
 
     if (!errors.empty())
     {

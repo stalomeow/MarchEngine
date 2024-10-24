@@ -16,7 +16,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 30;
+        protected override int Version => base.Version + 45;
 
         public override string IconNormal => FontAwesome6.Code;
 
@@ -85,26 +85,26 @@ namespace March.Editor.Importers
 
             for (int i = 0; i < result.Passes.Count; i++)
             {
-                string program = result.GetShaderProgramCode(i, out string shaderModel,
+                string program = result.GetShaderProgramCode(i, out string shaderModel, out bool enableDebugInfo,
                     out Dictionary<ShaderProgramType, string> entrypoints);
 
                 if (entrypoints.TryGetValue(ShaderProgramType.Vertex, out string? vsEntrypoint))
                 {
-                    CompileShaderPassWithFallback(shader, i, program, vsEntrypoint, shaderModel, ShaderProgramType.Vertex);
+                    CompileShaderPassWithFallback(shader, i, program, vsEntrypoint, shaderModel, enableDebugInfo, ShaderProgramType.Vertex);
                 }
 
                 if (entrypoints.TryGetValue(ShaderProgramType.Pixel, out string? psEntrypoint))
                 {
-                    CompileShaderPassWithFallback(shader, i, program, psEntrypoint, shaderModel, ShaderProgramType.Pixel);
+                    CompileShaderPassWithFallback(shader, i, program, psEntrypoint, shaderModel, enableDebugInfo, ShaderProgramType.Pixel);
                 }
             }
 
             shader.CreateRootSignatures();
         }
 
-        private void CompileShaderPassWithFallback(Shader shader, int passIndex, string program, string entrypoint, string shaderModel, ShaderProgramType type)
+        private void CompileShaderPassWithFallback(Shader shader, int passIndex, string program, string entrypoint, string shaderModel, bool enableDebugInfo, ShaderProgramType type)
         {
-            if (shader.CompilePass(passIndex, AssetFullPath, program, entrypoint, shaderModel, type))
+            if (shader.CompilePass(passIndex, AssetFullPath, program, entrypoint, shaderModel, type, enableDebugInfo))
             {
                 return;
             }
@@ -126,7 +126,7 @@ namespace March.Editor.Importers
                     return;
             }
 
-            if (!shader.CompilePass(passIndex, AssetFullPath, program, entrypoint, shaderModel, type))
+            if (!shader.CompilePass(passIndex, AssetFullPath, program, entrypoint, shaderModel, type, enableDebugInfo))
             {
                 Debug.LogError($"Failed to compile shader pass {passIndex} with fallback {type}");
             }

@@ -15,6 +15,22 @@ using namespace DirectX;
 
 namespace march
 {
+    ShaderProgram::ShaderProgram()
+        : m_Hash{}
+        , m_Binary(nullptr)
+        , m_ConstantBuffers{}
+        , m_StaticSamplers{}
+        , m_Textures{}
+        , m_SrvUavRootParameterIndex(0)
+        , m_SamplerRootParameterIndex(0)
+    {
+    }
+
+    const ShaderProgram::HashType& ShaderProgram::GetHash() const
+    {
+        return m_Hash;
+    }
+
     uint8_t* ShaderProgram::GetBinaryData() const
     {
         return reinterpret_cast<uint8_t*>(m_Binary->GetBufferPointer());
@@ -269,6 +285,7 @@ namespace march
         const std::string& entrypoint,
         const std::string& shaderModel,
         ShaderProgramType programType,
+        bool enableDebugInfo,
         std::string& outErrors)
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
@@ -293,11 +310,24 @@ namespace march
             wFilename.c_str(),             // Optional shader source file name for error reporting and for PIX shader source view.
             L"-E", wEntrypoint.c_str(),    // Entry point.
             L"-T", wTargetProfile.c_str(), // Target.
-            // L"-D", L"MYDEFINE=1",       // A single define.
-            L"-Zi",                        // Enable debug information.
             L"-I", wIncludePath.c_str(),   // Include directory.
-            // L"-Qstrip_reflect",         // Strip reflection into a separate blob.
+            L"-Zpc",                       // Pack matrices in column-major order.
+            L"-Zsb",                       // Compute Shader Hash considering only output binary
+            L"-Ges",                       // Enable strict mode
+            L"-O3",                        // Optimization Level 3 (Default)
         };
+
+        if (enableDebugInfo)
+        {
+            pszArgs.push_back(L"-Zi"); // Enable debug information.
+        }
+        else
+        {
+            pszArgs.push_back(L"-Qstrip_debug");         // Strip debug information from 4_0+ shader bytecode
+            pszArgs.push_back(L"-Qstrip_priv");          // Strip private data from shader bytecode
+            pszArgs.push_back(L"-Qstrip_reflect");       // Strip reflection data from shader bytecode
+            pszArgs.push_back(L"-Qstrip_rootsignature"); // Strip root signature data from shader bytecode
+        }
 
         if constexpr (GfxSettings::UseReversedZBuffer())
         {
@@ -374,6 +404,19 @@ namespace march
         ShaderProgram* shaderProgram = pass->CreateProgram(programType);
         ComPtr<IDxcBlobUtf16> shaderName = nullptr;
         GFX_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderProgram->m_Binary), &shaderName));
+
+        // 暂时不输出 PDB 文件
+
+        //
+        // Print hash.
+        //
+        ComPtr<IDxcBlob> hash = nullptr;
+        pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&hash), nullptr);
+        if (hash != nullptr)
+        {
+            DxcShaderHash* buf = static_cast<DxcShaderHash*>(hash->GetBufferPointer());
+            std::copy_n(buf->HashDigest, std::size(buf->HashDigest), shaderProgram->m_Hash);
+        }
 
         //
         // Get separate reflection.

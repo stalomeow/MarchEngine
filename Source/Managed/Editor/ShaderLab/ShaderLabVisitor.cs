@@ -238,9 +238,10 @@ namespace March.Editor.ShaderLab
         public List<string> HlslIncludes = [];
         public List<ParsedShaderPass> Passes = [];
 
-        public string GetShaderProgramCode(int passIndex, out string shaderModel, out Dictionary<ShaderProgramType, string> entrypoints)
+        public string GetShaderProgramCode(int passIndex, out string shaderModel, out bool enableDebugInfo, out Dictionary<ShaderProgramType, string> entrypoints)
         {
             shaderModel = "6.0"; // 默认
+            enableDebugInfo = false; // 默认不开启调试信息
             entrypoints = new Dictionary<ShaderProgramType, string>();
 
             if (passIndex < 0 || passIndex >= Passes.Count)
@@ -267,6 +268,9 @@ namespace March.Editor.ShaderLab
                     {
                         case "target":
                             shaderModel = MustGet(segments, 2, "Missing shader model version");
+                            break;
+                        case "enable_debug_information":
+                            enableDebugInfo = true;
                             break;
                         case "vs":
                             entrypoints[ShaderProgramType.Vertex] = MustGet(segments, 2, "Missing vertex shader entrypoint");

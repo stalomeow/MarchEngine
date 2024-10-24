@@ -57,9 +57,11 @@ namespace march
         friend ShaderBinding;
 
     public:
-        ShaderProgram() = default;
-        ~ShaderProgram() = default;
+        typedef uint8_t HashType[16];
 
+        ShaderProgram();
+
+        const HashType& GetHash() const;
         uint8_t* GetBinaryData() const;
         uint64_t GetBinarySize() const;
 
@@ -71,13 +73,14 @@ namespace march
         uint32_t GetSamplerRootParameterIndex() const;
 
     private:
+        HashType m_Hash;
         Microsoft::WRL::ComPtr<IDxcBlob> m_Binary;
         std::unordered_map<int32_t, ShaderConstantBuffer> m_ConstantBuffers;
         std::unordered_map<int32_t, ShaderStaticSampler> m_StaticSamplers;
         std::unordered_map<int32_t, ShaderTexture> m_Textures;
 
-        uint32_t m_SrvUavRootParameterIndex = 0;
-        uint32_t m_SamplerRootParameterIndex = 0;
+        uint32_t m_SrvUavRootParameterIndex;
+        uint32_t m_SamplerRootParameterIndex;
     };
 
     enum class ShaderPropertyType
@@ -290,6 +293,7 @@ namespace march
             const std::string& entrypoint,
             const std::string& shaderModel,
             ShaderProgramType programType,
+            bool enableDebugInfo,
             std::string& outErrors);
 
     private:
