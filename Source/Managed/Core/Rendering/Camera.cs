@@ -1,8 +1,8 @@
 using March.Core.Binding;
+using March.Core.IconFonts;
 using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Numerics;
-using March.Core.IconFonts;
 
 namespace March.Core.Rendering
 {
@@ -94,12 +94,8 @@ namespace March.Core.Rendering
         {
             base.OnDrawGizmos(isSelected);
 
-            if (!Matrix4x4.Invert(ViewMatrix, out Matrix4x4 invViewMatrix))
-            {
-                return;
-            }
-
-            using (new Gizmos.MatrixScope(invViewMatrix))
+            using (new Gizmos.ColorScope(isSelected ? Color.White : new Color(1, 1, 1, 0.6f)))
+            using (new Gizmos.MatrixScope(GizmosUtility.GetLocalToWorldMatrixWithoutScale(transform)))
             {
                 float tanHalfVerticalFov = MathF.Tan(float.DegreesToRadians(VerticalFieldOfView * 0.5f));
                 float tanHalfHorizontalFov = MathF.Tan(float.DegreesToRadians(HorizontalFieldOfView * 0.5f));
@@ -111,29 +107,29 @@ namespace March.Core.Rendering
                 Vector3 rightNear = tanHalfHorizontalFov * NearClipPlane * Vector3.UnitX;
                 Vector3 rightFar = tanHalfHorizontalFov * FarClipPlane * Vector3.UnitX;
 
-                Gizmos.AddLine(forwardNear + upNear - rightNear, forwardNear + upNear + rightNear);
-                Gizmos.AddLine(forwardNear - upNear - rightNear, forwardNear - upNear + rightNear);
-                Gizmos.AddLine(forwardNear + upNear - rightNear, forwardNear - upNear - rightNear);
-                Gizmos.AddLine(forwardNear + upNear + rightNear, forwardNear - upNear + rightNear);
+                Gizmos.DrawLine(forwardNear + upNear - rightNear, forwardNear + upNear + rightNear);
+                Gizmos.DrawLine(forwardNear - upNear - rightNear, forwardNear - upNear + rightNear);
+                Gizmos.DrawLine(forwardNear + upNear - rightNear, forwardNear - upNear - rightNear);
+                Gizmos.DrawLine(forwardNear + upNear + rightNear, forwardNear - upNear + rightNear);
 
-                Gizmos.AddLine(forwardFar + upFar - rightFar, forwardFar + upFar + rightFar);
-                Gizmos.AddLine(forwardFar - upFar - rightFar, forwardFar - upFar + rightFar);
-                Gizmos.AddLine(forwardFar + upFar - rightFar, forwardFar - upFar - rightFar);
-                Gizmos.AddLine(forwardFar + upFar + rightFar, forwardFar - upFar + rightFar);
+                Gizmos.DrawLine(forwardFar + upFar - rightFar, forwardFar + upFar + rightFar);
+                Gizmos.DrawLine(forwardFar - upFar - rightFar, forwardFar - upFar + rightFar);
+                Gizmos.DrawLine(forwardFar + upFar - rightFar, forwardFar - upFar - rightFar);
+                Gizmos.DrawLine(forwardFar + upFar + rightFar, forwardFar - upFar + rightFar);
 
-                Gizmos.AddLine(forwardNear - upNear - rightNear, forwardFar - upFar - rightFar);
-                Gizmos.AddLine(forwardNear + upNear - rightNear, forwardFar + upFar - rightFar);
-                Gizmos.AddLine(forwardNear - upNear + rightNear, forwardFar - upFar + rightFar);
-                Gizmos.AddLine(forwardNear + upNear + rightNear, forwardFar + upFar + rightFar);
-
-                Gizmos.FlushAndDrawLines();
+                Gizmos.DrawLine(forwardNear - upNear - rightNear, forwardFar - upFar - rightFar);
+                Gizmos.DrawLine(forwardNear + upNear - rightNear, forwardFar + upFar - rightFar);
+                Gizmos.DrawLine(forwardNear - upNear + rightNear, forwardFar - upFar + rightFar);
+                Gizmos.DrawLine(forwardNear + upNear + rightNear, forwardFar + upFar + rightFar);
             }
         }
 
         protected override void OnDrawGizmosGUI(bool isSelected)
         {
             base.OnDrawGizmosGUI(isSelected);
-            GizmosGUI.DrawText(gameObject.transform.Position, FontAwesome6.Video);
+
+            // Icon
+            Gizmos.DrawText(gameObject.transform.Position, FontAwesome6.Video);
         }
 
         #region Bindings

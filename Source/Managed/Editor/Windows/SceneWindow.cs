@@ -244,12 +244,10 @@ namespace March.Editor.Windows
 
             if (WindowMode == SceneWindowMode.SceneView)
             {
-                RenderCamera();
-                SceneWindow_DrawSceneView(NativePtr);
+                DrawScene();
                 TravelScene();
+                DrawGizmosGUI();
                 ManipulateTransform();
-                SceneWindow_DrawGizmoTexts(NativePtr, m_SceneViewCamera.NativePtr);
-                SceneManager.CurrentScene.DrawGizmosGUI(go => Selection.Active == go);
             }
             else
             {
@@ -280,11 +278,12 @@ namespace March.Editor.Windows
             }
         }
 
-        private void RenderCamera()
+        private void DrawScene()
         {
             nint display = SceneWindow_UpdateDisplay(NativePtr);
             m_SceneViewCamera.SetCustomTargetDisplay(display);
             RenderPipeline.Render(m_SceneViewCamera, m_GridMaterial);
+            SceneWindow_DrawSceneView(NativePtr);
         }
 
         private void TravelScene()
@@ -314,6 +313,19 @@ namespace March.Editor.Windows
             }
         }
 
+        private void DrawGizmosGUI()
+        {
+            try
+            {
+                SceneWindow_BeginGizmosGUI(NativePtr, m_SceneViewCamera.NativePtr);
+                SceneManager.CurrentScene.DrawGizmosGUI(selected: go => Selection.Active == go);
+            }
+            finally
+            {
+                SceneWindow_EndGizmosGUI(NativePtr);
+            }
+        }
+
         #region Bindings
 
         [NativeFunction]
@@ -338,7 +350,10 @@ namespace March.Editor.Windows
         private static partial bool SceneWindow_ManipulateTransform(nint w, nint camera, Matrix4x4* transform);
 
         [NativeFunction]
-        private static partial void SceneWindow_DrawGizmoTexts(nint w, nint camera);
+        private static partial void SceneWindow_BeginGizmosGUI(nint w, nint camera);
+
+        [NativeFunction]
+        private static partial void SceneWindow_EndGizmosGUI(nint w);
 
         [NativeFunction]
         private static partial void SceneWindow_DrawWindowSettings(nint w);

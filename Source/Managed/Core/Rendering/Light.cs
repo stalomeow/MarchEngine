@@ -59,49 +59,17 @@ namespace March.Core.Rendering
         {
             base.OnDrawGizmos(isSelected);
 
-            if (!isSelected)
+            if (isSelected)
             {
-                return;
-            }
-
-            using (new GizmosGUI.ColorScope(Color))
-            {
-                Vector3 position = gameObject.transform.Position;
-
-                if (Type == LightType.Point)
+                switch (Type)
                 {
-                    Gizmos.DrawWireSphere(position, FalloffRange.Y);
-                }
-                else if (Type == LightType.Spot)
-                {
-                    //// 当强度为 0.01 时的边界
-                    //float halfAngle = MathF.Acos(MathF.Pow(10, -2.0f / SpotPower));
+                    case LightType.Point:
+                        DrawPointLightGizmos();
+                        break;
 
-                    //Vector3 forward = gameObject.transform.Forward;
-                    //Vector3 right = gameObject.transform.Right;
-                    //Vector3 up = gameObject.transform.Up;
-
-                    //Vector3 forwardDir = forward * FalloffRange.Y;
-                    //Vector3 posForward = position + forwardDir;
-                    //Vector3 posUp = position + Vector3.Transform(forwardDir, Quaternion.CreateFromAxisAngle(right, -halfAngle));
-                    //Vector3 posDown = position + Vector3.Transform(forwardDir, Quaternion.CreateFromAxisAngle(right, halfAngle));
-                    //Vector3 posLeft = position + Vector3.Transform(forwardDir, Quaternion.CreateFromAxisAngle(up, -halfAngle));
-                    //Vector3 posRight = position + Vector3.Transform(forwardDir, Quaternion.CreateFromAxisAngle(up, halfAngle));
-
-                    //Gizmos.DrawLine(position, posUp, Color);
-                    //Gizmos.DrawLine(position, posDown, Color);
-                    //Gizmos.DrawLine(position, posLeft, Color);
-                    //Gizmos.DrawLine(position, posRight, Color);
-
-                    //Vector3 circleCenter = position + MathF.Cos(halfAngle) * forwardDir;
-                    //float circleRadius = FalloffRange.Y * MathF.Sin(halfAngle);
-                    //Gizmos.DrawWireCircle(circleCenter, forward, circleRadius, Color);
-
-                    //float halfDeg = float.RadiansToDegrees(halfAngle);
-                    //Gizmos.DrawWireArc(position, right, forward, halfDeg, FalloffRange.Y, Color);
-                    //Gizmos.DrawWireArc(position, right, forward, -halfDeg, FalloffRange.Y, Color);
-                    //Gizmos.DrawWireArc(position, up, forward, halfDeg, FalloffRange.Y, Color);
-                    //Gizmos.DrawWireArc(position, up, forward, -halfDeg, FalloffRange.Y, Color);
+                    case LightType.Spot:
+                        DrawSpotLightGizmos();
+                        break;
                 }
             }
         }
@@ -110,34 +78,76 @@ namespace March.Core.Rendering
         {
             base.OnDrawGizmosGUI(isSelected);
 
-            using (new GizmosGUI.ColorScope(Color))
+            // Icon
+            using (new Gizmos.ColorScope(Color))
             {
-                GizmosGUI.DrawText(gameObject.transform.Position, Type switch
+                Gizmos.DrawText(transform.Position, Type switch
                 {
                     LightType.Directional => FontAwesome6.Sun,
                     LightType.Point => FontAwesome6.Lightbulb,
                     LightType.Spot => FontAwesome6.LandMineOn,
                     _ => throw new NotSupportedException()
                 });
+            }
 
-                //if (isSelected && Type == LightType.Directional)
-                //{
-                //    const float radius = 0.4f;
+            if (isSelected && Type == LightType.Directional)
+            {
+                DrawDirectionLightGizmos();
+            }
+        }
 
-                //    Vector3 forward = gameObject.transform.Forward;
-                //    Vector3 up = gameObject.transform.Up;
-                //    Vector3 right = gameObject.transform.Right;
-                //    Gizmos.DrawWireCircle(position, forward, radius, Color);
+        private void DrawDirectionLightGizmos()
+        {
+            // Directional Light 使用 GUI 模式绘制，大小不受 Camera 到它距离的影响
+            const int rayCount = 8;
 
-                //    const int numSegments = 8;
+            using (new Gizmos.ColorScope(Color))
+            using (new Gizmos.MatrixScope(GizmosUtility.GetLocalToWorldMatrixWithoutScale(transform)))
+            {
+                float guiScale = Gizmos.GUIScaleAtOrigin;
+                float radius = guiScale * 0.15f;
+                float rayLength = guiScale * 0.3f;
 
-                //    for (int i = 0; i < numSegments; i++)
-                //    {
-                //        float rad = MathF.PI * 2 / numSegments * i;
-                //        Vector3 pos = position + radius * (MathF.Sin(rad) * right + MathF.Cos(rad) * up);
-                //        Gizmos.DrawLine(pos, pos + forward * 0.8f, Color);
-                //    }
-                //}
+                Gizmos.DrawWireDisc(Vector3.Zero, Vector3.UnitZ, radius);
+
+                for (int i = 0; i < rayCount; i++)
+                {
+                    float radians = MathF.PI * 2 / rayCount * i;
+                    Vector3 pos = new Vector3(MathF.Sin(radians) * radius, MathF.Cos(radians) * radius, 0);
+                    Gizmos.DrawLine(pos, pos + Vector3.UnitZ * rayLength);
+                }
+            }
+        }
+
+        private void DrawPointLightGizmos()
+        {
+            using (new Gizmos.ColorScope(Color))
+            {
+                Gizmos.DrawWireSphere(transform.Position, FalloffRange.Y);
+            }
+        }
+
+        private void DrawSpotLightGizmos()
+        {
+            using (new Gizmos.ColorScope(Color))
+            using (new Gizmos.MatrixScope(GizmosUtility.GetLocalToWorldMatrixWithoutScale(transform)))
+            {
+                // 当强度为 0.01 时的边界
+                float halfAngle = MathF.Acos(MathF.Pow(10, -2.0f / SpotPower));
+                float sinHalfAngle = MathF.Sin(halfAngle) * FalloffRange.Y;
+                float cosHalfAngle = MathF.Cos(halfAngle) * FalloffRange.Y;
+
+                Gizmos.DrawLine(Vector3.Zero, new Vector3(0, sinHalfAngle, cosHalfAngle));
+                Gizmos.DrawLine(Vector3.Zero, new Vector3(0, -sinHalfAngle, cosHalfAngle));
+                Gizmos.DrawLine(Vector3.Zero, new Vector3(sinHalfAngle, 0, cosHalfAngle));
+                Gizmos.DrawLine(Vector3.Zero, new Vector3(-sinHalfAngle, 0, cosHalfAngle));
+
+                Gizmos.DrawWireDisc(new Vector3(0, 0, cosHalfAngle), Vector3.UnitZ, sinHalfAngle);
+
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, halfAngle, FalloffRange.Y);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, -halfAngle, FalloffRange.Y);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, halfAngle, FalloffRange.Y);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, -halfAngle, FalloffRange.Y);
             }
         }
 

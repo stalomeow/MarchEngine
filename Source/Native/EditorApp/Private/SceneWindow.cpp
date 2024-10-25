@@ -8,6 +8,7 @@
 #include "Debug.h"
 #include "IconsFontAwesome6.h"
 #include "EditorGUI.h"
+#include "Gizmos.h"
 #include <stdint.h>
 #include <ImGuizmo.h>
 #include <string>
@@ -339,11 +340,6 @@ namespace march
             return false;
         }
 
-        ImGuizmo::SetDrawlist();
-
-        ImRect contentRegion = GetSceneViewImageRect();
-        ImGuizmo::SetRect(contentRegion.Min.x, contentRegion.Min.y, contentRegion.GetWidth(), contentRegion.GetHeight());
-
         XMFLOAT4X4 viewMatrix = camera->GetViewMatrix();
         XMFLOAT4X4 projMatrix = camera->GetProjectionMatrix();
 
@@ -368,43 +364,30 @@ namespace march
             }
         }
 
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImRect contentRegion = GetSceneViewImageRect();
+
+        drawList->PushClipRect(contentRegion.Min, contentRegion.Max);
+        ImGuizmo::SetDrawlist(drawList);
+        ImGuizmo::SetRect(contentRegion.Min.x, contentRegion.Min.y, contentRegion.GetWidth(), contentRegion.GetHeight());
+
         // 避免多个窗口相互干扰
-        ImGuizmo::SetID(static_cast<int>(GetImGuiID())); // TODO: 换成 ImGuizmo::PushID 和 ImGuizmo::PopID，假如之后它们被公开的话
-        return ImGuizmo::Manipulate(view, proj, operation, mode, matrix, nullptr, snap);
+        // TODO: 换成 ImGuizmo::PushID 和 ImGuizmo::PopID，假如之后它们被公开的话
+        ImGuizmo::SetID(static_cast<int>(GetImGuiID()));
+
+        bool isChanged = ImGuizmo::Manipulate(view, proj, operation, mode, matrix, nullptr, snap);
+        drawList->PopClipRect();
+        return isChanged;
     }
 
-    void SceneWindow::DrawGizmoTexts(const Camera* camera)
+    void SceneWindow::BeginGizmosGUI(const Camera* camera)
     {
-        RenderPipeline* rp = GetApp().GetEngine()->GetRenderPipeline();
-        XMMATRIX viewProjMatrix = camera->LoadViewProjectionMatrix();
-        ImRect canvasRect = GetSceneViewImageRect();
+        Gizmos::BeginGUI(ImGui::GetWindowDrawList(), GetSceneViewImageRect(), camera);
+    }
 
-        for (const GizmoText& t : rp->GetGizmoTexts())
-        {
-            // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
-            // The w component of the returned vector will always be 1.0.
-            XMVECTOR posNDC = XMVector3TransformCoord(XMLoadFloat3(&t.CenterWS), viewProjMatrix);
-
-            if (XMVectorGetZ(posNDC) < 0.0f || XMVectorGetZ(posNDC) > 1.0f)
-            {
-                continue;
-            }
-
-            XMFLOAT2 posViewport = {};
-            XMVECTOR half = XMVectorReplicate(0.5f);
-            XMStoreFloat2(&posViewport, XMVectorMultiplyAdd(posNDC, half, half)); // NDC XY 范围 [-1, 1] 转到 [0, 1]
-
-            float x = posViewport.x * canvasRect.GetWidth() + canvasRect.Min.x;
-            float y = (1 - posViewport.y) * canvasRect.GetHeight() + canvasRect.Min.y; // NDC Y 向上，ImGui Y 向下
-
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-            ImVec2 size = ImGui::CalcTextSize(t.Text.c_str());
-
-            x -= size.x * 0.5f;
-            y -= size.y * 0.5f;
-
-            drawList->AddText(ImVec2(x, y), t.Color, t.Text.c_str());
-        }
+    void SceneWindow::EndGizmosGUI()
+    {
+        Gizmos::EndGUI();
     }
 
     void SceneWindow::DrawWindowSettings()
@@ -610,9 +593,14 @@ namespace march
         return window->ManipulateTransform(camera, localToWorldMatrix);
     }
 
-    void SceneWindowInternalUtility::DrawGizmoTexts(SceneWindow* window, const Camera* camera)
+    void SceneWindowInternalUtility::BeginGizmosGUI(SceneWindow* window, const Camera* camera)
     {
-        window->DrawGizmoTexts(camera);
+        window->BeginGizmosGUI(camera);
+    }
+
+    void SceneWindowInternalUtility::EndGizmosGUI(SceneWindow* window)
+    {
+        window->EndGizmosGUI();
     }
 
     void SceneWindowInternalUtility::DrawWindowSettings(SceneWindow* window)

@@ -43,9 +43,14 @@ NATIVE_EXPORT_AUTO SceneWindow_ManipulateTransform(cs<SceneWindow*> w, cs<Camera
     retcs changed;
 }
 
-NATIVE_EXPORT_AUTO SceneWindow_DrawGizmoTexts(cs<SceneWindow*> w, cs<Camera*> camera)
+NATIVE_EXPORT_AUTO SceneWindow_BeginGizmosGUI(cs<SceneWindow*> w, cs<Camera*> camera)
 {
-    SceneWindowInternalUtility::DrawGizmoTexts(w, camera);
+    SceneWindowInternalUtility::BeginGizmosGUI(w, camera);
+}
+
+NATIVE_EXPORT_AUTO SceneWindow_EndGizmosGUI(cs<SceneWindow*> w)
+{
+    SceneWindowInternalUtility::EndGizmosGUI(w);
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_DrawWindowSettings(cs<SceneWindow*> w)

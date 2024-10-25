@@ -58,6 +58,8 @@ namespace March.Core
 
         public GameObject gameObject => m_GameObject!;
 
+        public Transform transform => gameObject.transform;
+
         /// <summary>
         /// 在创建组件后立刻调用，初始化一些必要的字段
         /// </summary>

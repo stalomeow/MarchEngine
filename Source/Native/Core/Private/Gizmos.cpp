@@ -3,14 +3,17 @@
 #include "RenderGraph.h"
 #include "Debug.h"
 #include "AssetManger.h"
+#include "Camera.h"
 #include "Material.h"
+#include "WinApplication.h"
 #include <memory>
 #include <math.h>
 #include <vector>
 #include <deque>
-#include <imgui.h>
 
 #undef DrawText
+#undef min
+#undef max
 
 using namespace DirectX;
 
@@ -33,103 +36,211 @@ namespace march
     // Gizmos 由一组 LineList 构成
     static std::vector<Vertex> g_LineListVertices{};
     static std::vector<size_t> g_LineListVertexEnds{};
-    static std::deque<XMFLOAT4X4> g_LineListMatrixStack{};
-    static std::deque<XMFLOAT4> g_LineListShaderColorStack{};
-    static asset_ptr<Shader> g_GizmosShader = nullptr;
-    static std::unique_ptr<Material> g_GizmosMaterial = nullptr;
+    static asset_ptr<Shader> g_LineListShader = nullptr;
+    static std::unique_ptr<Material> g_LineListMaterial = nullptr;
+
+    // ImGui
+    static size_t g_GUIModeCounter = 0;
+    static ImDrawList* g_GUIDrawList = nullptr;
+    static const Camera* g_GUICamera = nullptr;
+
+    // Stacks
+    static std::deque<XMFLOAT4X4> g_MatrixStack{};
+    static std::deque<XMFLOAT4> g_ColorStack{};
+
+    bool Gizmos::IsGUIMode()
+    {
+        return g_GUIModeCounter > 0;
+    }
+
+    void Gizmos::BeginGUI(ImDrawList* drawList, const ImRect& canvasRect, const Camera* camera)
+    {
+        // 保证错误调用时也能正常绘制
+        g_GUIModeCounter++;
+
+        if (g_GUIModeCounter == 1)
+        {
+            g_GUIDrawList = drawList;
+            g_GUIDrawList->PushClipRect(canvasRect.Min, canvasRect.Max);
+            g_GUICamera = camera;
+        }
+        else
+        {
+            DEBUG_LOG_ERROR("Gizmos is already in GUI mode");
+        }
+    }
+
+    void Gizmos::EndGUI()
+    {
+        // 保证错误调用时也能正常绘制
+        g_GUIModeCounter--;
+
+        if (g_GUIModeCounter == 0)
+        {
+            g_GUIDrawList->PopClipRect();
+            g_GUIDrawList = nullptr;
+            g_GUICamera = nullptr;
+        }
+    }
+
+    static ImRect GetGUICanvasRect()
+    {
+        ImVec2 min = g_GUIDrawList->GetClipRectMin();
+        ImVec2 max = g_GUIDrawList->GetClipRectMax();
+        return ImRect(min, max);
+    }
 
     void Gizmos::Clear()
     {
-        if (!g_LineListMatrixStack.empty())
-        {
-            DEBUG_LOG_WARN("Gizmos Matrix stack is not empty");
-        }
-
-        if (!g_LineListShaderColorStack.empty())
-        {
-            DEBUG_LOG_WARN("Gizmos Color stack is not empty");
-        }
-
         g_LineListVertices.clear();
         g_LineListVertexEnds.clear();
-        g_LineListMatrixStack.clear();
-        g_LineListShaderColorStack.clear();
     }
 
     void Gizmos::PushMatrix(const XMFLOAT4X4& matrix)
     {
-        g_LineListMatrixStack.emplace_back(matrix);
+        g_MatrixStack.emplace_back(matrix);
     }
 
     void Gizmos::PopMatrix()
     {
-        g_LineListMatrixStack.pop_back();
+        g_MatrixStack.pop_back();
     }
 
     void Gizmos::PushColor(const XMFLOAT4& color)
     {
-        // 颜色在压栈时就进行空间转换，避免之后重复计算
-        g_LineListShaderColorStack.emplace_back(GfxHelpers::GetShaderColor(color));
+        g_ColorStack.emplace_back(color);
     }
 
     void Gizmos::PopColor()
     {
-        g_LineListShaderColorStack.pop_back();
+        g_ColorStack.pop_back();
     }
 
-    void Gizmos::AddLine(const XMFLOAT3& p1, const XMFLOAT3& p2)
+    static XMVECTOR LoadTransformedPosition(const XMFLOAT3& position)
     {
-        XMVECTOR v1 = XMLoadFloat3(&p1);
-        XMVECTOR v2 = XMLoadFloat3(&p2);
+        XMVECTOR p = XMLoadFloat3(&position);
 
-        for (auto it = g_LineListMatrixStack.rbegin(); it != g_LineListMatrixStack.rend(); ++it)
+        for (auto it = g_MatrixStack.rbegin(); it != g_MatrixStack.rend(); ++it)
         {
             XMMATRIX m = XMLoadFloat4x4(&*it);
 
             // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
             // The w component of the returned vector will always be 1.0.
-            v1 = XMVector3TransformCoord(v1, m);
-            v2 = XMVector3TransformCoord(v2, m);
+            p = XMVector3TransformCoord(p, m);
         }
 
-        XMFLOAT3 p1Transformed = {};
-        XMFLOAT3 p2Transformed = {};
-        XMStoreFloat3(&p1Transformed, v1);
-        XMStoreFloat3(&p2Transformed, v2);
-
-        // 白色在 sRGB 和 Linear 中都一样
-        XMFLOAT4 color = g_LineListShaderColorStack.empty() ? XMFLOAT4(1, 1, 1, 1) : g_LineListShaderColorStack.back();
-
-        g_LineListVertices.emplace_back(p1Transformed, color);
-        g_LineListVertices.emplace_back(p2Transformed, color);
+        return p;
     }
 
-    void Gizmos::FlushAndDrawLines()
+    float Gizmos::GetGUIScale(const XMFLOAT3& position)
     {
-        size_t size = g_LineListVertices.size();
-
-        if (g_LineListVertexEnds.empty())
+        if (!IsGUIMode())
         {
-            if (size == 0)
+            DEBUG_LOG_WARN("Gizmos::GetGUIScale should only be called in GUI mode");
+            return 1.0f;
+        }
+
+        XMVECTOR p = LoadTransformedPosition(position);
+
+        // XMVector3Transform ignores the w component of the input vector, and uses a value of 1 instead.
+        // The w component of the returned vector may be non-homogeneous (!= 1.0).
+        float linearDepth = XMVectorGetZ(XMVector3Transform(p, g_GUICamera->LoadViewMatrix()));
+        return fmaxf(linearDepth, 0.0001f) * GetApp().GetDisplayScale() * 0.1f;
+    }
+
+    static XMFLOAT4 GetCurrentLineListVertexColor()
+    {
+        if (g_ColorStack.empty())
+        {
+            // 白色在 sRGB 和 Linear 中都一样
+            return XMFLOAT4(1, 1, 1, 1);
+        }
+
+        return GfxHelpers::GetShaderColor(g_ColorStack.back());
+    }
+
+    static ImU32 GetCurrentImGuiColor()
+    {
+        if (g_ColorStack.empty())
+        {
+            return IM_COL32_WHITE;
+        }
+
+        // ImGui 的颜色不用转换空间，统一使用 sRGB
+        const XMFLOAT4& c = g_ColorStack.back();
+        return ImGui::ColorConvertFloat4ToU32(ImVec4(c.x, c.y, c.z, c.w));
+    }
+
+    static void FlushLineListIfNeeded(bool force)
+    {
+        size_t meshVertexCount = g_LineListVertices.size();
+
+        if (!g_LineListVertexEnds.empty())
+        {
+            meshVertexCount -= g_LineListVertexEnds.back();
+        }
+
+        // Gizmos 使用 uint16_t 类型的 index，顶点数量不能超过 65535
+        if (meshVertexCount >= 60000 || (force && meshVertexCount > 0))
+        {
+            g_LineListVertexEnds.push_back(g_LineListVertices.size());
+        }
+    }
+
+    static ImVec2 GetImGuiScreenPosition(const XMFLOAT3& position, bool* outVisible)
+    {
+        XMVECTOR p = LoadTransformedPosition(position);
+        XMVECTOR posNDC = XMVector3TransformCoord(p, g_GUICamera->LoadViewProjectionMatrix());
+
+        if (outVisible != nullptr)
+        {
+            *outVisible = XMVectorGetZ(posNDC) >= 0.0f && XMVectorGetZ(posNDC) <= 1.0f;
+        }
+
+        XMFLOAT2 posViewport = {};
+        XMVECTOR half = XMVectorReplicate(0.5f);
+        XMStoreFloat2(&posViewport, XMVectorMultiplyAdd(posNDC, half, half)); // NDC XY 范围 [-1, 1] 转到 [0, 1]
+
+        ImRect canvas = GetGUICanvasRect();
+        float x = posViewport.x * canvas.GetWidth() + canvas.Min.x;
+        float y = (1 - posViewport.y) * canvas.GetHeight() + canvas.Min.y; // NDC Y 向上，ImGui Y 向下
+        return ImVec2(x, y);
+    }
+
+    void Gizmos::DrawLine(const XMFLOAT3& p1, const XMFLOAT3& p2)
+    {
+        if (IsGUIMode())
+        {
+            bool visible1 = false;
+            ImVec2 pos1 = GetImGuiScreenPosition(p1, &visible1);
+
+            bool visible2 = false;
+            ImVec2 pos2 = GetImGuiScreenPosition(p2, &visible2);
+
+            if (visible1 || visible2)
             {
-                return;
+                g_GUIDrawList->AddLine(pos1, pos2, GetCurrentImGuiColor());
             }
         }
         else
         {
-            if (g_LineListVertexEnds.back() == size)
-            {
-                return;
-            }
-        }
+            XMFLOAT3 p1Transformed = {};
+            XMFLOAT3 p2Transformed = {};
+            XMStoreFloat3(&p1Transformed, LoadTransformedPosition(p1));
+            XMStoreFloat3(&p2Transformed, LoadTransformedPosition(p2));
 
-        g_LineListVertexEnds.push_back(g_LineListVertices.size());
+            XMFLOAT4 color = GetCurrentLineListVertexColor();
+            g_LineListVertices.emplace_back(p1Transformed, color);
+            g_LineListVertices.emplace_back(p2Transformed, color);
+            FlushLineListIfNeeded(false);
+        }
     }
 
     void Gizmos::DrawWireArc(const XMFLOAT3& center, const XMFLOAT3& normal, const XMFLOAT3& startDir, float radians, float radius)
     {
         XMFLOAT4X4 matrix = {};
-        XMStoreFloat4x4(&matrix, XMMatrixLookToLH(XMLoadFloat3(&center), XMLoadFloat3(&startDir), XMLoadFloat3(&normal)));
+        XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&center), XMLoadFloat3(&startDir), XMLoadFloat3(&normal));
+        XMStoreFloat4x4(&matrix, XMMatrixInverse(nullptr, view));
         PushMatrix(matrix);
 
         const float segmentPerRadians = 60.0f / XM_2PI;
@@ -145,15 +256,14 @@ namespace march
 
             // 顺时针旋转
             XMFLOAT3 pos(radius * sinValue, 0, radius * cosValue);
-            if (i > 0) AddLine(prevPos, pos);
+            if (i > 0) DrawLine(prevPos, pos);
             prevPos = pos;
         }
 
-        FlushAndDrawLines();
         PopMatrix();
     }
 
-    void Gizmos::DrawWireCircle(const XMFLOAT3& center, const XMFLOAT3& normal, float radius)
+    void Gizmos::DrawWireDisc(const XMFLOAT3& center, const XMFLOAT3& normal, float radius)
     {
         XMVECTOR up = XMVectorSet(0, 1, 0, 0);
         XMVECTOR n = XMVector3Normalize(XMLoadFloat3(&normal));
@@ -177,9 +287,9 @@ namespace march
 
     void Gizmos::DrawWireSphere(const XMFLOAT3& center, float radius)
     {
-        DrawWireCircle(center, XMFLOAT3(1, 0, 0), radius);
-        DrawWireCircle(center, XMFLOAT3(0, 1, 0), radius);
-        DrawWireCircle(center, XMFLOAT3(0, 0, 1), radius);
+        DrawWireDisc(center, XMFLOAT3(1, 0, 0), radius);
+        DrawWireDisc(center, XMFLOAT3(0, 1, 0), radius);
+        DrawWireDisc(center, XMFLOAT3(0, 0, 1), radius);
     }
 
     void Gizmos::DrawWireCube(const XMFLOAT3& center, const XMFLOAT3& size)
@@ -198,36 +308,57 @@ namespace march
             XMFLOAT3(center.x - half.x, center.y + half.y, center.z + half.z),
         };
 
-        AddLine(vertices[0], vertices[1]);
-        AddLine(vertices[1], vertices[2]);
-        AddLine(vertices[2], vertices[3]);
-        AddLine(vertices[3], vertices[0]);
-        AddLine(vertices[4], vertices[5]);
-        AddLine(vertices[5], vertices[6]);
-        AddLine(vertices[6], vertices[7]);
-        AddLine(vertices[7], vertices[4]);
-        AddLine(vertices[0], vertices[4]);
-        AddLine(vertices[1], vertices[5]);
-        AddLine(vertices[2], vertices[6]);
-        AddLine(vertices[3], vertices[7]);
-        FlushAndDrawLines();
+        DrawLine(vertices[0], vertices[1]);
+        DrawLine(vertices[1], vertices[2]);
+        DrawLine(vertices[2], vertices[3]);
+        DrawLine(vertices[3], vertices[0]);
+        DrawLine(vertices[4], vertices[5]);
+        DrawLine(vertices[5], vertices[6]);
+        DrawLine(vertices[6], vertices[7]);
+        DrawLine(vertices[7], vertices[4]);
+        DrawLine(vertices[0], vertices[4]);
+        DrawLine(vertices[1], vertices[5]);
+        DrawLine(vertices[2], vertices[6]);
+        DrawLine(vertices[3], vertices[7]);
+    }
+
+    void Gizmos::DrawText(const XMFLOAT3& center, const std::string& text)
+    {
+        if (!IsGUIMode())
+        {
+            DEBUG_LOG_WARN("Gizmos::DrawText should only be called in GUI mode");
+            return;
+        }
+
+        bool visible = false;
+        ImVec2 pos = GetImGuiScreenPosition(center, &visible);
+
+        if (visible)
+        {
+            ImVec2 size = ImGui::CalcTextSize(text.c_str());
+            pos.x -= size.x * 0.5f;
+            pos.y -= size.y * 0.5f;
+            g_GUIDrawList->AddText(pos, GetCurrentImGuiColor(), text.c_str());
+        }
     }
 
     void Gizmos::InitResources()
     {
-        g_GizmosShader.reset("Engine/Shaders/Gizmos.shader");
-        g_GizmosMaterial = std::make_unique<Material>();
-        g_GizmosMaterial->SetShader(g_GizmosShader.get());
+        g_LineListShader.reset("Engine/Shaders/Gizmos.shader");
+        g_LineListMaterial = std::make_unique<Material>();
+        g_LineListMaterial->SetShader(g_LineListShader.get());
     }
 
     void Gizmos::ReleaseResources()
     {
-        g_GizmosMaterial.reset();
-        g_GizmosShader.reset();
+        g_LineListMaterial.reset();
+        g_LineListShader.reset();
     }
 
     void Gizmos::AddRenderGraphPass(RenderGraph* graph, int32_t colorTargetId, int32_t depthStencilTargetId)
     {
+        FlushLineListIfNeeded(true);
+
         auto builder = graph->AddPass("Gizmos");
 
         builder.SetColorTarget(colorTargetId);
@@ -245,13 +376,12 @@ namespace march
             for (size_t i = 0; i < g_LineListVertexEnds.size(); i++)
             {
                 size_t vertexEnd = g_LineListVertexEnds[i];
+                size_t vertexCount = vertexEnd - vertexOffset;
 
-                if (vertexOffset == vertexEnd)
+                if (vertexCount <= 0)
                 {
                     continue;
                 }
-
-                size_t vertexCount = vertexEnd - vertexOffset;
 
                 while (indices.size() < vertexCount)
                 {
@@ -260,114 +390,21 @@ namespace march
 
                 MeshBufferDesc& bufferDesc = meshes.emplace_back();
                 bufferDesc.VertexBufferView = context.CreateTransientVertexBuffer(vertexCount, sizeof(Vertex), alignof(Vertex), g_LineListVertices.data() + vertexOffset);
-                bufferDesc.IndexBufferView = context.CreateTransientIndexBuffer(indices.size(), indices.data());
+                bufferDesc.IndexBufferView = context.CreateTransientIndexBuffer(vertexCount, indices.data());
                 vertexOffset = vertexEnd;
             }
 
             // Visible part
             for (const MeshBufferDesc& mesh : meshes)
             {
-                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, g_GizmosMaterial.get(), false, 0);
+                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, g_LineListMaterial.get(), false, 0);
             }
 
             // Invisible part
             for (const MeshBufferDesc& mesh : meshes)
             {
-                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, g_GizmosMaterial.get(), false, 1);
+                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, g_LineListMaterial.get(), false, 1);
             }
         });
-    }
-
-    static ImRect g_GUICanvasRect = ImRect();
-    static XMFLOAT4X4 g_GUIViewProjectionMatrix = XMFLOAT4X4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1); // Identity
-    static std::deque<XMFLOAT4X4> g_GUIMatrixStack{};
-    static std::deque<ImU32> g_GUIColorStack{};
-
-    void GizmosGUI::SetContext(const ImRect& canvasRect, const XMFLOAT4X4& viewProjectionMatrix)
-    {
-        if (g_GUIMatrixStack.size() > 0)
-        {
-            DEBUG_LOG_WARN("GizmosGUI Matrix stack is not empty");
-        }
-
-        if (g_GUIColorStack.size() > 0)
-        {
-            DEBUG_LOG_WARN("GizmosGUI Color stack is not empty");
-        }
-
-        g_GUICanvasRect = canvasRect;
-        g_GUIViewProjectionMatrix = viewProjectionMatrix;
-        g_GUIMatrixStack.clear();
-        g_GUIColorStack.clear();
-    }
-
-    void GizmosGUI::PushMatrix(const XMFLOAT4X4& matrix)
-    {
-        g_GUIMatrixStack.emplace_back(matrix);
-    }
-
-    void GizmosGUI::PopMatrix()
-    {
-        g_GUIMatrixStack.pop_back();
-    }
-
-    void GizmosGUI::PushColor(const XMFLOAT4& color)
-    {
-        // ImGui 的颜色不用转换空间，统一使用 sRGB
-        g_GUIColorStack.push_back(ImGui::ColorConvertFloat4ToU32(ImVec4(color.x, color.y, color.z, color.w)));
-    }
-
-    void GizmosGUI::PopColor()
-    {
-        g_GUIColorStack.pop_back();
-    }
-
-    static ImVec2 GetImGUIScreenPosition(const XMFLOAT3& position, bool* outVisible)
-    {
-        XMVECTOR p = XMLoadFloat3(&position);
-
-        for (auto it = g_GUIMatrixStack.rbegin(); it != g_GUIMatrixStack.rend(); ++it)
-        {
-            XMMATRIX m = XMLoadFloat4x4(&*it);
-
-            // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
-            // The w component of the returned vector will always be 1.0.
-            p = XMVector3TransformCoord(p, m);
-        }
-
-        XMVECTOR posNDC = XMVector3TransformCoord(p, XMLoadFloat4x4(&g_GUIViewProjectionMatrix));
-
-        if (outVisible != nullptr)
-        {
-            *outVisible = XMVectorGetZ(posNDC) >= 0.0f && XMVectorGetZ(posNDC) <= 1.0f;
-        }
-
-        XMFLOAT2 posViewport = {};
-        XMVECTOR half = XMVectorReplicate(0.5f);
-        XMStoreFloat2(&posViewport, XMVectorMultiplyAdd(posNDC, half, half)); // NDC XY 范围 [-1, 1] 转到 [0, 1]
-
-        float x = posViewport.x * g_GUICanvasRect.GetWidth() + g_GUICanvasRect.Min.x;
-        float y = (1 - posViewport.y) * g_GUICanvasRect.GetHeight() + g_GUICanvasRect.Min.y; // NDC Y 向上，ImGui Y 向下
-        return ImVec2(x, y);
-    }
-
-    void GizmosGUI::DrawText(const XMFLOAT3& center, const std::string& text)
-    {
-        bool visible = false;
-        ImVec2 pos = GetImGUIScreenPosition(center, &visible);
-
-        if (!visible)
-        {
-            return;
-        }
-
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        ImVec2 size = ImGui::CalcTextSize(text.c_str());
-
-        pos.x -= size.x * 0.5f;
-        pos.y -= size.y * 0.5f;
-
-        ImU32 color = g_GUIColorStack.empty() ? IM_COL32_WHITE : g_GUIColorStack.back();
-        drawList->AddText(pos, color, text.c_str());
     }
 }
