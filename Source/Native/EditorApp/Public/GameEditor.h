@@ -54,7 +54,7 @@ namespace march
         std::unique_ptr<RenderGraph> m_ImGuiRenderGraph = nullptr;
         GfxDescriptorTable m_StaticDescriptorViewTable;
 
-        std::string m_DataPath = "C:/Users/10247/Desktop/TestProj";
+        std::string m_DataPath;
         std::string m_ImGuiIniFilename{};
 
         const DXGI_FORMAT m_ImGuiRtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
