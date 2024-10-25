@@ -21,13 +21,10 @@
     <ClCompile Include="Private\GameTimer.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\IEngine.binding.cpp">
+    <ClCompile Include="Private\Application.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\WinApplication.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\WinApplication.cpp">
+    <ClCompile Include="Private\Application.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Component.binding.cpp">
@@ -59,10 +56,7 @@
     <ClInclude Include="Public\GameTimer.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\IEngine.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\WinApplication.h">
+    <ClInclude Include="Public\Application.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\Component.h">

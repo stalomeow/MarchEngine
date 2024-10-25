@@ -5,7 +5,7 @@
 #include "AssetManger.h"
 #include "Camera.h"
 #include "Material.h"
-#include "WinApplication.h"
+#include "Application.h"
 #include <memory>
 #include <math.h>
 #include <vector>
@@ -145,7 +145,7 @@ namespace march
         // XMVector3Transform ignores the w component of the input vector, and uses a value of 1 instead.
         // The w component of the returned vector may be non-homogeneous (!= 1.0).
         float linearDepth = XMVectorGetZ(XMVector3Transform(p, g_GUICamera->LoadViewMatrix()));
-        return fmaxf(linearDepth, 0.0001f) * GetApp().GetDisplayScale() * 0.1f;
+        return fmaxf(linearDepth, 0.0001f) * GetApp()->GetDisplayScale() * 0.1f;
     }
 
     static XMFLOAT4 GetCurrentLineListVertexColor()

@@ -1,5 +1,4 @@
 #include "GameEditor.h"
-#include "WinApplication.h"
 #include "GfxDevice.h"
 #include "EditorGUI.h"
 #include "GfxCommandList.h"
@@ -42,7 +41,7 @@ namespace march
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     bool GameEditor::OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult)
     {
-        if (ImGui_ImplWin32_WndProcHandler(GetApp().GetHWND(), msg, wParam, lParam))
+        if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
         {
             outResult = true;
             return true;
@@ -52,14 +51,23 @@ namespace march
 
     void GameEditor::OnStart(const std::vector<std::string>& args)
     {
+        auto it = std::find(args.begin(), args.end(), "-project-path");
+
+        if (it != args.end() && (it = std::next(it)) != args.end())
+        {
+            m_DataPath = *it;
+        }
+        else
+        {
+            throw std::runtime_error("Project path not found in command line arguments.");
+        }
+
         if (std::count(args.begin(), args.end(), "-load-renderdoc") > 0)
         {
             RenderDoc::Load(); // 越早越好
         }
 
         DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
-
-        auto [width, height] = GetApp().GetClientWidthAndHeight();
 
         GfxDeviceDesc desc{};
 
@@ -68,9 +76,9 @@ namespace march
             desc.EnableDebugLayer = true;
         }
 
-        desc.WindowHandle = GetApp().GetHWND();
-        desc.WindowWidth = width;
-        desc.WindowHeight = height;
+        desc.WindowHandle = GetWindowHandle();
+        desc.WindowWidth = GetClientWidth();
+        desc.WindowHeight = GetClientHeight();
         desc.ViewTableStaticDescriptorCount = 1;
         desc.ViewTableDynamicDescriptorCapacity = 4096;
         desc.SamplerTableStaticDescriptorCount = 0;
@@ -82,6 +90,17 @@ namespace march
         m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
 
         InitImGui();
+
+        BeginFrame();
+        {
+            // 初始化代码可能也会用到 GfxDevice
+            DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
+
+            m_RenderPipeline = std::make_unique<RenderPipeline>();
+            Gizmos::InitResources();
+        }
+        EndFrame(true);
     }
 
     static void SetStyles()
@@ -176,7 +195,7 @@ namespace march
 
     void GameEditor::InitImGui()
     {
-        m_ImGuiIniFilename = GetApp().GetDataPath() + "/ProjectSettings/imgui.ini";
+        m_ImGuiIniFilename = GetDataPath() + "/ProjectSettings/imgui.ini";
 
         // Setup Dear ImGui context
         ImGui::CreateContext();
@@ -190,7 +209,7 @@ namespace march
         io.ConfigDockingAlwaysTabBar = true;
 
         // Setup Platform/Renderer backends
-        ImGui_ImplWin32_Init(GetApp().GetHWND());
+        ImGui_ImplWin32_Init(GetWindowHandle());
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
@@ -214,6 +233,22 @@ namespace march
 
     void GameEditor::OnQuit()
     {
+        BeginFrame();
+        {
+            m_BlitImGuiShader.reset();
+            m_BlitImGuiMaterial.reset();
+
+            m_RenderPipeline->ReleaseAssets();
+            Gizmos::ReleaseResources();
+
+            // 退出代码可能也会用到 GfxDevice
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
+            DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
+
+            m_RenderPipeline.reset();
+        }
+        EndFrame(true);
+
         DotNet::DestroyRuntime();
 
         GetGfxDevice()->WaitForIdle();
@@ -278,53 +313,16 @@ namespace march
         ImGui::DockSpaceOverViewport();
     }
 
-    void GameEditor::OnTick(bool willQuit)
+    void GameEditor::OnTick()
     {
-        GfxDevice* device = GetGfxDevice();
-
-        device->BeginFrame();
-        CalculateFrameStats();
-
-        // Start the Dear ImGui frame
-        ImGui_ImplDX12_NewFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-
-        if (!m_IsScriptInitialized)
+        BeginFrame();
         {
-            // 初始化代码可能也会用到 GfxDevice，所以放在 tick 里
-            DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
-            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
+            DrawBaseImGui();
+            DotNet::RuntimeInvoke(ManagedMethod::Application_OnTick);
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnTick);
 
-            m_RenderPipeline = std::make_unique<RenderPipeline>();
-            Gizmos::InitResources();
-            m_IsScriptInitialized = true;
-        }
+            GfxDevice* device = GetGfxDevice();
 
-        // Update
-        DrawBaseImGui();
-        DotNet::RuntimeInvoke(ManagedMethod::Application_OnTick);
-        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnTick);
-
-        if (willQuit && m_IsScriptInitialized)
-        {
-            m_IsScriptInitialized = false;
-
-            m_BlitImGuiShader.reset();
-            m_BlitImGuiMaterial.reset();
-
-            m_RenderPipeline->ReleaseAssets();
-            Gizmos::ReleaseResources();
-
-            // 退出代码可能也会用到 GfxDevice，所以放在 tick 里
-            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
-            DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
-
-            m_RenderPipeline.reset();
-        }
-
-        if (!willQuit)
-        {
             // Render Dear ImGui graphics
             int32_t tempRenderTargetId = Shader::GetNameId("_TempImGuiRenderTarget");
             int32_t backBufferId = Shader::GetNameId("_BackBuffer");
@@ -340,7 +338,30 @@ namespace march
             BlitImGuiToBackBuffer(device, tempRenderTargetId, backBufferId);
             m_ImGuiRenderGraph->CompileAndExecute();
         }
+        EndFrame(false);
+    }
 
+    void GameEditor::BeginFrame()
+    {
+        GfxDevice* device = GetGfxDevice();
+
+        device->BeginFrame();
+        CalculateFrameStats();
+
+        // Start the Dear ImGui frame
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+    }
+
+    void GameEditor::EndFrame(bool discardImGui)
+    {
+        if (discardImGui)
+        {
+            ImGui::EndFrame();
+        }
+
+        GfxDevice* device = GetGfxDevice();
         device->EndFrame();
     }
 
@@ -383,10 +404,19 @@ namespace march
         return m_RenderPipeline->m_FullScreenTriangleMesh.get();
     }
 
-    void GameEditor::OnResized()
+    const std::string& GameEditor::GetDataPath() const
     {
-        auto [width, height] = GetApp().GetClientWidthAndHeight();
-        GetGfxDevice()->ResizeBackBuffer(width, height);
+        return m_DataPath;
+    }
+
+    RenderPipeline* GameEditor::GetRenderPipeline() const
+    {
+        return m_RenderPipeline.get();
+    }
+
+    void GameEditor::OnResize()
+    {
+        GetGfxDevice()->ResizeBackBuffer(GetClientWidth(), GetClientHeight());
     }
 
     std::string GameEditor::GetFontPath(std::string fontName) const
@@ -403,7 +433,7 @@ namespace march
 
     void GameEditor::ReloadFonts()
     {
-        const float dpiScale = GetApp().GetDisplayScale();
+        const float dpiScale = GetDisplayScale();
 
         ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
@@ -442,9 +472,9 @@ namespace march
         io.Fonts->Build();
     }
 
-    void GameEditor::OnDisplayScaleChanged()
+    void GameEditor::OnDisplayScaleChange()
     {
-        DEBUG_LOG_INFO("DPI Changed: %f", GetApp().GetDisplayScale());
+        DEBUG_LOG_INFO("DPI Changed: %f", GetDisplayScale());
 
         ReloadFonts();
         ImGui_ImplDX12_InvalidateDeviceObjects();
@@ -452,7 +482,7 @@ namespace march
 
     void GameEditor::OnPaint()
     {
-        OnTick(false);
+        OnTick();
     }
 
     void GameEditor::CalculateFrameStats()
@@ -467,17 +497,14 @@ namespace march
         frameCnt++;
 
         // Compute averages over one second period.
-        if ((GetApp().GetElapsedTime() - timeElapsed) >= 1.0f)
+        if ((GetElapsedTime() - timeElapsed) >= 1.0f)
         {
             float fps = (float)frameCnt; // fps = frameCnt / 1
             float mspf = 1000.0f / fps;
 
-            std::wstring fpsStr = std::to_wstring(fps);
-            std::wstring mspfStr = std::to_wstring(mspf);
-
-            GetApp().SetTitle(std::wstring(L"March Engine <DX12>") +
-                L"    fps: " + fpsStr +
-                L"   mspf: " + mspfStr);
+            std::string fpsStr = std::to_string(fps);
+            std::string mspfStr = std::to_string(mspf);
+            SetWindowTitle("March Engine <DX12>    fps: " + fpsStr + "   mspf: " + mspfStr);
 
             // Reset for next average.
             frameCnt = 0;

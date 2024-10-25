@@ -31,17 +31,13 @@ namespace March.Core.Rendering
 
         private static nint GetInstance()
         {
-            nint engine = Application_GetEngine();
-            return IEngine_GetRenderPipeline(engine);
+            return Application_GetRenderPipeline();
         }
 
         #region Bindings
 
         [NativeFunction]
-        private static partial nint Application_GetEngine();
-
-        [NativeFunction]
-        private static partial nint IEngine_GetRenderPipeline(nint self);
+        private static partial nint Application_GetRenderPipeline();
 
         [NativeFunction]
         private static partial void RenderPipeline_AddRenderObject(nint self, nint renderObject);

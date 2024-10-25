@@ -1,5 +1,5 @@
 #include "SceneWindow.h"
-#include "WinApplication.h"
+#include "Application.h"
 #include "Display.h"
 #include "Camera.h"
 #include "GfxDevice.h"
@@ -153,7 +153,7 @@ namespace march
         float mouseDeltaX = ImGui::GetIO().MouseDelta.x * m_MouseSensitivity;
         float mouseDeltaY = ImGui::GetIO().MouseDelta.y * m_MouseSensitivity;
         float mouseWheel = ImGui::GetIO().MouseWheel * m_MouseSensitivity;
-        float deltaTime = GetApp().GetDeltaTime();
+        float deltaTime = GetApp()->GetDeltaTime();
 
         bool isRotating = false;
 

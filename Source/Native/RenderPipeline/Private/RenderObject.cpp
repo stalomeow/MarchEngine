@@ -1,5 +1,5 @@
 #include "RenderObject.h"
-#include "WinApplication.h"
+#include "Application.h"
 #include "RenderPipeline.h"
 
 namespace march
@@ -7,12 +7,12 @@ namespace march
     void RenderObject::OnMount()
     {
         Component::OnMount();
-        GetApp().GetEngine()->GetRenderPipeline()->AddRenderObject(this);
+        GetApp()->GetRenderPipeline()->AddRenderObject(this);
     }
 
     void RenderObject::OnUnmount()
     {
-        GetApp().GetEngine()->GetRenderPipeline()->RemoveRenderObject(this);
+        GetApp()->GetRenderPipeline()->RemoveRenderObject(this);
         Component::OnUnmount();
     }
 }

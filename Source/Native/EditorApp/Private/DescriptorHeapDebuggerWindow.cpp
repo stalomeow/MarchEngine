@@ -1,7 +1,7 @@
 #include "DescriptorHeapDebuggerWindow.h"
 #include "GfxDevice.h"
 #include "GfxDescriptorHeap.h"
-#include "WinApplication.h"
+#include "Application.h"
 #include "StringUtility.h"
 #include <imgui.h>
 #include <stdint.h>
@@ -29,7 +29,7 @@ namespace march
         const float width = ImGui::GetContentRegionAvail().x;
         const float height = 50.0f; // 固定高度
 
-        const uint64_t currentFrame = GetApp().GetFrameCount();
+        const uint64_t currentFrame = GetApp()->GetFrameCount();
         const UINT dynamicCapacity = allocator->GetDynamicDescriptorCapacity();
         const UINT staticCount = allocator->GetStaticDescriptorCount();
         const UINT capacity = dynamicCapacity + staticCount;

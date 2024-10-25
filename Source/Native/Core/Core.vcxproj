@@ -18,12 +18,11 @@
     <ClCompile Include="Private\GameTimer.cpp" />
     <ClCompile Include="Private\Gizmos.binding.cpp" />
     <ClCompile Include="Private\Gizmos.cpp" />
-    <ClCompile Include="Private\IEngine.binding.cpp" />
     <ClCompile Include="Private\imgui_impl_dx12.cpp" />
     <ClCompile Include="Private\Transform.binding.cpp" />
     <ClCompile Include="Private\Transform.cpp" />
-    <ClCompile Include="Private\WinApplication.binding.cpp" />
-    <ClCompile Include="Private\WinApplication.cpp" />
+    <ClCompile Include="Private\Application.binding.cpp" />
+    <ClCompile Include="Private\Application.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\AssetManger.h" />
@@ -31,10 +30,9 @@
     <ClInclude Include="Public\Debug.h" />
     <ClInclude Include="Public\GameTimer.h" />
     <ClInclude Include="Public\Gizmos.h" />
-    <ClInclude Include="Public\IEngine.h" />
     <ClInclude Include="Public\imgui_impl_dx12.h" />
     <ClInclude Include="Public\Transform.h" />
-    <ClInclude Include="Public\WinApplication.h" />
+    <ClInclude Include="Public\Application.h" />
     <ClInclude Include="ThirdParty\IconsFontAwesome6.h" />
     <ClInclude Include="ThirdParty\IconsFontAwesome6Brands.h" />
   </ItemGroup>

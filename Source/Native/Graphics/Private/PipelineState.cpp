@@ -10,35 +10,48 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
-    namespace
+    static std::unordered_map<size_t, ComPtr<ID3D12PipelineState>> g_PsoMap;
+
+    static inline void ValidateDepthFunc(D3D12_COMPARISON_FUNC& func)
     {
-        std::unordered_map<size_t, ComPtr<ID3D12PipelineState>> g_PsoMap;
-
-        inline void ValidateDepthFunc(D3D12_COMPARISON_FUNC& func)
+        if constexpr (!GfxSettings::UseReversedZBuffer())
         {
-            if constexpr (!GfxSettings::UseReversedZBuffer())
-            {
-                return;
-            }
+            return;
+        }
 
-            switch (func)
-            {
-            case D3D12_COMPARISON_FUNC_LESS:
-                func = D3D12_COMPARISON_FUNC_GREATER;
-                break;
+        switch (func)
+        {
+        case D3D12_COMPARISON_FUNC_LESS:
+            func = D3D12_COMPARISON_FUNC_GREATER;
+            break;
 
-            case D3D12_COMPARISON_FUNC_LESS_EQUAL:
-                func = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-                break;
+        case D3D12_COMPARISON_FUNC_LESS_EQUAL:
+            func = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+            break;
 
-            case D3D12_COMPARISON_FUNC_GREATER:
-                func = D3D12_COMPARISON_FUNC_LESS;
-                break;
+        case D3D12_COMPARISON_FUNC_GREATER:
+            func = D3D12_COMPARISON_FUNC_LESS;
+            break;
 
-            case D3D12_COMPARISON_FUNC_GREATER_EQUAL:
-                func = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-                break;
-            }
+        case D3D12_COMPARISON_FUNC_GREATER_EQUAL:
+            func = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+            break;
+        }
+    }
+
+    static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, const ShaderPass* pass, ShaderProgramType type)
+    {
+        ShaderProgram* program = pass->GetProgram(type);
+
+        if (program == nullptr)
+        {
+            s.pShaderBytecode = nullptr;
+            s.BytecodeLength = 0;
+        }
+        else
+        {
+            s.pShaderBytecode = program->GetBinaryData();
+            s.BytecodeLength = static_cast<SIZE_T>(program->GetBinarySize());
         }
     }
 
@@ -66,16 +79,8 @@ namespace march
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
         psoDesc.InputLayout = meshDesc.InputLayout;
         psoDesc.pRootSignature = pPass->GetRootSignature();
-        psoDesc.VS =
-        {
-            pPass->GetProgram(ShaderProgramType::Vertex)->GetBinaryData(),
-            pPass->GetProgram(ShaderProgramType::Vertex)->GetBinarySize()
-        };
-        psoDesc.PS =
-        {
-            pPass->GetProgram(ShaderProgramType::Pixel)->GetBinaryData(),
-            pPass->GetProgram(ShaderProgramType::Pixel)->GetBinarySize()
-        };
+        SetShaderProgramIfExists(psoDesc.VS, pPass, ShaderProgramType::Vertex);
+        SetShaderProgramIfExists(psoDesc.PS, pPass, ShaderProgramType::Pixel);
 
         psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(pPass->GetCull()) + 1);

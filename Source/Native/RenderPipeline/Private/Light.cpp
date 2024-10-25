@@ -1,7 +1,7 @@
 #include "Light.h"
 #include "Transform.h"
 #include "RenderPipeline.h"
-#include "WinApplication.h"
+#include "Application.h"
 
 using namespace DirectX;
 
@@ -63,12 +63,12 @@ namespace march
     void Light::OnMount()
     {
         Component::OnMount();
-        GetApp().GetEngine()->GetRenderPipeline()->AddLight(this);
+        GetApp()->GetRenderPipeline()->AddLight(this);
     }
 
     void Light::OnUnmount()
     {
-        GetApp().GetEngine()->GetRenderPipeline()->RemoveLight(this);
+        GetApp()->GetRenderPipeline()->RemoveLight(this);
         Component::OnUnmount();
     }
 }
