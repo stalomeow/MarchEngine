@@ -1,4 +1,4 @@
-#include "GameEditor.h"
+#include "EditorApplication.h"
 
 using namespace march;
 
@@ -13,5 +13,5 @@ int WINAPI wWinMain(
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-    return GameEditor().Run(hInstance, lpCmdLine, nCmdShow);
+    return EditorApplication().Run(hInstance, lpCmdLine, nCmdShow);
 }

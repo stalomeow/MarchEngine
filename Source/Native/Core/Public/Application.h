@@ -8,7 +8,7 @@
 
 namespace march
 {
-    class GameTimer;
+    class EngineTimer;
     class RenderPipeline;
 
     class Application
@@ -72,7 +72,7 @@ namespace march
         static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
         bool m_IsStarted;
-        std::unique_ptr<GameTimer> m_Timer;
+        std::unique_ptr<EngineTimer> m_Timer;
         HINSTANCE m_InstanceHandle;
         HWND m_WindowHandle;
     };

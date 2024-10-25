@@ -5,10 +5,10 @@
 
 namespace march
 {
-    class GameTimer
+    class EngineTimer
     {
     public:
-        GameTimer();
+        EngineTimer();
 
         void Reset();
         void Start();

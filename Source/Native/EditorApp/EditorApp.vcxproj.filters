@@ -15,7 +15,7 @@
     <ClCompile Include="Private\EditorGUI.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GameEditor.cpp">
+    <ClCompile Include="Private\EditorApplication.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\WinMain.cpp">
@@ -68,7 +68,7 @@
     <ClInclude Include="Public\EditorGUI.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GameEditor.h">
+    <ClInclude Include="Public\EditorApplication.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\SceneWindow.h">

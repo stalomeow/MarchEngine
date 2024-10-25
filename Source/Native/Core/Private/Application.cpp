@@ -1,5 +1,5 @@
 #include "Application.h"
-#include "GameTimer.h"
+#include "EngineTimer.h"
 #include "StringUtility.h"
 #include <WindowsX.h>
 #include <stdexcept>
@@ -11,7 +11,7 @@ namespace march
 
     Application::Application() : m_IsStarted(false), m_InstanceHandle(nullptr), m_WindowHandle(nullptr)
     {
-        m_Timer = std::make_unique<GameTimer>();
+        m_Timer = std::make_unique<EngineTimer>();
     }
 
     Application::~Application()

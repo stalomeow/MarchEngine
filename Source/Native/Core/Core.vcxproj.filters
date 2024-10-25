@@ -18,7 +18,7 @@
     <ClCompile Include="Private\Debug.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GameTimer.cpp">
+    <ClCompile Include="Private\EngineTimer.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Application.binding.cpp">
@@ -53,7 +53,7 @@
     <ClInclude Include="Public\Debug.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GameTimer.h">
+    <ClInclude Include="Public\EngineTimer.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\Application.h">

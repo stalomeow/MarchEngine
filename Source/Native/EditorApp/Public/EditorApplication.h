@@ -18,7 +18,7 @@
 
 namespace march
 {
-    class GameEditor : public Application
+    class EditorApplication : public Application
     {
     public:
         const std::string& GetDataPath() const override;

@@ -1,8 +1,8 @@
-#include "GameTimer.h"
+#include "EngineTimer.h"
 
 namespace march
 {
-    GameTimer::GameTimer()
+    EngineTimer::EngineTimer()
     {
         LARGE_INTEGER freq;
         QueryPerformanceFrequency(&freq);
@@ -11,7 +11,7 @@ namespace march
         Reset();
     }
 
-    void GameTimer::Reset()
+    void EngineTimer::Reset()
     {
         m_IsRunning = false;
         m_LastTickTimestamp = 0;
@@ -23,7 +23,7 @@ namespace march
         m_FrameCount = 0;
     }
 
-    void GameTimer::Start()
+    void EngineTimer::Start()
     {
         if (m_IsRunning)
         {
@@ -34,18 +34,18 @@ namespace march
         QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&m_LastTickTimestamp));
     }
 
-    void GameTimer::Restart()
+    void EngineTimer::Restart()
     {
         Reset();
         Start();
     }
 
-    void GameTimer::Stop()
+    void EngineTimer::Stop()
     {
         m_IsRunning = false;
     }
 
-    bool GameTimer::Tick()
+    bool EngineTimer::Tick()
     {
         if (!m_IsRunning)
         {

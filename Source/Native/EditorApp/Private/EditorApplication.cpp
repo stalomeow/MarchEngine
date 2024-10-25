@@ -1,4 +1,4 @@
-#include "GameEditor.h"
+#include "EditorApplication.h"
 #include "GfxDevice.h"
 #include "EditorGUI.h"
 #include "GfxCommandList.h"
@@ -39,7 +39,7 @@ namespace march
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    bool GameEditor::OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult)
+    bool EditorApplication::OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult)
     {
         if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
         {
@@ -49,7 +49,7 @@ namespace march
         return false;
     }
 
-    void GameEditor::OnStart(const std::vector<std::string>& args)
+    void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
         auto it = std::find(args.begin(), args.end(), "-project-path");
 
@@ -193,7 +193,7 @@ namespace march
         style.TabBarOverlineSize = 2.0f;
     }
 
-    void GameEditor::InitImGui()
+    void EditorApplication::InitImGui()
     {
         m_ImGuiIniFilename = GetDataPath() + "/ProjectSettings/imgui.ini";
 
@@ -231,7 +231,7 @@ namespace march
         ImGuizmo::GetStyle().RotationOuterLineThickness = 2.0f;
     }
 
-    void GameEditor::OnQuit()
+    void EditorApplication::OnQuit()
     {
         BeginFrame();
         {
@@ -263,7 +263,7 @@ namespace march
         GfxUtility::ReportLiveObjects();
     }
 
-    void GameEditor::DrawBaseImGui()
+    void EditorApplication::DrawBaseImGui()
     {
         // Main Menu Bar 占位
         if (EditorGUI::BeginMainMenuBar())
@@ -313,7 +313,7 @@ namespace march
         ImGui::DockSpaceOverViewport();
     }
 
-    void GameEditor::OnTick()
+    void EditorApplication::OnTick()
     {
         BeginFrame();
         {
@@ -341,7 +341,7 @@ namespace march
         EndFrame(false);
     }
 
-    void GameEditor::BeginFrame()
+    void EditorApplication::BeginFrame()
     {
         GfxDevice* device = GetGfxDevice();
 
@@ -354,7 +354,7 @@ namespace march
         ImGui::NewFrame();
     }
 
-    void GameEditor::EndFrame(bool discardImGui)
+    void EditorApplication::EndFrame(bool discardImGui)
     {
         if (discardImGui)
         {
@@ -365,7 +365,7 @@ namespace march
         device->EndFrame();
     }
 
-    void GameEditor::DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId)
+    void EditorApplication::DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId)
     {
         auto builder = m_ImGuiRenderGraph->AddPass("DrawImGui");
 
@@ -383,7 +383,7 @@ namespace march
         });
     }
 
-    void GameEditor::BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcTextureId, int32_t backBufferId)
+    void EditorApplication::BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcTextureId, int32_t backBufferId)
     {
         auto builder = m_ImGuiRenderGraph->AddPass("BlitImGuiToBackBuffer");
 
@@ -399,39 +399,39 @@ namespace march
         });
     }
 
-    GfxMesh* GameEditor::GetFullScreenTriangleMesh()
+    GfxMesh* EditorApplication::GetFullScreenTriangleMesh()
     {
         return m_RenderPipeline->m_FullScreenTriangleMesh.get();
     }
 
-    const std::string& GameEditor::GetDataPath() const
+    const std::string& EditorApplication::GetDataPath() const
     {
         return m_DataPath;
     }
 
-    RenderPipeline* GameEditor::GetRenderPipeline() const
+    RenderPipeline* EditorApplication::GetRenderPipeline() const
     {
         return m_RenderPipeline.get();
     }
 
-    void GameEditor::OnResize()
+    void EditorApplication::OnResize()
     {
         GetGfxDevice()->ResizeBackBuffer(GetClientWidth(), GetClientHeight());
     }
 
-    std::string GameEditor::GetFontPath(std::string fontName) const
+    std::string EditorApplication::GetFontPath(std::string fontName) const
     {
         std::string basePath = PathHelper::GetWorkingDirectoryUtf8();
         return basePath + "\\Resources\\Fonts\\" + fontName;
     }
 
-    std::string GameEditor::GetFontAwesomePath(std::string fontName) const
+    std::string EditorApplication::GetFontAwesomePath(std::string fontName) const
     {
         std::string basePath = PathHelper::GetWorkingDirectoryUtf8();
         return basePath + "\\Resources\\FontAwesome\\" + fontName;
     }
 
-    void GameEditor::ReloadFonts()
+    void EditorApplication::ReloadFonts()
     {
         const float dpiScale = GetDisplayScale();
 
@@ -472,7 +472,7 @@ namespace march
         io.Fonts->Build();
     }
 
-    void GameEditor::OnDisplayScaleChange()
+    void EditorApplication::OnDisplayScaleChange()
     {
         DEBUG_LOG_INFO("DPI Changed: %f", GetDisplayScale());
 
@@ -480,12 +480,12 @@ namespace march
         ImGui_ImplDX12_InvalidateDeviceObjects();
     }
 
-    void GameEditor::OnPaint()
+    void EditorApplication::OnPaint()
     {
         OnTick();
     }
 
-    void GameEditor::CalculateFrameStats()
+    void EditorApplication::CalculateFrameStats()
     {
         // Code computes the average frames per second, and also the 
         // average time it takes to render one frame.  These stats 
