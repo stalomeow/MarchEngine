@@ -68,11 +68,18 @@ namespace march
         D3D12_INDEX_BUFFER_VIEW CreateTransientIndexBuffer(size_t indexCount, const uint32_t* indexData);
 
         // 如果 subMeshIndex 为 -1，则绘制所有子网格
-        void DrawMesh(GfxMesh* mesh, Material* material, int32_t subMeshIndex = -1, int32_t shaderPassIndex = 0);
+        void DrawMesh(GfxMesh* mesh, Material* material, int32_t shaderPassIndex = 0, int32_t subMeshIndex = -1);
         void DrawMesh(const MeshDesc* meshDesc, Material* material, int32_t shaderPassIndex = 0);
         void DrawObjects(size_t numObjects, const RenderObject* const* objects, int32_t shaderPassIndex = 0);
 
+        // 如果 subMeshIndex 为 -1，则绘制所有子网格
+        void DrawMesh(GfxMesh* mesh, Material* material, const std::string& lightMode, int32_t subMeshIndex = -1);
+        void DrawMesh(const MeshDesc* meshDesc, Material* material, const std::string& lightMode);
+        void DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::string& lightMode);
+
     private:
+        void DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::vector<int32_t>& passIndices);
+
         // 如果 viewport 为 nullptr，则使用默认 viewport
         // 如果 scissorRect 为 nullptr，则使用默认 scissorRect
         void SetRenderTargets(int32_t numColorTargets, GfxRenderTexture* const* colorTargets,

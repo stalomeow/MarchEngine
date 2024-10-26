@@ -200,7 +200,7 @@ namespace march
         builder.SetWireframe(wireframe);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data());
+            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), "GBuffer");
         });
     }
 

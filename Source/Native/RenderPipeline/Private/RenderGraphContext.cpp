@@ -169,7 +169,7 @@ namespace march
         }
     }
 
-    void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, int32_t subMeshIndex, int32_t shaderPassIndex)
+    void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, int32_t shaderPassIndex, int32_t subMeshIndex)
     {
         int32_t inputDescId = mesh->GetPipelineInputDescId();
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
@@ -221,7 +221,7 @@ namespace march
         cmd->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
     }
 
-    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, int32_t shaderPassIndex)
+    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::vector<int32_t>& passIndices)
     {
         if (numObjects <= 0)
         {
@@ -237,6 +237,13 @@ namespace march
 
             if (obj->GetIsActiveAndEnabled() && obj->Mesh != nullptr && obj->Mat != nullptr)
             {
+                int32_t shaderPassIndex = passIndices[i];
+
+                if (shaderPassIndex < 0)
+                {
+                    continue;
+                }
+
                 ShaderPass* pass = obj->Mat->GetShader()->GetPass(shaderPassIndex);
                 ID3D12PipelineState* pso = GetPipelineState(obj->Mesh->GetPipelineInputDescId(), pass);
                 psoMap[pso].push_back(i);
@@ -258,6 +265,7 @@ namespace march
             for (size_t i = 0; i < objIndices.size(); i++)
             {
                 const RenderObject* obj = objects[objIndices[i]];
+                int32_t shaderPassIndex = passIndices[objIndices[i]];
                 ShaderPass* pass = obj->Mat->GetShader()->GetPass(shaderPassIndex);
 
                 PerObjectConstants& consts = *reinterpret_cast<PerObjectConstants*>(cbPerObj.GetMappedData(cbIndex));
@@ -270,6 +278,54 @@ namespace march
                 cbIndex++;
             }
         }
+    }
+
+    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, int32_t shaderPassIndex)
+    {
+        std::vector<int32_t> passIndices(numObjects, shaderPassIndex);
+        DrawObjects(numObjects, objects, passIndices);
+    }
+
+    void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, const std::string& lightMode, int32_t subMeshIndex)
+    {
+        int32_t passIndex = material->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+
+        if (passIndex < 0)
+        {
+            return;
+        }
+
+        DrawMesh(mesh, material, passIndex, subMeshIndex);
+    }
+
+    void RenderGraphContext::DrawMesh(const MeshDesc* meshDesc, Material* material, const std::string& lightMode)
+    {
+        int32_t passIndex = material->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+
+        if (passIndex < 0)
+        {
+            return;
+        }
+
+        DrawMesh(meshDesc, material, passIndex);
+    }
+
+    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::string& lightMode)
+    {
+        // DrawObjects 时，如果 passIndex 为 -1，则不绘制
+        std::vector<int32_t> passIndices(numObjects, -1);
+
+        for (size_t i = 0; i < numObjects; i++)
+        {
+            const RenderObject* obj = objects[i];
+
+            if (obj->Mat != nullptr && obj->Mat->GetShader() != nullptr)
+            {
+                passIndices[i] = obj->Mat->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+            }
+        }
+
+        DrawObjects(numObjects, objects, passIndices);
     }
 
     void RenderGraphContext::SetRenderTargets(int32_t numColorTargets, GfxRenderTexture* const* colorTargets,

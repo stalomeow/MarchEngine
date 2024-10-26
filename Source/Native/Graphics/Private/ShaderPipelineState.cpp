@@ -488,7 +488,7 @@ namespace march
             result->SetName(StringUtility::Utf8ToUtf16(debugName).c_str());
 #endif
 
-            DEBUG_LOG_INFO("Create Graphics PSO for Pass '%s' of Shader '%s'", m_Name.c_str(), m_Shader->GetName().c_str());
+            DEBUG_LOG_INFO("Create Graphics PSO for '%s' Pass of '%s' Shader", m_Name.c_str(), m_Shader->GetName().c_str());
         }
 
         return result.Get();

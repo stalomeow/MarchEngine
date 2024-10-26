@@ -16,7 +16,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 46;
+        protected override int Version => base.Version + 47;
 
         public override string IconNormal => FontAwesome6.Code;
 
