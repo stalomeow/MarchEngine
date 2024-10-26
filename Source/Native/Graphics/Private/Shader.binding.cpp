@@ -128,6 +128,12 @@ namespace march
             pShader->m_Properties.clear();
         }
 
+        inline static void SetName(Shader* pShader, cs_string name)
+        {
+            pShader->m_Version++;
+            pShader->m_Name = name;
+        }
+
         inline static void SetProperty(Shader* pShader, CSharpShaderProperty* prop)
         {
             pShader->m_Version++;
@@ -167,7 +173,7 @@ namespace march
             for (int32_t i = 0; i < pShader->m_Passes.size(); i++)
             {
                 const auto& src = passes[i];
-                pShader->m_Passes[i] = std::make_unique<ShaderPass>();
+                pShader->m_Passes[i] = std::make_unique<ShaderPass>(pShader);
                 ShaderPass* pass = pShader->m_Passes[i].get();
 
                 pass->m_Name = src.Name;
@@ -315,6 +321,16 @@ NATIVE_EXPORT_AUTO Shader_New()
 NATIVE_EXPORT_AUTO Shader_Delete(cs<Shader*> pShader)
 {
     delete pShader;
+}
+
+NATIVE_EXPORT_AUTO Shader_GetName(cs<Shader*> pShader)
+{
+    retcs pShader->GetName();
+}
+
+NATIVE_EXPORT_AUTO Shader_SetName(cs<Shader*> pShader, cs_string name)
+{
+    ShaderBinding::SetName(pShader, name);
 }
 
 NATIVE_EXPORT_AUTO Shader_ClearProperties(cs<Shader*> pShader)

@@ -28,8 +28,9 @@ namespace march
         }
     }
 
-    ShaderPass::ShaderPass()
-        : m_Name{}
+    ShaderPass::ShaderPass(Shader* shader)
+        : m_Shader(shader)
+        , m_Name{}
         , m_Tags{}
         , m_PropertyLocations{}
         , m_Programs{}
@@ -40,6 +41,11 @@ namespace march
         , m_RootSignature(nullptr)
         , m_PipelineStates{}
     {
+    }
+
+    Shader* ShaderPass::GetShader() const
+    {
+        return m_Shader;
     }
 
     const std::string& ShaderPass::GetName() const
@@ -80,6 +86,11 @@ namespace march
     const ShaderPassStencilState& ShaderPass::GetStencilState() const
     {
         return m_StencilState;
+    }
+
+    const std::string& Shader::GetName() const
+    {
+        return m_Name;
     }
 
     const std::unordered_map<int32_t, ShaderProperty>& Shader::GetProperties() const

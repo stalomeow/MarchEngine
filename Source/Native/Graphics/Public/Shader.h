@@ -272,8 +272,9 @@ namespace march
         friend ShaderBinding;
 
     public:
-        ShaderPass();
+        ShaderPass(Shader* shader);
 
+        Shader* GetShader() const;
         const std::string& GetName() const;
         const std::unordered_map<std::string, std::string>& GetTags() const;
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
@@ -290,6 +291,7 @@ namespace march
     private:
         bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
 
+        Shader* m_Shader;
         std::string m_Name;
         std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
@@ -309,6 +311,7 @@ namespace march
         friend ShaderBinding;
 
     public:
+        const std::string& GetName() const;
         const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const;
         ShaderPass* GetPass(int32_t index) const;
         int32_t GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const;
@@ -332,6 +335,7 @@ namespace march
         static D3D12_PRIMITIVE_TOPOLOGY GetPipelineInputDescPrimitiveTopology(int32_t inputDescId);
 
     private:
+        std::string m_Name;
         std::unordered_map<int32_t, ShaderProperty> m_Properties;
         std::vector<std::unique_ptr<ShaderPass>> m_Passes;
         int32_t m_Version = 0;

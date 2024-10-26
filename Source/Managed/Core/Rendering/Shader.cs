@@ -561,7 +561,20 @@ namespace March.Core.Rendering
         private ShaderProperty[] m_Properties = [];
 
         [JsonProperty]
-        public string Name { get; internal set; } = string.Empty;
+        public string Name
+        {
+            get
+            {
+                nint name = Shader_GetName(NativePtr);
+                return NativeString.GetAndFree(name);
+            }
+
+            internal set
+            {
+                using NativeString v = value;
+                Shader_SetName(NativePtr, v.Data);
+            }
+        }
 
         [JsonProperty]
         public ImmutableArray<string> Warnings { get; private set; } = [];
@@ -716,6 +729,12 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void Shader_Delete(nint pShader);
+
+        [NativeFunction]
+        private static partial nint Shader_GetName(nint pShader);
+
+        [NativeFunction]
+        private static partial void Shader_SetName(nint pShader, nint name);
 
         [NativeFunction]
         private static partial void Shader_ClearProperties(nint pShader);

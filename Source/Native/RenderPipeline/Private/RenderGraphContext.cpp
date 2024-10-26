@@ -46,6 +46,8 @@ namespace march
         , m_CurrentPipelineState(nullptr)
         , m_CurrentRootSignature(nullptr)
         , m_CurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_UNDEFINED)
+        , m_CurrentStencilRef(0)
+        , m_IsStencilRefSet(false)
         , m_GlobalConstantBuffers{}
         , m_PassTextures{}
     {
@@ -558,7 +560,12 @@ namespace march
 
         if (pass->GetStencilState().Enable)
         {
-            cmd->OMSetStencilRef(static_cast<UINT>(pass->GetStencilState().Ref));
+            if (!m_IsStencilRefSet || m_CurrentStencilRef != pass->GetStencilState().Ref)
+            {
+                cmd->OMSetStencilRef(static_cast<UINT>(pass->GetStencilState().Ref));
+                m_CurrentStencilRef = pass->GetStencilState().Ref;
+                m_IsStencilRefSet = true;
+            }
         }
     }
 
@@ -575,6 +582,7 @@ namespace march
         m_CurrentPipelineState = nullptr;
         m_CurrentRootSignature = nullptr;
         m_CurrentPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+        m_IsStencilRefSet = false;
         m_GlobalConstantBuffers.clear();
         m_PassTextures.clear();
     }

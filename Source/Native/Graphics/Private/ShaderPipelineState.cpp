@@ -4,6 +4,7 @@
 #include "GfxSettings.h"
 #include "HashHelper.h"
 #include "Debug.h"
+#include "StringUtility.h"
 
 using namespace Microsoft::WRL;
 
@@ -482,7 +483,12 @@ namespace march
             ID3D12Device4* device = GetGfxDevice()->GetD3D12Device();
             GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
 
-            DEBUG_LOG_INFO("Create new Graphics PSO");
+#ifdef ENABLE_GFX_DEBUG_NAME
+            const std::string& debugName = m_Shader->GetName() + " - " + m_Name;
+            result->SetName(StringUtility::Utf8ToUtf16(debugName).c_str());
+#endif
+
+            DEBUG_LOG_INFO("Create Graphics PSO for Pass '%s' of Shader '%s'", m_Name.c_str(), m_Shader->GetName().c_str());
         }
 
         return result.Get();

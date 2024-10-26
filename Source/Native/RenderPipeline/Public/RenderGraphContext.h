@@ -102,6 +102,8 @@ namespace march
         ID3D12PipelineState* m_CurrentPipelineState;
         ID3D12RootSignature* m_CurrentRootSignature;
         D3D12_PRIMITIVE_TOPOLOGY m_CurrentPrimitiveTopology;
+        uint8_t m_CurrentStencilRef;
+        bool m_IsStencilRefSet;
         std::unordered_map<int32_t, D3D12_GPU_VIRTUAL_ADDRESS> m_GlobalConstantBuffers;
         std::unordered_map<int32_t, GfxTexture*> m_PassTextures;
     };
