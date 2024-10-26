@@ -126,14 +126,18 @@ namespace march
                 return;
             }
 
-            AddPassResourceBarriers(pass);
-            SetPassRenderTargets(pass);
-            context.SetWireframe(pass.Wireframe);
-
-            if (pass.RenderFunc)
+            context.BeginEvent(pass.Name);
             {
-                pass.RenderFunc(context);
+                AddPassResourceBarriers(pass);
+                SetPassRenderTargets(pass);
+                context.SetWireframe(pass.Wireframe);
+
+                if (pass.RenderFunc)
+                {
+                    pass.RenderFunc(context);
+                }
             }
+            context.EndEvent();
 
             if (!RentOrReturnResources(pass.ResourcesDead, true))
             {

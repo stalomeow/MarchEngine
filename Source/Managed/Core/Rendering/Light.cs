@@ -106,7 +106,7 @@ namespace March.Core.Rendering
             {
                 float guiScale = Gizmos.GUIScaleAtOrigin;
                 float radius = guiScale * 0.15f;
-                float rayLength = guiScale * 0.3f;
+                float rayLength = guiScale * 0.6f;
 
                 Gizmos.DrawWireDisc(Vector3.Zero, Vector3.UnitZ, radius);
 

@@ -57,6 +57,9 @@ namespace march
         GfxCommandList* GetGraphicsCommandList() const;
         ID3D12GraphicsCommandList* GetD3D12GraphicsCommandList() const;
 
+        void BeginEvent(const std::string& name) const;
+        void EndEvent() const;
+
         void SetGlobalConstantBuffer(const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address);
         void SetGlobalConstantBuffer(int32_t id, D3D12_GPU_VIRTUAL_ADDRESS address);
 

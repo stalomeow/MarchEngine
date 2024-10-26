@@ -8,6 +8,7 @@
 #include "Material.h"
 #include "RenderObject.h"
 #include "Transform.h"
+#include "StringUtility.h"
 #include <stdexcept>
 #include <DirectXMath.h>
 
@@ -66,6 +67,19 @@ namespace march
     ID3D12GraphicsCommandList* RenderGraphContext::GetD3D12GraphicsCommandList() const
     {
         return GetGraphicsCommandList()->GetD3D12CommandList();
+    }
+
+    void RenderGraphContext::BeginEvent(const std::string& name) const
+    {
+        ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
+        std::wstring wName = StringUtility::Utf8ToUtf16(name);
+        cmd->BeginEvent(0, wName.c_str(), static_cast<UINT>(wName.size() * sizeof(wchar_t))); // 第一个参数貌似是颜色
+    }
+
+    void RenderGraphContext::EndEvent() const
+    {
+        ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
+        cmd->EndEvent();
     }
 
     void RenderGraphContext::SetGlobalConstantBuffer(const std::string& name, D3D12_GPU_VIRTUAL_ADDRESS address)
