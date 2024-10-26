@@ -1,185 +1,56 @@
 #include "GfxMesh.h"
 #include "GfxDevice.h"
-#include "GfxBuffer.h"
 #include "GfxCommandList.h"
-#include "Debug.h"
-#include <vector>
-#include <wrl.h>
-#include <assert.h>
+#include "Shader.h"
 #include <Windows.h>
-#include <memory>
-#include <DirectXMath.h>
 
 using namespace DirectX;
-using namespace Microsoft::WRL;
 
 namespace march
 {
-    GfxMesh::GfxMesh(GfxDevice* device) : m_Device(device)
+    static int32_t g_PipelineInputDescId = Shader::GetInvalidPipelineInputDescId();
+
+    int32_t GfxMesh::GetPipelineInputDescId()
     {
-    }
-
-    MeshDesc GfxMesh::GetDesc() const
-    {
-        MeshDesc desc = {};
-        desc.InputLayout = GetVertexInputLayout();
-        desc.PrimitiveTopologyType = GetTopologyType();
-        return desc;
-    }
-
-    template<typename TVertex, typename TIndex>
-    class GfxMeshImpl : public GfxMesh
-    {
-        static_assert(sizeof(TIndex) == 2 || sizeof(TIndex) == 4, "TIndex must be 2 or 4 bytes in size.");
-
-    public:
-        GfxMeshImpl(GfxDevice* device, D3D12_PRIMITIVE_TOPOLOGY topology);
-        virtual ~GfxMeshImpl() = default;
-
-        void Draw() override;
-        void Draw(uint32_t subMeshIndex) override;
-        void RecalculateNormals() override;
-
-        void ClearSubMeshes() override;
-        void AddSubMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices);
-
-        uint32_t GetSubMeshCount() const override { return static_cast<uint32_t>(m_SubMeshes.size()); }
-        D3D12_PRIMITIVE_TOPOLOGY GetTopology() const override { return m_Topology; }
-
-        D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType() const override;
-        D3D12_INPUT_LAYOUT_DESC GetVertexInputLayout() const override;
-
-    protected:
-        void UpdateBufferIfDirty();
-        void UploadToBuffer(GfxBuffer* dest, const void* pData, uint32_t size);
-
-    private:
-        D3D12_PRIMITIVE_TOPOLOGY m_Topology;
-        std::vector<GfxSubMesh> m_SubMeshes;
-        std::vector<TVertex> m_Vertices;
-        std::vector<TIndex> m_Indices;
-        bool m_IsDirty;
-
-        std::unique_ptr<GfxVertexBuffer<TVertex>> m_VertexBuffer;
-        std::unique_ptr<GfxIndexBuffer<TIndex>> m_IndexBuffer;
-    };
-
-    template<typename TVertex, typename TIndex>
-    GfxMeshImpl<TVertex, TIndex>::GfxMeshImpl(GfxDevice* device, D3D12_PRIMITIVE_TOPOLOGY topology)
-        : GfxMesh(device)
-        , m_Topology(topology), m_SubMeshes{}, m_Vertices{}, m_Indices{}, m_IsDirty(false)
-        , m_VertexBuffer(nullptr), m_IndexBuffer(nullptr)
-    {
-    }
-
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::Draw()
-    {
-        UpdateBufferIfDirty();
-
-        GfxCommandList* cmdList = GetDevice()->GetGraphicsCommandList();
-        cmdList->GetD3D12CommandList()->IASetVertexBuffers(0, 1, &m_VertexBuffer->GetView());
-        cmdList->GetD3D12CommandList()->IASetIndexBuffer(&m_IndexBuffer->GetView());
-        cmdList->GetD3D12CommandList()->IASetPrimitiveTopology(m_Topology);
-
-        cmdList->FlushResourceBarriers();
-
-        for (GfxSubMesh& subMesh : m_SubMeshes)
+        if (g_PipelineInputDescId == Shader::GetInvalidPipelineInputDescId())
         {
-            cmdList->GetD3D12CommandList()->DrawIndexedInstanced(static_cast<UINT>(subMesh.IndexCount), 1,
-                static_cast<UINT>(subMesh.StartIndexLocation), static_cast<INT>(subMesh.BaseVertexLocation), 0);
-        }
-    }
-
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::Draw(uint32_t subMeshIndex)
-    {
-        UpdateBufferIfDirty();
-
-        GfxCommandList* cmdList = GetDevice()->GetGraphicsCommandList();
-        cmdList->GetD3D12CommandList()->IASetVertexBuffers(0, 1, &m_VertexBuffer->GetView());
-        cmdList->GetD3D12CommandList()->IASetIndexBuffer(&m_IndexBuffer->GetView());
-        cmdList->GetD3D12CommandList()->IASetPrimitiveTopology(m_Topology);
-
-        cmdList->FlushResourceBarriers();
-
-        GfxSubMesh& subMesh = m_SubMeshes[static_cast<size_t>(subMeshIndex)];
-        cmdList->GetD3D12CommandList()->DrawIndexedInstanced(static_cast<UINT>(subMesh.IndexCount), 1,
-            static_cast<UINT>(subMesh.StartIndexLocation), static_cast<INT>(subMesh.BaseVertexLocation), 0);
-    }
-
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::UpdateBufferIfDirty()
-    {
-        if (!m_IsDirty)
-        {
-            return;
+            std::vector<PipelineInputElement> inputs{};
+            inputs.emplace_back(PipelineInputSematicName::Position, 0, DXGI_FORMAT_R32G32B32_FLOAT);
+            inputs.emplace_back(PipelineInputSematicName::Normal, 0, DXGI_FORMAT_R32G32B32_FLOAT);
+            inputs.emplace_back(PipelineInputSematicName::Tangent, 0, DXGI_FORMAT_R32G32B32_FLOAT);
+            inputs.emplace_back(PipelineInputSematicName::TexCoord, 0, DXGI_FORMAT_R32G32_FLOAT);
+            g_PipelineInputDescId = Shader::CreatePipelineInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
-        m_VertexBuffer = std::make_unique<GfxVertexBuffer<TVertex>>(GetDevice(), "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()));
-        UploadToBuffer(m_VertexBuffer.get(), m_Vertices.data(), m_VertexBuffer->GetSize());
-
-        m_IndexBuffer = std::make_unique<GfxIndexBuffer<TIndex>>(GetDevice(), "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()));
-        UploadToBuffer(m_IndexBuffer.get(), m_Indices.data(), m_IndexBuffer->GetSize());
-
-        m_IsDirty = false;
+        return g_PipelineInputDescId;
     }
 
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::UploadToBuffer(GfxBuffer* dest, const void* pData, uint32_t size)
+    D3D12_PRIMITIVE_TOPOLOGY GfxMesh::GetPrimitiveTopology()
     {
-        D3D12_SUBRESOURCE_DATA subResData = {};
-        subResData.pData = pData;
-        subResData.RowPitch = static_cast<LONG_PTR>(size);
-        subResData.SlicePitch = static_cast<LONG_PTR>(size);
-
-        // TODO remove static
-        GfxUploadMemory m = GetDevice()->AllocateTransientUploadMemory(size);
-        GfxCommandList* cmdList = GetDevice()->GetGraphicsCommandList();
-
-        cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_COPY_DEST, true);
-        UpdateSubresources(cmdList->GetD3D12CommandList(), dest->GetD3D12Resource(),
-            m.GetD3D12Resource(), static_cast<UINT64>(m.GetD3D12ResourceOffset(0)), 0, 1, &subResData);
-        cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_GENERIC_READ);
+        return Shader::GetPipelineInputDescPrimitiveTopology(GetPipelineInputDescId());
     }
 
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::RecalculateNormals()
+    GfxMesh::GfxMesh()
+        : m_SubMeshes{}
+        , m_Vertices{}
+        , m_Indices{}
+        , m_IsDirty(false)
+        , m_VertexBuffer(nullptr)
+        , m_IndexBuffer(nullptr)
     {
-        m_IsDirty = true;
-        assert(m_Topology == D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-        for (TVertex& v : m_Vertices)
-        {
-            v.Normal = { 0.0, 0.0, 0.0 };
-        }
-
-        for (int i = 0; i < m_Indices.size() / 3; i++)
-        {
-            TVertex& v0 = m_Vertices[m_Indices[i * 3 + 0]];
-            TVertex& v1 = m_Vertices[m_Indices[i * 3 + 1]];
-            TVertex& v2 = m_Vertices[m_Indices[i * 3 + 2]];
-
-            DirectX::XMVECTOR p0 = DirectX::XMLoadFloat3(&v0.Position);
-            DirectX::XMVECTOR p1 = DirectX::XMLoadFloat3(&v1.Position);
-            DirectX::XMVECTOR p2 = DirectX::XMLoadFloat3(&v2.Position);
-            DirectX::XMVECTOR vec1 = DirectX::XMVectorSubtract(p1, p0);
-            DirectX::XMVECTOR vec2 = DirectX::XMVectorSubtract(p2, p0);
-            DirectX::XMVECTOR normal = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vec1, vec2));
-
-            DirectX::XMStoreFloat3(&v0.Normal, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&v0.Normal), normal));
-            DirectX::XMStoreFloat3(&v1.Normal, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&v1.Normal), normal));
-            DirectX::XMStoreFloat3(&v2.Normal, DirectX::XMVectorAdd(DirectX::XMLoadFloat3(&v2.Normal), normal));
-        }
-
-        for (TVertex& v : m_Vertices)
-        {
-            DirectX::XMStoreFloat3(&v.Normal, DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&v.Normal)));
-        }
     }
 
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::ClearSubMeshes()
+    uint32_t GfxMesh::GetSubMeshCount() const
+    {
+        return static_cast<uint32_t>(m_SubMeshes.size());
+    }
+
+    const GfxSubMesh& GfxMesh::GetSubMesh(uint32_t index) const
+    {
+        return m_SubMeshes[index];
+    }
+
+    void GfxMesh::ClearSubMeshes()
     {
         if (!m_SubMeshes.empty())
         {
@@ -191,8 +62,78 @@ namespace march
         m_Indices.clear();
     }
 
-    template<typename TVertex, typename TIndex>
-    void GfxMeshImpl<TVertex, TIndex>::AddSubMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices)
+    static void UploadToBuffer(GfxBuffer* dest, const void* pData, uint32_t size)
+    {
+        D3D12_SUBRESOURCE_DATA subResData = {};
+        subResData.pData = pData;
+        subResData.RowPitch = static_cast<LONG_PTR>(size);
+        subResData.SlicePitch = static_cast<LONG_PTR>(size);
+
+        GfxDevice* device = GetGfxDevice();
+        GfxUploadMemory m = device->AllocateTransientUploadMemory(size);
+        GfxCommandList* cmdList = device->GetGraphicsCommandList();
+
+        cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_COPY_DEST, true);
+        UpdateSubresources(cmdList->GetD3D12CommandList(), dest->GetD3D12Resource(),
+            m.GetD3D12Resource(), static_cast<UINT64>(m.GetD3D12ResourceOffset(0)), 0, 1, &subResData);
+        cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_GENERIC_READ);
+    }
+
+    void GfxMesh::GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv)
+    {
+        GfxDevice* device = GetGfxDevice();
+        GfxCommandList* cmdList = device->GetGraphicsCommandList();
+
+        if (m_IsDirty)
+        {
+            m_VertexBuffer = std::make_unique<GfxVertexBuffer<GfxMeshVertex>>(device, "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()));
+            UploadToBuffer(m_VertexBuffer.get(), m_Vertices.data(), m_VertexBuffer->GetSize());
+
+            m_IndexBuffer = std::make_unique<GfxIndexBuffer<uint16_t>>(device, "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()));
+            UploadToBuffer(m_IndexBuffer.get(), m_Indices.data(), m_IndexBuffer->GetSize());
+
+            cmdList->FlushResourceBarriers();
+            m_IsDirty = false;
+        }
+
+        vbv = m_VertexBuffer->GetView();
+        ibv = m_IndexBuffer->GetView();
+    }
+
+    void GfxMesh::RecalculateNormals()
+    {
+        m_IsDirty = true;
+
+        for (auto& v : m_Vertices)
+        {
+            v.Normal = { 0.0, 0.0, 0.0 };
+        }
+
+        for (int i = 0; i < m_Indices.size() / 3; i++)
+        {
+            auto& v0 = m_Vertices[m_Indices[static_cast<size_t>(i) * 3 + 0]];
+            auto& v1 = m_Vertices[m_Indices[static_cast<size_t>(i) * 3 + 1]];
+            auto& v2 = m_Vertices[m_Indices[static_cast<size_t>(i) * 3 + 2]];
+
+            XMVECTOR p0 = XMLoadFloat3(&v0.Position);
+            XMVECTOR p1 = XMLoadFloat3(&v1.Position);
+            XMVECTOR p2 = XMLoadFloat3(&v2.Position);
+            XMVECTOR vec1 = XMVectorSubtract(p1, p0);
+            XMVECTOR vec2 = XMVectorSubtract(p2, p0);
+            XMVECTOR normal = XMVector3Normalize(XMVector3Cross(vec1, vec2));
+
+            XMStoreFloat3(&v0.Normal, XMVectorAdd(XMLoadFloat3(&v0.Normal), normal));
+            XMStoreFloat3(&v1.Normal, XMVectorAdd(XMLoadFloat3(&v1.Normal), normal));
+            XMStoreFloat3(&v2.Normal, XMVectorAdd(XMLoadFloat3(&v2.Normal), normal));
+        }
+
+        for (auto& v : m_Vertices)
+        {
+            XMStoreFloat3(&v.Normal, XMVector3Normalize(XMLoadFloat3(&v.Normal)));
+        }
+    }
+
+    void GfxMesh::AddSubMesh(const std::vector<GfxMeshVertex>& vertices, const std::vector<uint16_t>& indices)
     {
         GfxSubMesh subMesh = {};
         subMesh.BaseVertexLocation = static_cast<int32_t>(m_Vertices.size());
@@ -205,61 +146,9 @@ namespace march
         m_Indices.insert(m_Indices.end(), indices.begin(), indices.end());
     }
 
-    template<typename TVertex, typename TIndex>
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE GfxMeshImpl<TVertex, TIndex>::GetTopologyType() const
+    void GfxMesh::AddSubMeshCube(float width, float height, float depth)
     {
-        return GfxMesh::GetTopologyType(m_Topology);
-    }
-
-    template<typename TVertex, typename TIndex>
-    D3D12_INPUT_LAYOUT_DESC GfxMeshImpl<TVertex, TIndex>::GetVertexInputLayout() const
-    {
-        D3D12_INPUT_LAYOUT_DESC desc = {};
-        desc.pInputElementDescs = TVertex::InputDesc;
-        desc.NumElements = static_cast<UINT>(std::size(TVertex::InputDesc));
-        return desc;
-    }
-
-    struct SimpleMeshVertex
-    {
-        XMFLOAT3 Position;
-        XMFLOAT3 Normal;
-        XMFLOAT3 Tangent;
-        XMFLOAT2 UV;
-
-        static constexpr D3D12_INPUT_ELEMENT_DESC InputDesc[] =
-        {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        };
-
-        SimpleMeshVertex() = default;
-
-        SimpleMeshVertex(float x, float y, float z, float nx, float ny, float nz, float tx, float ty, float tz, float u, float v)
-            : Position(x, y, z), Normal(nx, ny, nz), Tangent(tx, ty, tz), UV(u, v) {}
-    };
-
-    class GfxSimpleMesh : public GfxMeshImpl<SimpleMeshVertex, std::uint16_t>
-    {
-    public:
-        GfxSimpleMesh(GfxDevice* device);
-        virtual ~GfxSimpleMesh() = default;
-
-        void AddSubMeshCube(float width, float height, float depth) override;
-        void AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount) override;
-        void AddFullScreenTriangle() override;
-    };
-
-    GfxSimpleMesh::GfxSimpleMesh(GfxDevice* device)
-        : GfxMeshImpl<SimpleMeshVertex, std::uint16_t>(device, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
-    {
-    }
-
-    void GfxSimpleMesh::AddSubMeshCube(float width, float height, float depth)
-    {
-        std::vector<SimpleMeshVertex> vertices;
+        std::vector<GfxMeshVertex> vertices;
         std::vector<std::uint16_t> i(36);
 
         float w2 = 0.5f * width;
@@ -329,16 +218,16 @@ namespace march
         AddSubMesh(vertices, i);
     }
 
-    void GfxSimpleMesh::AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount)
+    void GfxMesh::AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount)
     {
-        std::vector<SimpleMeshVertex> vertices;
+        std::vector<GfxMeshVertex> vertices;
         std::vector<std::uint16_t> indices;
 
         // top
         vertices.emplace_back(0.0f, radius, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-        float phiStep = DirectX::XM_PI / stackCount;
-        float thetaStep = 2.0f * DirectX::XM_PI / sliceCount;
+        float phiStep = XM_PI / stackCount;
+        float thetaStep = 2.0f * XM_PI / sliceCount;
 
         // Compute vertices for each stack ring (do not count the poles as rings).
         for (UINT i = 1; i <= stackCount - 1; ++i)
@@ -350,7 +239,7 @@ namespace march
             {
                 float theta = j * thetaStep;
 
-                SimpleMeshVertex v;
+                GfxMeshVertex v;
 
                 // spherical to cartesian
                 v.Position.x = radius * sinf(phi) * cosf(theta);
@@ -420,9 +309,9 @@ namespace march
         RecalculateNormals();
     }
 
-    void GfxSimpleMesh::AddFullScreenTriangle()
+    void GfxMesh::AddFullScreenTriangle()
     {
-        std::vector<SimpleMeshVertex> vertices;
+        std::vector<GfxMeshVertex> vertices;
         std::vector<std::uint16_t> indices;
 
         vertices.emplace_back();
@@ -433,15 +322,5 @@ namespace march
         indices.push_back(1);
         indices.push_back(2);
         AddSubMesh(vertices, indices);
-    }
-
-    GfxMesh* CreateSimpleGfxMesh(GfxDevice* device)
-    {
-        return DBG_NEW GfxSimpleMesh(device);
-    }
-
-    void ReleaseSimpleGfxMesh(GfxMesh* mesh)
-    {
-        delete mesh;
     }
 }

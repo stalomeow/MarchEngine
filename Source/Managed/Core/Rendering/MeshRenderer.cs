@@ -16,13 +16,13 @@ namespace March.Core.Rendering
 
         public MeshRenderer() : base(RenderObject_New())
         {
-            RenderObject_SetMesh(NativePtr, SimpleMesh_New());
+            RenderObject_SetMesh(NativePtr, GfxMesh_New());
             UpdateMesh();
         }
 
         protected override void DisposeNative()
         {
-            SimpleMesh_Delete(RenderObject_GetMesh(NativePtr));
+            GfxMesh_Delete(RenderObject_GetMesh(NativePtr));
             RenderObject_Delete(NativePtr);
             base.DisposeNative();
         }
@@ -67,16 +67,16 @@ namespace March.Core.Rendering
         private void UpdateMesh()
         {
             nint mesh = RenderObject_GetMesh(NativePtr);
-            SimpleMesh_ClearSubMeshes(mesh);
+            GfxMesh_ClearSubMeshes(mesh);
 
             switch (MeshType)
             {
                 case MeshType.Cube:
-                    SimpleMesh_AddSubMeshCube(mesh);
+                    GfxMesh_AddSubMeshCube(mesh);
                     break;
 
                 case MeshType.Sphere:
-                    SimpleMesh_AddSubMeshSphere(mesh, 0.5f, 40, 40);
+                    GfxMesh_AddSubMeshSphere(mesh, 0.5f, 40, 40);
                     break;
 
                 default:
@@ -103,22 +103,22 @@ namespace March.Core.Rendering
 
         #endregion
 
-        #region SimpleMesh
+        #region GfxMesh
 
         [NativeFunction]
-        private static partial nint SimpleMesh_New();
+        private static partial nint GfxMesh_New();
 
         [NativeFunction]
-        private static partial void SimpleMesh_Delete(nint self);
+        private static partial void GfxMesh_Delete(nint self);
 
         [NativeFunction]
-        private static partial void SimpleMesh_ClearSubMeshes(nint self);
+        private static partial void GfxMesh_ClearSubMeshes(nint self);
 
         [NativeFunction]
-        private static partial void SimpleMesh_AddSubMeshCube(nint self);
+        private static partial void GfxMesh_AddSubMeshCube(nint self);
 
         [NativeFunction]
-        private static partial void SimpleMesh_AddSubMeshSphere(nint self, float radius, uint sliceCount, uint stackCount);
+        private static partial void GfxMesh_AddSubMeshSphere(nint self, float radius, uint sliceCount, uint stackCount);
 
         #endregion
     }

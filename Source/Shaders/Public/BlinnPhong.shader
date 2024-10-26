@@ -112,4 +112,45 @@ Shader "BlinnPhong"
         }
         ENDHLSL
     }
+
+    Pass
+    {
+        Name "ShadowCaster"
+
+        Cull Back
+        ZTest Less
+        ZWrite On
+        ColorMask 0
+
+        Tags
+        {
+            "LightMode" = "ShadowCaster"
+        }
+
+        HLSLPROGRAM
+        #pragma target 6.0
+        #pragma vs vert
+
+        #include "Includes/Common.hlsl"
+
+        struct Attributes
+        {
+            float3 positionOS : POSITION;
+        };
+
+        struct Varyings
+        {
+            float4 positionCS : SV_Position;
+        };
+
+        Varyings vert(Attributes input)
+        {
+            float3 positionWS = TransformObjectToWorld(input.positionOS);
+
+            Varyings output;
+            output.positionCS = TransformWorldToHClip(positionWS);
+            return output;
+        }
+        ENDHLSL
+    }
 }

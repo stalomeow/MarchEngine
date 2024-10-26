@@ -24,7 +24,6 @@
     <ClInclude Include="Public\GfxSwapChain.h" />
     <ClInclude Include="Public\GfxMesh.h" />
     <ClInclude Include="Public\GfxTexture.h" />
-    <ClInclude Include="Public\PipelineState.h" />
     <ClInclude Include="Public\RenderDoc.h" />
     <ClInclude Include="Public\Shader.h" />
     <ClInclude Include="ThirdParty\renderdoc_app.h" />
@@ -42,11 +41,12 @@
     <ClCompile Include="Private\GfxSettings.binding.cpp" />
     <ClCompile Include="Private\GfxHelpers.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />
-    <ClCompile Include="Private\Mesh.binding.cpp" />
-    <ClCompile Include="Private\PipelineState.cpp" />
+    <ClCompile Include="Private\GfxMesh.binding.cpp" />
     <ClCompile Include="Private\RenderDoc.cpp" />
     <ClCompile Include="Private\Shader.binding.cpp" />
     <ClCompile Include="Private\Shader.cpp" />
+    <ClCompile Include="Private\ShaderPipelineState.cpp" />
+    <ClCompile Include="Private\ShaderProgram.cpp" />
     <ClCompile Include="Private\Texture.binding.cpp" />
     <ClCompile Include="Private\GfxTexture.cpp" />
   </ItemGroup>

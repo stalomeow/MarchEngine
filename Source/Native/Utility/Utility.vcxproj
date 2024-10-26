@@ -16,6 +16,7 @@
     <ClCompile Include="Private\StringUtility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Public\HashHelper.h" />
     <ClInclude Include="Public\MathHelper.h" />
     <ClInclude Include="Public\PathHelper.h" />
     <ClInclude Include="Public\StringUtility.h" />

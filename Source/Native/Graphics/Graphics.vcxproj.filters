@@ -48,9 +48,6 @@
     <ClInclude Include="Public\RenderDoc.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\PipelineState.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\GfxExcept.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -68,10 +65,7 @@
     <ClCompile Include="Private\GfxDescriptorHeap.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Mesh.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\PipelineState.cpp">
+    <ClCompile Include="Private\GfxMesh.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Texture.binding.cpp">
@@ -120,6 +114,12 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxSettings.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\ShaderProgram.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\ShaderPipelineState.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

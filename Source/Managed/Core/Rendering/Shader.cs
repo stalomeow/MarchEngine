@@ -4,7 +4,6 @@ using Newtonsoft.Json.Serialization;
 using System.Collections.Immutable;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
@@ -620,12 +619,6 @@ namespace March.Core.Rendering
             Shader_Delete(NativePtr);
         }
 
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
-        {
-            CreateRootSignatures();
-        }
-
         public bool HasWarningOrError => !Warnings.IsEmpty || !Errors.IsEmpty;
 
         internal void ClearWarningsAndErrors()
@@ -656,44 +649,41 @@ namespace March.Core.Rendering
             return false;
         }
 
-        internal bool CompilePass(int passIndex, string filename, string program, string entrypoint, string shaderModel,
-            ShaderProgramType programType, bool enableDebugInfo)
+        internal bool CompilePass(int passIndex, string filename, string source)
         {
             using NativeString f = filename;
-            using NativeString p = program;
-            using NativeString e = entrypoint;
-            using NativeString s = shaderModel;
+            using NativeString s = source;
 
-            nint nativeErrors = nint.Zero;
-            bool success = Shader_CompilePass(NativePtr, passIndex, f.Data, p.Data, e.Data, s.Data, programType, enableDebugInfo, &nativeErrors);
+            nint nativeWarnings = nint.Zero;
+            nint nativeError = nint.Zero;
+            bool success = Shader_CompilePass(NativePtr, passIndex, f.Data, s.Data, &nativeWarnings, &nativeError);
 
-            if (nativeErrors != nint.Zero)
+            if (nativeWarnings != nint.Zero)
             {
-                string errors = NativeString.GetAndFree(nativeErrors);
+                using var warnings = (NativeArray<nint>)nativeWarnings;
 
-                // 如果编译成功，就是警告，否则是错误
-                if (success)
+                for (int i = 0; i < warnings.Length; i++)
                 {
-                    if (AddWarning(errors))
+                    string w = NativeString.GetAndFree(warnings[i]);
+
+                    if (AddWarning(w))
                     {
-                        Debug.LogWarning(errors);
-                    }
-                }
-                else
-                {
-                    if (AddError(errors))
-                    {
-                        Debug.LogError(errors);
+                        Debug.LogWarning(w);
                     }
                 }
             }
 
-            return success;
-        }
+            if (nativeError != nint.Zero)
+            {
+                string e = NativeString.GetAndFree(nativeError);
 
-        internal void CreateRootSignatures()
-        {
-            Shader_CreateRootSignatures(NativePtr);
+                if (AddError(e))
+                {
+                    Debug.LogError(e);
+                }
+            }
+
+            return success;
         }
 
         #region EngineShaderPath
@@ -740,11 +730,7 @@ namespace March.Core.Rendering
         private static partial void Shader_SetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
 
         [NativeFunction]
-        private static partial bool Shader_CompilePass(nint pShader, int passIndex,
-            nint filename, nint program, nint entrypoint, nint shaderModel, ShaderProgramType programType, bool enableDebugInfo, nint* outErrors);
-
-        [NativeFunction]
-        private static partial void Shader_CreateRootSignatures(nint pShader);
+        private static partial bool Shader_CompilePass(nint pShader, int passIndex, nint filename, nint source, nint* warnings, nint* error);
 
         [NativeFunction]
         private static partial nint Shader_GetEngineShaderPathUnixStyle();

@@ -257,7 +257,7 @@ namespace march
         ImGui::DestroyContext();
 
         m_ImGuiRenderGraph.reset();
-        DestroyAllPipelineStates();
+        Shader::ClearRootSignatureCache();
         Display::DestroyMainDisplay();
         DestroyGfxDevice();
         GfxUtility::ReportLiveObjects();

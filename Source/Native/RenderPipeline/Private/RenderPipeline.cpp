@@ -27,7 +27,7 @@ namespace march
 {
     RenderPipeline::RenderPipeline()
     {
-        m_FullScreenTriangleMesh.reset(CreateSimpleGfxMesh(GetGfxDevice()));
+        m_FullScreenTriangleMesh = std::make_unique<GfxMesh>();
         m_FullScreenTriangleMesh->AddFullScreenTriangle();
 
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), GfxHelpers::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
@@ -197,9 +197,10 @@ namespace march
 
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.ClearRenderTargets(ClearFlags::Color);
+        builder.SetWireframe(wireframe);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), wireframe);
+            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data());
         });
     }
 

@@ -8,6 +8,7 @@
 #include <wrl.h>
 #include <dxcapi.h>
 #include <stdint.h>
+#include <memory>
 
 namespace march
 {
@@ -225,44 +226,82 @@ namespace march
         ShaderPassStencilAction BackFace;
     };
 
+    enum class PipelineInputSematicName
+    {
+        Position,
+        Normal,
+        Tangent,
+        TexCoord,
+        Color,
+    };
+
+    struct PipelineInputElement
+    {
+        PipelineInputSematicName SemanticName;
+        uint32_t SemanticIndex;
+        DXGI_FORMAT Format;
+        uint32_t InputSlot;
+        D3D12_INPUT_CLASSIFICATION InputSlotClass;
+        uint32_t InstanceDataStepRate;
+
+        PipelineInputElement(
+            PipelineInputSematicName semanticName,
+            uint32_t semanticIndex,
+            DXGI_FORMAT format,
+            uint32_t inputSlot = 0,
+            D3D12_INPUT_CLASSIFICATION inputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            uint32_t instanceDataStepRate = 0);
+    };
+
+    struct PipelineStateDesc
+    {
+        std::vector<DXGI_FORMAT> RTVFormats;
+        DXGI_FORMAT DSVFormat;
+
+        uint32_t SampleCount;
+        uint32_t SampleQuality;
+
+        bool Wireframe;
+
+        static size_t CalculateHash(const PipelineStateDesc& desc);
+    };
+
     class ShaderPass
     {
         friend Shader;
         friend ShaderBinding;
 
     public:
-        ShaderPass() = default;
-        ~ShaderPass() = default;
+        ShaderPass();
 
         const std::string& GetName() const;
         const std::unordered_map<std::string, std::string>& GetTags() const;
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
         ShaderProgram* GetProgram(ShaderProgramType type) const;
-        ShaderProgram* CreateProgram(ShaderProgramType type);
 
         const ShaderPassCullMode& GetCull() const;
         const std::vector<ShaderPassBlendState>& GetBlends() const;
         const ShaderPassDepthState& GetDepthState() const;
         const ShaderPassStencilState& GetStencilState() const;
 
-        ID3D12RootSignature* GetRootSignature() const;
-        void CreateRootSignature();
+        ID3D12RootSignature* GetRootSignature();
+        ID3D12PipelineState* GetGraphicsPipelineState(int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash);
 
     private:
-        static D3D12_SHADER_VISIBILITY ToShaderVisibility(ShaderProgramType type);
-        void AddStaticSamplers(std::vector<CD3DX12_STATIC_SAMPLER_DESC>& samplers, ShaderProgram* program, D3D12_SHADER_VISIBILITY visibility);
+        bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
 
         std::string m_Name;
         std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
         std::unique_ptr<ShaderProgram> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
 
-        ShaderPassCullMode m_Cull{};
+        ShaderPassCullMode m_Cull;
         std::vector<ShaderPassBlendState> m_Blends; // 如果长度大于 1 则使用 Independent Blend
-        ShaderPassDepthState m_DepthState{};
-        ShaderPassStencilState m_StencilState{};
+        ShaderPassDepthState m_DepthState;
+        ShaderPassStencilState m_StencilState;
 
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
+        std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_PipelineStates;
     };
 
     class Shader
@@ -279,34 +318,22 @@ namespace march
 
         static std::string GetEngineShaderPathUnixStyle();
 
-        static IDxcUtils* GetDxcUtils();
-        static IDxcCompiler3* GetDxcCompiler();
-
         static int32_t GetNameId(const std::string& name);
         static const std::string& GetIdName(int32_t id);
 
         static int32_t GetMaterialConstantBufferId();
 
-        bool CompilePass(int32_t passIndex,
-            const std::string& filename,
-            const std::string& program,
-            const std::string& entrypoint,
-            const std::string& shaderModel,
-            ShaderProgramType programType,
-            bool enableDebugInfo,
-            std::string& outErrors);
+        static IDxcUtils* GetDxcUtils();
+        static IDxcCompiler3* GetDxcCompiler();
+        static void ClearRootSignatureCache();
+
+        static int32_t GetInvalidPipelineInputDescId();
+        static int32_t CreatePipelineInputDesc(const std::vector<PipelineInputElement>& inputLayout, D3D12_PRIMITIVE_TOPOLOGY primitiveTopology);
+        static D3D12_PRIMITIVE_TOPOLOGY GetPipelineInputDescPrimitiveTopology(int32_t inputDescId);
 
     private:
         std::unordered_map<int32_t, ShaderProperty> m_Properties;
         std::vector<std::unique_ptr<ShaderPass>> m_Passes;
         int32_t m_Version = 0;
-
-        static Microsoft::WRL::ComPtr<IDxcUtils> s_Utils;
-        static Microsoft::WRL::ComPtr<IDxcCompiler3> s_Compiler;
-
-        static std::unordered_map<std::string, int32_t> s_NameIdMap;
-        static int32_t s_NextNameId;
-
-        static int32_t s_MaterialConstantBufferId;
     };
 }

@@ -1,12 +1,25 @@
 #pragma once
 
+#include "GfxBuffer.h"
 #include <directx/d3dx12.h>
 #include <stdint.h>
-#include "PipelineState.h"
+#include <DirectXMath.h>
+#include <vector>
+#include <memory>
 
 namespace march
 {
-    class GfxDevice;
+    struct GfxMeshVertex
+    {
+        DirectX::XMFLOAT3 Position;
+        DirectX::XMFLOAT3 Normal;
+        DirectX::XMFLOAT3 Tangent;
+        DirectX::XMFLOAT2 UV;
+
+        GfxMeshVertex() = default;
+        GfxMeshVertex(float px, float py, float pz, float nx, float ny, float nz, float tx, float ty, float tz, float u, float v)
+            : Position(px, py, pz), Normal(nx, ny, nz), Tangent(tx, ty, tz), UV(u, v) { }
+    };
 
     struct GfxSubMesh
     {
@@ -15,66 +28,36 @@ namespace march
         uint32_t IndexCount;
     };
 
-    class GfxMesh
+    class GfxMesh final
     {
-    protected:
-        GfxMesh(GfxDevice* device);
-
     public:
+        GfxMesh();
+
+        uint32_t GetSubMeshCount() const;
+        const GfxSubMesh& GetSubMesh(uint32_t index) const;
+        void ClearSubMeshes();
+
+        void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv);
+        void RecalculateNormals();
+
+        void AddSubMesh(const std::vector<GfxMeshVertex>& vertices, const std::vector<uint16_t>& indices);
+        void AddSubMeshCube(float width, float height, float depth);
+        void AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount);
+        void AddFullScreenTriangle();
+
+        static int32_t GetPipelineInputDescId();
+        static D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopology();
+
         GfxMesh(const GfxMesh&) = delete;
         GfxMesh& operator=(const GfxMesh&) = delete;
 
-        virtual ~GfxMesh() = default;
-
-        virtual void Draw() = 0;
-        virtual void Draw(uint32_t subMeshIndex) = 0;
-        virtual void RecalculateNormals() = 0;
-        virtual void ClearSubMeshes() = 0;
-        virtual void AddSubMeshCube(float width, float height, float depth) = 0;
-        virtual void AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount) = 0;
-        virtual void AddFullScreenTriangle() = 0;
-
-        virtual uint32_t GetSubMeshCount() const = 0;
-        virtual D3D12_PRIMITIVE_TOPOLOGY GetTopology() const = 0;
-        virtual D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType() const = 0;
-        virtual D3D12_INPUT_LAYOUT_DESC GetVertexInputLayout() const = 0;
-
-        MeshDesc GetDesc() const;
-
-        GfxDevice* GetDevice() const { return m_Device; }
-
-        static constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType(D3D12_PRIMITIVE_TOPOLOGY topology)
-        {
-            switch (topology)
-            {
-            case D3D_PRIMITIVE_TOPOLOGY_UNDEFINED:
-                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
-
-            case D3D_PRIMITIVE_TOPOLOGY_POINTLIST:
-                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-
-            case D3D_PRIMITIVE_TOPOLOGY_LINELIST:
-            case D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
-            case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP:
-            case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
-                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-
-            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
-            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
-            case D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN:
-                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
-            default:
-                return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-            }
-        }
-
     private:
-        GfxDevice* m_Device;
-    };
+        std::vector<GfxSubMesh> m_SubMeshes;
+        std::vector<GfxMeshVertex> m_Vertices;
+        std::vector<uint16_t> m_Indices;
+        bool m_IsDirty;
 
-    GfxMesh* CreateSimpleGfxMesh(GfxDevice* device);
-    void ReleaseSimpleGfxMesh(GfxMesh* mesh);
+        std::unique_ptr<GfxVertexBuffer<GfxMeshVertex>> m_VertexBuffer;
+        std::unique_ptr<GfxIndexBuffer<uint16_t>> m_IndexBuffer;
+    };
 }

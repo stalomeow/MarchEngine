@@ -59,6 +59,8 @@ namespace march
         bool HasCustomScissorRect;
         D3D12_RECT CustomScissorRect;
 
+        bool Wireframe;
+
         RenderGraphPassSortState SortState;
         std::vector<int32_t> NextPasses;    // 后继结点
         std::vector<int32_t> ResourcesBorn; // 生命周期从本结点开始的资源
@@ -172,6 +174,7 @@ namespace march
         void ClearRenderTargets(ClearFlags flags = ClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxHelpers::GetFarClipPlaneDepth(), uint8_t stencil = 0);
         void SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
         void SetScissorRect(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
+        void SetWireframe(bool value);
 
         void SetRenderFunc(std::function<void(RenderGraphContext&)> func);
 

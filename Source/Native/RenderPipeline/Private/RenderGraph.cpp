@@ -28,6 +28,7 @@ namespace march
         , CustomViewport{}
         , HasCustomScissorRect(false)
         , CustomScissorRect{}
+        , Wireframe(false)
         , SortState(RenderGraphPassSortState::None)
         , NextPasses{}
         , ResourcesBorn{}
@@ -127,6 +128,7 @@ namespace march
 
             AddPassResourceBarriers(pass);
             SetPassRenderTargets(pass);
+            context.SetWireframe(pass.Wireframe);
 
             if (pass.RenderFunc)
             {
@@ -726,6 +728,12 @@ namespace march
         pass.CustomScissorRect.top = static_cast<LONG>(top);
         pass.CustomScissorRect.right = static_cast<LONG>(right);
         pass.CustomScissorRect.bottom = static_cast<LONG>(bottom);
+    }
+
+    void RenderGraphBuilder::SetWireframe(bool value)
+    {
+        RenderGraphPass& pass = GetPass();
+        pass.Wireframe = value;
     }
 
     void RenderGraphBuilder::SetRenderFunc(std::function<void(RenderGraphContext&)> func)

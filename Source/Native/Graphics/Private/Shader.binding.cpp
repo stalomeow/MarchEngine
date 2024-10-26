@@ -276,6 +276,34 @@ namespace march
                 };
             }
         }
+
+        inline static bool CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+        {
+            pShader->m_Version++;
+
+            std::vector<std::string> warningBuffer{};
+            std::string errorBuffer{};
+
+            ShaderPass* pass = pShader->GetPass(passIndex);
+            bool ret = pass->Compile(filename, source, warningBuffer, errorBuffer);
+
+            if (!warningBuffer.empty())
+            {
+                warnings->assign(static_cast<int32_t>(warningBuffer.size()));
+
+                for (int32_t i = 0; i < warningBuffer.size(); i++)
+                {
+                    (*warnings)[i].assign(std::move(warningBuffer[i]));
+                }
+            }
+
+            if (!errorBuffer.empty())
+            {
+                error->assign(std::move(errorBuffer));
+            }
+
+            return ret;
+        }
     };
 }
 
@@ -427,25 +455,9 @@ NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
     ShaderBinding::SetPasses(pShader, passes);
 }
 
-NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string program, cs_string entrypoint, cs_string shaderModel, cs<ShaderProgramType> programType, cs_bool enableDebugInfo, cs<cs_string*> outErrors)
+NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
 {
-    std::string errors{};
-    bool ret = pShader->CompilePass(passIndex, filename, program, entrypoint, shaderModel, programType, enableDebugInfo, errors);
-
-    if (!errors.empty())
-    {
-        outErrors->assign(std::move(errors));
-    }
-
-    retcs ret;
-}
-
-NATIVE_EXPORT_AUTO Shader_CreateRootSignatures(cs<Shader*> pShader)
-{
-    for (int32_t i = 0; i < pShader->GetPassCount(); i++)
-    {
-        pShader->GetPass(i)->CreateRootSignature();
-    }
+    retcs ShaderBinding::CompilePass(pShader, passIndex, filename, source, warnings, error);
 }
 
 NATIVE_EXPORT_AUTO Shader_GetEngineShaderPathUnixStyle()

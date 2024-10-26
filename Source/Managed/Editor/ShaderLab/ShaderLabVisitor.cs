@@ -238,12 +238,8 @@ namespace March.Editor.ShaderLab
         public List<string> HlslIncludes = [];
         public List<ParsedShaderPass> Passes = [];
 
-        public string GetShaderProgramCode(int passIndex, out string shaderModel, out bool enableDebugInfo, out Dictionary<ShaderProgramType, string> entrypoints)
+        public string GetSourceCode(int passIndex)
         {
-            shaderModel = "6.0"; // 默认
-            enableDebugInfo = false; // 默认不开启调试信息
-            entrypoints = new Dictionary<ShaderProgramType, string>();
-
             if (passIndex < 0 || passIndex >= Passes.Count)
             {
                 return string.Empty;
@@ -257,45 +253,7 @@ namespace March.Editor.ShaderLab
                 code += "\n" + pass.HlslProgram;
             }
 
-            foreach (string line in code.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
-            {
-                string[] segments = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-
-                // #pragma command ...args，至少要 2 个 segments
-                if (segments.Length >= 2 && segments[0] == "#pragma")
-                {
-                    switch (segments[1])
-                    {
-                        case "target":
-                            shaderModel = MustGet(segments, 2, "Missing shader model version");
-                            break;
-                        case "enable_debug_information":
-                            enableDebugInfo = true;
-                            break;
-                        case "vs":
-                            entrypoints[ShaderProgramType.Vertex] = MustGet(segments, 2, "Missing vertex shader entrypoint");
-                            break;
-                        case "ps":
-                            entrypoints[ShaderProgramType.Pixel] = MustGet(segments, 2, "Missing pixel shader entrypoint");
-                            break;
-                        default:
-                            // 未知指令，忽略，可能是 hlsl 编译器的指令
-                            break;
-                    }
-                }
-            }
-
             return code;
-
-            static string MustGet(string[] arr, int i, string error)
-            {
-                if (i >= arr.Length)
-                {
-                    throw new InvalidOperationException(error);
-                }
-
-                return arr[i];
-            }
         }
     }
 

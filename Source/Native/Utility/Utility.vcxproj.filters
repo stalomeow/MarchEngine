@@ -29,5 +29,8 @@
     <ClInclude Include="Public\PathHelper.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\HashHelper.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

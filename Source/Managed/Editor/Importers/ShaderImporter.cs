@@ -16,7 +16,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "Shader Asset";
 
-        protected override int Version => base.Version + 45;
+        protected override int Version => base.Version + 46;
 
         public override string IconNormal => FontAwesome6.Code;
 
@@ -85,50 +85,20 @@ namespace March.Editor.Importers
 
             for (int i = 0; i < result.Passes.Count; i++)
             {
-                string program = result.GetShaderProgramCode(i, out string shaderModel, out bool enableDebugInfo,
-                    out Dictionary<ShaderProgramType, string> entrypoints);
-
-                if (entrypoints.TryGetValue(ShaderProgramType.Vertex, out string? vsEntrypoint))
-                {
-                    CompileShaderPassWithFallback(shader, i, program, vsEntrypoint, shaderModel, enableDebugInfo, ShaderProgramType.Vertex);
-                }
-
-                if (entrypoints.TryGetValue(ShaderProgramType.Pixel, out string? psEntrypoint))
-                {
-                    CompileShaderPassWithFallback(shader, i, program, psEntrypoint, shaderModel, enableDebugInfo, ShaderProgramType.Pixel);
-                }
+                CompileShaderPassWithFallback(shader, i, result.GetSourceCode(i));
             }
-
-            shader.CreateRootSignatures();
         }
 
-        private void CompileShaderPassWithFallback(Shader shader, int passIndex, string program, string entrypoint, string shaderModel, bool enableDebugInfo, ShaderProgramType type)
+        private void CompileShaderPassWithFallback(Shader shader, int passIndex, string source)
         {
-            if (shader.CompilePass(passIndex, AssetFullPath, program, entrypoint, shaderModel, type, enableDebugInfo))
+            if (shader.CompilePass(passIndex, AssetFullPath, source))
             {
                 return;
             }
 
-            switch (type)
+            if (!shader.CompilePass(passIndex, AssetFullPath, FallbackShaderCodes.Program))
             {
-                case ShaderProgramType.Vertex:
-                    program = FallbackShaderCodes.VertexShaderProgram;
-                    entrypoint = FallbackShaderCodes.VertexShaderEntrypoint;
-                    break;
-
-                case ShaderProgramType.Pixel:
-                    program = FallbackShaderCodes.PixelShaderProgram;
-                    entrypoint = FallbackShaderCodes.PixelShaderEntrypoint;
-                    break;
-
-                default:
-                    Debug.LogError($"Failed to compile shader pass {passIndex} with unknown type {type}");
-                    return;
-            }
-
-            if (!shader.CompilePass(passIndex, AssetFullPath, program, entrypoint, shaderModel, type, enableDebugInfo))
-            {
-                Debug.LogError($"Failed to compile shader pass {passIndex} with fallback {type}");
+                Debug.LogError($"Failed to compile fallback shader program");
             }
         }
 
@@ -146,7 +116,7 @@ namespace March.Editor.Importers
                     }
                 }
 
-                result = ParseShaderLab(AssetFullPath, FallbackShaderCodes.ErrorShaderLab, out errors);
+                result = ParseShaderLab(AssetFullPath, FallbackShaderCodes.ShaderLab, out errors);
                 Debug.Assert(errors.IsEmpty, "Failed to parse fallback ShaderLab");
             }
 
@@ -179,37 +149,10 @@ namespace March.Editor.Importers
 
         private static class FallbackShaderCodes
         {
-            public const string ErrorShaderLab = @"
-Shader ""ErrorShader""
-{
-    Pass
-    {
-        Name ""ErrorPass""
+            public const string Program = @"
+#pragma vs vert
+#pragma ps frag
 
-        Cull Off
-
-        HLSLPROGRAM
-        #pragma vs vert
-        #pragma ps frag
-
-        #include ""Includes/Common.hlsl""
-
-        float4 vert(float3 positionOS : POSITION) : SV_Position
-        {
-            float3 positionWS = TransformObjectToWorld(positionOS);
-            return TransformWorldToHClip(positionWS);
-        }
-
-        float4 frag() : SV_Target
-        {
-            return float4(1, 0, 1, 1);
-        }
-        ENDHLSL
-    }
-}";
-
-            public const string VertexShaderEntrypoint = "vert";
-            public const string VertexShaderProgram = @"
 #include ""Includes/Common.hlsl""
 
 float4 vert(float3 positionOS : POSITION) : SV_Position
@@ -217,15 +160,27 @@ float4 vert(float3 positionOS : POSITION) : SV_Position
     float3 positionWS = TransformObjectToWorld(positionOS);
     return TransformWorldToHClip(positionWS);
 }
-";
 
-            public const string PixelShaderEntrypoint = "frag";
-            public const string PixelShaderProgram = @"
 float4 frag() : SV_Target
 {
     return float4(1, 0, 1, 1);
 }
 ";
+
+            public const string ShaderLab = $@"
+Shader ""ErrorShader""
+{{
+    Pass
+    {{
+        Name ""ErrorPass""
+
+        Cull Off
+
+        HLSLPROGRAM
+        {Program}
+        ENDHLSL
+    }}
+}}";
         }
     }
 }

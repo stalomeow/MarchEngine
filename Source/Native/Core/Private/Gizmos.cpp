@@ -6,6 +6,7 @@
 #include "Camera.h"
 #include "Material.h"
 #include "Application.h"
+#include "Shader.h"
 #include <memory>
 #include <math.h>
 #include <vector>
@@ -27,11 +28,20 @@ namespace march
         constexpr Vertex(const XMFLOAT3& positionWS, const XMFLOAT4& color) : PositionWS(positionWS), Color(color) {}
     };
 
-    static const D3D12_INPUT_ELEMENT_DESC InputDesc[] =
+    static int32_t g_PipelineInputDescId = Shader::GetInvalidPipelineInputDescId();
+
+    static int32_t GetPipelineInputDescId()
     {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT   , 0, 0 , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR"   , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    };
+        if (g_PipelineInputDescId == Shader::GetInvalidPipelineInputDescId())
+        {
+            std::vector<PipelineInputElement> inputs{};
+            inputs.emplace_back(PipelineInputSematicName::Position, 0, DXGI_FORMAT_R32G32B32_FLOAT);
+            inputs.emplace_back(PipelineInputSematicName::Color, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
+            g_PipelineInputDescId = Shader::CreatePipelineInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+        }
+
+        return g_PipelineInputDescId;
+    }
 
     // Gizmos 由一组 LineList 构成
     static std::vector<Vertex> g_LineListVertices{};
@@ -365,13 +375,9 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            std::vector<MeshBufferDesc> meshes{};
+            std::vector<MeshDesc> meshes{};
             std::vector<uint16_t> indices{};
             size_t vertexOffset = 0;
-
-            D3D12_INPUT_LAYOUT_DESC inputLayout = {};
-            inputLayout.NumElements = static_cast<UINT>(std::size(InputDesc));
-            inputLayout.pInputElementDescs = InputDesc;
 
             for (size_t i = 0; i < g_LineListVertexEnds.size(); i++)
             {
@@ -388,22 +394,23 @@ namespace march
                     indices.push_back(static_cast<uint16_t>(indices.size()));
                 }
 
-                MeshBufferDesc& bufferDesc = meshes.emplace_back();
-                bufferDesc.VertexBufferView = context.CreateTransientVertexBuffer(vertexCount, sizeof(Vertex), alignof(Vertex), g_LineListVertices.data() + vertexOffset);
-                bufferDesc.IndexBufferView = context.CreateTransientIndexBuffer(vertexCount, indices.data());
+                MeshDesc& meshDesc = meshes.emplace_back();
+                meshDesc.InputDescId = GetPipelineInputDescId();
+                meshDesc.VertexBufferView = context.CreateTransientVertexBuffer(vertexCount, sizeof(Vertex), alignof(Vertex), g_LineListVertices.data() + vertexOffset);
+                meshDesc.IndexBufferView = context.CreateTransientIndexBuffer(vertexCount, indices.data());
                 vertexOffset = vertexEnd;
             }
 
             // Visible part
-            for (const MeshBufferDesc& mesh : meshes)
+            for (const MeshDesc& mesh : meshes)
             {
-                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, g_LineListMaterial.get(), false, 0);
+                context.DrawMesh(&mesh, g_LineListMaterial.get(), 0);
             }
 
             // Invisible part
-            for (const MeshBufferDesc& mesh : meshes)
+            for (const MeshDesc& mesh : meshes)
             {
-                context.DrawMesh(&inputLayout, D3D_PRIMITIVE_TOPOLOGY_LINELIST, &mesh, g_LineListMaterial.get(), false, 1);
+                context.DrawMesh(&mesh, g_LineListMaterial.get(), 1);
             }
         });
     }
