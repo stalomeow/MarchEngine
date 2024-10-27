@@ -1,3 +1,4 @@
+using March.Core.Serialization;
 using Newtonsoft.Json;
 
 namespace March.Core
@@ -15,6 +16,12 @@ namespace March.Core
         public string? PersistentGuid { get; internal set; }
 
         protected MarchObject() { }
+
+        public static T Instantiate<T>(T original) where T : MarchObject
+        {
+            string json = PersistentManager.SaveAsString(original);
+            return PersistentManager.LoadFromString<T>(json);
+        }
     }
 
     public abstract class NativeMarchObject(nint nativePtr) : MarchObject, IDisposable

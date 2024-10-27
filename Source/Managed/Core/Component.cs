@@ -4,11 +4,14 @@ using Newtonsoft.Json;
 
 namespace March.Core
 {
-    public abstract partial class Component : NativeMarchObject, IForceInlineSerialization
+    public abstract partial class Component : NativeMarchObject
     {
         private readonly bool m_IsDefaultNativeComponent;
-        private GameObject? m_GameObject;
         private bool m_IsMounted;
+
+        [JsonProperty]
+        [HideInInspector]
+        private GameObject? m_GameObject;
 
         [JsonProperty]
         [HideInInspector]

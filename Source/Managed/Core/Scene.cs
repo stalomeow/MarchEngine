@@ -1,9 +1,8 @@
-using March.Core.Serialization;
 using Newtonsoft.Json;
 
 namespace March.Core
 {
-    public class Scene : MarchObject, IForceInlineSerialization, IDisposable
+    public class Scene : MarchObject, IDisposable
     {
         [JsonProperty] public string Name = "New Scene";
         [JsonProperty] public List<GameObject> RootGameObjects = [];

@@ -19,7 +19,7 @@ namespace March.Editor.Importers
 
         protected override MarchObject CreateAsset()
         {
-            return new SceneAsset();
+            return new Scene();
         }
 
         protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)

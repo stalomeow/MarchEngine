@@ -1,12 +1,11 @@
 using March.Core;
 using March.Core.Binding;
-using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Numerics;
 
 namespace March.Editor.Windows
 {
-    public abstract partial class EditorWindow : NativeMarchObject, IForceInlineSerialization
+    public abstract partial class EditorWindow : NativeMarchObject
     {
         private readonly bool m_IsDefaultNativeWindow;
         private bool m_IsOnOpenInvoked = false;

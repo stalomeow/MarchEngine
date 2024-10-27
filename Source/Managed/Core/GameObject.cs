@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace March.Core
 {
-    public sealed class GameObject : MarchObject, IForceInlineSerialization, IDisposable
+    public sealed class GameObject : MarchObject, IDisposable
     {
         private const string k_NameCharBlacklist = "/\\:;*?\"<>|";
 

@@ -1,6 +1,7 @@
 using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Core.Serialization;
 using March.Editor.Importers;
 using System.Numerics;
 
@@ -43,6 +44,13 @@ namespace March.Editor.Windows
             {
                 var go = SceneManager.CurrentScene.CreateGameObject(parent: Selection.Active as GameObject);
                 Selection.Active = go;
+            });
+
+            s_ContextMenu.AddMenuItem("Save", (ref object? arg) =>
+            {
+                Scene s = SceneManager.CurrentScene;
+                string json = PersistentManager.SaveAsString(s);
+                Debug.LogInfo(json);
             });
         }
 

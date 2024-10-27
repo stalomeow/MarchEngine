@@ -5,15 +5,12 @@ using System.Text;
 
 namespace March.Core.Serialization
 {
-    /// <summary>
-    /// 禁止使用 <see cref="Guid"/> 进行序列化
-    /// </summary>
-    public interface IForceInlineSerialization { }
-
     public class LoadPersistentObjectException(string message) : Exception(message) { }
 
     public static class PersistentManager
     {
+        private static readonly MarchPropertyJsonConverter s_PropertyJsonConverter = new();
+        private static readonly MarchReferenceResolver s_ReferenceResolver = new();
         private static readonly JsonSerializer s_JsonSerializer = JsonSerializer.CreateDefault(new JsonSerializerSettings
         {
             ContractResolver = new ContractResolver(),
@@ -21,6 +18,8 @@ namespace March.Core.Serialization
             Formatting = Formatting.Indented,
             ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
             ObjectCreationHandling = ObjectCreationHandling.Replace, // 保证不会重新添加集合元素
+            PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+            ReferenceResolverProvider = () => s_ReferenceResolver,
         });
 
         public static JsonContract ResolveJsonContract(Type type)
@@ -35,8 +34,11 @@ namespace March.Core.Serialization
 
         public static T Load<T>(TextReader textReader) where T : MarchObject
         {
-            using var jsonReader = new JsonTextReader(textReader);
-            return s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException($"Failed to Load {nameof(MarchObject)}");
+            using (new MarchReferenceScope(s_ReferenceResolver))
+            {
+                using var jsonReader = new JsonTextReader(textReader);
+                return s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException($"Failed to Load {nameof(MarchObject)}");
+            }
         }
 
         public static MarchObject Load(string fullPath)
@@ -74,8 +76,11 @@ namespace March.Core.Serialization
 
         public static void Overwrite(TextReader textReader, MarchObject target)
         {
-            using var jsonReader = new JsonTextReader(textReader);
-            s_JsonSerializer.Populate(jsonReader, target);
+            using (new MarchReferenceScope(s_ReferenceResolver))
+            {
+                using var jsonReader = new JsonTextReader(textReader);
+                s_JsonSerializer.Populate(jsonReader, target);
+            }
         }
 
         public static void OverwriteFromString(string text, MarchObject target)
@@ -86,8 +91,11 @@ namespace March.Core.Serialization
 
         public static void Save(MarchObject obj, TextWriter textWriter)
         {
-            using var jsonWriter = new JsonTextWriter(textWriter);
-            s_JsonSerializer.Serialize(jsonWriter, obj, typeof(MarchObject));
+            using (new MarchReferenceScope(s_ReferenceResolver))
+            {
+                using var jsonWriter = new JsonTextWriter(textWriter);
+                s_JsonSerializer.Serialize(jsonWriter, obj, typeof(MarchObject));
+            }
         }
 
         public static void Save(MarchObject obj, string fullPath)
@@ -110,34 +118,15 @@ namespace March.Core.Serialization
             return stringWriter.ToString();
         }
 
-        private sealed class MarchObjectGuidJsonConverter : JsonConverter<MarchObject>
-        {
-            public override MarchObject? ReadJson(JsonReader reader, Type objectType, MarchObject? existingValue, bool hasExistingValue, JsonSerializer serializer)
-            {
-                string? guid = reader.Value?.ToString();
-                return guid == null ? null : AssetManager.LoadByGuid(guid);
-            }
-
-            public override void WriteJson(JsonWriter writer, MarchObject? value, JsonSerializer serializer)
-            {
-                if (value == null)
-                {
-                    writer.WriteNull();
-                }
-                else if (value.PersistentGuid == null)
-                {
-                    writer.WriteComment("Not Persistent");
-                    writer.WriteNull();
-                }
-                else
-                {
-                    writer.WriteValue(value.PersistentGuid);
-                }
-            }
-        }
-
         private sealed class ContractResolver : DefaultContractResolver
         {
+            protected override JsonContract CreateContract(Type objectType)
+            {
+                JsonContract contract = base.CreateContract(objectType);
+                contract.IsReference = IsMarchObject(objectType);
+                return contract;
+            }
+
             protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
             {
                 JsonProperty prop = base.CreateProperty(member, memberSerialization);
@@ -151,42 +140,54 @@ namespace March.Core.Serialization
 
                 if (prop.PropertyType != null)
                 {
-                    if (UseGuidSerialization(prop.PropertyType))
+                    if (IsMarchObject(prop.PropertyType))
                     {
-                        prop.Converter = new MarchObjectGuidJsonConverter();
+                        prop.IsReference = true;
+                        prop.ItemIsReference = false;
+                        prop.Converter = s_PropertyJsonConverter;
+                    }
+                    else if (IsCollectionOfMarchObjects(prop.PropertyType))
+                    {
+                        prop.IsReference = false;
+                        prop.ItemIsReference = true;
+                        prop.ItemConverter = s_PropertyJsonConverter;
                     }
                     else
                     {
-                        foreach (Type i in prop.PropertyType.GetInterfaces())
-                        {
-                            if (!i.IsGenericType)
-                            {
-                                continue;
-                            }
-
-                            Type def = i.GetGenericTypeDefinition();
-
-                            if (def == typeof(IDictionary<,>) && UseGuidSerialization(i.GetGenericArguments()[1]))
-                            {
-                                prop.ItemConverter = new MarchObjectGuidJsonConverter();
-                                break;
-                            }
-
-                            if (def == typeof(IEnumerable<>) && UseGuidSerialization(i.GetGenericArguments()[0]))
-                            {
-                                prop.ItemConverter = new MarchObjectGuidJsonConverter();
-                                break;
-                            }
-                        }
+                        prop.IsReference = false;
+                        prop.ItemIsReference = false;
                     }
                 }
 
                 return prop;
             }
 
-            private static bool UseGuidSerialization(Type type)
+            private static bool IsMarchObject(Type type)
             {
-                return type.IsSubclassOf(typeof(MarchObject)) && !typeof(IForceInlineSerialization).IsAssignableFrom(type);
+                return type.IsSubclassOf(typeof(MarchObject));
+            }
+
+            private static bool IsCollectionOfMarchObjects(Type type)
+            {
+                foreach (Type i in type.GetInterfaces())
+                {
+                    if (!i.IsGenericType)
+                    {
+                        continue;
+                    }
+
+                    Type def = i.GetGenericTypeDefinition();
+
+                    if (def == typeof(IEnumerable<>) || def == typeof(IDictionary<,>))
+                    {
+                        if (i.GetGenericArguments().Any(IsMarchObject))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
             }
         }
     }

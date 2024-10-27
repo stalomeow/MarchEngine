@@ -10,7 +10,7 @@ namespace March.Editor
 {
     public static class EditorApplication
     {
-        private sealed class WindowData : MarchObject, IForceInlineSerialization
+        private sealed class WindowData : MarchObject
         {
             [JsonProperty]
             public List<EditorWindow> Windows { get; set; } = [];

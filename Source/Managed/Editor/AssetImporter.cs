@@ -245,7 +245,7 @@ namespace March.Editor
         /// </summary>
         /// <remarks>子类重写时返回 <c>base.Version + number</c></remarks>
         [JsonIgnore]
-        protected virtual int Version => 1;
+        protected virtual int Version => 4;
 
         /// <summary>
         /// 图标
