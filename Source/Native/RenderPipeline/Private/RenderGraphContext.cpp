@@ -9,6 +9,7 @@
 #include "RenderObject.h"
 #include "Transform.h"
 #include "StringUtility.h"
+#include "RenderDoc.h"
 #include <stdexcept>
 #include <DirectXMath.h>
 
@@ -71,6 +72,11 @@ namespace march
 
     void RenderGraphContext::BeginEvent(const std::string& name) const
     {
+        if (!RenderDoc::IsLoaded())
+        {
+            return;
+        }
+
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
         std::wstring wName = StringUtility::Utf8ToUtf16(name);
         cmd->BeginEvent(0, wName.c_str(), static_cast<UINT>(wName.size() * sizeof(wchar_t))); // 第一个参数貌似是颜色
@@ -78,6 +84,11 @@ namespace march
 
     void RenderGraphContext::EndEvent() const
     {
+        if (!RenderDoc::IsLoaded())
+        {
+            return;
+        }
+
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
         cmd->EndEvent();
     }
