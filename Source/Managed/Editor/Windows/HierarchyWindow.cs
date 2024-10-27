@@ -52,6 +52,16 @@ namespace March.Editor.Windows
                 string json = PersistentManager.SaveAsString(s);
                 Debug.LogInfo(json);
             });
+
+            s_ContextMenu.AddMenuItem("Load Sponza", (ref object? arg) =>
+            {
+                GameObject? go = AssetDatabase.Load<GameObject>("Assets/Models/Sponza/Sponza.gltf");
+
+                if (go != null)
+                {
+                    SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
+                }
+            });
         }
 
         public HierarchyWindow() : base($"{FontAwesome6.BarsStaggered} Hierarchy")

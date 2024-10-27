@@ -28,8 +28,12 @@ namespace march
         uint32_t IndexCount;
     };
 
+    class GfxMeshBinding;
+
     class GfxMesh final
     {
+        friend GfxMeshBinding;
+
     public:
         GfxMesh();
 

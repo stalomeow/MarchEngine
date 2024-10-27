@@ -29,6 +29,12 @@ namespace March.Core
             return go;
         }
 
+        public void AddRootGameObject(GameObject go)
+        {
+            go.AwakeRecursive();
+            RootGameObjects.Add(go);
+        }
+
         public GameObject? Find(string path)
         {
             GameObject? current = null;

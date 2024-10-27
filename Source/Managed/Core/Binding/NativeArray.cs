@@ -59,6 +59,8 @@ namespace March.Core.Binding
 
         public static implicit operator NativeArray<T>(T[] value) => new() { Data = New(value) };
 
+        public static implicit operator NativeArray<T>(Span<T> value) => new() { Data = New(value) };
+
         public static explicit operator NativeArray<T>(nint data) => new() { Data = data };
 
         public static nint New(T[] array)
@@ -66,6 +68,14 @@ namespace March.Core.Binding
             fixed (T* p = array)
             {
                 return NativeArrayBindings.MarshalArray((byte*)p, array.Length * sizeof(T));
+            }
+        }
+
+        public static nint New(Span<T> span)
+        {
+            fixed (T* p = span)
+            {
+                return NativeArrayBindings.MarshalArray((byte*)p, span.Length * sizeof(T));
             }
         }
 

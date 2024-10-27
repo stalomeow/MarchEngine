@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Binding\Binding.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Core\Core.csproj" />
+    <PackageReference Include="glTF2Loader" Version="1.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />

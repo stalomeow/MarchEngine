@@ -194,14 +194,24 @@ namespace March.Core
 
         internal void AwakeRecursive()
         {
+            SetAwakeRecursive();
+            TryMountExistingComponentsRecursive();
+            TryEnableOrDisableExistingComponentsRecursive();
+        }
+
+        private void SetAwakeRecursive()
+        {
             if (m_IsAwaked)
             {
                 throw new InvalidOperationException("GameObject is already awaked");
             }
 
             m_IsAwaked = true;
-            TryMountExistingComponentsRecursive();
-            TryEnableOrDisableExistingComponentsRecursive();
+
+            for (int i = 0; i < m_Transform.ChildCount; i++)
+            {
+                m_Transform.GetChild(i).gameObject.SetAwakeRecursive();
+            }
         }
 
         private void TryMountExistingComponentsRecursive()

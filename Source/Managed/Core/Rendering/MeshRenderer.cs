@@ -1,30 +1,39 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
     public enum MeshType
     {
-        Cube = 0,
-        Sphere = 1,
+        Cube,
+        Sphere,
+        Custom,
     }
 
     public partial class MeshRenderer : Component
     {
         private MeshType m_MeshType = MeshType.Cube;
         private List<Material?> m_Materials = [];
+        private Mesh? m_Mesh;
 
-        public MeshRenderer() : base(RenderObject_New())
-        {
-            RenderObject_SetMesh(NativePtr, GfxMesh_New());
-            UpdateMesh();
-        }
+        public MeshRenderer() : base(RenderObject_New()) { }
 
         protected override void DisposeNative()
         {
-            GfxMesh_Delete(RenderObject_GetMesh(NativePtr));
             RenderObject_Delete(NativePtr);
             base.DisposeNative();
+        }
+
+        [JsonProperty]
+        public Mesh Mesh
+        {
+            get => m_Mesh!;
+            set
+            {
+                m_Mesh = value;
+                UpdateMesh(false);
+            }
         }
 
         [JsonProperty]
@@ -39,7 +48,7 @@ namespace March.Core.Rendering
                 }
 
                 m_MeshType = value;
-                UpdateMesh();
+                UpdateMesh(true);
             }
         }
 
@@ -64,27 +73,47 @@ namespace March.Core.Rendering
             }
         }
 
-        private void UpdateMesh()
+        private void UpdateMesh(bool resetMesh)
         {
-            nint mesh = RenderObject_GetMesh(NativePtr);
-            GfxMesh_ClearSubMeshes(mesh);
-
-            switch (MeshType)
+            if (resetMesh)
             {
-                case MeshType.Cube:
-                    GfxMesh_AddSubMeshCube(mesh);
-                    break;
+                switch (MeshType)
+                {
+                    case MeshType.Cube:
+                        m_Mesh = new Mesh();
+                        m_Mesh.AddSubMeshCube();
+                        break;
 
-                case MeshType.Sphere:
-                    GfxMesh_AddSubMeshSphere(mesh, 0.5f, 40, 40);
-                    break;
-
-                default:
-                    throw new NotImplementedException($"Mesh type {MeshType} not implemented");
+                    case MeshType.Sphere:
+                        m_Mesh = new Mesh();
+                        m_Mesh.AddSubMeshSphere(0.5f, 40, 40);
+                        break;
+                }
             }
+            else
+            {
+                if (m_Mesh != null)
+                {
+                    m_MeshType = MeshType.Custom;
+                }
+                else
+                {
+                    m_MeshType = MeshType.Cube;
+                    m_Mesh = new Mesh();
+                    m_Mesh.AddSubMeshCube();
+                }
+            }
+
+            RenderObject_SetMesh(NativePtr, m_Mesh?.NativePtr ?? nint.Zero);
         }
 
-        #region RenderObject
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            UpdateMesh(false);
+        }
+
+        #region Bindings
 
         [NativeFunction]
         private static partial nint RenderObject_New();
@@ -93,32 +122,10 @@ namespace March.Core.Rendering
         private static partial void RenderObject_Delete(nint self);
 
         [NativeFunction]
-        private static partial nint RenderObject_GetMesh(nint self);
-
-        [NativeFunction]
         private static partial void RenderObject_SetMesh(nint self, nint value);
 
         [NativeFunction]
         private static partial void RenderObject_SetMaterial(nint self, nint value);
-
-        #endregion
-
-        #region GfxMesh
-
-        [NativeFunction]
-        private static partial nint GfxMesh_New();
-
-        [NativeFunction]
-        private static partial void GfxMesh_Delete(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_ClearSubMeshes(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_AddSubMeshCube(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_AddSubMeshSphere(nint self, float radius, uint sliceCount, uint stackCount);
 
         #endregion
     }
