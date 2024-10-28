@@ -1,5 +1,6 @@
 using March.Core.Binding;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
@@ -52,24 +53,17 @@ namespace March.Core.Rendering
             }
         }
 
+        /// <summary>
+        /// 返回 Material 列表的拷贝，如果修改其中的 Material，需要重新将列表赋值回来
+        /// </summary>
         [JsonProperty]
         public List<Material?> Materials
         {
             get => m_Materials;
-            set => m_Materials = value;
-        }
-
-        protected override void OnUpdate()
-        {
-            base.OnUpdate();
-
-            if (m_Materials.Count > 0)
+            set
             {
-                RenderObject_SetMaterial(NativePtr, m_Materials[0]?.NativePtr ?? nint.Zero);
-            }
-            else
-            {
-                RenderObject_SetMaterial(NativePtr, nint.Zero);
+                m_Materials = value;
+                SyncNativeMaterials();
             }
         }
 
@@ -113,6 +107,18 @@ namespace March.Core.Rendering
             UpdateMesh(false);
         }
 
+        internal void SyncNativeMaterials()
+        {
+            using NativeArray<nint> materials = new(m_Materials.Count);
+
+            for (int i = 0; i < m_Materials.Count; i++)
+            {
+                materials[i] = m_Materials[i]?.NativePtr ?? nint.Zero;
+            }
+
+            RenderObject_SetMaterials(NativePtr, materials.Data);
+        }
+
         #region Bindings
 
         [NativeFunction]
@@ -125,7 +131,7 @@ namespace March.Core.Rendering
         private static partial void RenderObject_SetMesh(nint self, nint value);
 
         [NativeFunction]
-        private static partial void RenderObject_SetMaterial(nint self, nint value);
+        private static partial void RenderObject_SetMaterials(nint self, nint materials);
 
         #endregion
     }

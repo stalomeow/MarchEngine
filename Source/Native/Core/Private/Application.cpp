@@ -4,6 +4,7 @@
 #include <WindowsX.h>
 #include <stdexcept>
 #include <assert.h>
+#include <algorithm>
 
 namespace march
 {
@@ -207,6 +208,63 @@ namespace march
 
         OnQuit();
         return static_cast<int>(msg.wParam);
+    }
+
+    std::string Application::SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const
+    {
+        std::wstring wBasePathWinStyle = StringUtility::Utf8ToUtf16(GetDataPath());
+        if (!path.empty())
+        {
+            wBasePathWinStyle += L'\\';
+            wBasePathWinStyle += StringUtility::Utf8ToUtf16(path);
+
+            if (wBasePathWinStyle.back() == L'\\' || wBasePathWinStyle.back() == L'/')
+            {
+                wBasePathWinStyle.pop_back();
+            }
+        }
+        std::replace(wBasePathWinStyle.begin(), wBasePathWinStyle.end(), L'/', L'\\');
+
+        std::wstring wExtension = StringUtility::Utf8ToUtf16(extension);
+
+        std::vector<wchar_t> filter{};
+        filter.insert(filter.end(), wExtension.begin(), wExtension.end());
+        filter.push_back(L' ');
+        filter.push_back(L'F');
+        filter.push_back(L'i');
+        filter.push_back(L'l');
+        filter.push_back(L'e');
+        filter.push_back(L'\0');
+        filter.push_back(L'*');
+        filter.push_back(L'.');
+        filter.insert(filter.end(), wExtension.begin(), wExtension.end());
+        filter.push_back(L'\0');
+        filter.push_back(L'\0');
+
+        std::wstring fileNameBuffer = StringUtility::Utf8ToUtf16(defaultName);
+        fileNameBuffer.resize(MAX_PATH);
+
+        std::wstring wTitle = StringUtility::Utf8ToUtf16(title);
+
+        OPENFILENAMEW ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = m_WindowHandle;
+        ofn.lpstrFilter = filter.data();
+        ofn.lpstrFile = fileNameBuffer.data();
+        ofn.nMaxFile = static_cast<DWORD>(fileNameBuffer.size());
+        ofn.lpstrTitle = wTitle.c_str();
+        ofn.lpstrInitialDir = wBasePathWinStyle.c_str();
+        ofn.lpstrDefExt = wExtension.c_str();
+        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+
+        if (GetSaveFileNameW(&ofn) && fileNameBuffer.find(wBasePathWinStyle) != std::wstring::npos)
+        {
+            std::string result = StringUtility::Utf16ToUtf8(fileNameBuffer.c_str()); // 使用 c_str 忽略 buffer 后面大量 '\0'
+            std::replace(result.begin(), result.end(), '\\', '/');
+            return result.substr(GetDataPath().size() + 1); // 返回相对 Data 目录的路径
+        }
+
+        return "";
     }
 
     void Application::ShowErrorMessageBox(const std::string& message)

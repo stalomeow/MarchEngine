@@ -96,11 +96,14 @@ NATIVE_EXPORT_AUTO Material_GetAllInts(cs<Material*> pMaterial)
     const std::unordered_map<int32_t, int32_t> rawInts = MaterialInternalUtility::GetRawInts(pMaterial);
     std::unordered_map<int32_t, int32_t> allValues(rawInts.begin(), rawInts.end());
 
-    for (auto& p : pMaterial->GetShader()->GetProperties())
+    if (pMaterial->GetShader() != nullptr)
     {
-        if (p.second.Type == ShaderPropertyType::Int && !allValues.count(p.first))
+        for (auto& p : pMaterial->GetShader()->GetProperties())
         {
-            allValues[p.first] = p.second.DefaultValue.Int;
+            if (p.second.Type == ShaderPropertyType::Int && !allValues.count(p.first))
+            {
+                allValues[p.first] = p.second.DefaultValue.Int;
+            }
         }
     }
 
@@ -129,11 +132,14 @@ NATIVE_EXPORT_AUTO Material_GetAllFloats(cs<Material*> pMaterial)
     const std::unordered_map<int32_t, float> rawFloats = MaterialInternalUtility::GetRawFloats(pMaterial);
     std::unordered_map<int32_t, float> allValues(rawFloats.begin(), rawFloats.end());
 
-    for (auto& p : pMaterial->GetShader()->GetProperties())
+    if (pMaterial->GetShader() != nullptr)
     {
-        if (p.second.Type == ShaderPropertyType::Float && !allValues.count(p.first))
+        for (auto& p : pMaterial->GetShader()->GetProperties())
         {
-            allValues[p.first] = p.second.DefaultValue.Float;
+            if (p.second.Type == ShaderPropertyType::Float && !allValues.count(p.first))
+            {
+                allValues[p.first] = p.second.DefaultValue.Float;
+            }
         }
     }
 
@@ -162,11 +168,14 @@ NATIVE_EXPORT_AUTO Material_GetAllVectors(cs<Material*> pMaterial)
     const std::unordered_map<int32_t, XMFLOAT4> rawVectors = MaterialInternalUtility::GetRawVectors(pMaterial);
     std::unordered_map<int32_t, XMFLOAT4> allValues(rawVectors.begin(), rawVectors.end());
 
-    for (auto& p : pMaterial->GetShader()->GetProperties())
+    if (pMaterial->GetShader() != nullptr)
     {
-        if (p.second.Type == ShaderPropertyType::Vector && !allValues.count(p.first))
+        for (auto& p : pMaterial->GetShader()->GetProperties())
         {
-            allValues[p.first] = p.second.DefaultValue.Vector;
+            if (p.second.Type == ShaderPropertyType::Vector && !allValues.count(p.first))
+            {
+                allValues[p.first] = p.second.DefaultValue.Vector;
+            }
         }
     }
 
@@ -195,11 +204,14 @@ NATIVE_EXPORT_AUTO Material_GetAllColors(cs<Material*> pMaterial)
     const std::unordered_map<int32_t, XMFLOAT4> rawColors = MaterialInternalUtility::GetRawColors(pMaterial);
     std::unordered_map<int32_t, XMFLOAT4> allValues(rawColors.begin(), rawColors.end());
 
-    for (auto& p : pMaterial->GetShader()->GetProperties())
+    if (pMaterial->GetShader() != nullptr)
     {
-        if (p.second.Type == ShaderPropertyType::Color && !allValues.count(p.first))
+        for (auto& p : pMaterial->GetShader()->GetProperties())
         {
-            allValues[p.first] = p.second.DefaultValue.Color;
+            if (p.second.Type == ShaderPropertyType::Color && !allValues.count(p.first))
+            {
+                allValues[p.first] = p.second.DefaultValue.Color;
+            }
         }
     }
 
@@ -228,11 +240,14 @@ NATIVE_EXPORT_AUTO Material_GetAllTextures(cs<Material*> pMaterial)
     const std::unordered_map<int32_t, GfxTexture*> rawTextures = MaterialInternalUtility::GetRawTextures(pMaterial);
     std::unordered_map<int32_t, GfxTexture*> allValues(rawTextures.begin(), rawTextures.end());
 
-    for (auto& p : pMaterial->GetShader()->GetProperties())
+    if (pMaterial->GetShader() != nullptr)
     {
-        if (p.second.Type == ShaderPropertyType::Texture && !allValues.count(p.first))
+        for (auto& p : pMaterial->GetShader()->GetProperties())
         {
-            allValues[p.first] = p.second.GetDefaultTexture();
+            if (p.second.Type == ShaderPropertyType::Texture && !allValues.count(p.first))
+            {
+                allValues[p.first] = p.second.GetDefaultTexture();
+            }
         }
     }
 

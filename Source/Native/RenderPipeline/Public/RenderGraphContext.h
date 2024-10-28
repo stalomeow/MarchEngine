@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <string>
 #include <stdint.h>
+#include <functional>
 
 namespace march
 {
@@ -81,7 +82,7 @@ namespace march
         void DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::string& lightMode);
 
     private:
-        void DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::vector<int32_t>& passIndices);
+        void DrawObjects(size_t numObjects, const RenderObject* const* objects, std::function<int32_t(Shader*)> getPassIndex);
 
         // 如果 viewport 为 nullptr，则使用默认 viewport
         // 如果 scissorRect 为 nullptr，则使用默认 scissorRect

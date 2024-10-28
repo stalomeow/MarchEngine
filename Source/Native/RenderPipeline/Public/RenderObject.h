@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Component.h"
+#include <vector>
 
 namespace march
 {
@@ -14,7 +15,7 @@ namespace march
         ~RenderObject() = default;
 
         GfxMesh* Mesh = nullptr;
-        Material* Mat = nullptr;
+        std::vector<Material*> Materials{};
 
     protected:
         void OnMount() override;

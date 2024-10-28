@@ -45,10 +45,24 @@ namespace March.Core
             GC.WaitForPendingFinalizers();
         }
 
+        public static string SaveFilePanelInProject(string title, string defaultName, string extension, string path = "Assets")
+        {
+            using NativeString t = title;
+            using NativeString d = defaultName;
+            using NativeString e = extension;
+            using NativeString p = path;
+
+            nint result = Application_SaveFilePanelInProject(t.Data, d.Data, e.Data, p.Data);
+            return NativeString.GetAndFree(result);
+        }
+
         #region Bindings
 
         [NativeFunction]
         private static partial nint Application_GetDataPath();
+
+        [NativeFunction]
+        private static partial nint Application_SaveFilePanelInProject(nint title, nint defaultName, nint extension, nint path);
 
         #endregion
     }

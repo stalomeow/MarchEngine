@@ -246,6 +246,7 @@ namespace march
             DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
 
             m_RenderPipeline.reset();
+            GfxTexture::DestroyDefaultTextures();
         }
         EndFrame(true);
 

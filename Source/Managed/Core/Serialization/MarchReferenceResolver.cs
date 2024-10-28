@@ -1,22 +1,36 @@
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Globalization;
 
 namespace March.Core.Serialization
 {
-    internal readonly ref struct MarchReferenceScope(MarchReferenceResolver resolver)
+    internal readonly ref struct MarchReferenceScope
     {
+        private readonly JsonSerializer m_Serializer;
+        private readonly IReferenceResolver? m_PrevResolver;
+        private readonly PooledObject<MarchReferenceResolver> m_TempResolver;
+
+        public MarchReferenceScope(JsonSerializer serializer, ObjectPool<MarchReferenceResolver> resolverPool)
+        {
+            m_Serializer = serializer;
+            m_PrevResolver = serializer.ReferenceResolver;
+            m_TempResolver = resolverPool.Use();
+            m_Serializer.ReferenceResolver = m_TempResolver.Value;
+        }
+
         public void Dispose()
         {
-            resolver.ClearReferences();
+            m_Serializer.ReferenceResolver = m_PrevResolver;
+            m_TempResolver.Dispose();
         }
     }
 
-    internal sealed class MarchReferenceResolver : IReferenceResolver
+    internal sealed class MarchReferenceResolver : IReferenceResolver, IPoolableObject
     {
         private readonly Dictionary<string, object> m_KeyToValues = [];
         private readonly Dictionary<object, string> m_ValueToKeys = [];
 
-        public void ClearReferences()
+        public void Reset()
         {
             m_KeyToValues.Clear();
             m_ValueToKeys.Clear();

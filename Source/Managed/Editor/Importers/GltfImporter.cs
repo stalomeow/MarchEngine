@@ -4,7 +4,9 @@ using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using System.Numerics;
+using Material = March.Core.Rendering.Material;
 using Mesh = March.Core.Rendering.Mesh;
+using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.Importers
 {
@@ -13,7 +15,7 @@ namespace March.Editor.Importers
     {
         public override string DisplayName => "glTF Model Asset";
 
-        protected override int Version => base.Version + 1;
+        protected override int Version => base.Version + 6;
 
         public override string IconNormal => FontAwesome6.Cube;
 
@@ -54,7 +56,7 @@ namespace March.Editor.Importers
             }
         }
 
-        private static void CreateChildren(Gltf gltf, BinaryReader[] buffers, GameObject parent, int[]? nodeIndices)
+        private void CreateChildren(Gltf gltf, BinaryReader[] buffers, GameObject parent, int[]? nodeIndices)
         {
             if (nodeIndices == null || nodeIndices.Length == 0)
             {
@@ -127,7 +129,9 @@ namespace March.Editor.Importers
                 if (node.ShouldSerializeMesh())
                 {
                     MeshRenderer renderer = go.AddComponent<MeshRenderer>();
-                    renderer.Mesh = CreateMesh(gltf, buffers, gltf.Meshes[node.Mesh!.Value]);
+                    renderer.Materials.Clear();
+                    renderer.Mesh = CreateMesh(gltf, buffers, gltf.Meshes[node.Mesh!.Value], renderer.Materials);
+                    renderer.SyncNativeMaterials();
                 }
 
                 parent.transform.AddChild(go.transform);
@@ -135,7 +139,7 @@ namespace March.Editor.Importers
             }
         }
 
-        private static Mesh CreateMesh(Gltf gltf, BinaryReader[] buffers, glTFLoader.Schema.Mesh m)
+        private Mesh CreateMesh(Gltf gltf, BinaryReader[] buffers, glTFLoader.Schema.Mesh m, List<Material?> materials)
         {
             var mesh = new Mesh();
 
@@ -169,7 +173,18 @@ namespace March.Editor.Importers
                 }
 
                 using var indices = ListPool<ushort>.Get();
-                ReadUInt16List(gltf, buffers, gltf.Accessors[primitive.Indices!.Value], indices);
+
+                if (primitive.Indices != null)
+                {
+                    ReadUInt16List(gltf, buffers, gltf.Accessors[primitive.Indices.Value], indices);
+                }
+                else
+                {
+                    for (int i = 0; i < positions.Value.Count; i++)
+                    {
+                        indices.Value.Add((ushort)i);
+                    }
+                }
 
                 using var vertices = ListPool<MeshVertex>.Get();
 
@@ -201,6 +216,32 @@ namespace March.Editor.Importers
                 }
 
                 mesh.AddSubMesh(vertices.Value, indices.Value);
+
+                if (primitive.Material == null)
+                {
+                    materials.Add(null);
+                }
+                else
+                {
+                    var mat = new Material();
+                    materials.Add(mat);
+
+                    mat.Shader = AssetDatabase.Load<Shader>("Engine/Shaders/BlinnPhong.shader");
+
+                    var matData = gltf.Materials[primitive.Material.Value];
+
+                    if (matData.PbrMetallicRoughness.BaseColorTexture != null)
+                    {
+                        int? sourceIndex = gltf.Textures[matData.PbrMetallicRoughness.BaseColorTexture.Index].Source;
+
+                        if (sourceIndex != null)
+                        {
+                            string uri = gltf.Images[sourceIndex.Value].Uri;
+                            var tex = AssetDatabase.Load<Texture>(Path.Combine(Path.GetDirectoryName(AssetPath)!, uri).ValidatePath());
+                            mat.SetTexture("_DiffuseMap", tex);
+                        }
+                    }
+                }
             }
 
             return mesh;

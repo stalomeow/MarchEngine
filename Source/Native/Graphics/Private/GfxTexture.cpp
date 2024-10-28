@@ -148,12 +148,18 @@ namespace march
         if (s_pWhiteTexture == nullptr)
         {
             s_pWhiteTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
-            s_pBlackTexture->SetIsSRGB(true);
+            s_pWhiteTexture->SetIsSRGB(true);
             s_pWhiteTexture->LoadFromSource("DefaultWhiteTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
             s_pWhiteTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
         return s_pWhiteTexture.get();
+    }
+
+    void GfxTexture::DestroyDefaultTextures()
+    {
+        s_pBlackTexture.reset();
+        s_pWhiteTexture.reset();
     }
 
     GfxTexture2D::GfxTexture2D(GfxDevice* device) : GfxTexture(device), m_IsSRGB(true), m_MetaData{}

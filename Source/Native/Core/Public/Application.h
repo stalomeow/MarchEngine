@@ -32,6 +32,8 @@ namespace march
         float GetElapsedTime() const;
         uint64_t GetFrameCount() const;
 
+        std::string SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const;
+
         static void ShowErrorMessageBox(const std::string& message);
 
         virtual const std::string& GetDataPath() const = 0;

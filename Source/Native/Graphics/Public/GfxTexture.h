@@ -52,6 +52,7 @@ namespace march
 
         static GfxTexture* GetDefaultBlack();
         static GfxTexture* GetDefaultWhite();
+        static void DestroyDefaultTextures();
 
     private:
         void UpdateSampler() const;

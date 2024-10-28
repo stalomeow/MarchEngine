@@ -57,19 +57,13 @@ namespace March.Core.Binding
             }
         }
 
-        public static implicit operator NativeArray<T>(T[] value) => new() { Data = New(value) };
-
         public static implicit operator NativeArray<T>(Span<T> value) => new() { Data = New(value) };
 
-        public static explicit operator NativeArray<T>(nint data) => new() { Data = data };
+        public static implicit operator NativeArray<T>(T[] value) => new() { Data = New(value) };
 
-        public static nint New(T[] array)
-        {
-            fixed (T* p = array)
-            {
-                return NativeArrayBindings.MarshalArray((byte*)p, array.Length * sizeof(T));
-            }
-        }
+        public static implicit operator NativeArray<T>(List<T> value) => new() { Data = New(value) };
+
+        public static explicit operator NativeArray<T>(nint data) => new() { Data = data };
 
         public static nint New(Span<T> span)
         {
@@ -77,6 +71,16 @@ namespace March.Core.Binding
             {
                 return NativeArrayBindings.MarshalArray((byte*)p, span.Length * sizeof(T));
             }
+        }
+
+        public static nint New(T[] array)
+        {
+            return New(array.AsSpan());
+        }
+
+        public static nint New(List<T> list)
+        {
+            return New(CollectionsMarshal.AsSpan(list));
         }
 
         public static T[] Get(nint data)

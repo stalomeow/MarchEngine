@@ -1,6 +1,6 @@
 namespace March.Core
 {
-    public readonly ref struct PooledObject<T>(ObjectPool<T> pool) where T : class
+    public readonly ref struct PooledObject<T>(BaseObjectPool<T> pool) where T : class
     {
         public T Value { get; } = pool.Rent();
 
@@ -12,7 +12,7 @@ namespace March.Core
         public static implicit operator T(PooledObject<T> pooled) => pooled.Value;
     }
 
-    public abstract class ObjectPool<T> where T : class
+    public abstract class BaseObjectPool<T> where T : class
     {
         private readonly Stack<T> m_Values = [];
 
@@ -39,7 +39,19 @@ namespace March.Core
         protected abstract void Reset(T value);
     }
 
-    public sealed class ListPool<T> : ObjectPool<List<T>>
+    public interface IPoolableObject
+    {
+        void Reset();
+    }
+
+    public sealed class ObjectPool<T> : BaseObjectPool<T> where T : class, IPoolableObject, new()
+    {
+        protected override T Create() => new();
+
+        protected override void Reset(T value) => value.Reset();
+    }
+
+    public sealed class ListPool<T> : BaseObjectPool<List<T>>
     {
         public static ListPool<T> Shared { get; } = new ListPool<T>();
 
@@ -50,7 +62,7 @@ namespace March.Core
         protected override void Reset(List<T> value) => value.Clear();
     }
 
-    public sealed class HashSetPool<T> : ObjectPool<HashSet<T>>
+    public sealed class HashSetPool<T> : BaseObjectPool<HashSet<T>>
     {
         public static HashSetPool<T> Shared { get; } = new HashSetPool<T>();
 
@@ -61,7 +73,7 @@ namespace March.Core
         protected override void Reset(HashSet<T> value) => value.Clear();
     }
 
-    public sealed class DictionaryPool<TKey, TValue> : ObjectPool<Dictionary<TKey, TValue>> where TKey : notnull
+    public sealed class DictionaryPool<TKey, TValue> : BaseObjectPool<Dictionary<TKey, TValue>> where TKey : notnull
     {
         public static DictionaryPool<TKey, TValue> Shared { get; } = new DictionaryPool<TKey, TValue>();
 

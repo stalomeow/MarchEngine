@@ -56,7 +56,7 @@ float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
 
 float3 BlinnPhong(float3 positionWS, float3 normalWS, float3 viewDirWS, float3 diffuseAlbedo, float3 fresnelR0, float shininess)
 {
-    float3 result = 0;
+    float3 result = 0.1 * diffuseAlbedo;
     float m = shininess * 256.0;
 
     for (int i = 0; i < _LightCount; i++)
@@ -71,9 +71,9 @@ float3 BlinnPhong(float3 positionWS, float3 normalWS, float3 viewDirWS, float3 d
         float3 fresnelFactor = SchlickFresnel(fresnelR0, H, light.direction);
         float3 specularAlbedo = roughnessFactor * fresnelFactor;
 
-        //// Our spec formula goes outside [0,1] range, but we are
-        //// doing LDR rendering.  So scale it down a bit.
-        //specularAlbedo /= (specularAlbedo + 1.0);
+        // Our spec formula goes outside [0,1] range, but we are
+        // doing LDR rendering.  So scale it down a bit.
+        specularAlbedo /= (specularAlbedo + 1.0);
 
         result += (diffuseAlbedo + specularAlbedo) * light.color * light.attenuation * NdotL;
     }

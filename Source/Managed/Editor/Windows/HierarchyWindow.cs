@@ -62,6 +62,26 @@ namespace March.Editor.Windows
                     SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
                 }
             });
+
+            s_ContextMenu.AddMenuItem("Load Fox", (ref object? arg) =>
+            {
+                GameObject? go = AssetDatabase.Load<GameObject>("Assets/Models/Fox/Fox.gltf");
+
+                if (go != null)
+                {
+                    SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
+                }
+            });
+
+            s_ContextMenu.AddMenuItem("Create Material", (ref object? arg) =>
+            {
+                string path = Application.SaveFilePanelInProject("Save Material", "New Material", "mat");
+
+                if (!string.IsNullOrEmpty(path))
+                {
+                    AssetDatabase.Create(path, new Material());
+                }
+            });
         }
 
         public HierarchyWindow() : base($"{FontAwesome6.BarsStaggered} Hierarchy")

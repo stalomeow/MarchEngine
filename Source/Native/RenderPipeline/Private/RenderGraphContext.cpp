@@ -246,32 +246,59 @@ namespace march
         cmd->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
     }
 
-    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::vector<int32_t>& passIndices)
+    struct DrawCall
+    {
+        size_t ObjectIndex;
+        uint32_t SubMeshIndex;
+        Material* Mat;
+        int32_t ShaderPassIndex;
+    };
+
+    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, std::function<int32_t(Shader*)> getPassIndex)
     {
         if (numObjects <= 0)
         {
             return;
         }
 
-        std::unordered_map<ID3D12PipelineState*, std::vector<size_t>> psoMap{}; // 优化 pso 切换
+        std::unordered_map<ID3D12PipelineState*, std::vector<DrawCall>> psoMap{}; // 优化 pso 切换
         uint32_t activeObjectCount = 0;
 
         for (size_t i = 0; i < numObjects; i++)
         {
             const RenderObject* obj = objects[i];
 
-            if (obj->GetIsActiveAndEnabled() && obj->Mesh != nullptr && obj->Mat != nullptr)
+            if (obj->GetIsActiveAndEnabled() && obj->Mesh != nullptr && !obj->Materials.empty())
             {
-                int32_t shaderPassIndex = passIndices[i];
+                bool hasDrawCall = false;
 
-                if (shaderPassIndex < 0)
+                for (uint32_t j = 0; j < obj->Mesh->GetSubMeshCount(); j++)
                 {
-                    continue;
+                    Material* mat = j < obj->Materials.size() ? obj->Materials[j] : obj->Materials.back();
+
+                    if (mat == nullptr || mat->GetShader() == nullptr)
+                    {
+                        continue;
+                    }
+
+                    int32_t shaderPassIndex = getPassIndex(mat->GetShader());
+
+                    if (shaderPassIndex < 0)
+                    {
+                        continue;
+                    }
+
+                    ShaderPass* pass = mat->GetShader()->GetPass(shaderPassIndex);
+                    ID3D12PipelineState* pso = GetPipelineState(obj->Mesh->GetPipelineInputDescId(), pass);
+
+                    DrawCall& dc = psoMap[pso].emplace_back();
+                    dc.ObjectIndex = i;
+                    dc.SubMeshIndex = j;
+                    dc.Mat = mat;
+                    dc.ShaderPassIndex = shaderPassIndex;
+                    hasDrawCall = true;
                 }
 
-                ShaderPass* pass = obj->Mat->GetShader()->GetPass(shaderPassIndex);
-                ID3D12PipelineState* pso = GetPipelineState(obj->Mesh->GetPipelineInputDescId(), pass);
-                psoMap[pso].push_back(i);
                 activeObjectCount++;
             }
         }
@@ -283,32 +310,43 @@ namespace march
 
         GfxDevice* device = GetDevice();
         auto cbPerObj = device->AllocateTransientUploadMemory(sizeof(PerObjectConstants), activeObjectCount, GfxConstantBuffer::Alignment);
-        uint32_t cbIndex = 0;
 
-        for (auto& [pso, objIndices] : psoMap)
+        std::unordered_map<size_t, uint32_t> cbIndexMap{}; // obj index -> cb Index
+
+        uint32_t nextCbIndex = 0;
+        for (auto& [pso, drawCalls] : psoMap)
         {
-            for (size_t i = 0; i < objIndices.size(); i++)
+            for (const DrawCall& dc : drawCalls)
             {
-                const RenderObject* obj = objects[objIndices[i]];
-                int32_t shaderPassIndex = passIndices[objIndices[i]];
-                ShaderPass* pass = obj->Mat->GetShader()->GetPass(shaderPassIndex);
+                if (cbIndexMap.count(dc.ObjectIndex) > 0)
+                {
+                    continue;
+                }
 
-                PerObjectConstants& consts = *reinterpret_cast<PerObjectConstants*>(cbPerObj.GetMappedData(cbIndex));
-                XMStoreFloat4x4(&consts.WorldMatrix, obj->GetTransform()->LoadLocalToWorldMatrix());
+                PerObjectConstants& consts = *reinterpret_cast<PerObjectConstants*>(cbPerObj.GetMappedData(nextCbIndex));
+                XMStoreFloat4x4(&consts.WorldMatrix, objects[dc.ObjectIndex]->GetTransform()->LoadLocalToWorldMatrix());
+                cbIndexMap[dc.ObjectIndex] = nextCbIndex;
+                nextCbIndex++;
+            }
+        }
+
+        for (auto& [pso, drawCalls] : psoMap)
+        {
+            for (const DrawCall& dc : drawCalls)
+            {
+                const RenderObject* obj = objects[dc.ObjectIndex];
+                ShaderPass* pass = dc.Mat->GetShader()->GetPass(dc.ShaderPassIndex);
 
                 SetPipelineStateAndRootSignature(pso, pass);
-                BindResources(obj->Mat, shaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndex));
-                DrawSubMeshes(GetD3D12GraphicsCommandList(), m_CurrentPrimitiveTopology, obj->Mesh, -1);
-
-                cbIndex++;
+                BindResources(dc.Mat, dc.ShaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndexMap[dc.ObjectIndex]));
+                DrawSubMeshes(GetD3D12GraphicsCommandList(), m_CurrentPrimitiveTopology, obj->Mesh, dc.SubMeshIndex);
             }
         }
     }
 
     void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, int32_t shaderPassIndex)
     {
-        std::vector<int32_t> passIndices(numObjects, shaderPassIndex);
-        DrawObjects(numObjects, objects, passIndices);
+        DrawObjects(numObjects, objects, [shaderPassIndex](Shader* shader) {return shaderPassIndex; });
     }
 
     void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, const std::string& lightMode, int32_t subMeshIndex)
@@ -337,20 +375,10 @@ namespace march
 
     void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::string& lightMode)
     {
-        // DrawObjects 时，如果 passIndex 为 -1，则不绘制
-        std::vector<int32_t> passIndices(numObjects, -1);
-
-        for (size_t i = 0; i < numObjects; i++)
+        DrawObjects(numObjects, objects, [&lightMode](Shader* shader)
         {
-            const RenderObject* obj = objects[i];
-
-            if (obj->Mat != nullptr && obj->Mat->GetShader() != nullptr)
-            {
-                passIndices[i] = obj->Mat->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
-            }
-        }
-
-        DrawObjects(numObjects, objects, passIndices);
+            return shader->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+        });
     }
 
     void RenderGraphContext::SetRenderTargets(int32_t numColorTargets, GfxRenderTexture* const* colorTargets,

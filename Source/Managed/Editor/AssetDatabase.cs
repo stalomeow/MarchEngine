@@ -194,7 +194,9 @@ namespace March.Editor
 
             PersistentManager.Save(asset, fullPath);
             MustCreateAssetImporter(path, asset);
-            OnImported?.Invoke(category, path);
+
+            // 通过 FileSystemWatcher 的 Create 事件触发 OnImported 事件
+            // OnImported?.Invoke(category, path);
         }
 
         private static void OnAssetChanged(FileSystemEventArgs e)
@@ -299,11 +301,6 @@ namespace March.Editor
             if (category == AssetCategory.Unknown)
             {
                 Debug.LogWarning($"Attempting to create and import an asset whose path is unknown: {e.FullPath}");
-                return;
-            }
-
-            if (s_Path2Importers.ContainsKey(path))
-            {
                 return;
             }
 

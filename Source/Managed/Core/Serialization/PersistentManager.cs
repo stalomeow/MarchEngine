@@ -10,7 +10,7 @@ namespace March.Core.Serialization
     public static class PersistentManager
     {
         private static readonly MarchPropertyJsonConverter s_PropertyJsonConverter = new();
-        private static readonly MarchReferenceResolver s_ReferenceResolver = new();
+        private static readonly ObjectPool<MarchReferenceResolver> s_ReferenceResolverPool = new();
         private static readonly JsonSerializer s_JsonSerializer = JsonSerializer.CreateDefault(new JsonSerializerSettings
         {
             ContractResolver = new ContractResolver(),
@@ -19,7 +19,6 @@ namespace March.Core.Serialization
             ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
             ObjectCreationHandling = ObjectCreationHandling.Replace, // 保证不会重新添加集合元素
             PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-            ReferenceResolverProvider = () => s_ReferenceResolver,
         });
 
         public static JsonContract ResolveJsonContract(Type type)
@@ -34,7 +33,7 @@ namespace March.Core.Serialization
 
         public static T Load<T>(TextReader textReader) where T : MarchObject
         {
-            using (new MarchReferenceScope(s_ReferenceResolver))
+            using (new MarchReferenceScope(s_JsonSerializer, s_ReferenceResolverPool))
             {
                 using var jsonReader = new JsonTextReader(textReader);
                 return s_JsonSerializer.Deserialize<T>(jsonReader) ?? throw new LoadPersistentObjectException($"Failed to Load {nameof(MarchObject)}");
@@ -76,7 +75,7 @@ namespace March.Core.Serialization
 
         public static void Overwrite(TextReader textReader, MarchObject target)
         {
-            using (new MarchReferenceScope(s_ReferenceResolver))
+            using (new MarchReferenceScope(s_JsonSerializer, s_ReferenceResolverPool))
             {
                 using var jsonReader = new JsonTextReader(textReader);
                 s_JsonSerializer.Populate(jsonReader, target);
@@ -91,7 +90,7 @@ namespace March.Core.Serialization
 
         public static void Save(MarchObject obj, TextWriter textWriter)
         {
-            using (new MarchReferenceScope(s_ReferenceResolver))
+            using (new MarchReferenceScope(s_JsonSerializer, s_ReferenceResolverPool))
             {
                 using var jsonWriter = new JsonTextWriter(textWriter);
                 s_JsonSerializer.Serialize(jsonWriter, obj, typeof(MarchObject));

@@ -50,8 +50,8 @@ namespace March.Core.Rendering
 
         public void AddSubMesh(List<MeshVertex> vertices, List<ushort> indices)
         {
-            using NativeArray<MeshVertex> v = CollectionsMarshal.AsSpan(vertices);
-            using NativeArray<ushort> i = CollectionsMarshal.AsSpan(indices);
+            using NativeArray<MeshVertex> v = vertices;
+            using NativeArray<ushort> i = indices;
 
             GfxMesh_AddSubMesh(NativePtr, v.Data, i.Data);
         }
@@ -68,51 +68,84 @@ namespace March.Core.Rendering
 
         #region Serialization
 
-        [JsonProperty("SubMeshes")]
-        private SubMesh[] SubMeshesSerializationOnly
+        /// <summary>
+        /// 仅用于序列化
+        /// </summary>
+        [JsonProperty]
+        private byte[] CompressedData
         {
             get
             {
-                nint subMeshes = GfxMesh_GetSubMeshes(NativePtr);
-                return NativeArray<SubMesh>.GetAndFree(subMeshes);
+                using var subMeshes = (NativeArray<SubMesh>)GfxMesh_GetSubMeshes(NativePtr);
+                using var vertices = (NativeArray<MeshVertex>)GfxMesh_GetVertices(NativePtr);
+                using var indices = (NativeArray<ushort>)GfxMesh_GetIndices(NativePtr);
+
+                using var ms = new MemoryStream();
+                using var writer = new BinaryWriter(ms);
+
+                writer.Write(subMeshes.Length);
+                writer.Write(vertices.Length);
+                writer.Write(indices.Length);
+
+                for (int i = 0; i < subMeshes.Length; i++)
+                {
+                    ref SubMesh m = ref subMeshes[i];
+                    writer.Write(m.BaseVertexLocation);
+                    writer.Write(m.StartIndexLocation);
+                    writer.Write(m.IndexCount);
+                }
+
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    ref MeshVertex v = ref vertices[i];
+                    writer.Write(v.Position);
+                    writer.Write(v.Normal);
+                    writer.Write(v.Tangent);
+                    writer.Write(v.UV);
+                }
+
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    writer.Write(indices[i]);
+                }
+
+                writer.Flush();
+                return ms.ToArray();
             }
 
             set
             {
-                using NativeArray<SubMesh> v = value;
-                GfxMesh_SetSubMeshes(NativePtr, v.Data);
-            }
-        }
+                using var reader = new BinaryReader(new MemoryStream(value, writable: false));
 
-        [JsonProperty("Vertices")]
-        private MeshVertex[] VerticesSerializationOnly
-        {
-            get
-            {
-                nint vertices = GfxMesh_GetVertices(NativePtr);
-                return NativeArray<MeshVertex>.GetAndFree(vertices);
-            }
+                using var subMeshes = new NativeArray<SubMesh>(reader.ReadInt32());
+                using var vertices = new NativeArray<MeshVertex>(reader.ReadInt32());
+                using var indices = new NativeArray<ushort>(reader.ReadInt32());
 
-            set
-            {
-                using NativeArray<MeshVertex> v = value;
-                GfxMesh_SetVertices(NativePtr, v.Data);
-            }
-        }
+                for (int i = 0; i < subMeshes.Length; i++)
+                {
+                    ref SubMesh m = ref subMeshes[i];
+                    m.BaseVertexLocation = reader.ReadInt32();
+                    m.StartIndexLocation = reader.ReadUInt32();
+                    m.IndexCount = reader.ReadUInt32();
+                }
 
-        [JsonProperty("Indices")]
-        private ushort[] IndicesSerializationOnly
-        {
-            get
-            {
-                nint indices = GfxMesh_GetIndices(NativePtr);
-                return NativeArray<ushort>.GetAndFree(indices);
-            }
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    ref MeshVertex v = ref vertices[i];
+                    v.Position = reader.ReadVector3();
+                    v.Normal = reader.ReadVector3();
+                    v.Tangent = reader.ReadVector3();
+                    v.UV = reader.ReadVector2();
+                }
 
-            set
-            {
-                using NativeArray<ushort> v = value;
-                GfxMesh_SetIndices(NativePtr, v.Data);
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    indices[i] = reader.ReadUInt16();
+                }
+
+                GfxMesh_SetSubMeshes(NativePtr, subMeshes.Data);
+                GfxMesh_SetVertices(NativePtr, vertices.Data);
+                GfxMesh_SetIndices(NativePtr, indices.Data);
             }
         }
 
