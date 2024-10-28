@@ -123,7 +123,7 @@ namespace march
         {
             s_pBlackTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
             s_pBlackTexture->SetIsSRGB(true);
-            s_pBlackTexture->LoadFromDDS("DefaultBlackTexture", ddsData, sizeof(ddsData));
+            s_pBlackTexture->LoadFromSource("DefaultBlackTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
             s_pBlackTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
@@ -149,7 +149,7 @@ namespace march
         {
             s_pWhiteTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
             s_pBlackTexture->SetIsSRGB(true);
-            s_pWhiteTexture->LoadFromDDS("DefaultWhiteTexture", ddsData, sizeof(ddsData));
+            s_pWhiteTexture->LoadFromSource("DefaultWhiteTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
             s_pWhiteTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
@@ -180,14 +180,24 @@ namespace march
         m_IsSRGB = isSRGB;
     }
 
-    void GfxTexture2D::LoadFromDDS(const std::string& name, const void* pSourceDDS, uint32_t size)
+    void GfxTexture2D::LoadFromSource(const std::string& name, GfxTexture2DSourceType sourceType, const void* pSource, uint32_t size)
     {
         ReleaseD3D12Resource();
 
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
 
         ScratchImage image;
-        GFX_HR(LoadFromDDSMemory(pSourceDDS, static_cast<size_t>(size), DDS_FLAGS_NONE, &m_MetaData, image));
+
+        switch (sourceType)
+        {
+        case GfxTexture2DSourceType::DDS:
+            GFX_HR(LoadFromDDSMemory(pSource, static_cast<size_t>(size), DDS_FLAGS_NONE, &m_MetaData, image));
+            break;
+
+        case GfxTexture2DSourceType::WIC:
+            GFX_HR(LoadFromWICMemory(pSource, static_cast<size_t>(size), WIC_FLAGS_NONE, &m_MetaData, image));
+            break;
+        }
 
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture
         // The CREATETEX_SRGB flag provides an option for working around gamma issues with content

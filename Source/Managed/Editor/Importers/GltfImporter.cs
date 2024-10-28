@@ -1,6 +1,7 @@
 using glTFLoader;
 using glTFLoader.Schema;
 using March.Core;
+using March.Core.IconFonts;
 using March.Core.Rendering;
 using System.Numerics;
 using Mesh = March.Core.Rendering.Mesh;
@@ -13,6 +14,8 @@ namespace March.Editor.Importers
         public override string DisplayName => "glTF Model Asset";
 
         protected override int Version => base.Version + 1;
+
+        public override string IconNormal => FontAwesome6.Cube;
 
         protected override bool UseCache => true;
 

@@ -12,10 +12,10 @@ NATIVE_EXPORT_AUTO Texture_Delete(cs<GfxTexture*> pTexture)
     delete pTexture;
 }
 
-NATIVE_EXPORT_AUTO Texture_SetDDSData(cs<GfxTexture*> pTexture, cs_string name, cs<void*> pSourceDDS, cs_int size)
+NATIVE_EXPORT_AUTO Texture_LoadFromSource(cs<GfxTexture*> pTexture, cs_string name, cs<GfxTexture2DSourceType> sourceType, cs<void*> pSource, cs_int size)
 {
     auto tex2D = reinterpret_cast<GfxTexture2D*>(pTexture.data);
-    tex2D->LoadFromDDS(name, pSourceDDS, static_cast<uint32_t>(size));
+    tex2D->LoadFromSource(name, sourceType, pSource, static_cast<uint32_t>(size));
 }
 
 NATIVE_EXPORT_AUTO Texture_SetFilterMode(cs<GfxTexture*> pTexture, cs<GfxFilterMode> mode)

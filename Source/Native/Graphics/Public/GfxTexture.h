@@ -66,6 +66,12 @@ namespace march
         static std::unique_ptr<GfxTexture2D> s_pWhiteTexture;
     };
 
+    enum class GfxTexture2DSourceType
+    {
+        DDS = 0,
+        WIC = 1,
+    };
+
     class GfxTexture2D : public GfxTexture
     {
     public:
@@ -76,7 +82,7 @@ namespace march
         uint32_t GetHeight() const override;
         bool GetIsSRGB() const;
         void SetIsSRGB(bool isSRGB);
-        void LoadFromDDS(const std::string& name, const void* pSourceDDS, uint32_t size);
+        void LoadFromSource(const std::string& name, GfxTexture2DSourceType sourceType, const void* pSource, uint32_t size);
 
         const DirectX::TexMetadata& GetMetaData() const { return m_MetaData; }
 

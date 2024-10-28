@@ -18,13 +18,22 @@ namespace March.Core.Rendering
         Mirror = 2,
     }
 
+    public enum Texture2DSourceType
+    {
+        DDS = 0,
+        WIC = 1,
+    }
+
     public partial class Texture : NativeMarchObject
     {
         [JsonProperty]
         private string m_SerializedName = "Texture";
 
         [JsonProperty]
-        private byte[] m_SerializedDDSData = [];
+        private byte[] m_SourceData = [];
+
+        [JsonProperty]
+        internal Texture2DSourceType SourceType { get; set; }
 
         [JsonProperty]
         public bool IsSRGB
@@ -54,26 +63,26 @@ namespace March.Core.Rendering
             Texture_Delete(NativePtr);
         }
 
-        public unsafe void SetDDSData(string name, byte[] ddsData)
+        public unsafe void LoadFromSource(string name, byte[] source)
         {
             using NativeString n = name;
 
-            fixed (byte* p = ddsData)
+            fixed (byte* p = source)
             {
-                Texture_SetDDSData(NativePtr, n.Data, (nint)p, ddsData.Length);
+                Texture_LoadFromSource(NativePtr, n.Data, SourceType, (nint)p, source.Length);
             }
         }
 
-        public void SetSerializationData(string name, byte[] ddsData)
+        public void SetSerializationData(string name, byte[] source)
         {
             m_SerializedName = name;
-            m_SerializedDDSData = ddsData;
+            m_SourceData = source;
         }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            SetDDSData(m_SerializedName, m_SerializedDDSData);
+            LoadFromSource(m_SerializedName, m_SourceData);
             SetSerializationData(string.Empty, []);
         }
 
@@ -86,7 +95,7 @@ namespace March.Core.Rendering
         private static partial void Texture_Delete(nint pTexture);
 
         [NativeFunction]
-        private static partial void Texture_SetDDSData(nint pTexture, nint name, nint pSourceDDS, int size);
+        private static partial void Texture_LoadFromSource(nint pTexture, nint name, Texture2DSourceType sourceType, nint pSource, int size);
 
         [NativeFunction]
         private static partial void Texture_SetFilterMode(nint pTexture, FilterMode filterMode);
