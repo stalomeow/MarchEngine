@@ -3,13 +3,14 @@ using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Core.Serialization;
+using March.Editor.AssetPipeline;
 using March.Editor.ShaderLab;
 using March.Editor.ShaderLab.Internal;
 using Newtonsoft.Json;
 using System.Collections.Immutable;
 using System.Text;
 
-namespace March.Editor.Importers
+namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter(".shader")]
     internal class ShaderImporter : ExternalAssetImporter
@@ -32,8 +33,8 @@ namespace March.Editor.Importers
 
         public override bool NeedReimportAsset()
         {
-            return (m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer)
-                || (m_ColorSpace != GraphicsSettings.ColorSpace)
+            return m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer
+                || m_ColorSpace != GraphicsSettings.ColorSpace
                 || base.NeedReimportAsset();
         }
 

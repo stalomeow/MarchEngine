@@ -1,10 +1,10 @@
 using March.Core;
 using March.Core.Rendering;
 using March.Core.Serialization;
-using March.Editor.Importers;
+using March.Editor.AssetPipeline;
+using March.Editor.AssetPipeline.Importers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 
 namespace March.Editor
 {
@@ -17,9 +17,6 @@ namespace March.Editor
             public NativeMarchObject Object;
             public int RefCount;
         }
-
-        private static readonly Dictionary<string, Type> s_AssetImporterTypeMap = new();
-        private static int? s_AssetImporterTypeCacheVersion;
 
         // TODO: use case-insensitive dictionary
         private static readonly Dictionary<string, string> s_Guid2PathMap = new();
@@ -131,7 +128,7 @@ namespace March.Editor
         public static string? GetGuidByPath(string path)
         {
             AssetImporter? importer = GetAssetImporter(path);
-            return importer?.AssetGuid;
+            return importer?.PersistentGuid;
         }
 
         public static string? GetPathByGuid(string guid)
@@ -213,7 +210,7 @@ namespace March.Editor
 
             AssetImporter? importer = GetAssetImporter(path);
 
-            if (importer != null && importer.NeedReimportAsset())
+            if (importer != null && importer.NeedReimport())
             {
                 importer.SaveImporterAndReimportAsset();
                 OnChanged?.Invoke(category, path);
@@ -343,7 +340,7 @@ namespace March.Editor
                 File.Delete(importer.ImporterFullPath);
             }
 
-            s_Guid2PathMap.Remove(importer.AssetGuid);
+            s_Guid2PathMap.Remove(importer.PersistentGuid);
             s_Path2Importers.Remove(importer.AssetPath);
         }
 
@@ -484,68 +481,10 @@ namespace March.Editor
                 isNewlyCreated = true;
                 importer.Initialize(category, path, assetFullPath, importerFullPath);
                 s_Path2Importers.Add(path, importer);
-                s_Guid2PathMap[importer.AssetGuid] = path;
+                s_Guid2PathMap[importer.PersistentGuid] = path;
             }
 
             return importer;
-        }
-
-        private static bool TryCreateAssetImporter(string fullPath, [NotNullWhen(true)] out AssetImporter? importer)
-        {
-            RebuildAssetImporterTypeMapIfNeeded();
-
-            // 文件夹需要特殊处理
-            if (Directory.Exists(fullPath))
-            {
-                importer = new FolderImporter();
-                return true;
-            }
-
-            string extension = Path.GetExtension(fullPath);
-
-            if (!s_AssetImporterTypeMap.TryGetValue(extension, out Type? type))
-            {
-                importer = null;
-                return false;
-            }
-
-            try
-            {
-                importer = Activator.CreateInstance(type) as AssetImporter;
-                return importer != null;
-            }
-            catch
-            {
-                importer = null;
-                return false;
-            }
-        }
-
-        private static void RebuildAssetImporterTypeMapIfNeeded()
-        {
-            if (s_AssetImporterTypeCacheVersion == TypeCache.Version)
-            {
-                return;
-            }
-
-            s_AssetImporterTypeMap.Clear();
-
-            foreach (Type type in TypeCache.GetTypesDerivedFrom<AssetImporter>())
-            {
-                var attr = type.GetCustomAttribute<CustomAssetImporterAttribute>();
-
-                if (attr == null)
-                {
-                    continue;
-                }
-
-                foreach (string extension in attr.Extensions)
-                {
-                    s_AssetImporterTypeMap[extension] = type;
-                }
-            }
-
-            s_AssetImporterTypeCacheVersion = TypeCache.Version;
         }
 
         [return: NotNullIfNotNull(nameof(path))]

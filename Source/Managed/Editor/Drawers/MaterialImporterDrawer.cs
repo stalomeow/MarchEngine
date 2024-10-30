@@ -1,7 +1,7 @@
 using March.Core;
 using March.Core.Rendering;
 using March.Core.Serialization;
-using March.Editor.Importers;
+using March.Editor.AssetPipeline.Importers;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
 

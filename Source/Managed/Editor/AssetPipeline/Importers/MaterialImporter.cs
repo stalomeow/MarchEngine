@@ -1,8 +1,9 @@
 using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Editor.AssetPipeline;
 
-namespace March.Editor.Importers
+namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter(".mat")]
     internal class MaterialImporter : DirectAssetImporter

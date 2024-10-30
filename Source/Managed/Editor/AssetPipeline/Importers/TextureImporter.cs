@@ -2,9 +2,10 @@ using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Core.Serialization;
+using March.Editor.AssetPipeline;
 using Newtonsoft.Json;
 
-namespace March.Editor.Importers
+namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter(".dds", ".jpg", ".jpeg", ".png")]
     internal class TextureImporter : ExternalAssetImporter

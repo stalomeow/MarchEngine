@@ -3,14 +3,15 @@ using glTFLoader.Schema;
 using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
+using March.Editor.AssetPipeline;
 using System.Numerics;
 using Material = March.Core.Rendering.Material;
 using Mesh = March.Core.Rendering.Mesh;
 using Texture = March.Core.Rendering.Texture;
 
-namespace March.Editor.Importers
+namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter(".gltf")]
+    [CustomAssetImporter("glTF Model Asset", ".gltf")]
     internal class GltfImporter : ExternalAssetImporter
     {
         public override string DisplayName => "glTF Model Asset";

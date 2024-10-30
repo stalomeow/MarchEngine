@@ -1,7 +1,8 @@
 using March.Core;
 using March.Core.IconFonts;
+using March.Editor.AssetPipeline;
 
-namespace March.Editor.Importers
+namespace March.Editor.AssetPipeline.Importers
 {
     /// <summary>
     /// 特殊的 <see cref="AssetImporter"/>，用于导入文件夹
