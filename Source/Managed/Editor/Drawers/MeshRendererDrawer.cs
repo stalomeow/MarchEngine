@@ -1,5 +1,7 @@
+using March.Core;
 using March.Core.Rendering;
 using Newtonsoft.Json.Serialization;
+using System.Text;
 
 namespace March.Editor.Drawers
 {
@@ -24,7 +26,10 @@ namespace March.Editor.Drawers
 
                 Material? material = component.Materials[i];
 
-                if (EditorGUI.MarchObjectField($"Material {i}", string.Empty, ref material))
+                using var label = StringBuilderPool.Get();
+                label.Value.Append("Material").Append(i);
+
+                if (EditorGUI.MarchObjectField(label, string.Empty, ref material))
                 {
                     component.Materials[i] = material;
                     areMaterialsChanged = true;

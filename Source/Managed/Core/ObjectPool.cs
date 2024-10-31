@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace March.Core
 {
     public readonly ref struct PooledObject<T>(BaseObjectPool<T> pool) where T : class
@@ -82,5 +84,16 @@ namespace March.Core
         protected override Dictionary<TKey, TValue> Create() => [];
 
         protected override void Reset(Dictionary<TKey, TValue> value) => value.Clear();
+    }
+
+    public sealed class StringBuilderPool : BaseObjectPool<StringBuilder>
+    {
+        public static StringBuilderPool Shared { get; } = new StringBuilderPool();
+
+        public static PooledObject<StringBuilder> Get() => Shared.Use();
+
+        protected override StringBuilder Create() => new();
+
+        protected override void Reset(StringBuilder value) => value.Clear();
     }
 }

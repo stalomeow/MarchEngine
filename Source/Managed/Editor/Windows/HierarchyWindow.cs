@@ -95,7 +95,7 @@ namespace March.Editor.Windows
             base.OnDraw();
 
             Scene scene = SceneManager.CurrentScene;
-            string sceneLabel = $"{SceneImporter.SceneIcon} {scene.Name}###{scene.Name}";
+            using var sceneLabel = EditorGUIUtility.BuildIconText(SceneImporter.SceneIcon, scene.Name);
             using var selections = ListPool<GameObject>.Get();
 
             if (EditorGUI.CollapsingHeader(sceneLabel, defaultOpen: true))
@@ -133,7 +133,7 @@ namespace March.Editor.Windows
 
         private static void DrawGameObjectsRecursive(GameObject go, List<GameObject> selections, ref bool isAnyItemClicked)
         {
-            string label = $"{FontAwesome6.DiceD6} {go.Name}###GameObject";
+            using var label = EditorGUIUtility.BuildIconText(FontAwesome6.DiceD6, go.Name, "GameObject");
             bool isSelected = Selection.Active == go;
             bool isLeaf = go.transform.ChildCount == 0;
             bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);

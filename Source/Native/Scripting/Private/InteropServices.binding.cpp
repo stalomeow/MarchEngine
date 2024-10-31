@@ -11,6 +11,16 @@ NATIVE_EXPORT_AUTO UnmarshalString(cs_string s, cs<cs_byte_t**> ppOutData, cs<cs
     *pOutLen = static_cast<cs_int_t>(s.data->size());
 }
 
+NATIVE_EXPORT_AUTO NewString(cs_int len)
+{
+    retcs std::string(static_cast<size_t>(len), '\0');
+}
+
+NATIVE_EXPORT_AUTO SetStringData(cs_string s, cs_int offset, cs<cs_char_t*> p, cs_int count)
+{
+    s.data->replace(static_cast<size_t>(offset), static_cast<size_t>(count), Utf16ToUtf8(p.data, count));
+}
+
 NATIVE_EXPORT_AUTO FreeString(cs_string s)
 {
     cs_string::destroy(s);

@@ -32,14 +32,14 @@ namespace March.Editor
             True = 2,
         }
 
-        public static void PrefixLabel(string label, string tooltip)
+        public static void PrefixLabel(StringView label, StringView tooltip)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
             EditorGUI_PrefixLabel(l.Data, t.Data);
         }
 
-        public static bool IntField(string label, string tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0)
+        public static bool IntField(StringView label, StringView tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -50,7 +50,7 @@ namespace March.Editor
             }
         }
 
-        public static bool FloatField(string label, string tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool FloatField(StringView label, StringView tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -61,7 +61,7 @@ namespace March.Editor
             }
         }
 
-        public static bool Vector2Field(string label, string tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector2Field(StringView label, StringView tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -72,7 +72,7 @@ namespace March.Editor
             }
         }
 
-        public static bool Vector3Field(string label, string tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector3Field(StringView label, StringView tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -83,7 +83,7 @@ namespace March.Editor
             }
         }
 
-        public static bool Vector4Field(string label, string tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector4Field(StringView label, StringView tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -94,7 +94,7 @@ namespace March.Editor
             }
         }
 
-        public static bool ColorField(string label, string tooltip, ref Color value)
+        public static bool ColorField(StringView label, StringView tooltip, ref Color value)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -105,7 +105,7 @@ namespace March.Editor
             }
         }
 
-        public static bool FloatSliderField(string label, string tooltip, ref float value, float minValue, float maxValue)
+        public static bool FloatSliderField(StringView label, StringView tooltip, ref float value, float minValue, float maxValue)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -116,13 +116,13 @@ namespace March.Editor
             }
         }
 
-        public static bool CollapsingHeader(string label, bool defaultOpen = false)
+        public static bool CollapsingHeader(StringView label, bool defaultOpen = false)
         {
             using NativeString l = label;
             return EditorGUI_CollapsingHeader(l.Data, defaultOpen);
         }
 
-        public static bool EnumField(string label, string tooltip, ref Enum value)
+        public static bool EnumField(StringView label, StringView tooltip, ref Enum value)
         {
             Type enumType = value.GetType();
             string[] names = Enum.GetNames(enumType);
@@ -142,7 +142,7 @@ namespace March.Editor
             return false;
         }
 
-        public static bool EnumField<T>(string label, string tooltip, ref T value) where T : struct, Enum
+        public static bool EnumField<T>(StringView label, StringView tooltip, ref T value) where T : struct, Enum
         {
             string[] names = Enum.GetNames<T>();
             T[] values = Enum.GetValues<T>();
@@ -161,19 +161,19 @@ namespace March.Editor
             return false;
         }
 
-        public static bool CenterButton(string label, float width)
+        public static bool CenterButton(StringView label, float width)
         {
             using NativeString l = label;
             return EditorGUI_CenterButton(l.Data, width);
         }
 
-        public static void SeparatorText(string label)
+        public static void SeparatorText(StringView label)
         {
             using NativeString l = label;
             EditorGUI_SeparatorText(l.Data);
         }
 
-        public static bool TextField(string label, string tooltip, ref string text, string charBlacklist = "")
+        public static bool TextField(StringView label, StringView tooltip, ref string text, string charBlacklist = "")
         {
             using NativeString l = label;
             using NativeString tp = tooltip;
@@ -190,7 +190,7 @@ namespace March.Editor
             return false;
         }
 
-        public static bool Checkbox(string label, string tooltip, ref bool value)
+        public static bool Checkbox(StringView label, StringView tooltip, ref bool value)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -201,7 +201,7 @@ namespace March.Editor
             }
         }
 
-        public static void LabelField(string label1, string tooltip, string label2)
+        public static void LabelField(StringView label1, StringView tooltip, StringView label2)
         {
             using NativeString l1 = label1;
             using NativeString l2 = label2;
@@ -209,14 +209,14 @@ namespace March.Editor
             EditorGUI_LabelField(l1.Data, t.Data, l2.Data);
         }
 
-        public static bool Foldout(string label, string tooltip, bool defaultOpen = false)
+        public static bool Foldout(StringView label, StringView tooltip, bool defaultOpen = false)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
             return EditorGUI_Foldout(l.Data, t.Data, defaultOpen);
         }
 
-        public static bool FoldoutClosable(string label, string tooltip, ref bool visible)
+        public static bool FoldoutClosable(StringView label, StringView tooltip, ref bool visible)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -227,31 +227,31 @@ namespace March.Editor
             }
         }
 
-        internal static bool BeginPopup(string id)
+        internal static bool BeginPopup(StringView id)
         {
             using NativeString i = id;
             return EditorGUI_BeginPopup(i.Data);
         }
 
-        internal static bool MenuItem(string label, bool selected = false, bool enabled = true)
+        internal static bool MenuItem(StringView label, bool selected = false, bool enabled = true)
         {
             using NativeString l = label;
             return EditorGUI_MenuItem(l.Data, selected, enabled);
         }
 
-        internal static bool BeginMenu(string label, bool enabled = true)
+        internal static bool BeginMenu(StringView label, bool enabled = true)
         {
             using NativeString l = label;
             return EditorGUI_BeginMenu(l.Data, enabled);
         }
 
-        internal static void OpenPopup(string id)
+        internal static void OpenPopup(StringView id)
         {
             using NativeString i = id;
             EditorGUI_OpenPopup(i.Data);
         }
 
-        public static bool FloatRangeField(string label, string tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool FloatRangeField(StringView label, StringView tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -263,13 +263,13 @@ namespace March.Editor
             }
         }
 
-        public static bool BeginTreeNode(string label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        public static bool BeginTreeNode(StringView label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
         {
             using NativeString l = label;
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool IsTreeNodeOpen(string id)
+        public static bool IsTreeNodeOpen(StringView id)
         {
             using NativeString i = id;
             return EditorGUI_IsTreeNodeOpen(i.Data);
@@ -313,13 +313,13 @@ namespace March.Editor
             EditorGUI_DrawTexture(texture.NativePtr);
         }
 
-        public static bool Button(string label)
+        public static bool Button(StringView label)
         {
             using NativeString l = label;
             return EditorGUI_Button(l.Data);
         }
 
-        public static bool ButtonRight(string label)
+        public static bool ButtonRight(StringView label)
         {
             using NativeString l = label;
 
@@ -330,7 +330,7 @@ namespace March.Editor
             return EditorGUI_Button(l.Data);
         }
 
-        public static float CalcButtonWidth(string label)
+        public static float CalcButtonWidth(StringView label)
         {
             using NativeString l = label;
             return EditorGUI_CalcButtonWidth(l.Data);
@@ -346,7 +346,7 @@ namespace March.Editor
             set => EditorGUI_SetCursorPosX(value);
         }
 
-        public static bool BeginAssetTreeNode(string label, string assetPath, string assetGuid, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        public static bool BeginAssetTreeNode(StringView label, StringView assetPath, StringView assetGuid, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
         {
             using NativeString l = label;
             using NativeString a = assetPath;
@@ -354,7 +354,7 @@ namespace March.Editor
             return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, ag.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool MarchObjectField<T>(string label, string tooltip, ref T? asset) where T : MarchObject
+        public static bool MarchObjectField<T>(StringView label, StringView tooltip, ref T? asset) where T : MarchObject
         {
             MarchObject? obj = asset;
 
@@ -374,7 +374,7 @@ namespace March.Editor
             Temporary = 2
         };
 
-        public static bool MarchObjectField(string label, string tooltip, Type assetType, ref MarchObject? asset)
+        public static bool MarchObjectField(StringView label, StringView tooltip, Type assetType, ref MarchObject? asset)
         {
             MarchObjectState state;
             string? path;

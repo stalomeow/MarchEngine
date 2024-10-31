@@ -15,7 +15,9 @@ namespace March.Editor.Drawers
                 return false;
             }
 
-            if (!EditorGUI.Foldout($"{label} ({list.Count})###{label}", tooltip))
+            using var foldoutLabel = StringBuilderPool.Get();
+            foldoutLabel.Value.Append(label).Append('(').Append(list.Count).Append(')').AppendId(label);
+            if (!EditorGUI.Foldout(foldoutLabel, tooltip))
             {
                 return false;
             }
@@ -30,12 +32,16 @@ namespace March.Editor.Drawers
 
                     if (list.IsFixedSize)
                     {
-                        isOpen = EditorGUI.Foldout($"Element{i}", string.Empty);
+                        using var elementLabel = StringBuilderPool.Get();
+                        elementLabel.Value.Append("Element").Append(i);
+                        isOpen = EditorGUI.Foldout(elementLabel, string.Empty);
                     }
                     else
                     {
                         bool isVisible = true;
-                        isOpen = EditorGUI.FoldoutClosable($"Element{i}", string.Empty, ref isVisible);
+                        using var elementLabel = StringBuilderPool.Get();
+                        elementLabel.Value.Append("Element").Append(i);
+                        isOpen = EditorGUI.FoldoutClosable(elementLabel, string.Empty, ref isVisible);
 
                         if (!isVisible)
                         {

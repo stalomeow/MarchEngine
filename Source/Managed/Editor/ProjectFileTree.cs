@@ -36,7 +36,8 @@ namespace March.Editor
                 AssetImporter? importer = AssetDatabase.GetAssetImporter(node.FolderPath);
 
                 string icon;
-                if (EditorGUI.IsTreeNodeOpen($"###{name}"))
+                using var id = EditorGUIUtility.BuildId(name);
+                if (EditorGUI.IsTreeNodeOpen(id))
                 {
                     icon = importer?.MainAssetExpandedIcon ?? FolderImporter.FolderIconExpanded;
                 }
@@ -45,7 +46,7 @@ namespace March.Editor
                     icon = importer?.MainAssetNormalIcon ?? FolderImporter.FolderIconNormal;
                 }
 
-                string label = $"{icon} {name}###{name}";
+                using var label = EditorGUIUtility.BuildIconText(icon, name);
                 string assetPath = importer?.Location.AssetPath ?? string.Empty;
                 string assetGuid = importer?.MainAssetGuid ?? string.Empty;
                 bool selected = (importer != null) && (Selection.Active == importer);
@@ -70,9 +71,10 @@ namespace March.Editor
                 using var guids = ListPool<string>.Get();
                 importer.GetAssetGuids(guids);
 
-                string icon = EditorGUI.IsTreeNodeOpen($"###{name}") ? importer.MainAssetExpandedIcon : importer.MainAssetNormalIcon;
+                using var id = EditorGUIUtility.BuildId(name);
+                string icon = EditorGUI.IsTreeNodeOpen(id) ? importer.MainAssetExpandedIcon : importer.MainAssetNormalIcon;
 
-                string label = $"{icon} {name}###{name}";
+                using var label = EditorGUIUtility.BuildIconText(icon, name);
                 bool selected = Selection.Active == importer;
                 bool isLeaf = guids.Value.Count == 1;
                 bool open = EditorGUI.BeginAssetTreeNode(label,
@@ -99,8 +101,9 @@ namespace March.Editor
 
                                 string subAssetIcon = importer.GetAssetNormalIcon(guid)!;
                                 string subAssetName = importer.GetAssetName(guid)!;
+                                using var subAssetLabel = EditorGUIUtility.BuildIconText(subAssetIcon, subAssetName);
 
-                                if (EditorGUI.BeginAssetTreeNode($"{subAssetIcon} {subAssetName}###{subAssetName}",
+                                if (EditorGUI.BeginAssetTreeNode(subAssetLabel,
                                     importer.Location.AssetPath, guid, isLeaf: true, spanWidth: true))
                                 {
                                     EditorGUI.EndTreeNode();
