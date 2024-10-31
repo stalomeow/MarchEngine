@@ -15,6 +15,9 @@
     <AssemblyName>March.Core</AssemblyName>
     <RootNamespace>March.Core</RootNamespace>
     <EnableDynamicLoading>True</EnableDynamicLoading>
+    <ServerGarbageCollection>True</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>True</ConcurrentGarbageCollection>
+    <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
   </PropertyGroup>
 
   <ItemGroup>

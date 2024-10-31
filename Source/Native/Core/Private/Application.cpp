@@ -178,6 +178,7 @@ namespace march
         m_IsStarted = true;
 
         MSG msg = {};
+        uint8_t msgCount = 0;
 
         while (msg.message != WM_QUIT)
         {
@@ -197,8 +198,15 @@ namespace march
             {
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
-                continue; // 优先处理窗体消息
+                msgCount++;
+
+                if (msgCount < 100)
+                {
+                    continue;
+                }
             }
+
+            msgCount = 0;
 
             if (m_Timer->Tick())
             {
