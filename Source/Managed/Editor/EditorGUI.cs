@@ -346,11 +346,12 @@ namespace March.Editor
             set => EditorGUI_SetCursorPosX(value);
         }
 
-        public static bool BeginAssetTreeNode(string label, string assetPath, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        public static bool BeginAssetTreeNode(string label, string assetPath, string assetGuid, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
         {
             using NativeString l = label;
             using NativeString a = assetPath;
-            return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+            using NativeString ag = assetGuid;
+            return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, ag.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
         public static bool MarchObjectField<T>(string label, string tooltip, ref T? asset) where T : MarchObject
@@ -404,12 +405,12 @@ namespace March.Editor
             using NativeString t = tooltip;
             using NativeString ty = assetType.Name;
             using NativeString p = path;
-            nint pNewPath = nint.Zero;
+            nint pNewGuid = nint.Zero;
 
-            if (EditorGUI_MarchObjectField(l.Data, t.Data, ty.Data, p.Data, &pNewPath, state))
+            if (EditorGUI_MarchObjectField(l.Data, t.Data, ty.Data, p.Data, &pNewGuid, state))
             {
-                string newPath = NativeString.GetAndFree(pNewPath);
-                MarchObject? newAsset = AssetManager.Load<MarchObject>(newPath);
+                string newGuid = NativeString.GetAndFree(pNewGuid);
+                MarchObject? newAsset = AssetManager.LoadByGuid<MarchObject>(newGuid);
 
                 if (newAsset != asset)
                 {
@@ -813,10 +814,10 @@ namespace March.Editor
         private static partial void EditorGUI_SetCursorPosX(float localX);
 
         [NativeFunction]
-        private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
+        private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, nint assetGuid, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
 
         [NativeFunction]
-        private static partial bool EditorGUI_MarchObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentPath, MarchObjectState currentObjectState);
+        private static partial bool EditorGUI_MarchObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentGuid, MarchObjectState currentObjectState);
 
         [NativeFunction]
         private static partial float EditorGUI_GetCollapsingHeaderOuterExtend();

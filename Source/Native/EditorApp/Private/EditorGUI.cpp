@@ -554,26 +554,26 @@ namespace march
         ImGui::SetCursorPosX(localX);
     }
 
-    bool EditorGUI::BeginAssetTreeNode(const std::string& label, const std::string& assetPath, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
+    bool EditorGUI::BeginAssetTreeNode(const std::string& label, const std::string& assetPath, const std::string& assetGuid, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
     {
         bool result = BeginTreeNode(label, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
 
         // https://github.com/ocornut/imgui/issues/1931
 
-        if (!assetPath.empty() && ImGui::BeginDragDropSource())
+        if (!assetGuid.empty() && ImGui::BeginDragDropSource())
         {
             // 显示 tooltip
             ImGui::TextUnformatted(assetPath.c_str());
 
             // 拷贝 payload 时，需要加上最后一个 '\0'
-            ImGui::SetDragDropPayload(DragDropPayloadType_AssetPath, assetPath.c_str(), assetPath.size() + 1);
+            ImGui::SetDragDropPayload(DragDropPayloadType_AssetGuid, assetGuid.c_str(), assetGuid.size() + 1);
             ImGui::EndDragDropSource();
         }
 
         return result;
     }
 
-    bool EditorGUI::MarchObjectField(const std::string& label, const std::string& tooltip, const std::string& type, std::string& persistentPath, MarchObjectState currentObjectState)
+    bool EditorGUI::MarchObjectField(const std::string& label, const std::string& tooltip, const std::string& type, const std::string& persistentPath, std::string& persistentGuid, MarchObjectState currentObjectState)
     {
         std::string displayValue;
 
@@ -612,13 +612,13 @@ namespace march
         if (ImGui::BeginDragDropTarget())
         {
             // 没法根据 payload type + asset type 来判断是否接受，这样处理不了多态
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(DragDropPayloadType_AssetPath))
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(DragDropPayloadType_AssetGuid))
             {
-                const char* newAssetPath = reinterpret_cast<char*>(payload->Data);
+                const char* newAssetGuid = reinterpret_cast<char*>(payload->Data);
 
-                if (currentObjectState != MarchObjectState::Persistent || newAssetPath != persistentPath)
+                if (currentObjectState != MarchObjectState::Persistent || newAssetGuid != persistentGuid)
                 {
-                    persistentPath.assign(newAssetPath);
+                    persistentGuid.assign(newAssetGuid);
                     isChanged = true;
                 }
             }

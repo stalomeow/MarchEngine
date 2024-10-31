@@ -16,6 +16,6 @@ namespace March.Editor.AssetPipeline
         /// <summary>
         /// 代码的版本，每次修改代码时都必须增加这个版本号
         /// </summary>
-        public int Version { get; set; }
+        public int Version { get; init; }
     }
 }

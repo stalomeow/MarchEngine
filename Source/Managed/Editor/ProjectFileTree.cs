@@ -38,18 +38,19 @@ namespace March.Editor
                 string icon;
                 if (EditorGUI.IsTreeNodeOpen($"###{name}"))
                 {
-                    icon = importer?.IconExpanded ?? FolderImporter.FolderIconExpanded;
+                    icon = importer?.MainAssetExpandedIcon ?? FolderImporter.FolderIconExpanded;
                 }
                 else
                 {
-                    icon = importer?.IconNormal ?? FolderImporter.FolderIconNormal;
+                    icon = importer?.MainAssetNormalIcon ?? FolderImporter.FolderIconNormal;
                 }
 
                 string label = $"{icon} {name}###{name}";
-                string assetPath = importer?.AssetPath ?? string.Empty;
+                string assetPath = importer?.Location.AssetPath ?? string.Empty;
+                string assetGuid = importer?.MainAssetGuid ?? string.Empty;
                 bool selected = (importer != null) && (Selection.Active == importer);
                 bool defaultOpen = (importer == null); // 默认展开 Assets 根结点
-                bool open = EditorGUI.BeginAssetTreeNode(label, assetPath, openOnArrow: true, openOnDoubleClick: true, selected: selected, defaultOpen: defaultOpen, spanWidth: true);
+                bool open = EditorGUI.BeginAssetTreeNode(label, assetPath, assetGuid, openOnArrow: true, openOnDoubleClick: true, selected: selected, defaultOpen: defaultOpen, spanWidth: true);
 
                 if (importer != null && EditorGUI.IsTreeNodeClicked(open, isLeaf: false) == EditorGUI.ItemClickResult.True)
                 {
@@ -66,20 +67,48 @@ namespace March.Editor
             private static void DrawLeafAssetNode(string name, string path)
             {
                 AssetImporter importer = AssetDatabase.GetAssetImporter(path)!;
-                string icon = EditorGUI.IsTreeNodeOpen($"###{name}") ? importer.IconExpanded : importer.IconNormal;
+                using var guids = ListPool<string>.Get();
+                importer.GetAssetGuids(guids);
+
+                string icon = EditorGUI.IsTreeNodeOpen($"###{name}") ? importer.MainAssetExpandedIcon : importer.MainAssetNormalIcon;
 
                 string label = $"{icon} {name}###{name}";
-                string assetPath = importer.AssetPath;
                 bool selected = Selection.Active == importer;
-                bool open = EditorGUI.BeginAssetTreeNode(label, assetPath, isLeaf: true, selected: selected, spanWidth: true);
+                bool isLeaf = guids.Value.Count == 1;
+                bool open = EditorGUI.BeginAssetTreeNode(label,
+                    importer.Location.AssetPath, importer.MainAssetGuid,
+                    isLeaf: isLeaf, selected: selected, spanWidth: true);
 
-                if (EditorGUI.IsTreeNodeClicked(open, isLeaf: true) == EditorGUI.ItemClickResult.True)
+                if (EditorGUI.IsTreeNodeClicked(open, isLeaf: isLeaf) == EditorGUI.ItemClickResult.True)
                 {
                     Selection.Active = importer;
                 }
 
                 if (open)
                 {
+                    if (!isLeaf)
+                    {
+                        using (new EditorGUI.IDScope(name))
+                        {
+                            foreach (string guid in guids.Value)
+                            {
+                                if (guid == importer.MainAssetGuid)
+                                {
+                                    continue;
+                                }
+
+                                string subAssetIcon = importer.GetAssetNormalIcon(guid)!;
+                                string subAssetName = importer.GetAssetName(guid)!;
+
+                                if (EditorGUI.BeginAssetTreeNode($"{subAssetIcon} {subAssetName}###{subAssetName}",
+                                    importer.Location.AssetPath, guid, isLeaf: true, spanWidth: true))
+                                {
+                                    EditorGUI.EndTreeNode();
+                                }
+                            }
+                        }
+                    }
+
                     EditorGUI.EndTreeNode();
                 }
             }
@@ -104,7 +133,7 @@ namespace March.Editor
 
                 if (AssetDatabase.IsFolder(importer))
                 {
-                    folder = importer.AssetFullPath;
+                    folder = importer.Location.AssetFullPath;
                 }
                 else if (importer == null)
                 {
@@ -112,7 +141,7 @@ namespace March.Editor
                 }
                 else
                 {
-                    folder = Path.GetDirectoryName(importer.AssetFullPath)!;
+                    folder = Path.GetDirectoryName(importer.Location.AssetFullPath)!;
                 }
 
                 File.WriteAllText(Path.Combine(folder, "NewShader.shader"), string.Empty);
@@ -125,7 +154,7 @@ namespace March.Editor
 
         public void Add(string path, bool isFolder)
         {
-            if (AssetDatabase.IsImporterFilePath(path))
+            if (AssetLocation.IsImporterFilePath(path))
             {
                 return;
             }

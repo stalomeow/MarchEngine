@@ -1,32 +1,29 @@
 using March.Core;
 using March.Core.IconFonts;
-using March.Editor.AssetPipeline;
 
 namespace March.Editor.AssetPipeline.Importers
 {
     /// <summary>
     /// 特殊的 <see cref="AssetImporter"/>，用于导入文件夹
     /// </summary>
-    internal class FolderImporter : ExternalAssetImporter
+    [CustomAssetImporter("Folder Asset", Version = 1)]
+    internal sealed class FolderImporter : AssetImporter
     {
         public const string FolderIconNormal = FontAwesome6.Folder;
         public const string FolderIconExpanded = FontAwesome6.FolderOpen;
 
-        public override string DisplayName => "Folder Asset";
+        protected override void OnImportAssets(ref AssetImportContext context)
+        {
+            context.AddAsset<FolderAsset>("MainAsset", true, FolderIconNormal, FolderIconExpanded);
+        }
 
-        protected override int Version => base.Version + 1;
-
-        public override string IconNormal => FolderIconNormal;
-
-        public override string IconExpanded => FolderIconExpanded;
-
-        protected override bool UseCache => false;
-
-        protected override MarchObject CreateAsset()
+        protected override MarchObject? TryLoadAssetFromCache(string guid)
         {
             return new FolderAsset();
         }
 
-        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile) { }
+        protected override void SaveAssetToCache(MarchObject asset) { }
+
+        protected override void DeleteAssetCache(string guid) { }
     }
 }

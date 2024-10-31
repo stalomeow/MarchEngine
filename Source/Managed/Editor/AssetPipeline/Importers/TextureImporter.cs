@@ -2,22 +2,13 @@ using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Core.Serialization;
-using March.Editor.AssetPipeline;
 using Newtonsoft.Json;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter(".dds", ".jpg", ".jpeg", ".png")]
-    internal class TextureImporter : ExternalAssetImporter
+    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 5)]
+    internal class TextureImporter : AssetImporter
     {
-        public override string DisplayName => "Texture Asset";
-
-        protected override int Version => base.Version + 5;
-
-        public override string IconNormal => FontAwesome6.Image;
-
-        protected override bool UseCache => true;
-
         [JsonProperty]
         [InspectorName("sRGB")]
         public bool IsSRGB { get; set; } = true;
@@ -30,36 +21,53 @@ namespace March.Editor.AssetPipeline.Importers
         [InspectorName("Wrap Mode")]
         public WrapMode Wrap { get; set; } = WrapMode.Repeat;
 
-        protected override MarchObject CreateAsset()
+        private Texture2DSourceType SourceType
         {
-            return new Texture();
+            get
+            {
+                string ext = Path.GetExtension(Location.AssetFullPath);
+                return ext.Equals(".dds", StringComparison.OrdinalIgnoreCase) ? Texture2DSourceType.DDS : Texture2DSourceType.WIC;
+            }
         }
 
-        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
+        protected override void OnImportAssets(ref AssetImportContext context)
         {
-            Texture texture = (Texture)asset;
-            texture.SourceType = Path.GetExtension(AssetFullPath).Equals(".dds", StringComparison.OrdinalIgnoreCase) ? Texture2DSourceType.DDS : Texture2DSourceType.WIC;
+            Texture texture = context.AddAsset<Texture>("MainAsset", true, FontAwesome6.Image);
+
+            texture.SourceType = SourceType;
             texture.IsSRGB = IsSRGB;
             texture.Filter = Filter;
             texture.Wrap = Wrap;
 
-            string name = Path.GetFileNameWithoutExtension(AssetPath);
-            byte[] source = File.ReadAllBytes(AssetFullPath);
-
+            string name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);
+            byte[] source = File.ReadAllBytes(Location.AssetFullPath);
             texture.LoadFromSource(name, source);
-
-            if (willSaveToFile)
-            {
-                texture.SetSerializationData(name, source);
-            }
+            texture.SetSerializationData(name, source);
         }
 
-        protected override void OnDidSaveAsset(MarchObject asset)
+        protected override void SaveAssetToCache(MarchObject asset)
         {
+            base.SaveAssetToCache(asset);
+
             Texture texture = (Texture)asset;
             texture.SetSerializationData(string.Empty, []);
+        }
+    }
 
-            base.OnDidSaveAsset(asset);
+    internal class TextureImporterDrawer : AssetImporterDrawerFor<TextureImporter>
+    {
+        protected override void DrawAdditional()
+        {
+            base.DrawAdditional();
+
+            EditorGUI.Space();
+            EditorGUI.Separator();
+            EditorGUI.Space();
+
+            if (EditorGUI.Foldout("Preview", string.Empty, defaultOpen: true))
+            {
+                EditorGUI.DrawTexture((Texture)Target.MainAsset);
+            }
         }
     }
 }

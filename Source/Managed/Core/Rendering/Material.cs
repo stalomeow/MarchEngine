@@ -33,6 +33,11 @@ namespace March.Core.Rendering
         private void OnDeserializingCallback(StreamingContext context)
         {
             // 防止 overwrite 后有旧属性残留
+            Reset();
+        }
+
+        public void Reset()
+        {
             m_Shader = null;
             m_NonNullTextures.Clear();
             Material_Reset(NativePtr);

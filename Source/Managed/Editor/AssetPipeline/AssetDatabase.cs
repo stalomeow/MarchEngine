@@ -1,17 +1,14 @@
 using March.Core;
 using March.Core.Rendering;
 using March.Core.Serialization;
-using March.Editor.AssetPipeline;
 using March.Editor.AssetPipeline.Importers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
-namespace March.Editor
+namespace March.Editor.AssetPipeline
 {
     public static class AssetDatabase
     {
-        private const string ImporterPathSuffix = ".meta";
-
         private struct NativeReference
         {
             public NativeMarchObject Object;
@@ -29,10 +26,10 @@ namespace March.Editor
         private static readonly FileSystemWatcher s_EngineShaderWatcher;
         private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileSystemEvents = new();
 
-        public static event Action<AssetCategory, string>? OnChanged;
-        public static event Action<AssetCategory, string>? OnImported;
-        public static event Action<AssetCategory, string>? OnRemoved;
-        public static event Action<AssetCategory, string, AssetCategory, string>? OnRenamed;
+        public static event Action<AssetLocation>? OnChanged;
+        public static event Action<AssetLocation>? OnImported;
+        public static event Action<AssetLocation>? OnRemoved;
+        public static event Action<AssetLocation, AssetLocation>? OnRenamed;
 
         static AssetDatabase()
         {
@@ -58,7 +55,7 @@ namespace March.Editor
 
             foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
             {
-                kv.Value.ReimportAssetIfNeeded();
+                kv.Value.ReimportAndSave(force: false);
             }
 
             static void CreateImportersOnly(string directoryFullPath)
@@ -67,11 +64,11 @@ namespace March.Editor
 
                 foreach (FileSystemInfo info in root.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
-                    string path = GetValidatedAssetPathByFullPath(info.FullName, out _);
+                    var location = AssetLocation.FromFullPath(info.FullName);
 
                     // 仅创建 importer，不导入资产，构建一张 guid 到 importer 的表
                     // 资产间的依赖是用 guid 记录的，只有构建完 guid 表才能正确导入资产
-                    GetAssetImporter(path, reimportAssetIfNeeded: false);
+                    GetAssetImporter(location.AssetPath, reimportAssetIfNeeded: false);
                 }
             }
         }
@@ -93,7 +90,7 @@ namespace March.Editor
         {
             while (s_FileSystemEvents.TryDequeue(out FileSystemEventArgs? e))
             {
-                if (IsImporterFilePath(e.FullPath))
+                if (AssetLocation.IsImporterFilePath(e.FullPath))
                 {
                     continue;
                 }
@@ -128,7 +125,7 @@ namespace March.Editor
         public static string? GetGuidByPath(string path)
         {
             AssetImporter? importer = GetAssetImporter(path);
-            return importer?.PersistentGuid;
+            return importer?.MainAssetGuid;
         }
 
         public static string? GetPathByGuid(string guid)
@@ -143,13 +140,14 @@ namespace March.Editor
 
         public static T? Load<T>(string path) where T : MarchObject?
         {
-            if (IsImporterFilePath(path))
+            if (AssetLocation.IsImporterFilePath(path))
             {
-                throw new InvalidOperationException("Can not load an asset importer");
+                throw new InvalidOperationException("Can not load asset importer");
             }
 
             AssetImporter? importer = GetAssetImporter(path);
-            return importer?.Asset as T;
+            importer?.ReimportAndSave(force: false); // 保证拿到新的资产
+            return importer?.MainAsset as T;
         }
 
         public static MarchObject? LoadByGuid(string guid)
@@ -159,61 +157,75 @@ namespace March.Editor
 
         public static T? LoadByGuid<T>(string guid) where T : MarchObject?
         {
-            string? path = GetPathByGuid(guid);
-            return path == null ? null : Load<T>(path);
-        }
-
-        public static (AssetCategory, string)[] GetAllAssetCategoriesAndPaths()
-        {
-            using var list = ListPool<(AssetCategory, string)>.Get();
-
-            foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
+            if (!s_Guid2PathMap.TryGetValue(guid, out string? path))
             {
-                list.Value.Add((kv.Value.Category, kv.Value.AssetPath));
+                return null;
             }
 
-            return list.Value.ToArray();
+            AssetImporter? importer = GetAssetImporter(path);
+            importer?.ReimportAndSave(force: false); // 保证拿到新的资产
+            return importer?.GetAsset(guid) as T;
+        }
+
+        public static void GetAllAssetLocations(List<AssetLocation> locations)
+        {
+            foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
+            {
+                locations.Add(kv.Value.Location);
+            }
         }
 
         public static void Create(string path, MarchObject asset)
         {
-            if (asset.PersistentGuid != null || GetAssetImporter(path) != null)
+            var location = AssetLocation.FromPath(path);
+
+            if (asset.PersistentGuid != null || s_Path2Importers.ContainsKey(location.AssetPath))
             {
                 throw new InvalidOperationException("Asset is already created");
             }
 
-            AssetCategory category = ValidateAssetPathAndGetCategory(ref path, out string fullPath, out _);
-
-            if (category != AssetCategory.ProjectAsset)
+            if (location.Category != AssetCategory.ProjectAsset)
             {
                 throw new InvalidOperationException("Can not create an asset outside project folder");
             }
 
-            PersistentManager.Save(asset, fullPath);
-            MustCreateAssetImporter(path, asset);
+            AssetImporter? importer = GetOrCreateAssetImporter(location.AssetPath, out bool isNewlyCreated);
+
+            if (importer is not DirectAssetImporter directAssetImporter || !isNewlyCreated)
+            {
+                if (importer != null && isNewlyCreated)
+                {
+                    DeleteImporter(importer);
+                }
+
+                throw new InvalidOperationException("Can not create an asset at this path");
+            }
+
+            directAssetImporter.SetAssetAndSave(asset);
+            RegisterAssetImporterGuids(directAssetImporter);
+            AddImporterEventHandlers(directAssetImporter);
 
             // 通过 FileSystemWatcher 的 Create 事件触发 OnImported 事件
-            // OnImported?.Invoke(category, path);
+            // OnImported?.Invoke(location);
         }
 
         private static void OnAssetChanged(FileSystemEventArgs e)
         {
             //Debug.LogInfo("Changed: " + e.FullPath);
 
-            string path = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory category);
+            var location = AssetLocation.FromFullPath(e.FullPath);
 
-            if (category == AssetCategory.Unknown)
+            if (location.Category == AssetCategory.Unknown)
             {
                 Debug.LogWarning($"Attempting to reimport an asset whose path is unknown: {e.FullPath}");
                 return;
             }
 
-            AssetImporter? importer = GetAssetImporter(path);
+            AssetImporter? importer = GetAssetImporter(location.AssetPath);
 
-            if (importer != null && importer.NeedReimport())
+            if (importer != null && importer.ReimportAndSave(force: false))
             {
-                importer.SaveImporterAndReimportAsset();
-                OnChanged?.Invoke(category, path);
+                OnChanged?.Invoke(location);
             }
         }
 
@@ -252,58 +264,54 @@ namespace March.Editor
 
             //Debug.LogInfo($"Renamed: {e.OldFullPath} -> {e.FullPath}");
 
-            string oldPath = GetValidatedAssetPathByFullPath(e.OldFullPath, out AssetCategory oldCategory);
-            string newPath = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory newCategory);
+            var oldLocation = AssetLocation.FromFullPath(e.OldFullPath);
+            var newLocation = AssetLocation.FromFullPath(e.FullPath);
 
-            if (oldCategory == AssetCategory.Unknown || newCategory == AssetCategory.Unknown)
+            if (oldLocation.Category == AssetCategory.Unknown || newLocation.Category == AssetCategory.Unknown)
             {
                 Debug.LogWarning($"Attempting to rename an asset whose path is unknown: {e.OldFullPath} -> {e.FullPath}");
                 return;
             }
 
-            if (string.Equals(oldPath, newPath, StringComparison.CurrentCultureIgnoreCase))
+            if (string.Equals(oldLocation.AssetPath, newLocation.AssetPath, StringComparison.CurrentCultureIgnoreCase))
             {
                 return;
             }
 
-            AssetImporter? oldImporter = GetAssetImporter(oldPath);
+            AssetImporter? oldImporter = GetAssetImporter(oldLocation.AssetPath);
 
             if (oldImporter == null)
             {
-                Debug.LogWarning("Attempting to rename an asset whose importer is unknown: " + oldPath);
+                Debug.LogWarning("Attempting to rename an asset whose importer is unknown: " + oldLocation.AssetPath);
                 return;
             }
 
-            MarchObject asset = oldImporter.Asset;
-            DeleteImporter(oldImporter, false);
-
-            if (s_Path2Importers.TryGetValue(newPath, out AssetImporter? newImporter))
+            if (s_Path2Importers.TryGetValue(newLocation.AssetPath, out AssetImporter? newImporter))
             {
                 Debug.LogWarning("Asset already exists at new path. It will be deleted.");
-                AssetCategory assetCategory = newImporter.Category;
-                DeleteImporter(newImporter, true);
-                OnRemoved?.Invoke(assetCategory, newPath);
+                DeleteImporter(newImporter);
+                OnRemoved?.Invoke(newLocation);
             }
 
-            newImporter = MustCreateAssetImporter(newPath, asset);
-            OnRenamed?.Invoke(oldCategory, oldPath, newCategory, newPath);
+            oldImporter.MoveLocation(in newLocation);
+            OnRenamed?.Invoke(oldLocation, newLocation);
         }
 
         private static void OnAssetCreated(FileSystemEventArgs e)
         {
             //Debug.LogInfo("Created: " + e.FullPath);
 
-            string path = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory category);
+            var location = AssetLocation.FromFullPath(e.FullPath);
 
-            if (category == AssetCategory.Unknown)
+            if (location.Category == AssetCategory.Unknown)
             {
                 Debug.LogWarning($"Attempting to create and import an asset whose path is unknown: {e.FullPath}");
                 return;
             }
 
-            if (GetAssetImporter(path) != null)
+            if (GetAssetImporter(location.AssetPath) != null)
             {
-                OnImported?.Invoke(category, path);
+                OnImported?.Invoke(location);
             }
         }
 
@@ -311,40 +319,31 @@ namespace March.Editor
         {
             //Debug.LogInfo("Deleted: " + e.FullPath);
 
-            string path = GetValidatedAssetPathByFullPath(e.FullPath, out AssetCategory category);
+            var location = AssetLocation.FromFullPath(e.FullPath);
 
-            if (category == AssetCategory.Unknown)
+            if (location.Category == AssetCategory.Unknown)
             {
                 Debug.LogWarning($"Attempting to delete an asset whose path is unknown: {e.FullPath}");
                 return;
             }
 
-            AssetImporter? importer = GetAssetImporter(path);
+            AssetImporter? importer = GetAssetImporter(location.AssetPath);
 
             if (importer != null)
             {
-                DeleteImporter(importer, true);
-                OnRemoved?.Invoke(category, path);
+                DeleteImporter(importer);
+                OnRemoved?.Invoke(location);
             }
         }
 
-        private static void DeleteImporter(AssetImporter importer, bool deleteAssetCache)
+        private static void DeleteImporter(AssetImporter importer)
         {
-            if (deleteAssetCache && File.Exists(importer.AssetCacheFullPath))
-            {
-                File.Delete(importer.AssetCacheFullPath);
-            }
-
-            if (File.Exists(importer.ImporterFullPath))
-            {
-                File.Delete(importer.ImporterFullPath);
-            }
-
-            s_Guid2PathMap.Remove(importer.PersistentGuid);
-            s_Path2Importers.Remove(importer.AssetPath);
+            importer.DeleteAssetCaches();
+            importer.DeleteImporterFile();
+            RemoveImporterEventHandlers(importer);
+            UnregisterAssetImporterGuids(importer);
+            s_Path2Importers.Remove(importer.Location.AssetPath);
         }
-
-        internal static bool IsImporterFilePath(string path) => path.EndsWith(ImporterPathSuffix);
 
         public static bool IsFolder(string path) => IsFolder(GetAssetImporter(path));
 
@@ -352,126 +351,91 @@ namespace March.Editor
 
         public static bool IsAsset(string path) => GetAssetImporter(path) != null;
 
-        private static AssetCategory ValidateAssetPathAndGetCategory(ref string path, out string fullPath, out string importerFullPath)
-        {
-            path = path.ValidatePath();
-
-            if (!IsImporterFilePath(path))
-            {
-                // 需要排除掉 Assets 文件夹本身
-                if (path.StartsWith("Assets/", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    fullPath = Path.Combine(Application.DataPath, path).ValidatePath();
-                    importerFullPath = fullPath + ImporterPathSuffix;
-                    return AssetCategory.ProjectAsset;
-                }
-
-                // 需要排除掉 Engine/Shaders 文件夹本身
-                if (path.StartsWith("Engine/Shaders/", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    // "Engine/".Length == 7
-                    // "Engine/Shaders/".Length == 15
-                    fullPath = Path.Combine(Shader.EngineShaderPath, path[15..]).ValidatePath();
-                    importerFullPath = Path.Combine(Application.DataPath, "EngineMeta", path[7..] + ImporterPathSuffix).ValidatePath();
-                    return AssetCategory.EngineShader;
-                }
-            }
-
-            fullPath = path;
-            importerFullPath = path + ImporterPathSuffix;
-            return AssetCategory.Unknown;
-        }
-
-        public static AssetCategory GetAssetCategory(string path)
-        {
-            return ValidateAssetPathAndGetCategory(ref path, out _, out _);
-        }
-
-        public static string GetValidatedAssetPathByFullPath(string fullPath, out AssetCategory category)
-        {
-            fullPath = fullPath.ValidatePath();
-
-            if (!IsImporterFilePath(fullPath))
-            {
-                if (fullPath.StartsWith(Application.DataPath + "/", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    category = AssetCategory.ProjectAsset;
-                    return fullPath[(Application.DataPath.Length + 1)..];
-                }
-
-                if (fullPath.StartsWith(Shader.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    category = AssetCategory.EngineShader;
-                    return "Engine/Shaders/" + fullPath[(Shader.EngineShaderPath.Length + 1)..];
-                }
-            }
-
-            category = AssetCategory.Unknown;
-            return fullPath;
-        }
-
         public static AssetImporter? GetAssetImporter(string path, bool reimportAssetIfNeeded = true)
         {
             AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
 
-            if (reimportAssetIfNeeded && importer != null && isNewlyCreated)
+            if (importer != null && isNewlyCreated)
             {
-                importer.ReimportAssetIfNeeded();
+                if (reimportAssetIfNeeded)
+                {
+                    importer.ReimportAndSave(force: false);
+                }
+
+                RegisterAssetImporterGuids(importer);
+                AddImporterEventHandlers(importer);
             }
 
             return importer;
         }
 
-        private static AssetImporter MustCreateAssetImporter(string path, MarchObject? initAsset)
+        private static void AddImporterEventHandlers(AssetImporter importer)
         {
-            AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
+            importer.OnWillReimport += UnregisterAssetImporterGuids;
+            importer.OnDidReimport += RegisterAssetImporterGuids;
+        }
 
-            if (importer == null || !isNewlyCreated)
-            {
-                throw new Exception("Failed to create asset importer");
-            }
+        private static void RemoveImporterEventHandlers(AssetImporter importer)
+        {
+            importer.OnWillReimport -= UnregisterAssetImporterGuids;
+            importer.OnDidReimport -= RegisterAssetImporterGuids;
+        }
 
-            if (initAsset == null)
-            {
-                importer.ReimportAssetIfNeeded();
-            }
-            else
-            {
-                importer.SetAsset(initAsset);
-            }
+        private static void UnregisterAssetImporterGuids(AssetImporter importer)
+        {
+            using var guids = ListPool<string>.Get();
+            importer.GetAssetGuids(guids);
 
-            return importer;
+            foreach (string guid in guids.Value)
+            {
+                s_Guid2PathMap.Remove(guid);
+            }
+        }
+
+        private static void RegisterAssetImporterGuids(AssetImporter importer)
+        {
+            using var guids = ListPool<string>.Get();
+            importer.GetAssetGuids(guids);
+
+            foreach (string guid in guids.Value)
+            {
+                s_Guid2PathMap.Add(guid, importer.Location.AssetPath);
+            }
         }
 
         private static AssetImporter? GetOrCreateAssetImporter(string path, out bool isNewlyCreated)
         {
-            AssetCategory category = ValidateAssetPathAndGetCategory(ref path, out string assetFullPath, out string importerFullPath);
+            var location = AssetLocation.FromPath(path);
 
-            if (category == AssetCategory.Unknown)
+            if (location.Category == AssetCategory.Unknown)
             {
                 isNewlyCreated = false;
                 return null;
             }
 
-            if (s_Path2Importers.TryGetValue(path, out AssetImporter? importer))
+            if (s_Path2Importers.TryGetValue(location.AssetPath, out AssetImporter? importer))
             {
                 isNewlyCreated = false;
             }
             else
             {
-                if (!File.Exists(assetFullPath) && !Directory.Exists(assetFullPath))
-                {
-                    isNewlyCreated = false;
-                    return null;
-                }
+                // 允许给当前不存在的资产创建 DirectAssetImporter
 
-                if (File.Exists(importerFullPath))
+                //if (!File.Exists(location.AssetFullPath) && !Directory.Exists(location.AssetFullPath))
+                //{
+                //    isNewlyCreated = false;
+                //    return null;
+                //}
+
+                if (File.Exists(location.ImporterFullPath))
                 {
-                    importer = PersistentManager.Load<AssetImporter>(importerFullPath);
+                    importer = PersistentManager.Load<AssetImporter>(location.ImporterFullPath);
                 }
                 else
                 {
-                    if (!TryCreateAssetImporter(assetFullPath, out importer))
+                    importer = AssetImporter.CreateForPath(location.AssetFullPath);
+
+                    if (importer == null)
                     {
                         isNewlyCreated = false;
                         return null;
@@ -479,24 +443,11 @@ namespace March.Editor
                 }
 
                 isNewlyCreated = true;
-                importer.Initialize(category, path, assetFullPath, importerFullPath);
-                s_Path2Importers.Add(path, importer);
-                s_Guid2PathMap[importer.PersistentGuid] = path;
+                importer.InitLocation(in location);
+                s_Path2Importers.Add(location.AssetPath, importer);
             }
 
             return importer;
-        }
-
-        [return: NotNullIfNotNull(nameof(path))]
-        public static string? ValidatePath(this string? path)
-        {
-            if (path != null)
-            {
-                path = path.Replace('\\', '/');
-                path = path.TrimEnd('/');
-            }
-
-            return path;
         }
 
         internal static nint NativeLoadAsset(string path)

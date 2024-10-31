@@ -2,6 +2,7 @@ using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Core.Serialization;
+using March.Editor.AssetPipeline;
 using March.Editor.AssetPipeline.Importers;
 using System.Numerics;
 

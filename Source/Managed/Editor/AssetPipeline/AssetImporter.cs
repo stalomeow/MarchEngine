@@ -29,58 +29,62 @@ namespace March.Editor.AssetPipeline
             }
         }
 
+        private AssetLocation m_Location;
         public event Action<AssetImporter>? OnWillReimport;
         public event Action<AssetImporter>? OnDidReimport;
 
-        public AssetCategory Category { get; private set; } = AssetCategory.Unknown;
+        public ref readonly AssetLocation Location => ref m_Location;
 
-        public string AssetPath { get; private set; } = string.Empty; // 这是引擎使用的路径，不是文件系统路径
-
-        public string AssetFullPath { get; private set; } = string.Empty;
-
-        internal string ImporterFullPath { get; private set; } = string.Empty; // meta 文件的完整路径
-
-        internal void Initialize(AssetCategory category, string assetPath, string assetFullPath, string importerFullPath)
+        internal void InitLocation(in AssetLocation location)
         {
-            Category = category;
-            AssetPath = assetPath;
-            AssetFullPath = assetFullPath;
-            ImporterFullPath = importerFullPath;
+            m_Location = location;
         }
 
-        internal void Move(AssetCategory category, string assetPath, string assetFullPath, string importerFullPath)
+        internal void MoveLocation(in AssetLocation location)
         {
-            Initialize(category, assetPath, assetFullPath, importerFullPath);
-            SaveAndReimport(force: true);
+            DeleteImporterFile();
+            InitLocation(location);
+            ReimportAndSave(force: true);
         }
 
-        protected void SetMainAsset(string name, MarchObject asset, string? normalIcon, string? expandedIcon)
+        internal void DeleteImporterFile()
         {
-            AssetData data;
-
-            if (string.IsNullOrEmpty(m_MainAssetGuid))
+            if (File.Exists(Location.ImporterFullPath))
             {
-                data = new AssetData();
-                m_MainAssetGuid = data.Guid;
-                m_GuidToAssetMap.Add(m_MainAssetGuid, data);
+                File.Delete(Location.ImporterFullPath);
             }
-            else
+        }
+
+        internal void DeleteAssetCaches()
+        {
+            foreach (KeyValuePair<string, AssetData> kv in m_GuidToAssetMap)
             {
-                data = m_GuidToAssetMap[m_MainAssetGuid];
+                DeleteAssetCache(kv.Key);
+            }
+        }
+
+        protected void InitMainAsset(string name, MarchObject asset, string? normalIcon, string? expandedIcon)
+        {
+            if (!string.IsNullOrEmpty(m_MainAssetGuid))
+            {
+                throw new InvalidOperationException("Main asset is already set");
             }
 
-            data.Name = name;
+            var data = new AssetData { Name = name };
             data.Reset(asset, normalIcon, expandedIcon);
+
+            m_MainAssetGuid = data.Guid;
+            m_GuidToAssetMap.Add(data.Guid, data);
         }
 
-        public void SaveAndReimport(bool force)
+        public bool ReimportAndSave(bool force)
         {
             if (!force && !NeedReimport)
             {
-                return;
+                return false;
             }
 
-            Debug.LogInfo($"Reimport: {AssetPath}");
+            Debug.LogInfo($"Reimport: {Location.AssetPath}");
 
             SafeInvokeAction(OnWillReimport);
             var context = new AssetImportContext(m_GuidToAssetMap);
@@ -99,6 +103,7 @@ namespace March.Editor.AssetPipeline
                 // 1. 如果导入失败，不会保存 Importer，下次重新导入时会再次尝试
                 // 2. 导入过程中可能写入原始资产文件，这里可以记录到最后一次的写入时间，避免再触发一次导入
                 ForceSaveImporter();
+                return true;
             }
             finally
             {
@@ -122,9 +127,11 @@ namespace March.Editor.AssetPipeline
         protected void ForceSaveImporter()
         {
             m_SerializedVersion = Version;
-            m_AssetLastWriteTimeUtc = File.GetLastWriteTimeUtc(AssetFullPath);
-            PersistentManager.Save(this, ImporterFullPath);
+            m_AssetLastWriteTimeUtc = File.GetLastWriteTimeUtc(Location.AssetFullPath);
+            PersistentManager.Save(this, Location.ImporterFullPath);
         }
+
+        public string MainAssetGuid => m_MainAssetGuid;
 
         public MarchObject MainAsset => GetAsset(m_MainAssetGuid)!;
 
@@ -138,7 +145,7 @@ namespace March.Editor.AssetPipeline
 
             for (int retry = 0; retry < 2; retry++)
             {
-                SaveAndReimport(forceReimport);
+                ReimportAndSave(forceReimport);
 
                 if (!m_GuidToAssetMap.TryGetValue(guid, out AssetData? data))
                 {
@@ -190,11 +197,13 @@ namespace March.Editor.AssetPipeline
 
         public string DisplayName => GetCustomAttribute().DisplayName;
 
-        private int Version => GetCustomAttribute().Version + 4;
+        private int Version => GetCustomAttribute().Version + 5;
 
         protected virtual bool NeedReimport
         {
-            get => m_SerializedVersion != Version || m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(AssetFullPath);
+            get => string.IsNullOrEmpty(m_MainAssetGuid)
+                || m_SerializedVersion != Version
+                || m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(Location.AssetFullPath);
         }
 
         protected abstract void OnImportAssets(ref AssetImportContext context);
@@ -215,6 +224,16 @@ namespace March.Editor.AssetPipeline
         {
             string fullPath = GetAssetCacheFileFullPath(asset.PersistentGuid!);
             PersistentManager.Save(asset, fullPath);
+        }
+
+        protected virtual void DeleteAssetCache(string guid)
+        {
+            string cacheFullPath = GetAssetCacheFileFullPath(guid);
+
+            if (File.Exists(cacheFullPath))
+            {
+                File.Delete(cacheFullPath);
+            }
         }
 
         protected static string GetAssetCacheFileFullPath(string guid)
@@ -288,24 +307,31 @@ namespace March.Editor.AssetPipeline
         protected override void OnImportAssets(ref AssetImportContext context)
         {
             MarchObject asset = context.AddAsset(k_MainAssetName, CreateAsset, true, GetNormalIcon(), GetExpandedIcon());
-            PersistentManager.Overwrite(AssetFullPath, asset);
+            PersistentManager.Overwrite(Location.AssetFullPath, asset);
         }
 
         protected override MarchObject? TryLoadAssetFromCache(string guid)
         {
-            return PersistentManager.Load(AssetFullPath);
+            return PersistentManager.Load(Location.AssetFullPath);
         }
 
         protected override void SaveAssetToCache(MarchObject asset)
         {
-            PersistentManager.Save(asset, AssetFullPath);
+            PersistentManager.Save(asset, Location.AssetFullPath);
         }
 
-        internal void SaveAndReimport(MarchObject asset)
+        protected override void DeleteAssetCache(string guid) { }
+
+        internal void SetAssetAndSave(MarchObject asset)
         {
-            SetMainAsset(k_MainAssetName, asset, GetNormalIcon(), GetExpandedIcon());
-            PersistentManager.Save(asset, AssetFullPath);
-            SaveAndReimport(force: true);
+            InitMainAsset(k_MainAssetName, asset, GetNormalIcon(), GetExpandedIcon());
+            PersistentManager.Save(asset, Location.AssetFullPath);
+            ForceSaveImporter();
+        }
+
+        internal void SaveAsset()
+        {
+            PersistentManager.Save(MainAsset, Location.AssetFullPath);
         }
 
         protected abstract MarchObject CreateAsset();
@@ -314,4 +340,113 @@ namespace March.Editor.AssetPipeline
 
         protected virtual string? GetExpandedIcon() => null;
     }
+
+    public abstract class AssetImporterDrawerFor<T> : InspectorDrawerFor<T> where T : AssetImporter
+    {
+        private bool m_IsChanged;
+
+        public override void OnCreate()
+        {
+            base.OnCreate();
+            m_IsChanged = false;
+        }
+
+        public override void OnDestroy()
+        {
+            if (m_IsChanged)
+            {
+                RevertChanges();
+                m_IsChanged = false;
+            }
+
+            base.OnDestroy();
+        }
+
+        public sealed override void Draw()
+        {
+            EditorGUI.SeparatorText(Target.DisplayName);
+
+            using (new EditorGUI.DisabledScope())
+            {
+                EditorGUI.LabelField("Path", string.Empty, Target.Location.AssetPath);
+            }
+
+            m_IsChanged |= DrawProperties(out bool showApplyRevertButtons);
+
+            if (showApplyRevertButtons)
+            {
+                EditorGUI.Space();
+
+                float applyButtonWidth = EditorGUI.CalcButtonWidth("Apply");
+                float revertButtonWidth = EditorGUI.CalcButtonWidth("Revert");
+                float totalWidth = applyButtonWidth + EditorGUI.ItemSpacing.X + revertButtonWidth;
+                EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
+
+                using (new EditorGUI.DisabledScope(!m_IsChanged))
+                {
+                    if (EditorGUI.Button("Apply"))
+                    {
+                        ApplyChanges();
+                        m_IsChanged = false;
+                    }
+
+                    EditorGUI.SameLine();
+
+                    if (EditorGUI.Button("Revert"))
+                    {
+                        RevertChanges();
+                        m_IsChanged = false;
+                    }
+                }
+            }
+
+            DrawAdditional();
+        }
+
+        /// <summary>
+        /// 绘制属性面板
+        /// </summary>
+        /// <param name="showApplyRevertButtons"></param>
+        /// <returns>是否有属性发生变化</returns>
+        protected virtual bool DrawProperties(out bool showApplyRevertButtons)
+        {
+            bool isChanged = EditorGUI.ObjectPropertyFields(Target, out int propertyCount);
+            showApplyRevertButtons = propertyCount > 0;
+            return isChanged;
+        }
+
+        protected virtual void DrawAdditional() { }
+
+        protected virtual void ApplyChanges()
+        {
+            Target.ReimportAndSave(force: true);
+        }
+
+        protected virtual void RevertChanges()
+        {
+            PersistentManager.Overwrite(Target.Location.ImporterFullPath, Target);
+        }
+    }
+
+    internal abstract class DirectAssetImporterDrawerFor<T> : AssetImporterDrawerFor<T> where T : DirectAssetImporter
+    {
+        protected override bool DrawProperties(out bool showApplyRevertButtons)
+        {
+            bool isChanged = EditorGUI.ObjectPropertyFields(Target.MainAsset, out int propertyCount);
+            showApplyRevertButtons = propertyCount > 0;
+            return isChanged;
+        }
+
+        protected override void ApplyChanges()
+        {
+            Target.SaveAsset();
+        }
+
+        protected override void RevertChanges()
+        {
+            Target.ReimportAndSave(force: true);
+        }
+    }
+
+    internal sealed class DefaultDirectAssetImporterDrawer : DirectAssetImporterDrawerFor<DirectAssetImporter> { }
 }

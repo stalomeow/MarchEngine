@@ -3,6 +3,7 @@ using March.Core.Binding;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Core.Serialization;
+using March.Editor.AssetPipeline;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;

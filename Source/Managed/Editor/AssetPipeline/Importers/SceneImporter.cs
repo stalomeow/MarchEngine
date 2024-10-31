@@ -1,31 +1,21 @@
 using March.Core;
 using March.Core.IconFonts;
-using March.Core.Serialization;
-using March.Editor.AssetPipeline;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter(".scene")]
-    internal class SceneImporter : ExternalAssetImporter
+    [CustomAssetImporter("Scene Asset", ".scene", Version = 1)]
+    internal class SceneImporter : DirectAssetImporter
     {
         public const string SceneIcon = FontAwesome6.CubesStacked;
-
-        public override string DisplayName => "Scene Asset";
-
-        protected override int Version => base.Version + 1;
-
-        public override string IconNormal => SceneIcon;
-
-        protected override bool UseCache => false;
 
         protected override MarchObject CreateAsset()
         {
             return new Scene();
         }
 
-        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
+        protected override string? GetNormalIcon()
         {
-            PersistentManager.Overwrite(AssetFullPath, asset);
+            return SceneIcon;
         }
     }
 }

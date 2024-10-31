@@ -275,18 +275,18 @@ NATIVE_EXPORT_AUTO EditorGUI_SetCursorPosX(cs_float localX)
     EditorGUI::SetCursorPosX(localX);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_BeginAssetTreeNode(cs_string label, cs_string assetPath, cs_bool isLeaf, cs_bool openOnArrow, cs_bool openOnDoubleClick, cs_bool selected, cs_bool showBackground, cs_bool defaultOpen, cs_bool spanWidth)
+NATIVE_EXPORT_AUTO EditorGUI_BeginAssetTreeNode(cs_string label, cs_string assetPath, cs_string assetGuid, cs_bool isLeaf, cs_bool openOnArrow, cs_bool openOnDoubleClick, cs_bool selected, cs_bool showBackground, cs_bool defaultOpen, cs_bool spanWidth)
 {
-    retcs EditorGUI::BeginAssetTreeNode(label, assetPath, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+    retcs EditorGUI::BeginAssetTreeNode(label, assetPath, assetGuid, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_MarchObjectField(cs_string label, cs_string tooltip, cs_string type, cs_string persistentPath, cs<cs_string*> outNewPersistentPath, cs<EditorGUI::MarchObjectState> currentObjectState)
+NATIVE_EXPORT_AUTO EditorGUI_MarchObjectField(cs_string label, cs_string tooltip, cs_string type, cs_string persistentPath, cs<cs_string*> outNewPersistentGuid, cs<EditorGUI::MarchObjectState> currentObjectState)
 {
-    std::string persistentPathContext = persistentPath;
+    std::string persistentGuid{};
 
-    if (EditorGUI::MarchObjectField(label, tooltip, type, persistentPathContext, currentObjectState))
+    if (EditorGUI::MarchObjectField(label, tooltip, type, persistentPath, persistentGuid, currentObjectState))
     {
-        outNewPersistentPath->assign(std::move(persistentPathContext));
+        outNewPersistentGuid->assign(std::move(persistentGuid));
         retcs true;
     }
 

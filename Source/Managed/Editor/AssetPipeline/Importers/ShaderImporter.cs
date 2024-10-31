@@ -3,7 +3,6 @@ using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
 using March.Core.Serialization;
-using March.Editor.AssetPipeline;
 using March.Editor.ShaderLab;
 using March.Editor.ShaderLab.Internal;
 using Newtonsoft.Json;
@@ -12,17 +11,9 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter(".shader")]
-    internal class ShaderImporter : ExternalAssetImporter
+    [CustomAssetImporter("Shader Asset", ".shader", Version = 47)]
+    internal class ShaderImporter : AssetImporter
     {
-        public override string DisplayName => "Shader Asset";
-
-        protected override int Version => base.Version + 47;
-
-        public override string IconNormal => FontAwesome6.Code;
-
-        protected override bool UseCache => true;
-
         [JsonProperty]
         [HideInInspector]
         private bool m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
@@ -31,28 +22,20 @@ namespace March.Editor.AssetPipeline.Importers
         [HideInInspector]
         private GraphicsColorSpace m_ColorSpace = GraphicsSettings.ColorSpace;
 
-        public override bool NeedReimportAsset()
+        protected override bool NeedReimport
         {
-            return m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer
+            get => m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer
                 || m_ColorSpace != GraphicsSettings.ColorSpace
-                || base.NeedReimportAsset();
+                || base.NeedReimport;
         }
 
-        protected override void OnWillSaveImporter()
+        protected override void OnImportAssets(ref AssetImportContext context)
         {
-            base.OnWillSaveImporter();
             m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
             m_ColorSpace = GraphicsSettings.ColorSpace;
-        }
 
-        protected override MarchObject CreateAsset()
-        {
-            return new Shader();
-        }
-
-        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
-        {
-            CompileShader((Shader)asset, File.ReadAllText(AssetFullPath, Encoding.UTF8));
+            Shader shader = context.AddAsset<Shader>("MainAsset", true, FontAwesome6.Code);
+            CompileShader(shader, File.ReadAllText(Location.AssetFullPath, Encoding.UTF8));
         }
 
         private void CompileShader(Shader shader, string content)
@@ -92,12 +75,12 @@ namespace March.Editor.AssetPipeline.Importers
 
         private void CompileShaderPassWithFallback(Shader shader, int passIndex, string source)
         {
-            if (shader.CompilePass(passIndex, AssetFullPath, source))
+            if (shader.CompilePass(passIndex, Location.AssetFullPath, source))
             {
                 return;
             }
 
-            if (!shader.CompilePass(passIndex, AssetFullPath, FallbackShaderCodes.Program))
+            if (!shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program))
             {
                 Debug.LogError($"Failed to compile fallback shader program");
             }
@@ -105,7 +88,7 @@ namespace March.Editor.AssetPipeline.Importers
 
         private ParsedShaderData ParseShaderLabWithFallback(Shader shader, string code)
         {
-            ParsedShaderData result = ParseShaderLab(AssetFullPath, code, out ImmutableArray<string> errors);
+            ParsedShaderData result = ParseShaderLab(Location.AssetFullPath, code, out ImmutableArray<string> errors);
 
             if (!errors.IsEmpty)
             {
@@ -117,7 +100,7 @@ namespace March.Editor.AssetPipeline.Importers
                     }
                 }
 
-                result = ParseShaderLab(AssetFullPath, FallbackShaderCodes.ShaderLab, out errors);
+                result = ParseShaderLab(Location.AssetFullPath, FallbackShaderCodes.ShaderLab, out errors);
                 Debug.Assert(errors.IsEmpty, "Failed to parse fallback ShaderLab");
             }
 
@@ -182,6 +165,49 @@ Shader ""ErrorShader""
         ENDHLSL
     }}
 }}";
+        }
+    }
+
+    internal class ShaderImporterDrawer : AssetImporterDrawerFor<ShaderImporter>
+    {
+        protected override bool DrawProperties(out bool showApplyRevertButtons)
+        {
+            bool isChanged = base.DrawProperties(out showApplyRevertButtons);
+
+            Shader shader = (Shader)Target.MainAsset;
+
+            EditorGUI.LabelField("Warnings", string.Empty, shader.Warnings.Length.ToString());
+            EditorGUI.LabelField("Errors", string.Empty, shader.Errors.Length.ToString());
+
+            if (EditorGUI.ButtonRight("Show Warnings and Errors"))
+            {
+                foreach (string warning in shader.Warnings)
+                {
+                    Debug.LogWarning(warning);
+                }
+
+                foreach (string error in shader.Errors)
+                {
+                    Debug.LogError(error);
+                }
+            }
+
+            EditorGUI.Space();
+            EditorGUI.Separator();
+            EditorGUI.Space();
+
+            if (EditorGUI.Foldout("Properties", string.Empty, defaultOpen: true))
+            {
+                using (new EditorGUI.IndentedScope())
+                {
+                    foreach (ShaderProperty prop in shader.Properties)
+                    {
+                        EditorGUI.LabelField(prop.Name, string.Empty, prop.Type.ToString());
+                    }
+                }
+            }
+
+            return isChanged;
         }
     }
 }

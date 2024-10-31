@@ -3,7 +3,6 @@ using glTFLoader.Schema;
 using March.Core;
 using March.Core.IconFonts;
 using March.Core.Rendering;
-using March.Editor.AssetPipeline;
 using System.Numerics;
 using Material = March.Core.Rendering.Material;
 using Mesh = March.Core.Rendering.Mesh;
@@ -11,33 +10,20 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf")]
-    internal class GltfImporter : ExternalAssetImporter
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 7)]
+    internal class GltfImporter : AssetImporter
     {
-        public override string DisplayName => "glTF Model Asset";
-
-        protected override int Version => base.Version + 6;
-
-        public override string IconNormal => FontAwesome6.Cube;
-
-        protected override bool UseCache => true;
-
-        protected override MarchObject CreateAsset()
-        {
-            return new GameObject();
-        }
-
-        protected override void PopulateAsset(MarchObject asset, bool willSaveToFile)
+        protected override void OnImportAssets(ref AssetImportContext context)
         {
             Gltf gltf;
 
-            using (FileStream fs = File.OpenRead(AssetFullPath))
+            using (FileStream fs = File.OpenRead(Location.AssetFullPath))
             {
                 gltf = Interface.LoadModel(fs);
             }
 
             BinaryReader[] buffers = new BinaryReader[gltf.Buffers.Length];
-            string directory = Path.GetDirectoryName(AssetFullPath)!;
+            string directory = Path.GetDirectoryName(Location.AssetFullPath)!;
 
             for (int i = 0; i < buffers.Length; i++)
             {
@@ -47,9 +33,16 @@ namespace March.Editor.AssetPipeline.Importers
 
             var scene = gltf.Scenes[gltf.Scene ?? 0]; // 只加载一个 Scene
 
-            GameObject root = (GameObject)asset;
-            root.Name = scene.Name ?? Path.GetFileNameWithoutExtension(AssetFullPath);
-            CreateChildren(gltf, buffers, root, scene.Nodes);
+            GameObject root = context.AddAsset("Root", () => new GameObject(), true, FontAwesome6.Cube);
+            root.Name = scene.Name ?? Path.GetFileNameWithoutExtension(Location.AssetFullPath);
+
+            // Reset children
+            for (int i = 0; i < root.transform.ChildCount; i++)
+            {
+                root.transform.GetChild(i).Detach();
+            }
+
+            CreateChildren(ref context, gltf, buffers, root, scene.Nodes);
 
             for (int i = 0; i < buffers.Length; i++)
             {
@@ -57,15 +50,16 @@ namespace March.Editor.AssetPipeline.Importers
             }
         }
 
-        private void CreateChildren(Gltf gltf, BinaryReader[] buffers, GameObject parent, int[]? nodeIndices)
+        private void CreateChildren(ref AssetImportContext context, Gltf gltf, BinaryReader[] buffers, GameObject parent, int[]? nodeIndices)
         {
             if (nodeIndices == null || nodeIndices.Length == 0)
             {
                 return;
             }
 
-            foreach (var node in nodeIndices.Select(i => gltf.Nodes[i]))
+            foreach (int nodeIdx in nodeIndices)
             {
+                var node = gltf.Nodes[nodeIdx];
                 var go = new GameObject();
 
                 if (node.ShouldSerializeName())
@@ -131,18 +125,19 @@ namespace March.Editor.AssetPipeline.Importers
                 {
                     MeshRenderer renderer = go.AddComponent<MeshRenderer>();
                     renderer.Materials.Clear();
-                    renderer.Mesh = CreateMesh(gltf, buffers, gltf.Meshes[node.Mesh!.Value], renderer.Materials);
+                    renderer.Mesh = CreateMesh(ref context, gltf, buffers, gltf.Meshes[node.Mesh!.Value], renderer.Materials, nodeIdx);
                     renderer.SyncNativeMaterials();
                 }
 
                 parent.transform.AddChild(go.transform);
-                CreateChildren(gltf, buffers, go, node.Children);
+                CreateChildren(ref context, gltf, buffers, go, node.Children);
             }
         }
 
-        private Mesh CreateMesh(Gltf gltf, BinaryReader[] buffers, glTFLoader.Schema.Mesh m, List<Material?> materials)
+        private Mesh CreateMesh(ref AssetImportContext context, Gltf gltf, BinaryReader[] buffers, glTFLoader.Schema.Mesh m, List<Material?> materials, int nodeIndex)
         {
-            var mesh = new Mesh();
+            var mesh = context.AddAsset<Mesh>($"Node{nodeIndex}_Mesh");
+            mesh.ClearSubMeshes();
 
             foreach (var primitive in m.Primitives)
             {
@@ -224,7 +219,8 @@ namespace March.Editor.AssetPipeline.Importers
                 }
                 else
                 {
-                    var mat = new Material();
+                    var mat = context.AddAsset<Material>($"Node{nodeIndex}_SubMesh{mesh.SubMeshCount}_Material");
+                    mat.Reset();
                     materials.Add(mat);
 
                     mat.Shader = AssetDatabase.Load<Shader>("Engine/Shaders/BlinnPhong.shader");
@@ -238,7 +234,7 @@ namespace March.Editor.AssetPipeline.Importers
                         if (sourceIndex != null)
                         {
                             string uri = gltf.Images[sourceIndex.Value].Uri;
-                            var tex = AssetDatabase.Load<Texture>(Path.Combine(Path.GetDirectoryName(AssetPath)!, uri).ValidatePath());
+                            var tex = AssetDatabase.Load<Texture>(Path.Combine(Path.GetDirectoryName(Location.AssetPath)!, uri).ValidatePath());
                             mat.SetTexture("_DiffuseMap", tex);
                         }
                     }

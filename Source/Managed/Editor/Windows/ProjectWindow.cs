@@ -1,4 +1,6 @@
+using March.Core;
 using March.Core.IconFonts;
+using March.Editor.AssetPipeline;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -18,9 +20,12 @@ namespace March.Editor.Windows
         {
             base.OnOpen();
 
-            foreach ((AssetCategory category, string path) in AssetDatabase.GetAllAssetCategoriesAndPaths())
+            using var locations = ListPool<AssetLocation>.Get();
+            AssetDatabase.GetAllAssetLocations(locations);
+
+            foreach (AssetLocation location in locations.Value)
             {
-                AddPath(category, path);
+                AddPath(location);
             }
 
             AssetDatabase.OnImported += AddPath;
@@ -44,34 +49,34 @@ namespace March.Editor.Windows
             m_EngineFileTree.Draw();
         }
 
-        private void AddPath(AssetCategory category, string path)
+        private void AddPath(AssetLocation location)
         {
-            if (category == AssetCategory.ProjectAsset)
+            if (location.Category == AssetCategory.ProjectAsset)
             {
-                m_ProjectTree.Add(path, AssetDatabase.IsFolder(path));
+                m_ProjectTree.Add(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
-            else if (category == AssetCategory.EngineShader)
+            else if (location.Category == AssetCategory.EngineShader)
             {
-                m_EngineFileTree.Add(path, AssetDatabase.IsFolder(path));
+                m_EngineFileTree.Add(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
         }
 
-        private void RemovePath(AssetCategory category, string path)
+        private void RemovePath(AssetLocation location)
         {
-            if (category == AssetCategory.ProjectAsset)
+            if (location.Category == AssetCategory.ProjectAsset)
             {
-                m_ProjectTree.Remove(path, AssetDatabase.IsFolder(path));
+                m_ProjectTree.Remove(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
-            else if (category == AssetCategory.EngineShader)
+            else if (location.Category == AssetCategory.EngineShader)
             {
-                m_EngineFileTree.Remove(path, AssetDatabase.IsFolder(path));
+                m_EngineFileTree.Remove(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
         }
 
-        private void OnAssetRenamed(AssetCategory oldCategory, string oldPath, AssetCategory newCategory, string newPath)
+        private void OnAssetRenamed(AssetLocation oldLocation, AssetLocation newLocation)
         {
-            RemovePath(oldCategory, oldPath);
-            AddPath(newCategory, newPath);
+            RemovePath(oldLocation);
+            AddPath(newLocation);
         }
     }
 }
