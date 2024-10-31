@@ -428,7 +428,9 @@ namespace March.Editor.AssetPipeline
         }
     }
 
-    internal abstract class DirectAssetImporterDrawerFor<T> : AssetImporterDrawerFor<T> where T : DirectAssetImporter
+    file sealed class DefaultAssetImporterDrawer : AssetImporterDrawerFor<AssetImporter> { }
+
+    public abstract class DirectAssetImporterDrawerFor<T> : AssetImporterDrawerFor<T> where T : DirectAssetImporter
     {
         protected override bool DrawProperties(out bool showApplyRevertButtons)
         {
@@ -448,5 +450,5 @@ namespace March.Editor.AssetPipeline
         }
     }
 
-    internal sealed class DefaultDirectAssetImporterDrawer : DirectAssetImporterDrawerFor<DirectAssetImporter> { }
+    file sealed class DefaultDirectAssetImporterDrawer : DirectAssetImporterDrawerFor<DirectAssetImporter> { }
 }

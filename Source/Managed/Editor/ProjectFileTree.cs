@@ -77,7 +77,7 @@ namespace March.Editor
                 bool isLeaf = guids.Value.Count == 1;
                 bool open = EditorGUI.BeginAssetTreeNode(label,
                     importer.Location.AssetPath, importer.MainAssetGuid,
-                    isLeaf: isLeaf, selected: selected, spanWidth: true);
+                    openOnArrow: true, openOnDoubleClick: true, isLeaf: isLeaf, selected: selected, spanWidth: true);
 
                 if (EditorGUI.IsTreeNodeClicked(open, isLeaf: isLeaf) == EditorGUI.ItemClickResult.True)
                 {
