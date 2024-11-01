@@ -1,15 +1,18 @@
 root = true
 
 [*]
+charset = utf-8
 end_of_line = crlf
 insert_final_newline = true
 
 [*.{h,hpp,cpp,cs,hlsl,shader}]
-charset = utf-8
 indent_style = space
 indent_size = 4
 
+[*.csproj]
+indent_style = space
+indent_size = 2
+
 [{.editorconfig}]
-charset = utf-8
 indent_style = space
 indent_size = 4

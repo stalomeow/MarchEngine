@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <BaseOutputPath>$(SolutionDir)Build\ManagedOutput\Editor\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(SolutionDir)Build\ManagedIntermediate\Editor\</BaseIntermediateOutputPath>
