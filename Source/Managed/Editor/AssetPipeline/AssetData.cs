@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 using Newtonsoft.Json;
 using System.Diagnostics.CodeAnalysis;
 
@@ -13,7 +13,7 @@ namespace March.Editor.AssetPipeline
         // 真正的资产对象 Lazy 加载
 
         private readonly WeakReference<MarchObject?> m_Asset = new(null, trackResurrection: false);
-        private string m_Guid = System.Guid.NewGuid().ToString("N"); // https://learn.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=net-8.0
+        private string m_Guid = GuidUtility.GetNew();
 
         public string Guid
         {

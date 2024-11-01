@@ -1,19 +1,9 @@
+using March.Core.Pool;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace March.Core.Binding
+namespace March.Core.Interop
 {
-    public readonly ref struct StringView(object data)
-    {
-        public object Data { get; } = data;
-
-        public static implicit operator StringView(string value) => new(value);
-
-        public static implicit operator StringView(StringBuilder value) => new(value);
-
-        public static implicit operator StringView(PooledObject<StringBuilder> value) => new(value.Value);
-    }
-
     [StructLayout(LayoutKind.Sequential)]
     public unsafe partial struct NativeString : IDisposable
     {
@@ -31,7 +21,9 @@ namespace March.Core.Binding
 
         public static implicit operator NativeString(StringBuilder value) => new() { Data = New(value) };
 
-        public static implicit operator NativeString(StringView value) => new() { Data = New(value) };
+        public static implicit operator NativeString(PooledObject<StringBuilder> value) => new() { Data = New(value) };
+
+        public static implicit operator NativeString(StringLike value) => new() { Data = New(value) };
 
         public static explicit operator NativeString(nint data) => new() { Data = data };
 
@@ -66,19 +58,19 @@ namespace March.Core.Binding
             return result;
         }
 
-        public static nint New(StringView view)
+        public static nint New(StringLike value)
         {
-            if (view.Data is string s)
+            if (value.Value is string s)
             {
                 return New(s);
             }
 
-            if (view.Data is StringBuilder builder)
+            if (value.Value is StringBuilder builder)
             {
                 return New(builder);
             }
 
-            throw new NotSupportedException($"Unsupported {nameof(StringView)}");
+            throw new ArgumentException("Invalid string type", nameof(value));
         }
 
         public static string Get(nint s)
@@ -96,6 +88,8 @@ namespace March.Core.Binding
             return result;
         }
 
+        #region Bindings
+
         [NativeFunction]
         private static partial nint MarshalString(char* p, int len);
 
@@ -110,5 +104,7 @@ namespace March.Core.Binding
 
         [NativeFunction(Name = "FreeString")]
         public static partial void Free(nint s);
+
+        #endregion
     }
 }

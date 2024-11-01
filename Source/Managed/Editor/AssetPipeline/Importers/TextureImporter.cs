@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using Newtonsoft.Json;
@@ -32,7 +32,7 @@ namespace March.Editor.AssetPipeline.Importers
 
         protected override void OnImportAssets(ref AssetImportContext context)
         {
-            Texture texture = context.AddAsset<Texture>("MainAsset", true, FontAwesome6.Image);
+            Texture texture = context.AddMainAsset<Texture>(normalIcon: FontAwesome6.Image);
 
             texture.SourceType = SourceType;
             texture.IsSRGB = IsSRGB;
@@ -56,6 +56,14 @@ namespace March.Editor.AssetPipeline.Importers
 
     internal class TextureImporterDrawer : AssetImporterDrawerFor<TextureImporter>
     {
+        private Texture? m_PreviewTexture; // 保存强引用，避免频繁被 GC 回收
+
+        public override void OnDestroy()
+        {
+            m_PreviewTexture = null;
+            base.OnDestroy();
+        }
+
         protected override void DrawAdditional()
         {
             base.DrawAdditional();
@@ -66,7 +74,12 @@ namespace March.Editor.AssetPipeline.Importers
 
             if (EditorGUI.Foldout("Preview", string.Empty, defaultOpen: true))
             {
-                EditorGUI.DrawTexture((Texture)Target.MainAsset);
+                m_PreviewTexture = (Texture)Target.MainAsset;
+                EditorGUI.DrawTexture(m_PreviewTexture);
+            }
+            else
+            {
+                m_PreviewTexture = null;
             }
         }
     }

@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -11,7 +11,7 @@ namespace March.Editor.Windows
         private MarchObject? m_LastTarget;
         private InspectorDrawer? m_LastDrawer;
 
-        public InspectorWindow() : base($"{FontAwesome6.CircleInfo} Inspector")
+        public InspectorWindow() : base(FontAwesome6.CircleInfo, "Inspector")
         {
             DefaultSize = new Vector2(350.0f, 600.0f);
         }

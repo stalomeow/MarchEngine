@@ -1,10 +1,11 @@
+using March.Core.Interop;
 using March.Core.Serialization;
 
 namespace March.Editor.Drawers
 {
     internal class FloatDrawer : IPropertyDrawerFor<float>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = property.GetValue<float>();
             var attr = property.GetAttribute<FloatDrawerAttribute>();

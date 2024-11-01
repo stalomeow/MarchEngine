@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using Newtonsoft.Json.Serialization;

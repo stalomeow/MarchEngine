@@ -1,3 +1,4 @@
+using March.Core.Pool;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -5,7 +6,10 @@ namespace March.Editor
 {
     public static class TypeCache
     {
+        private record class EnumData(string[] Names, Array Values, Enum[] BoxedValues);
+
         private static readonly Dictionary<Type, HashSet<Type>> s_Types = [];
+        private static readonly Dictionary<Type, EnumData> s_EnumCache = [];
 
         public static int Version { get; private set; }
 
@@ -26,11 +30,24 @@ namespace March.Editor
             foreach (Type type in types)
             {
                 s_Types.Remove(type);
+                s_EnumCache.Remove(type);
             }
 
-            foreach (HashSet<Type> typeSet in s_Types.Values)
+            using var typesToRemove = HashSetPool<Type>.Get();
+
+            foreach (KeyValuePair<Type, HashSet<Type>> kv in s_Types)
             {
-                typeSet.ExceptWith(types);
+                kv.Value.ExceptWith(types);
+
+                if (kv.Value.Count == 0)
+                {
+                    typesToRemove.Value.Add(kv.Key);
+                }
+            }
+
+            foreach (Type type in typesToRemove.Value)
+            {
+                s_Types.Remove(type);
             }
 
             Version++;
@@ -57,6 +74,40 @@ namespace March.Editor
         public static IEnumerable<Type> GetTypesDerivedFrom<T>()
         {
             return GetTypesDerivedFrom(typeof(T));
+        }
+
+        public static void GetEnumData(Type type, out ReadOnlySpan<string> names, out ReadOnlySpan<Enum> values)
+        {
+            EnumData data = GetEnumData(type);
+            names = data.Names;
+            values = data.BoxedValues;
+        }
+
+        public static void GetEnumData<T>(out ReadOnlySpan<string> names, out ReadOnlySpan<T> values) where T : struct, Enum
+        {
+            EnumData data = GetEnumData(typeof(T));
+            names = data.Names;
+            values = (T[])data.Values;
+        }
+
+        private static EnumData GetEnumData(Type type)
+        {
+            if (!s_EnumCache.TryGetValue(type, out EnumData? data))
+            {
+                string[] names = type.GetEnumNames();
+                Array values = type.GetEnumValues();
+                Enum[] boxedValues = new Enum[values.Length];
+
+                for (int i = 0; i < values.Length; i++)
+                {
+                    boxedValues[i] = (Enum)values.GetValue(i)!;
+                }
+
+                data = new EnumData(names, values, boxedValues);
+                s_EnumCache.Add(type, data);
+            }
+
+            return data;
         }
 
         private static void OnLoadAssembly(object? sender, AssemblyLoadEventArgs args)

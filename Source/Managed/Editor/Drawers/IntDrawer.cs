@@ -1,8 +1,10 @@
+using March.Core.Interop;
+
 namespace March.Editor.Drawers
 {
     internal class Int8Drawer : IPropertyDrawerFor<sbyte>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = (int)property.GetValue<sbyte>();
 
@@ -18,7 +20,7 @@ namespace March.Editor.Drawers
 
     internal class UInt8Drawer : IPropertyDrawerFor<byte>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = (int)property.GetValue<byte>();
 
@@ -34,7 +36,7 @@ namespace March.Editor.Drawers
 
     internal class Int16Drawer : IPropertyDrawerFor<short>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = (int)property.GetValue<short>();
 
@@ -50,7 +52,7 @@ namespace March.Editor.Drawers
 
     internal class UInt16Drawer : IPropertyDrawerFor<ushort>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = (int)property.GetValue<ushort>();
 
@@ -66,7 +68,7 @@ namespace March.Editor.Drawers
 
     internal class Int32Drawer : IPropertyDrawerFor<int>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = property.GetValue<int>();
 

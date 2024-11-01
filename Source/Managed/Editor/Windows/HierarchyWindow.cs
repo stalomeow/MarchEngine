@@ -1,5 +1,6 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
+using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline;
@@ -85,7 +86,7 @@ namespace March.Editor.Windows
             });
         }
 
-        public HierarchyWindow() : base($"{FontAwesome6.BarsStaggered} Hierarchy")
+        public HierarchyWindow() : base(FontAwesome6.BarsStaggered, "Hierarchy")
         {
             DefaultSize = new Vector2(350.0f, 600.0f);
         }

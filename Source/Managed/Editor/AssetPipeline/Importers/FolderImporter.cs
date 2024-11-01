@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 
 namespace March.Editor.AssetPipeline.Importers
 {
@@ -14,7 +14,7 @@ namespace March.Editor.AssetPipeline.Importers
 
         protected override void OnImportAssets(ref AssetImportContext context)
         {
-            context.AddAsset<FolderAsset>("MainAsset", true, FolderIconNormal, FolderIconExpanded);
+            context.AddMainAsset<FolderAsset>(normalIcon: FolderIconNormal, expandedIcon: FolderIconExpanded);
         }
 
         protected override MarchObject? TryLoadAssetFromCache(string guid)

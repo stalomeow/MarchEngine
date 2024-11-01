@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace March.Core.Binding
+namespace March.Core.Interop
 {
     [StructLayout(LayoutKind.Sequential)]
     public unsafe partial struct NativeArray<T> : IDisposable where T : unmanaged

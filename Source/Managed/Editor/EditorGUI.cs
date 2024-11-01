@@ -1,9 +1,11 @@
 using March.Core;
-using March.Core.Binding;
+using March.Core.Interop;
+using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
+using System.Text;
 
 namespace March.Editor
 {
@@ -32,14 +34,14 @@ namespace March.Editor
             True = 2,
         }
 
-        public static void PrefixLabel(StringView label, StringView tooltip)
+        public static void PrefixLabel(StringLike label, StringLike tooltip)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
             EditorGUI_PrefixLabel(l.Data, t.Data);
         }
 
-        public static bool IntField(StringView label, StringView tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0)
+        public static bool IntField(StringLike label, StringLike tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -50,7 +52,7 @@ namespace March.Editor
             }
         }
 
-        public static bool FloatField(StringView label, StringView tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool FloatField(StringLike label, StringLike tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -61,7 +63,7 @@ namespace March.Editor
             }
         }
 
-        public static bool Vector2Field(StringView label, StringView tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector2Field(StringLike label, StringLike tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -72,7 +74,7 @@ namespace March.Editor
             }
         }
 
-        public static bool Vector3Field(StringView label, StringView tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector3Field(StringLike label, StringLike tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -83,7 +85,7 @@ namespace March.Editor
             }
         }
 
-        public static bool Vector4Field(StringView label, StringView tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool Vector4Field(StringLike label, StringLike tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -94,7 +96,7 @@ namespace March.Editor
             }
         }
 
-        public static bool ColorField(StringView label, StringView tooltip, ref Color value)
+        public static bool ColorField(StringLike label, StringLike tooltip, ref Color value)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -105,7 +107,7 @@ namespace March.Editor
             }
         }
 
-        public static bool FloatSliderField(StringView label, StringView tooltip, ref float value, float minValue, float maxValue)
+        public static bool FloatSliderField(StringLike label, StringLike tooltip, ref float value, float minValue, float maxValue)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -116,43 +118,50 @@ namespace March.Editor
             }
         }
 
-        public static bool CollapsingHeader(StringView label, bool defaultOpen = false)
+        public static bool CollapsingHeader(StringLike label, bool defaultOpen = false)
         {
             using NativeString l = label;
             return EditorGUI_CollapsingHeader(l.Data, defaultOpen);
         }
 
-        public static bool EnumField(StringView label, StringView tooltip, ref Enum value)
+        private static void AppendEnumNames(StringBuilder builder, ReadOnlySpan<string> names)
         {
-            Type enumType = value.GetType();
-            string[] names = Enum.GetNames(enumType);
-            Array values = Enum.GetValues(enumType);
-            int index = Array.IndexOf(values, value);
-
-            using NativeString l = label;
-            using NativeString t = tooltip;
-            using NativeString items = string.Join('\0', names) + "\0\0";
-
-            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data))
+            for (int i = 0; i < names.Length; i++)
             {
-                value = (Enum)values.GetValue(index)!;
-                return true;
+                if (i > 0)
+                {
+                    builder.Append('\0');
+                }
+
+                builder.Append(names[i]);
             }
 
-            return false;
+            builder.Append('\0', 2);
         }
 
-        public static bool EnumField<T>(StringView label, StringView tooltip, ref T value) where T : struct, Enum
+        public static bool EnumField(StringLike label, StringLike tooltip, ref Enum value)
         {
-            string[] names = Enum.GetNames<T>();
-            T[] values = Enum.GetValues<T>();
-            int index = Array.IndexOf(values, value);
+            TypeCache.GetEnumData(value.GetType(), out ReadOnlySpan<string> names, out ReadOnlySpan<Enum> values);
+
+            int index = -1;
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i].Equals(value))
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            using var itemsBuilder = StringBuilderPool.Get();
+            AppendEnumNames(itemsBuilder, names);
 
             using NativeString l = label;
             using NativeString t = tooltip;
-            using NativeString items = string.Join('\0', names) + "\0\0";
+            using NativeString items = itemsBuilder;
 
-            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data))
+            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data) && index >= 0 && index < values.Length)
             {
                 value = values[index];
                 return true;
@@ -161,19 +170,55 @@ namespace March.Editor
             return false;
         }
 
-        public static bool CenterButton(StringView label, float width)
+        public static bool EnumField<T>(StringLike label, StringLike tooltip, ref T value) where T : struct, Enum
+        {
+            TypeCache.GetEnumData(out ReadOnlySpan<string> names, out ReadOnlySpan<T> values);
+
+            int index = -1;
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (EqualityComparer<T>.Default.Equals(values[i], value))
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            using var itemsBuilder = StringBuilderPool.Get();
+            AppendEnumNames(itemsBuilder, names);
+
+            using NativeString l = label;
+            using NativeString t = tooltip;
+            using NativeString items = itemsBuilder;
+
+            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data) && index >= 0 && index < values.Length)
+            {
+                value = values[index];
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool CenterButton(StringLike label, float width)
         {
             using NativeString l = label;
             return EditorGUI_CenterButton(l.Data, width);
         }
 
-        public static void SeparatorText(StringView label)
+        public static void SeparatorText(StringLike label)
         {
             using NativeString l = label;
             EditorGUI_SeparatorText(l.Data);
         }
 
-        public static bool TextField(StringView label, StringView tooltip, ref string text, string charBlacklist = "")
+        public static bool TextField(StringLike label, StringLike tooltip, ref string text)
+        {
+            return TextField(label, tooltip, ref text, string.Empty);
+        }
+
+        public static bool TextField(StringLike label, StringLike tooltip, ref string text, StringLike charBlacklist)
         {
             using NativeString l = label;
             using NativeString tp = tooltip;
@@ -190,7 +235,7 @@ namespace March.Editor
             return false;
         }
 
-        public static bool Checkbox(StringView label, StringView tooltip, ref bool value)
+        public static bool Checkbox(StringLike label, StringLike tooltip, ref bool value)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -201,7 +246,7 @@ namespace March.Editor
             }
         }
 
-        public static void LabelField(StringView label1, StringView tooltip, StringView label2)
+        public static void LabelField(StringLike label1, StringLike tooltip, StringLike label2)
         {
             using NativeString l1 = label1;
             using NativeString l2 = label2;
@@ -209,14 +254,14 @@ namespace March.Editor
             EditorGUI_LabelField(l1.Data, t.Data, l2.Data);
         }
 
-        public static bool Foldout(StringView label, StringView tooltip, bool defaultOpen = false)
+        public static bool Foldout(StringLike label, StringLike tooltip, bool defaultOpen = false)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
             return EditorGUI_Foldout(l.Data, t.Data, defaultOpen);
         }
 
-        public static bool FoldoutClosable(StringView label, StringView tooltip, ref bool visible)
+        public static bool FoldoutClosable(StringLike label, StringLike tooltip, ref bool visible)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -227,31 +272,31 @@ namespace March.Editor
             }
         }
 
-        internal static bool BeginPopup(StringView id)
+        internal static bool BeginPopup(StringLike id)
         {
             using NativeString i = id;
             return EditorGUI_BeginPopup(i.Data);
         }
 
-        internal static bool MenuItem(StringView label, bool selected = false, bool enabled = true)
+        internal static bool MenuItem(StringLike label, bool selected = false, bool enabled = true)
         {
             using NativeString l = label;
             return EditorGUI_MenuItem(l.Data, selected, enabled);
         }
 
-        internal static bool BeginMenu(StringView label, bool enabled = true)
+        internal static bool BeginMenu(StringLike label, bool enabled = true)
         {
             using NativeString l = label;
             return EditorGUI_BeginMenu(l.Data, enabled);
         }
 
-        internal static void OpenPopup(StringView id)
+        internal static void OpenPopup(StringLike id)
         {
             using NativeString i = id;
             EditorGUI_OpenPopup(i.Data);
         }
 
-        public static bool FloatRangeField(StringView label, StringView tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
+        public static bool FloatRangeField(StringLike label, StringLike tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
         {
             using NativeString l = label;
             using NativeString t = tooltip;
@@ -263,13 +308,13 @@ namespace March.Editor
             }
         }
 
-        public static bool BeginTreeNode(StringView label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        public static bool BeginTreeNode(StringLike label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
         {
             using NativeString l = label;
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool IsTreeNodeOpen(StringView id)
+        public static bool IsTreeNodeOpen(StringLike id)
         {
             using NativeString i = id;
             return EditorGUI_IsTreeNodeOpen(i.Data);
@@ -302,7 +347,12 @@ namespace March.Editor
                 || IsWindowClicked(MouseButton.Right, ignorePopup: true); // 在 window 上打开 context menu 也算 click
         }
 
-        internal static bool BeginPopupContextItem(string id = "")
+        internal static bool BeginPopupContextItem()
+        {
+            return BeginPopupContextItem(string.Empty);
+        }
+
+        internal static bool BeginPopupContextItem(StringLike id)
         {
             using NativeString i = id;
             return EditorGUI_BeginPopupContextItem(i.Data);
@@ -313,13 +363,13 @@ namespace March.Editor
             EditorGUI_DrawTexture(texture.NativePtr);
         }
 
-        public static bool Button(StringView label)
+        public static bool Button(StringLike label)
         {
             using NativeString l = label;
             return EditorGUI_Button(l.Data);
         }
 
-        public static bool ButtonRight(StringView label)
+        public static bool ButtonRight(StringLike label)
         {
             using NativeString l = label;
 
@@ -330,7 +380,7 @@ namespace March.Editor
             return EditorGUI_Button(l.Data);
         }
 
-        public static float CalcButtonWidth(StringView label)
+        public static float CalcButtonWidth(StringLike label)
         {
             using NativeString l = label;
             return EditorGUI_CalcButtonWidth(l.Data);
@@ -346,7 +396,7 @@ namespace March.Editor
             set => EditorGUI_SetCursorPosX(value);
         }
 
-        public static bool BeginAssetTreeNode(StringView label, StringView assetPath, StringView assetGuid, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
+        public static bool BeginAssetTreeNode(StringLike label, StringLike assetPath, StringLike assetGuid, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
         {
             using NativeString l = label;
             using NativeString a = assetPath;
@@ -354,7 +404,7 @@ namespace March.Editor
             return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, ag.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool MarchObjectField<T>(StringView label, StringView tooltip, ref T? asset) where T : MarchObject
+        public static bool MarchObjectField<T>(StringLike label, StringLike tooltip, ref T? asset) where T : MarchObject
         {
             MarchObject? obj = asset;
 
@@ -374,7 +424,7 @@ namespace March.Editor
             Temporary = 2
         };
 
-        public static bool MarchObjectField(StringView label, StringView tooltip, Type assetType, ref MarchObject? asset)
+        public static bool MarchObjectField(StringLike label, StringLike tooltip, Type assetType, ref MarchObject? asset)
         {
             MarchObjectState state;
             string? path;
@@ -446,7 +496,7 @@ namespace March.Editor
         /// <param name="tooltip"></param>
         /// <param name="property"></param>
         /// <returns></returns>
-        public static bool PropertyField(string label, string tooltip, in EditorProperty property)
+        public static bool PropertyField(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             using (new GroupScope())
             {
@@ -511,7 +561,7 @@ namespace March.Editor
         /// <param name="label">以 <c>##</c> 开头可以隐藏标签</param>
         /// <param name="property"></param>
         /// <returns></returns>
-        public static bool PropertyField(string label, in EditorProperty property)
+        public static bool PropertyField(StringLike label, in EditorProperty property)
         {
             return PropertyField(label, property.Tooltip, in property);
         }
@@ -556,8 +606,13 @@ namespace March.Editor
 
             if (PersistentManager.ResolveJsonContract(type) is not JsonObjectContract contract)
             {
-                LabelField($"##{nameof(ObjectPropertyFields)}Error", string.Empty,
-                    $"Failed to resolve json object contract for {type}.");
+                using var label1 = StringBuilderPool.Get();
+                label1.Value.Append("##").Append(nameof(ObjectPropertyFields)).Append("Error");
+
+                using var label2 = StringBuilderPool.Get();
+                label2.Value.Append("Failed to resolve json object contract for ").Append(type).Append('.');
+
+                LabelField(label1, string.Empty, label2);
                 propertyCount = 0;
                 return false;
             }
@@ -570,9 +625,9 @@ namespace March.Editor
             return ObjectPropertyFields(target, out _);
         }
 
-        private static bool IsLabelHidden(string label)
+        private static bool IsLabelHidden(StringLike label)
         {
-            return label.StartsWith("##");
+            return label.Length >= 2 && label[0] == '#' && label[1] == '#';
         }
 
         #endregion
@@ -599,7 +654,7 @@ namespace March.Editor
             [Obsolete("Use other constructors", error: true)]
             public IDScope() { }
 
-            public IDScope(string id)
+            public IDScope(StringLike id)
             {
                 using NativeString i = id;
                 EditorGUI_PushIDString(i.Data);

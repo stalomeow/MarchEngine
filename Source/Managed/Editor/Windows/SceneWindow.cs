@@ -1,6 +1,6 @@
 using March.Core;
-using March.Core.Binding;
-using March.Core.IconFonts;
+using March.Core.IconFont;
+using March.Core.Interop;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline;
@@ -37,7 +37,7 @@ namespace March.Editor.Windows
         private readonly Scene m_DummyScene = new();
         private readonly Camera m_SceneViewCamera;
 
-        public SceneWindow() : base(SceneWindow_New(), $"{FontAwesome6.VectorSquare} Scene")
+        public SceneWindow() : base(SceneWindow_New(), FontAwesome6.VectorSquare, "Scene")
         {
             DefaultSize = new Vector2(960.0f, 540.0f);
 

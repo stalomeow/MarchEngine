@@ -5,7 +5,7 @@
 // for use with font https://github.com/FortAwesome/Font-Awesome/blob/6.x/webfonts/fa-regular-400.ttf, https://github.com/FortAwesome/Font-Awesome/blob/6.x/webfonts/fa-solid-900.ttf
 // </auto-generated>
 
-namespace March.Core.IconFonts
+namespace March.Core.IconFont
 {
     public static class FontAwesome6
     {

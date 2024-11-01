@@ -11,7 +11,7 @@ namespace March.Binding
     [Generator]
     public class BindingGenerator : ISourceGenerator
     {
-        private const string NativeFuncAttrName = "March.Core.Binding.NativeFunctionAttribute";
+        private const string NativeFuncAttrName = "March.Core.Interop.NativeFunctionAttribute";
 
         public void Initialize(GeneratorInitializationContext context)
         {
@@ -35,7 +35,7 @@ namespace March.Binding
             foreach (var group in receiver.Methods.GroupBy<IMethodSymbol, INamedTypeSymbol>(f => f.ContainingType, SymbolEqualityComparer.Default))
             {
                 string classSource = ProcessClass(context, attrSymbol, group.Key, group);
-                context.AddSource($"{group.Key.Name}_Binding.g.cs", SourceText.From(classSource, Encoding.UTF8));
+                context.AddSource($"{group.Key.Name}.binding.cs", SourceText.From(classSource, Encoding.UTF8));
             }
         }
 

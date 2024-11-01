@@ -1,6 +1,6 @@
 using Antlr4.Runtime;
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.ShaderLab;
@@ -34,7 +34,7 @@ namespace March.Editor.AssetPipeline.Importers
             m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
             m_ColorSpace = GraphicsSettings.ColorSpace;
 
-            Shader shader = context.AddAsset<Shader>("MainAsset", true, FontAwesome6.Code);
+            Shader shader = context.AddMainAsset<Shader>(normalIcon: FontAwesome6.Code);
             CompileShader(shader, File.ReadAllText(Location.AssetFullPath, Encoding.UTF8));
         }
 

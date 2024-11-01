@@ -1,11 +1,13 @@
 using March.Core;
+using March.Core.Interop;
+using March.Core.Pool;
 using System.Collections;
 
 namespace March.Editor.Drawers
 {
     internal class IListDrawer : IPropertyDrawerFor<IList>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             IList? list = property.GetValue<IList>();
 
@@ -56,8 +58,11 @@ namespace March.Editor.Drawers
                     {
                         using (new EditorGUI.IndentedScope())
                         {
+                            using var itemLabel = StringBuilderPool.Get();
+                            itemLabel.Value.Append("##Element").Append(i);
+
                             EditorProperty itemProperty = property.GetListItemProperty(i);
-                            changed |= EditorGUI.PropertyField($"##Element{i}", string.Empty, in itemProperty);
+                            changed |= EditorGUI.PropertyField(itemLabel, string.Empty, in itemProperty);
                         }
                     }
                 }

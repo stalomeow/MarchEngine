@@ -1,10 +1,11 @@
 using March.Core;
+using March.Core.Interop;
 
 namespace March.Editor.Drawers
 {
     internal class MarchObjectDrawer : IPropertyDrawerFor<MarchObject?>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             Type? type = property.PropertyType;
 

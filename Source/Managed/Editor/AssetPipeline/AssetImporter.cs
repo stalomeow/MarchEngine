@@ -197,7 +197,7 @@ namespace March.Editor.AssetPipeline
 
         public string DisplayName => GetCustomAttribute().DisplayName;
 
-        private int Version => GetCustomAttribute().Version + 5;
+        private int Version => GetCustomAttribute().Version + 6;
 
         protected virtual bool NeedReimport
         {
@@ -302,11 +302,9 @@ namespace March.Editor.AssetPipeline
 
     public abstract class DirectAssetImporter : AssetImporter
     {
-        private const string k_MainAssetName = "MainAsset";
-
         protected override void OnImportAssets(ref AssetImportContext context)
         {
-            MarchObject asset = context.AddAsset(k_MainAssetName, CreateAsset, true, GetNormalIcon(), GetExpandedIcon());
+            MarchObject asset = context.AddMainAsset(CreateAsset, GetNormalIcon(), GetExpandedIcon());
             PersistentManager.Overwrite(Location.AssetFullPath, asset);
         }
 
@@ -324,7 +322,7 @@ namespace March.Editor.AssetPipeline
 
         internal void SetAssetAndSave(MarchObject asset)
         {
-            InitMainAsset(k_MainAssetName, asset, GetNormalIcon(), GetExpandedIcon());
+            InitMainAsset(AssetImportContext.DefaultMainAssetName, asset, GetNormalIcon(), GetExpandedIcon());
             PersistentManager.Save(asset, Location.AssetFullPath);
             ForceSaveImporter();
         }

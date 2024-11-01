@@ -1,8 +1,10 @@
+using March.Core.Interop;
+
 namespace March.Editor.Drawers
 {
     internal class EnumDrawer : IPropertyDrawerFor<Enum>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             bool changed = false;
             Enum? value = property.GetValue<Enum>();
@@ -15,7 +17,7 @@ namespace March.Editor.Drawers
                     return false;
                 }
 
-                Array values = Enum.GetValues(property.PropertyType);
+                TypeCache.GetEnumData(property.PropertyType, out _, out ReadOnlySpan<Enum> values);
 
                 if (values.Length <= 0)
                 {
@@ -23,7 +25,7 @@ namespace March.Editor.Drawers
                     return false;
                 }
 
-                value = (Enum)values.GetValue(0)!;
+                value = values[0];
                 property.SetValue(value);
                 changed = true;
             }

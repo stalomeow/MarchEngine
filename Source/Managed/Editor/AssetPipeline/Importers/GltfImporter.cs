@@ -1,7 +1,8 @@
 using glTFLoader;
 using glTFLoader.Schema;
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
+using March.Core.Pool;
 using March.Core.Rendering;
 using System.Numerics;
 using Material = March.Core.Rendering.Material;
@@ -33,7 +34,7 @@ namespace March.Editor.AssetPipeline.Importers
 
             var scene = gltf.Scenes[gltf.Scene ?? 0]; // 只加载一个 Scene
 
-            GameObject root = context.AddAsset("Root", () => new GameObject(), true, FontAwesome6.Cube);
+            GameObject root = context.AddMainAsset("Root", () => new GameObject(), FontAwesome6.Cube);
             root.Name = scene.Name ?? Path.GetFileNameWithoutExtension(Location.AssetFullPath);
 
             // Reset children
@@ -136,7 +137,7 @@ namespace March.Editor.AssetPipeline.Importers
 
         private Mesh CreateMesh(ref AssetImportContext context, Gltf gltf, BinaryReader[] buffers, glTFLoader.Schema.Mesh m, List<Material?> materials, int nodeIndex)
         {
-            var mesh = context.AddAsset<Mesh>($"Node{nodeIndex}_Mesh");
+            var mesh = context.AddSubAsset<Mesh>($"Node{nodeIndex}_Mesh");
             mesh.ClearSubMeshes();
 
             foreach (var primitive in m.Primitives)
@@ -219,7 +220,7 @@ namespace March.Editor.AssetPipeline.Importers
                 }
                 else
                 {
-                    var mat = context.AddAsset<Material>($"Node{nodeIndex}_SubMesh{mesh.SubMeshCount}_Material");
+                    var mat = context.AddSubAsset<Material>($"Node{nodeIndex}_SubMesh{mesh.SubMeshCount}_Material");
                     mat.Reset();
                     materials.Add(mat);
 

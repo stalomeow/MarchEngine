@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <BaseOutputPath>$(SolutionDir)Build\ManagedOutput\Core\</BaseOutputPath>
     <BaseIntermediateOutputPath>$(SolutionDir)Build\ManagedIntermediate\Core\</BaseIntermediateOutputPath>

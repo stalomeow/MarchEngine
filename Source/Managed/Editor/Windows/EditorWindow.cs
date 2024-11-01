@@ -1,5 +1,6 @@
 using March.Core;
-using March.Core.Binding;
+using March.Core.Interop;
+using March.Core.Pool;
 using Newtonsoft.Json;
 using System.Numerics;
 
@@ -10,16 +11,36 @@ namespace March.Editor.Windows
         private readonly bool m_IsDefaultNativeWindow;
         private bool m_IsOnOpenInvoked = false;
 
-        private EditorWindow(nint nativePtr, bool isDefaultNativeWindow, string? title) : base(nativePtr)
+        private EditorWindow(nint nativePtr, bool isDefaultNativeWindow, string? titleIcon, string? titleContent) : base(nativePtr)
         {
             m_IsDefaultNativeWindow = isDefaultNativeWindow;
-            Title = title ?? GetType().Name;
-            Id = Guid.NewGuid().ToString("N");
+
+            titleContent ??= GetType().Name;
+
+            if (titleIcon == null)
+            {
+                SetTitle(titleContent);
+            }
+            else
+            {
+                SetTitle(titleIcon, titleContent);
+            }
+
+            using var id = GuidUtility.BuildNew();
+            SetId(id);
         }
 
-        protected EditorWindow(string? title = null) : this(EditorWindow_CreateDefault(), true, title) { }
+        protected EditorWindow(string titleIcon, string titleContent) : this(EditorWindow_CreateDefault(), true, titleIcon, titleContent) { }
 
-        protected EditorWindow(nint nativePtr, string? title = null) : this(nativePtr, false, title) { }
+        protected EditorWindow(string title) : this(EditorWindow_CreateDefault(), true, null, title) { }
+
+        protected EditorWindow() : this(EditorWindow_CreateDefault(), true, null, null) { }
+
+        protected EditorWindow(nint nativePtr, string titleIcon, string titleContent) : this(nativePtr, false, titleIcon, titleContent) { }
+
+        protected EditorWindow(nint nativePtr, string title) : this(nativePtr, false, null, title) { }
+
+        protected EditorWindow(nint nativePtr) : this(nativePtr, false, null, null) { }
 
         protected sealed override void Dispose(bool disposing)
         {
@@ -47,12 +68,6 @@ namespace March.Editor.Windows
                 nint title = EditorWindow_GetTitle(NativePtr);
                 return NativeString.GetAndFree(title);
             }
-
-            protected set
-            {
-                using NativeString v = value;
-                EditorWindow_SetTitle(NativePtr, v.Data);
-            }
         }
 
         [JsonProperty]
@@ -64,11 +79,7 @@ namespace March.Editor.Windows
                 return NativeString.GetAndFree(id);
             }
 
-            protected internal set
-            {
-                using NativeString v = value;
-                EditorWindow_SetId(NativePtr, v.Data);
-            }
+            protected internal set => SetId(value);
         }
 
         public Vector2 DefaultSize
@@ -81,6 +92,25 @@ namespace March.Editor.Windows
         {
             get => EditorWindow_GetIsOpen(NativePtr);
             private set => EditorWindow_SetIsOpen(NativePtr, value);
+        }
+
+        protected void SetTitle(StringLike icon, StringLike content)
+        {
+            using var title = StringBuilderPool.Get();
+            title.Value.Append(icon).Append(' ').Append(content);
+            SetTitle(title);
+        }
+
+        protected void SetTitle(StringLike value)
+        {
+            using NativeString v = value;
+            EditorWindow_SetTitle(NativePtr, v.Data);
+        }
+
+        protected internal void SetId(StringLike value)
+        {
+            using NativeString v = value;
+            EditorWindow_SetId(NativePtr, v.Data);
         }
 
         internal void Draw()

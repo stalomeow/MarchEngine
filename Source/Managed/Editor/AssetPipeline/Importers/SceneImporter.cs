@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFonts;
+using March.Core.IconFont;
 
 namespace March.Editor.AssetPipeline.Importers
 {

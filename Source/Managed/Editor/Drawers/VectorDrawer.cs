@@ -1,3 +1,4 @@
+using March.Core.Interop;
 using March.Core.Serialization;
 using System.Numerics;
 
@@ -5,7 +6,7 @@ namespace March.Editor.Drawers
 {
     internal class Vector2Drawer : IPropertyDrawerFor<Vector2>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = property.GetValue<Vector2>();
             var attr = property.GetAttribute<Vector2DrawerAttribute>();
@@ -36,7 +37,7 @@ namespace March.Editor.Drawers
 
     internal class Vector3Drawer : IPropertyDrawerFor<Vector3>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = property.GetValue<Vector3>();
 
@@ -52,7 +53,7 @@ namespace March.Editor.Drawers
 
     internal class Vector4Drawer : IPropertyDrawerFor<Vector4>
     {
-        public bool Draw(string label, string tooltip, in EditorProperty property)
+        public bool Draw(StringLike label, StringLike tooltip, in EditorProperty property)
         {
             var value = property.GetValue<Vector4>();
 

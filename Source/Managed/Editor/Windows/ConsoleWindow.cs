@@ -1,5 +1,5 @@
-using March.Core.Binding;
-using March.Core.IconFonts;
+using March.Core.Interop;
+using March.Core.IconFont;
 using Newtonsoft.Json;
 using System.Numerics;
 
@@ -8,7 +8,7 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/General/Console")]
     internal partial class ConsoleWindow : EditorWindow
     {
-        public ConsoleWindow() : base(ConsoleWindow_New(), $"{FontAwesome6.Terminal} Console")
+        public ConsoleWindow() : base(ConsoleWindow_New(), FontAwesome6.Terminal, "Console")
         {
             DefaultSize = new Vector2(850.0f, 400.0f);
         }

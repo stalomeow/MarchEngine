@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Pool;
 using System.Runtime.InteropServices;
 
 namespace March.Editor.AssetPipeline
@@ -48,12 +49,12 @@ namespace March.Editor.AssetPipeline
             m_DataPool.Dispose();
         }
 
-        public T AddAsset<T>(string name, bool isMainAsset = false, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject, new()
+        public T AddAsset<T>(string name, bool isMainAsset, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject, new()
         {
             return AddAsset(name, () => new T(), isMainAsset, normalIcon, expandedIcon);
         }
 
-        public T AddAsset<T>(string name, Func<T> factory, bool isMainAsset = false, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
+        public T AddAsset<T>(string name, Func<T> factory, bool isMainAsset, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
         {
             if (m_ImportedData.Value.TryGetValue(name, out AssetData? data))
             {
@@ -80,6 +81,33 @@ namespace March.Editor.AssetPipeline
             m_ImportedAssets.Value.Add(result);
             m_ImportedData.Value.Add(name, data);
             return result;
+        }
+
+        public const string DefaultMainAssetName = "Main";
+
+        public T AddMainAsset<T>(string name = DefaultMainAssetName, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject, new()
+        {
+            return AddAsset<T>(name, true, normalIcon, expandedIcon);
+        }
+
+        public T AddMainAsset<T>(Func<T> factory, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
+        {
+            return AddMainAsset(DefaultMainAssetName, factory, normalIcon, expandedIcon);
+        }
+
+        public T AddMainAsset<T>(string name, Func<T> factory, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
+        {
+            return AddAsset(name, factory, true, normalIcon, expandedIcon);
+        }
+
+        public T AddSubAsset<T>(string name, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject, new()
+        {
+            return AddAsset<T>(name, false, normalIcon, expandedIcon);
+        }
+
+        public T AddSubAsset<T>(string name, Func<T> factory, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
+        {
+            return AddAsset(name, factory, false, normalIcon, expandedIcon);
         }
     }
 }
