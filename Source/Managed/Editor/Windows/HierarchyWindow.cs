@@ -122,11 +122,11 @@ namespace March.Editor.Windows
                     scene.AddRootGameObject(Instantiate(go));
                 }
 
-                DragDrop.EndTarget(accept: true);
+                DragDrop.EndTarget(DragDropResult.Accept);
             }
             else
             {
-                DragDrop.EndTarget(accept: false);
+                DragDrop.EndTarget(DragDropResult.Reject);
             }
         }
 

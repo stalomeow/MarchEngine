@@ -20,6 +20,8 @@ NATIVE_EXPORT_AUTO DragDrop_BeginTarget(cs_bool useWindow)
 {
     if (useWindow)
     {
+        // https://github.com/ocornut/imgui/issues/1771
+
         const ImGuiWindow* w = ImGui::GetCurrentWindowRead();
         retcs ImGui::BeginDragDropTargetCustom(w->ContentRegionRect, w->ID);
     }

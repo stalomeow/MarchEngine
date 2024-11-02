@@ -10,6 +10,12 @@ namespace March.Editor
         Window = 1,
     }
 
+    public enum DragDropResult
+    {
+        Accept = 0,
+        Reject = 1,
+    }
+
     public static unsafe partial class DragDrop
     {
         private static MarchObject? s_Payload;
@@ -44,16 +50,16 @@ namespace March.Editor
 
             if ((payload = s_Payload) == null)
             {
-                EndTarget(accept: false);
+                EndTarget(DragDropResult.Reject);
                 return false;
             }
 
             return true;
         }
 
-        public static void EndTarget(bool accept)
+        public static void EndTarget(DragDropResult result)
         {
-            DragDrop_AcceptTarget(accept);
+            DragDrop_AcceptTarget(result == DragDropResult.Accept);
             DragDrop_EndTarget();
         }
 

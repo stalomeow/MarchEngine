@@ -197,6 +197,21 @@ namespace March.Editor.AssetPipeline
             }
         }
 
+        public void GetAssets(List<MarchObject> assetList)
+        {
+            ReimportAndSave(force: false);
+
+            // GetAsset 可能会修改 m_GuidToAssetMap，所以先复制一份
+            // 因为之前 Reimport 过了，所以 Guid 一定是下面列表里的这些
+            using var guids = ListPool<string>.Get();
+            GetAssetGuids(guids);
+
+            foreach (string guid in guids.Value)
+            {
+                assetList.Add(GetAsset(guid)!);
+            }
+        }
+
         public string DisplayName => GetCustomAttribute().DisplayName;
 
         private int Version => GetCustomAttribute().Version + 8;
@@ -352,14 +367,7 @@ namespace March.Editor.AssetPipeline
 
             m_IsChanged = false;
             m_EditingAssets = ListPool<MarchObject>.Shared.Rent();
-
-            using var guids = ListPool<string>.Get();
-            Target.GetAssetGuids(guids);
-
-            foreach (string guid in guids.Value)
-            {
-                m_EditingAssets.Add(Target.GetAsset(guid)!);
-            }
+            Target.GetAssets(m_EditingAssets);
         }
 
         public override void OnDestroy()

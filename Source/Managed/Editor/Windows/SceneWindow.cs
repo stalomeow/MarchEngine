@@ -249,6 +249,7 @@ namespace March.Editor.Windows
                 TravelScene();
                 DrawGizmosGUI();
                 ManipulateTransform();
+                HandleDragDrop();
             }
             else
             {
@@ -324,6 +325,28 @@ namespace March.Editor.Windows
             finally
             {
                 SceneWindow_EndGizmosGUI(NativePtr);
+            }
+        }
+
+        private static void HandleDragDrop()
+        {
+            if (!DragDrop.BeginTarget(DragDropArea.Window, out MarchObject? payload, out bool isDelivery))
+            {
+                return;
+            }
+
+            if (payload is GameObject go)
+            {
+                if (isDelivery)
+                {
+                    SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
+                }
+
+                DragDrop.EndTarget(DragDropResult.Accept);
+            }
+            else
+            {
+                DragDrop.EndTarget(DragDropResult.Reject);
             }
         }
 

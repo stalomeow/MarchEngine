@@ -59,7 +59,7 @@ namespace march
         static void EndTreeNode();
 
         static ImGuiTreeNodeFlags GetTreeNodeFlags(bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
-        static bool IsTreeNodeOpen(const std::string& id);
+        static bool IsTreeNodeOpen(const std::string& id, bool defaultValue);
 
         enum class ItemClickOptions
         {

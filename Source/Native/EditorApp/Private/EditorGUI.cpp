@@ -424,9 +424,13 @@ namespace march
         return flags;
     }
 
-    bool EditorGUI::IsTreeNodeOpen(const std::string& id)
+    bool EditorGUI::IsTreeNodeOpen(const std::string& id, bool defaultValue)
     {
-        return ImGui::TreeNodeGetOpen(ImGui::GetID(id.c_str()));
+        //return ImGui::TreeNodeGetOpen(ImGui::GetID(id.c_str()));
+
+        // https://github.com/ocornut/imgui/blob/71c77c081ac36841e682498229088e7678207112/imgui_widgets.cpp#L6399
+        ImGuiStorage* storage = ImGui::GetCurrentWindowRead()->DC.StateStorage;
+        return storage->GetInt(ImGui::GetID(id.c_str()), defaultValue ? 1 : 0) != 0;
     }
 
     bool EditorGUI::HasItemClickOptions(ItemClickOptions options, ItemClickOptions checkOptions)

@@ -56,11 +56,6 @@ namespace March.Editor.AssetPipeline.Importers
 
     internal class TextureImporterDrawer : AssetImporterDrawerFor<TextureImporter>
     {
-        public override void OnDestroy()
-        {
-            base.OnDestroy();
-        }
-
         protected override void DrawAdditional()
         {
             base.DrawAdditional();

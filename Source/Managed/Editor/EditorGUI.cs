@@ -315,10 +315,10 @@ namespace March.Editor
             return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
         }
 
-        public static bool IsTreeNodeOpen(StringLike id)
+        public static bool IsTreeNodeOpen(StringLike id, bool defaultValue)
         {
             using NativeString i = id;
-            return EditorGUI_IsTreeNodeOpen(i.Data);
+            return EditorGUI_IsTreeNodeOpen(i.Data, defaultValue);
         }
 
         public static ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options)
@@ -442,11 +442,11 @@ namespace March.Editor
                         isChanged = true;
                     }
 
-                    DragDrop.EndTarget(true);
+                    DragDrop.EndTarget(DragDropResult.Accept);
                 }
                 else
                 {
-                    DragDrop.EndTarget(false);
+                    DragDrop.EndTarget(DragDropResult.Reject);
                 }
             }
 
@@ -800,7 +800,7 @@ namespace March.Editor
         public static partial void EndTreeNode();
 
         [NativeFunction]
-        private static partial bool EditorGUI_IsTreeNodeOpen(nint id);
+        private static partial bool EditorGUI_IsTreeNodeOpen(nint id, bool defaultValue);
 
         [NativeFunction]
         private static partial ItemClickResult EditorGUI_IsItemClicked(int button, ItemClickOptions options);

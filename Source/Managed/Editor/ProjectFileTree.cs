@@ -80,16 +80,15 @@ namespace March.Editor
                 bool selected = selectable && (Selection.Active == importer);
                 bool defaultOpen = (importer == null);
 
-                string icon = importer?.GetAssetNormalIcon(assetGuid!) ?? FolderImporter.FolderIconNormal;
-
-                if (selectable)
+                string icon;
+                using var id = EditorGUIUtility.BuildId(name);
+                if (EditorGUI.IsTreeNodeOpen(id, defaultOpen))
                 {
-                    using var id = EditorGUIUtility.BuildId(name);
-
-                    if (EditorGUI.IsTreeNodeOpen(id))
-                    {
-                        icon = importer?.GetAssetExpandedIcon(assetGuid!) ?? FolderImporter.FolderIconExpanded;
-                    }
+                    icon = importer?.GetAssetExpandedIcon(assetGuid!) ?? FolderImporter.FolderIconExpanded;
+                }
+                else
+                {
+                    icon = importer?.GetAssetNormalIcon(assetGuid!) ?? FolderImporter.FolderIconNormal;
                 }
 
                 using var label = EditorGUIUtility.BuildIconText(icon, name);
