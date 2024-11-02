@@ -10,6 +10,8 @@ namespace March.Core
 
         public static ulong FrameCount => Application_GetFrameCount();
 
+        #region Bindings
+
         [NativeFunction]
         private static partial float Application_GetDeltaTime();
 
@@ -18,5 +20,7 @@ namespace March.Core
 
         [NativeFunction]
         private static partial ulong Application_GetFrameCount();
+
+        #endregion
     }
 }

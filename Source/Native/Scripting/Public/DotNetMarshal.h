@@ -221,6 +221,8 @@ namespace march
 
         operator const std::string& () const { return *data; }
 
+        std::string&& move() { return std::move(*data); }
+
         static managed_type create_data()
         {
             return DBG_NEW typename std::remove_pointer_t<managed_type>();

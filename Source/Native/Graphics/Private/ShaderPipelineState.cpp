@@ -121,14 +121,14 @@ namespace march
 
         if (result == nullptr)
         {
-            DEBUG_LOG_INFO("Create new RootSignature");
+            LOG_TRACE("Create new RootSignature");
 
             ID3D12Device4* device = GetGfxDevice()->GetD3D12Device();
             GFX_HR(device->CreateRootSignature(0, bufferPointer, bufferSize, IID_PPV_ARGS(result.GetAddressOf())));
         }
         else
         {
-            DEBUG_LOG_INFO("Reuse RootSignature");
+            LOG_TRACE("Reuse RootSignature");
         }
 
         return result.Get();
@@ -209,7 +209,7 @@ namespace march
 
             if (error != nullptr)
             {
-                DEBUG_LOG_ERROR(reinterpret_cast<char*>(error->GetBufferPointer()));
+                LOG_ERROR(reinterpret_cast<char*>(error->GetBufferPointer()));
             }
 
             GFX_HR(hr);
@@ -488,7 +488,7 @@ namespace march
             result->SetName(StringUtility::Utf8ToUtf16(debugName).c_str());
 #endif
 
-            DEBUG_LOG_INFO("Create Graphics PSO for '%s' Pass of '%s' Shader", m_Name.c_str(), m_Shader->GetName().c_str());
+            LOG_TRACE("Create Graphics PSO for '%s' Pass of '%s' Shader", m_Name.c_str(), m_Shader->GetName().c_str());
         }
 
         return result.Get();

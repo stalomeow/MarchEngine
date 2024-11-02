@@ -95,7 +95,7 @@ namespace march
     {
         if (m_TextureMap.find(texture) == m_TextureMap.end())
         {
-            DEBUG_LOG_WARN("Trying to return a texture that is not from the pool");
+            LOG_WARNING("Trying to return a texture that is not from the pool");
             return;
         }
 

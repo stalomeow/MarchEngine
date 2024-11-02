@@ -76,7 +76,7 @@ namespace march
         }
         else
         {
-            DEBUG_LOG_ERROR("Gizmos is already in GUI mode");
+            LOG_ERROR("Gizmos is already in GUI mode");
         }
     }
 
@@ -146,7 +146,7 @@ namespace march
     {
         if (!IsGUIMode())
         {
-            DEBUG_LOG_WARN("Gizmos::GetGUIScale should only be called in GUI mode");
+            LOG_WARNING("Gizmos::GetGUIScale should only be called in GUI mode");
             return 1.0f;
         }
 
@@ -336,7 +336,7 @@ namespace march
     {
         if (!IsGUIMode())
         {
-            DEBUG_LOG_WARN("Gizmos::DrawText should only be called in GUI mode");
+            LOG_WARNING("Gizmos::DrawText should only be called in GUI mode");
             return;
         }
 

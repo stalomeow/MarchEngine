@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
@@ -88,7 +89,7 @@ namespace March.Editor
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to open window: {windowType}; {e}");
+                Log.Message(LogLevel.Error, "Failed to open window", $"{windowType} {e}");
                 return null;
             }
         }

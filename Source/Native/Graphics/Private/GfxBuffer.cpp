@@ -134,7 +134,7 @@ namespace march
             std::string name = "GfxUploadMemoryPage (Large)";
             m_LargePages.emplace_back(std::make_unique<GfxUploadBuffer>(m_Device, name, stride, count, true));
 
-            DEBUG_LOG_INFO("Create %s; Size: %d", name.c_str(), totalSize);
+            LOG_TRACE("Create %s; Size: %d", name.c_str(), totalSize);
             return GfxUploadMemory(m_LargePages.back().get(), 0, stride, count);
         }
 
@@ -152,7 +152,7 @@ namespace march
                 std::string name = "GfxUploadMemoryPage" + std::to_string(m_PageCounter++);
                 m_UsedPages.emplace_back(std::make_unique<GfxUploadBuffer>(m_Device, name, PageSize, 1, true));
 
-                DEBUG_LOG_INFO("Create %s; Size: %d", name.c_str(), PageSize);
+                LOG_TRACE("Create %s; Size: %d", name.c_str(), PageSize);
             }
 
             offset = 0;

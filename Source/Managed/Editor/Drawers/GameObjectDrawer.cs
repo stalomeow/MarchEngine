@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.Serialization;
 using Newtonsoft.Json.Serialization;
 using System.Reflection;
@@ -64,7 +65,7 @@ namespace March.Editor.Drawers
 
             if (PersistentManager.ResolveJsonContract(componentType) is not JsonObjectContract componentContract)
             {
-                Debug.LogError($"Failed to resolve json object contract for {componentType}.");
+                Log.Message(LogLevel.Error, "Failed to resolve json object contract", $"{componentType}");
                 return false;
             }
 

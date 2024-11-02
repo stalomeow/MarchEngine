@@ -26,11 +26,11 @@ namespace march
         void OnDraw() override;
 
     private:
-        static void DrawColorfulLogEntryText(const LogEntry* entry);
+        static void DrawColorfulLogEntryText(const LogEntry& entry);
 
-        int m_LogTypeFilter;
+        int32_t m_LogLevelFilter;
         ImGuiTextFilter m_LogMsgFilter;
-        int m_SelectedLog;
+        int32_t m_SelectedLog;
         bool m_AutoScroll;
     };
 

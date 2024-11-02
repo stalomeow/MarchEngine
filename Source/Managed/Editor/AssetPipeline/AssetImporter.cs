@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline.Importers;
 using Newtonsoft.Json;
@@ -84,7 +85,7 @@ namespace March.Editor.AssetPipeline
                 return false;
             }
 
-            Debug.LogInfo($"Reimport: {Location.AssetPath}");
+            Log.Message(LogLevel.Trace, "Reimport asset", $"{Location.AssetPath}");
 
             SafeInvokeAction(OnWillReimport);
             var context = new AssetImportContext(m_GuidToAssetMap);
@@ -120,7 +121,7 @@ namespace March.Editor.AssetPipeline
             }
             catch (Exception e)
             {
-                Debug.LogException(e);
+                Log.Message(LogLevel.Error, "Exception in AssetImporter event callback", $"{e}");
             }
         }
 
@@ -197,7 +198,7 @@ namespace March.Editor.AssetPipeline
 
         public string DisplayName => GetCustomAttribute().DisplayName;
 
-        private int Version => GetCustomAttribute().Version + 6;
+        private int Version => GetCustomAttribute().Version + 8;
 
         protected virtual bool NeedReimport
         {

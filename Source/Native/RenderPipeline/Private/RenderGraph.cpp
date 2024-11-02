@@ -79,7 +79,7 @@ namespace march
         }
         catch (std::exception& e)
         {
-            DEBUG_LOG_ERROR("error: %s", e.what());
+            LOG_ERROR("error: %s", e.what());
         }
 
         // TODO check resource leaks
@@ -182,7 +182,7 @@ namespace march
 
             if (adj.SortState == RenderGraphPassSortState::Visiting)
             {
-                DEBUG_LOG_ERROR("Cycle detected in render graph");
+                LOG_ERROR("Cycle detected in render graph");
                 return false;
             }
 
@@ -202,7 +202,7 @@ namespace march
 
         if (outdegree < 0 || outdegree > static_cast<int32_t>(pass.NextPasses.size()))
         {
-            DEBUG_LOG_ERROR("Invalid outdegree %d for pass %s", outdegree, pass.Name.c_str());
+            LOG_ERROR("Invalid outdegree %d for pass %s", outdegree, pass.Name.c_str());
             return false;
         }
 
@@ -245,7 +245,7 @@ namespace march
             {
                 if (!pass.ColorTargets[j].IsSet)
                 {
-                    DEBUG_LOG_ERROR("Color target %d is not set", i);
+                    LOG_ERROR("Color target %d is not set", i);
                     continue;
                 }
 
@@ -283,7 +283,7 @@ namespace march
     {
         if (auto it = m_ResourceDataMap.find(resourceId); it == m_ResourceDataMap.end())
         {
-            DEBUG_LOG_ERROR("Failed to find resource data for resource %d", resourceId);
+            LOG_ERROR("Failed to find resource data for resource %d", resourceId);
             return false;
         }
         else
@@ -299,7 +299,7 @@ namespace march
         {
             if (auto it = m_ResourceDataMap.find(id); it == m_ResourceDataMap.end())
             {
-                DEBUG_LOG_ERROR("Failed to find resource data for resource %d", id);
+                LOG_ERROR("Failed to find resource data for resource %d", id);
                 return false;
             }
             else
@@ -329,7 +329,7 @@ namespace march
         {
             if (!pass.ColorTargets[i].IsSet)
             {
-                DEBUG_LOG_ERROR("Color target %d is not set", i);
+                LOG_ERROR("Color target %d is not set", i);
                 continue;
             }
 
@@ -367,7 +367,7 @@ namespace march
         {
             if (!pass.ColorTargets[i].IsSet)
             {
-                DEBUG_LOG_ERROR("Color target %d is not set", i);
+                LOG_ERROR("Color target %d is not set", i);
                 continue;
             }
 
@@ -412,7 +412,7 @@ namespace march
         }
         else
         {
-            DEBUG_LOG_ERROR("Unsupported resource type");
+            LOG_ERROR("Unsupported resource type");
         }
 
         return result;
@@ -436,7 +436,7 @@ namespace march
         }
         else
         {
-            DEBUG_LOG_ERROR("Unsupported resource type");
+            LOG_ERROR("Unsupported resource type");
         }
 
         return result;
@@ -517,7 +517,7 @@ namespace march
 
         if (resMap.find(id) != resMap.end())
         {
-            DEBUG_LOG_ERROR("Resource %d already exists", id);
+            LOG_ERROR("Resource %d already exists", id);
             return;
         }
 
@@ -530,7 +530,7 @@ namespace march
 
         if (resMap.find(id) != resMap.end())
         {
-            DEBUG_LOG_ERROR("Resource %d already exists", id);
+            LOG_ERROR("Resource %d already exists", id);
             return;
         }
 
@@ -561,7 +561,7 @@ namespace march
         {
             if (pass.ResourcesWritten.count(id) > 0)
             {
-                DEBUG_LOG_ERROR("Resource %d is both read and written in pass %s", id, pass.Name.c_str());
+                LOG_ERROR("Resource %d is both read and written in pass %s", id, pass.Name.c_str());
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -574,7 +574,7 @@ namespace march
             int32_t producerPassIndex = resIt->second.GetLastProducerPass();
             if (producerPassIndex < 0)
             {
-                DEBUG_LOG_ERROR("Failed to find producer pass for resource %d in pass %s", id, pass.Name.c_str());
+                LOG_ERROR("Failed to find producer pass for resource %d in pass %s", id, pass.Name.c_str());
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -597,7 +597,7 @@ namespace march
         {
             if (pass.ResourcesRead.count(id) > 0)
             {
-                DEBUG_LOG_ERROR("Resource %d is both read and written in pass %s", id, pass.Name.c_str());
+                LOG_ERROR("Resource %d is both read and written in pass %s", id, pass.Name.c_str());
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -626,13 +626,13 @@ namespace march
 
         if (index < 0)
         {
-            DEBUG_LOG_ERROR("Invalid color target index");
+            LOG_ERROR("Invalid color target index");
             return;
         }
 
         if (index >= std::size(pass.ColorTargets))
         {
-            DEBUG_LOG_ERROR("Too many color targets");
+            LOG_ERROR("Too many color targets");
             return;
         }
 

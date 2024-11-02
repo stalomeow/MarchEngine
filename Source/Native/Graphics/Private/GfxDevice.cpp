@@ -30,7 +30,7 @@ namespace march
             ComPtr<ID3D12Debug> debugController = nullptr;
             GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
             debugController->EnableDebugLayer();
-            DEBUG_LOG_INFO("D3D12 Debug Layer Enabled");
+            LOG_INFO("D3D12 Debug Layer Enabled");
         }
 
         GFX_HR(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
@@ -60,13 +60,13 @@ namespace march
 
                 if (callbackCookie == 0)
                 {
-                    DEBUG_LOG_WARN("Failed to register D3D12 debug message callback");
+                    LOG_WARNING("Failed to register D3D12 debug message callback");
                 }
             }
             else
             {
                 m_DebugInfoQueue = nullptr;
-                DEBUG_LOG_WARN("Failed to get D3D12 debug info queue");
+                LOG_WARNING("Failed to get D3D12 debug info queue");
             }
         }
         else
@@ -175,7 +175,7 @@ namespace march
             UINT size = sizeof(name);
             if (SUCCEEDED(object->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
             {
-                DEBUG_LOG_INFO(L"Release D3D12Object %s", name);
+                LOG_TRACE(L"Release D3D12Object %s", name);
             }
 
             // 貌似不能 while (object->Release() > 0); 这样一直释放，会报 refCount < 0 的错误
@@ -271,7 +271,7 @@ namespace march
             DXGI_ADAPTER_DESC desc;
             adapter->GetDesc(&desc);
 
-            DEBUG_LOG_INFO(L"***Adapter: %s", desc.Description);
+            LOG_INFO(L"***Adapter: %s", desc.Description);
 
             LogAdapterOutputs(adapter, format);
             adapter->Release();
@@ -288,7 +288,7 @@ namespace march
             DXGI_OUTPUT_DESC desc;
             output->GetDesc(&desc);
 
-            DEBUG_LOG_INFO(L"***Output: %s", desc.DeviceName);
+            LOG_INFO(L"***Output: %s", desc.DeviceName);
 
             LogOutputDisplayModes(output, format);
             output->Release();
@@ -313,7 +313,7 @@ namespace march
             UINT n = x.RefreshRate.Numerator;
             UINT d = x.RefreshRate.Denominator;
 
-            DEBUG_LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
+            LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
         }
     }
 
@@ -335,20 +335,20 @@ namespace march
         {
         case D3D12_MESSAGE_SEVERITY_INFO:
         case D3D12_MESSAGE_SEVERITY_MESSAGE:
-            DEBUG_LOG_INFO("%s", pDescription);
+            LOG_INFO("%s", pDescription);
             break;
 
         case D3D12_MESSAGE_SEVERITY_WARNING:
-            DEBUG_LOG_WARN("%s", pDescription);
+            LOG_WARNING("%s", pDescription);
             break;
 
         case D3D12_MESSAGE_SEVERITY_CORRUPTION:
         case D3D12_MESSAGE_SEVERITY_ERROR:
-            DEBUG_LOG_ERROR("%s", pDescription);
+            LOG_ERROR("%s", pDescription);
             break;
 
         default:
-            DEBUG_LOG_WARN("Unknown D3D12_MESSAGE_SEVERITY: %d; %s", Severity, pDescription);
+            LOG_WARNING("Unknown D3D12_MESSAGE_SEVERITY: %d; %s", Severity, pDescription);
             break;
         }
     }

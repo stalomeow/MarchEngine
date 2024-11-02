@@ -159,7 +159,7 @@ namespace march
                 p.DefaultValue.Texture = prop->DefaultTexture;
                 break;
             default:
-                DEBUG_LOG_ERROR("Unknown shader property type: %d", static_cast<int32_t>(prop->Type.data));
+                LOG_ERROR("Unknown shader property type: %d", static_cast<int32_t>(prop->Type.data));
                 break;
             }
         }
@@ -210,7 +210,7 @@ namespace march
                     }
                     catch (const std::exception& e)
                     {
-                        DEBUG_LOG_ERROR("Failed to create shader blob: %s", e.what());
+                        LOG_ERROR("Failed to create shader blob: %s", e.what());
                         return;
                     }
 

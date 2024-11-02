@@ -2,11 +2,12 @@
 #include "Debug.h"
 #include "EditorGUI.h"
 #include "DotNetRuntime.h"
+#include <time.h>
 
 namespace march
 {
     ConsoleWindow::ConsoleWindow()
-        : m_LogTypeFilter(0)
+        : m_LogLevelFilter(0)
         , m_LogMsgFilter{}
         , m_SelectedLog(-1)
         , m_AutoScroll(true)
@@ -18,13 +19,39 @@ namespace march
         return base::GetWindowFlags() | ImGuiWindowFlags_NoScrollbar;
     }
 
+    static std::string GetLogLevelPrefix(LogLevel level)
+    {
+        switch (level)
+        {
+        case LogLevel::Trace:   return "TRACE";
+        case LogLevel::Debug:   return "DEBUG";
+        case LogLevel::Info:    return "INFO";
+        case LogLevel::Warning: return "WARNING";
+        case LogLevel::Error:   return "ERROR";
+        default:                return "UNKNOWN";
+        }
+    }
+
+    static std::string GetLogTimePrefix(time_t t)
+    {
+        struct tm timeInfo;
+        if (localtime_s(&timeInfo, &t) != 0)
+        {
+            throw std::runtime_error("Failed to get local time.");
+        }
+
+        char tmp[32] = { 0 };
+        strftime(tmp, sizeof(tmp), "[%H:%M:%S]", &timeInfo);
+        return std::string(tmp);
+    }
+
     void ConsoleWindow::OnDraw()
     {
         base::OnDraw();
 
         if (ImGui::Button("Clear"))
         {
-            Debug::ClearLogs();
+            Log::Clear();
         }
 
         ImGui::SameLine();
@@ -40,7 +67,7 @@ namespace march
         ImGui::TextUnformatted("Filter (inc,-exc)");
         ImGui::SameLine();
         ImGui::PushItemWidth(120.0f);
-        ImGui::Combo("##LogTypeFilter", &m_LogTypeFilter, "All\0Info\0Warn\0Error\0\0");
+        ImGui::Combo("##LogLevelFilter", &m_LogLevelFilter, "All\0Trace\0Debug\0Info\0Warning\0Error\0\0");
         ImGui::PopItemWidth();
         ImGui::SameLine();
         m_LogMsgFilter.Draw("##LogMsgFilter", ImGui::GetContentRegionAvail().x);
@@ -51,10 +78,12 @@ namespace march
             ImGui::EndPopup();
         }
 
-        ImGui::SeparatorText(StringUtility::Format("%d Info | %d Warn | %d Error",
-            Debug::GetLogCount(LogType::Info),
-            Debug::GetLogCount(LogType::Warn),
-            Debug::GetLogCount(LogType::Error)).c_str());
+        ImGui::SeparatorText(StringUtility::Format("%d Trace | %d Debug | %d Info | %d Warning | %d Error",
+            Log::GetCount(LogLevel::Trace),
+            Log::GetCount(LogLevel::Debug),
+            Log::GetCount(LogLevel::Info),
+            Log::GetCount(LogLevel::Warning),
+            Log::GetCount(LogLevel::Error)).c_str());
 
         ImVec2 totalContentSize = ImGui::GetContentRegionAvail();
         ImVec2 scrollRegionMinSize = ImVec2(totalContentSize.x, totalContentSize.y * 0.25f);
@@ -63,20 +92,14 @@ namespace march
 
         if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, 0), ImGuiChildFlags_ResizeY | ImGuiChildFlags_Border, ImGuiWindowFlags_None))
         {
-            for (int i = 0; i < Debug::s_Logs.size(); i++)
+            Log::ForEach([this](int32_t i, const LogEntry& entry)
             {
-                const auto& item = Debug::s_Logs[i];
-
-                if ((m_LogTypeFilter == 1 && item.Type != LogType::Info) ||
-                    (m_LogTypeFilter == 2 && item.Type != LogType::Warn) ||
-                    (m_LogTypeFilter == 3 && item.Type != LogType::Error) ||
-                    (m_LogMsgFilter.IsActive() && !m_LogMsgFilter.PassFilter(item.Message.c_str())))
+                if ((m_LogLevelFilter != 0 && (m_LogLevelFilter - 1 != static_cast<int32_t>(entry.Level))) ||
+                    (m_LogMsgFilter.IsActive() && !m_LogMsgFilter.PassFilter(entry.Message.c_str())))
                 {
                     if (m_SelectedLog == i)
-                    {
                         m_SelectedLog = -1;
-                    }
-                    continue;
+                    return;
                 }
 
                 float width = ImGui::GetContentRegionMax().x;
@@ -92,7 +115,7 @@ namespace march
                 {
                     if (ImGui::MenuItem("Copy"))
                     {
-                        ImGui::SetClipboardText(item.Message.c_str());
+                        ImGui::SetClipboardText(entry.Message.c_str());
                     }
 
                     ImGui::EndPopup();
@@ -101,8 +124,8 @@ namespace march
                 ImGui::SameLine();
                 ImGui::SetCursorPos(cursorPos);
 
-                DrawColorfulLogEntryText(&item);
-            }
+                DrawColorfulLogEntryText(entry);
+            });
 
             // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
             // Using a scrollbar or mouse-wheel will take away from the bottom edge.
@@ -115,15 +138,13 @@ namespace march
 
         if (ImGui::BeginChild("DetailedRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None))
         {
-            if (m_SelectedLog >= 0 && m_SelectedLog < Debug::s_Logs.size())
+            bool success = Log::ReadAt(m_SelectedLog, [this](const LogEntry& entry)
             {
-                const LogEntry& item = Debug::s_Logs[m_SelectedLog];
-
                 ImGui::PushTextWrapPos();
-                ImGui::TextUnformatted(item.Message.c_str());
+                ImGui::TextUnformatted(entry.Message.c_str());
                 ImGui::Spacing();
 
-                for (const LogStackFrame& frame : item.StackTrace)
+                for (const LogStackFrame& frame : entry.StackTrace)
                 {
                     ImGui::Text("%s (at %s : %d)", frame.Function.c_str(), frame.Filename.c_str(), frame.Line);
                 }
@@ -134,13 +155,14 @@ namespace march
                 {
                     if (ImGui::MenuItem("Copy"))
                     {
-                        ImGui::SetClipboardText(item.Message.c_str());
+                        ImGui::SetClipboardText(entry.Message.c_str());
                     }
 
                     ImGui::EndPopup();
                 }
-            }
-            else
+            });
+
+            if (!success)
             {
                 m_SelectedLog = -1;
             }
@@ -148,36 +170,61 @@ namespace march
         ImGui::EndChild();
     }
 
-    void ConsoleWindow::DrawColorfulLogEntryText(const LogEntry* entry)
+    void ConsoleWindow::DrawColorfulLogEntryText(const LogEntry& entry)
     {
         ImVec4 timeColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
         timeColor.w = 0.6f;
         ImGui::PushStyleColor(ImGuiCol_Text, timeColor);
-        ImGui::TextUnformatted(Debug::GetTimePrefix(entry->Time).c_str());
+        ImGui::TextUnformatted(GetLogTimePrefix(entry.Time).c_str());
         ImGui::PopStyleColor();
 
         ImGui::SameLine();
 
-        ImVec4 severityColor;
+        ImVec4 severityColor{};
         bool hasColor = false;
-        if (entry->Type == LogType::Info) { severityColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); hasColor = true; }
-        else if (entry->Type == LogType::Error) { severityColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); hasColor = true; }
-        else if (entry->Type == LogType::Warn) { severityColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f); hasColor = true; }
+
+        switch (entry.Level)
+        {
+        case LogLevel::Trace:
+            severityColor = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+            hasColor = true;
+            break;
+
+        case LogLevel::Debug:
+            severityColor = ImVec4(0.0f, 0.0f, 1.0f, 1.0f);
+            hasColor = true;
+            break;
+
+        case LogLevel::Info:
+            severityColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+            hasColor = true;
+            break;
+
+        case LogLevel::Warning:
+            severityColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+            hasColor = true;
+            break;
+
+        case LogLevel::Error:
+            severityColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+            hasColor = true;
+            break;
+        }
 
         if (hasColor) ImGui::PushStyleColor(ImGuiCol_Text, severityColor);
-        ImGui::TextUnformatted(Debug::GetTypePrefix(entry->Type).c_str());
+        ImGui::TextUnformatted(GetLogLevelPrefix(entry.Level).c_str());
         if (hasColor) ImGui::PopStyleColor();
 
         ImGui::SameLine();
 
-        size_t newlinePos = entry->Message.find_first_of("\r\n");
+        size_t newlinePos = entry.Message.find_first_of("\r\n");
         if (newlinePos == std::string::npos)
         {
-            ImGui::TextUnformatted(entry->Message.c_str());
+            ImGui::TextUnformatted(entry.Message.c_str());
         }
         else
         {
-            ImGui::TextUnformatted(entry->Message.substr(0, newlinePos).c_str());
+            ImGui::TextUnformatted(entry.Message.substr(0, newlinePos).c_str());
         }
     }
 
@@ -185,10 +232,7 @@ namespace march
     {
         if (EditorGUI::BeginMainViewportSideBar("##SingleLineConsoleWindow", ImGuiDir_Down, ImGui::GetTextLineHeight()))
         {
-            if (!Debug::s_Logs.empty())
-            {
-                DrawColorfulLogEntryText(&Debug::s_Logs.back());
-            }
+            Log::ReadLast([](const LogEntry& entry) { DrawColorfulLogEntryText(entry); });
 
             if (EditorGUI::IsWindowClicked(ImGuiMouseButton_Left))
             {
@@ -201,12 +245,12 @@ namespace march
 
     int32_t ConsoleWindowInternalUtility::GetLogTypeFilter(ConsoleWindow* window)
     {
-        return static_cast<int32_t>(window->m_LogTypeFilter);
+        return static_cast<int32_t>(window->m_LogLevelFilter);
     }
 
     void ConsoleWindowInternalUtility::SetLogTypeFilter(ConsoleWindow* window, int32_t value)
     {
-        window->m_LogTypeFilter = static_cast<int>(value);
+        window->m_LogLevelFilter = static_cast<int>(value);
     }
 
     bool ConsoleWindowInternalUtility::GetAutoScroll(ConsoleWindow* window)

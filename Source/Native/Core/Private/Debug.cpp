@@ -1,104 +1,135 @@
 #include "Debug.h"
-#include <memory>
 #include <Windows.h>
-#include <stdexcept>
 
 namespace march
 {
-    std::deque<LogEntry> Debug::s_Logs{};
-    uint32_t Debug::s_LogCounts[]{};
-    std::mutex Debug::s_Mutex{};
+    LogLevel                Log::s_MinimumLevel = LogLevel::Debug;
+    std::deque<LogEntry>    Log::s_Entries{};
+    uint32_t                Log::s_Counts[]{};
+    std::mutex              Log::s_Mutex{};
 
-    void Debug::AddLog(std::vector<LogStackFrame>&& stackTrace, const std::wstring& message, LogType type)
+    LogLevel Log::GetMinimumLevel()
     {
         std::lock_guard<std::mutex> lock(s_Mutex);
 
-        //while (s_Logs.size() > 2000)
-        //{
-        //    s_LogCounts[s_Logs.front().Type]--;
-        //    s_Logs.pop_front();
-        //}
-
-        LogEntry entry = {};
-        entry.Type = type;
-        entry.Time = time(NULL);
-        entry.Message = StringUtility::Utf16ToUtf8(message); // imgui 要求 utf8
-        entry.StackTrace = std::move(stackTrace);
-        s_LogCounts[static_cast<int>(entry.Type)]++;
-        s_Logs.push_back(entry);
-
-//#if defined(DEBUG) || defined(_DEBUG)
-//        OutputDebugStringA((
-//            GetTimePrefix(entry.Time) + " " +
-//            GetTypePrefix(entry.Type) + " " +
-//            StringUtility::Utf16ToAnsi(message) + // 转为 ansi 防止乱码
-//            "\n").c_str());
-//#endif
+        return s_MinimumLevel;
     }
 
-    void Debug::AddLog(std::vector<LogStackFrame>&& stackTrace, const std::string& message, LogType type)
+    void Log::SetMinimumLevel(LogLevel level)
     {
         std::lock_guard<std::mutex> lock(s_Mutex);
 
-        //while (s_Logs.size() > 2000)
-        //{
-        //    s_LogCounts[s_Logs.front().Type]--;
-        //    s_Logs.pop_front();
-        //}
-
-        LogEntry entry = {};
-        entry.Type = type;
-        entry.Time = time(NULL);
-        entry.Message = message; // imgui 要求 utf8
-        entry.StackTrace = std::move(stackTrace);
-        s_LogCounts[static_cast<int>(entry.Type)]++;
-        s_Logs.push_back(entry);
-
-//#if defined(DEBUG) || defined(_DEBUG)
-//        OutputDebugStringA((
-//            GetTimePrefix(entry.Time) + " " +
-//            GetTypePrefix(entry.Type) + " " +
-//            StringUtility::Utf8ToAnsi(message) + // 转为 ansi 防止乱码
-//            "\n").c_str());
-//#endif
+        s_MinimumLevel = level;
     }
 
-    int Debug::GetLogCount(LogType type)
+    bool Log::IsLevelEnabled(LogLevel level)
     {
         std::lock_guard<std::mutex> lock(s_Mutex);
 
-        return static_cast<int>(s_LogCounts[static_cast<int>(type)]);
+        return static_cast<int32_t>(level) >= static_cast<int32_t>(s_MinimumLevel);
     }
 
-    std::string Debug::GetTimePrefix(time_t t)
+    uint32_t Log::GetCount(LogLevel level)
     {
-        struct tm timeInfo;
-        if (localtime_s(&timeInfo, &t) != 0)
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        return s_Counts[static_cast<int32_t>(level)];
+    }
+
+    void Log::Clear()
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        s_Entries.clear();
+        ZeroMemory(s_Counts, sizeof(s_Counts));
+    }
+
+    void Log::ForEach(const std::function<void(int32_t, const LogEntry&)>& action)
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        for (size_t i = 0; i < s_Entries.size(); i++)
         {
-            throw std::runtime_error("Failed to get local time.");
-        }
-
-        char tmp[32] = { 0 };
-        strftime(tmp, sizeof(tmp), "[%H:%M:%S]", &timeInfo);
-        return std::string(tmp);
-    }
-
-    std::string Debug::GetTypePrefix(LogType type)
-    {
-        switch (type)
-        {
-        case march::LogType::Info: return "INFO";
-        case march::LogType::Warn: return "WARN";
-        case march::LogType::Error: return "ERROR";
-        default: return "UNKNOWN";
+            action(static_cast<int32_t>(i), s_Entries[i]);
         }
     }
 
-    void Debug::ClearLogs()
+    bool Log::ReadAt(int32_t i, const std::function<void(const LogEntry&)>& action)
     {
         std::lock_guard<std::mutex> lock(s_Mutex);
 
-        s_Logs.clear();
-        ZeroMemory(s_LogCounts, sizeof(s_LogCounts));
+        if (i < 0 || i >= s_Entries.size())
+        {
+            return false;
+        }
+
+        action(s_Entries[static_cast<size_t>(i)]);
+        return true;
+    }
+
+    bool Log::ReadLast(const std::function<void(const LogEntry&)>& action)
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        if (s_Entries.empty())
+        {
+            return false;
+        }
+
+        action(s_Entries.back());
+        return true;
+    }
+
+    void Log::Message(LogLevel level, std::string&& message, std::vector<LogStackFrame>&& stackTrace)
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        if (static_cast<int32_t>(level) < static_cast<int32_t>(s_MinimumLevel))
+        {
+            return;
+        }
+
+        while (s_Entries.size() > 9999)
+        {
+            s_Counts[static_cast<int32_t>(s_Entries.front().Level)]--;
+            s_Entries.pop_front();
+        }
+
+        LogEntry& entry = s_Entries.emplace_back();
+        s_Counts[static_cast<int32_t>(level)]++;
+
+        entry.Level = level;
+        entry.Time = time(NULL);
+        entry.Message = std::move(message);
+        entry.StackTrace = std::move(stackTrace);
+    }
+
+    void Log::Message(LogLevel level, const std::string& message, std::vector<LogStackFrame>&& stackTrace)
+    {
+        std::lock_guard<std::mutex> lock(s_Mutex);
+
+        if (static_cast<int32_t>(level) < static_cast<int32_t>(s_MinimumLevel))
+        {
+            return;
+        }
+
+        while (s_Entries.size() > 9999)
+        {
+            s_Counts[static_cast<int32_t>(s_Entries.front().Level)]--;
+            s_Entries.pop_front();
+        }
+
+        LogEntry& entry = s_Entries.emplace_back();
+        s_Counts[static_cast<int32_t>(level)]++;
+
+        entry.Level = level;
+        entry.Time = time(NULL);
+        entry.Message = message;
+        entry.StackTrace = std::move(stackTrace);
+    }
+
+    void Log::Message(LogLevel level, const std::wstring& message, std::vector<LogStackFrame>&& stackTrace)
+    {
+        Message(level, StringUtility::Utf16ToUtf8(message), std::move(stackTrace));
     }
 }

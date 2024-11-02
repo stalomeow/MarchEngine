@@ -234,7 +234,7 @@ namespace march
 
     void Material::RecreateConstantBuffers()
     {
-        DEBUG_LOG_INFO("Recreate material cbuffer");
+        LOG_TRACE("Recreate material cbuffer");
 
         m_ConstantBuffers.clear();
 
@@ -328,7 +328,7 @@ namespace march
                 break;
 
             default:
-                DEBUG_LOG_ERROR("Unknown shader property type");
+                LOG_ERROR("Unknown shader property type");
                 break;
             }
         }

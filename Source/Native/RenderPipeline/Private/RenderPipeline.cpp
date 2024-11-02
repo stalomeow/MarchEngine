@@ -93,7 +93,7 @@ namespace march
         }
         catch (std::exception& e)
         {
-            DEBUG_LOG_ERROR("error: %s", e.what());
+            LOG_ERROR("error: %s", e.what());
         }
     }
 

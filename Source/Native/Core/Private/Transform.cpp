@@ -423,7 +423,7 @@ namespace march
 
         if (!XMMatrixDecompose(&scale, &rotation, &translation, transformMatrix))
         {
-            DEBUG_LOG_ERROR("Invalid local to world matrix");
+            LOG_ERROR("Invalid local to world matrix");
             return;
         }
 

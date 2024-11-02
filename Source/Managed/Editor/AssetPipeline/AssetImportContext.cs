@@ -56,7 +56,7 @@ namespace March.Editor.AssetPipeline
 
         public T AddAsset<T>(string name, Func<T> factory, bool isMainAsset, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
         {
-            if (m_ImportedData.Value.TryGetValue(name, out AssetData? data))
+            if (m_ImportedData.Value.ContainsKey(name))
             {
                 throw new InvalidOperationException("Asset with the same name already exists");
             }
@@ -71,7 +71,7 @@ namespace March.Editor.AssetPipeline
                 m_MainAssetName = name;
             }
 
-            if (!m_DataPool.Value.Remove(name, out data))
+            if (!m_DataPool.Value.Remove(name, out AssetData? data))
             {
                 data = new AssetData { Name = name };
             }

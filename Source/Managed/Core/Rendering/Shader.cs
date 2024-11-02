@@ -1,3 +1,4 @@
+using March.Core.Diagnostics;
 using March.Core.Interop;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -681,7 +682,7 @@ namespace March.Core.Rendering
 
                     if (AddWarning(w))
                     {
-                        Debug.LogWarning(w);
+                        Log.Message(LogLevel.Warning, w);
                     }
                 }
             }
@@ -692,7 +693,7 @@ namespace March.Core.Rendering
 
                 if (AddError(e))
                 {
-                    Debug.LogError(e);
+                    Log.Message(LogLevel.Error, e);
                 }
             }
 

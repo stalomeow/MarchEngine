@@ -118,7 +118,7 @@ namespace march
 
             std::string name = "GfxDescriptorPage" + std::to_string(m_Pages.size());
             m_Pages.push_back(std::make_unique<GfxDescriptorHeap>(m_Device, m_DescriptorType, PageSize, false, name));
-            DEBUG_LOG_INFO("Create %s; Size: %d; Type: %s", name.c_str(), PageSize, GetDescriptorHeapTypeName(m_DescriptorType));
+            LOG_TRACE("Create %s; Size: %d; Type: %s", name.c_str(), PageSize, GetDescriptorHeapTypeName(m_DescriptorType));
         }
 
         return GfxDescriptorHandle(m_Pages.back().get(), static_cast<uint32_t>(m_Pages.size()) - 1, m_NextDescriptorIndex++);

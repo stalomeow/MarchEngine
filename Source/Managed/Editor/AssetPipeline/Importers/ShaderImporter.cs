@@ -1,5 +1,6 @@
 using Antlr4.Runtime;
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.IconFont;
 using March.Core.Rendering;
 using March.Core.Serialization;
@@ -82,7 +83,7 @@ namespace March.Editor.AssetPipeline.Importers
 
             if (!shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program))
             {
-                Debug.LogError($"Failed to compile fallback shader program");
+                Log.Message(LogLevel.Error, "Failed to compile fallback shader program");
             }
         }
 
@@ -96,12 +97,16 @@ namespace March.Editor.AssetPipeline.Importers
                 {
                     if (shader.AddError(e))
                     {
-                        Debug.LogError(e);
+                        Log.Message(LogLevel.Error, e);
                     }
                 }
 
                 result = ParseShaderLab(Location.AssetFullPath, FallbackShaderCodes.ShaderLab, out errors);
-                Debug.Assert(errors.IsEmpty, "Failed to parse fallback ShaderLab");
+
+                if (!errors.IsEmpty)
+                {
+                    Log.Message(LogLevel.Error, "Failed to parse fallback ShaderLab");
+                }
             }
 
             return result;
@@ -183,12 +188,12 @@ Shader ""ErrorShader""
             {
                 foreach (string warning in shader.Warnings)
                 {
-                    Debug.LogWarning(warning);
+                    Log.Message(LogLevel.Warning, warning);
                 }
 
                 foreach (string error in shader.Errors)
                 {
-                    Debug.LogError(error);
+                    Log.Message(LogLevel.Error, error);
                 }
             }
 

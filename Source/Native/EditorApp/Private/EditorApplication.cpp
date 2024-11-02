@@ -475,7 +475,7 @@ namespace march
 
     void EditorApplication::OnDisplayScaleChange()
     {
-        DEBUG_LOG_INFO("DPI Changed: %f", GetDisplayScale());
+        LOG_TRACE("DPI Changed: %f", GetDisplayScale());
 
         ReloadFonts();
         ImGui_ImplDX12_InvalidateDeviceObjects();

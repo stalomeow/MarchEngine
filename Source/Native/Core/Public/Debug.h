@@ -2,105 +2,73 @@
 
 #include "StringUtility.h"
 #include <string>
-#include <deque>
-#include <ctime>
-#include <exception>
+#include <time.h>
 #include <vector>
 #include <stdint.h>
 #include <mutex>
+#include <deque>
+#include <functional>
 
 namespace march
 {
-    class ConsoleWindow;
-
-    enum class LogType
+    enum class LogLevel
     {
+        Trace,
+        Debug,
         Info,
-        Warn,
+        Warning,
         Error,
-        NumLogType
     };
 
     struct LogStackFrame
     {
-        std::string Function;
-        std::string Filename;
-        int Line;
+        std::string Function{};
+        std::string Filename{};
+        int32_t Line{};
     };
 
     struct LogEntry
     {
-        std::string Message;
-        LogType Type;
-        time_t Time;
-        std::vector<LogStackFrame> StackTrace;
+        LogLevel Level{};
+        time_t Time{};
+        std::string Message{};
+        std::vector<LogStackFrame> StackTrace{};
     };
 
-    class Debug
+    class Log
     {
-        friend ConsoleWindow;
-
     public:
-        template<typename ... Args>
-        static void Info(std::vector<LogStackFrame>&& stackTrace, const std::wstring& format, Args ... args)
-        {
-            std::wstring message = StringUtility::Format(format, args ...);
-            AddLog(std::move(stackTrace), message, LogType::Info);
-        }
+        static LogLevel GetMinimumLevel();
+        static void SetMinimumLevel(LogLevel level);
+        static bool IsLevelEnabled(LogLevel level);
 
-        template<typename ... Args>
-        static void Info(std::vector<LogStackFrame>&& stackTrace, const std::string& format, Args ... args)
-        {
-            std::string message = StringUtility::Format(format, args ...);
-            AddLog(std::move(stackTrace), message, LogType::Info);
-        }
+        static uint32_t GetCount(LogLevel level);
+        static void Clear();
+        static void ForEach(const std::function<void(int32_t, const LogEntry&)>& action);
+        static bool ReadAt(int32_t i, const std::function<void(const LogEntry&)>& action);
+        static bool ReadLast(const std::function<void(const LogEntry&)>& action);
 
-        template<typename ... Args>
-        static void Warn(std::vector<LogStackFrame>&& stackTrace, const std::wstring& format, Args ... args)
-        {
-            std::wstring message = StringUtility::Format(format, args ...);
-            AddLog(std::move(stackTrace), message, LogType::Warn);
-        }
-
-        template<typename ... Args>
-        static void Warn(std::vector<LogStackFrame>&& stackTrace, const std::string& format, Args ... args)
-        {
-            std::string message = StringUtility::Format(format, args ...);
-            AddLog(std::move(stackTrace), message, LogType::Warn);
-        }
-
-        template<typename ... Args>
-        static void Error(std::vector<LogStackFrame>&& stackTrace, const std::wstring& format, Args ... args)
-        {
-            std::wstring message = StringUtility::Format(format, args ...);
-            AddLog(std::move(stackTrace), message, LogType::Error);
-        }
-
-        template<typename ... Args>
-        static void Error(std::vector<LogStackFrame>&& stackTrace, const std::string& format, Args ... args)
-        {
-            std::string message = StringUtility::Format(format, args ...);
-            AddLog(std::move(stackTrace), message, LogType::Error);
-        }
-
-        static void AddLog(std::vector<LogStackFrame>&& stackTrace, const std::wstring& message, LogType type);
-        static void AddLog(std::vector<LogStackFrame>&& stackTrace, const std::string& message, LogType type);
+        static void Message(LogLevel level, std::string&& message, std::vector<LogStackFrame>&& stackTrace);
+        static void Message(LogLevel level, const std::string& message, std::vector<LogStackFrame>&& stackTrace);
+        static void Message(LogLevel level, const std::wstring& message, std::vector<LogStackFrame>&& stackTrace);
 
     private:
-        static int GetLogCount(LogType type);
-        static std::string GetTypePrefix(LogType type);
-        static std::string GetTimePrefix(time_t t);
-        static void ClearLogs();
-
-        static std::deque<LogEntry> s_Logs;
-        static uint32_t s_LogCounts[static_cast<int>(LogType::NumLogType)];
+        static LogLevel s_MinimumLevel;
+        static std::deque<LogEntry> s_Entries;
+        static uint32_t s_Counts[static_cast<int32_t>(LogLevel::Error) + 1];
         static std::mutex s_Mutex;
     };
 }
 
-#define DEBUG_LOG_INFO(message, ...)  march::Debug::Info ({ { __FUNCSIG__, __FILE__, __LINE__ } }, (message), __VA_ARGS__)
-#define DEBUG_LOG_WARN(message, ...)  march::Debug::Warn ({ { __FUNCSIG__, __FILE__, __LINE__ } }, (message), __VA_ARGS__)
-#define DEBUG_LOG_ERROR(message, ...) march::Debug::Error({ { __FUNCSIG__, __FILE__, __LINE__ } }, (message), __VA_ARGS__)
+#define LOG_MSG(level, fmt, ...) \
+    if (::march::Log::IsLevelEnabled(level)) \
+        ::march::Log::Message(level, ::march::StringUtility::Format(fmt, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
+
+#define LOG_TRACE(fmt, ...) LOG_MSG(::march::LogLevel::Trace, fmt, __VA_ARGS__)
+#define LOG_DEBUG(fmt, ...) LOG_MSG(::march::LogLevel::Debug, fmt, __VA_ARGS__)
+#define LOG_INFO(fmt, ...) LOG_MSG(::march::LogLevel::Info, fmt, __VA_ARGS__)
+#define LOG_WARNING(fmt, ...) LOG_MSG(::march::LogLevel::Warning, fmt, __VA_ARGS__)
+#define LOG_ERROR(fmt, ...) LOG_MSG(::march::LogLevel::Error, fmt, __VA_ARGS__)
 
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/find-memory-leaks-using-the-crt-library?view=msvc-170
 #ifdef _DEBUG

@@ -48,13 +48,6 @@ namespace March.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Save", (ref object? arg) =>
-            {
-                Scene s = SceneManager.CurrentScene;
-                string json = PersistentManager.SaveAsString(s);
-                Debug.LogInfo(json);
-            });
-
             s_ContextMenu.AddMenuItem("Load Sponza", (ref object? arg) =>
             {
                 GameObject? go = AssetDatabase.Load<GameObject>("Assets/Models/Sponza/Sponza.gltf");

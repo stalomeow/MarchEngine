@@ -29,7 +29,7 @@ namespace march
 
         if (!hModule)
         {
-            DEBUG_LOG_ERROR("Failed to load RenderDoc library");
+            LOG_ERROR("Failed to load RenderDoc library");
             return;
         }
 
@@ -39,7 +39,7 @@ namespace march
         if (ret != 1)
         {
             g_Api = nullptr;
-            DEBUG_LOG_ERROR("Failed to get RenderDoc API. Return Code: %d", ret);
+            LOG_ERROR("Failed to get RenderDoc API. Return Code: %d", ret);
             return;
         }
 

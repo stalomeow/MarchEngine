@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
@@ -218,7 +219,7 @@ namespace March.Editor.AssetPipeline
 
             if (location.Category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to reimport an asset whose path is unknown: {e.FullPath}");
+                Log.Message(LogLevel.Warning, "Attempting to reimport an asset whose path is unknown", $"{e.FullPath}");
                 return;
             }
 
@@ -270,7 +271,7 @@ namespace March.Editor.AssetPipeline
 
             if (oldLocation.Category == AssetCategory.Unknown || newLocation.Category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to rename an asset whose path is unknown: {e.OldFullPath} -> {e.FullPath}");
+                Log.Message(LogLevel.Warning, "Attempting to rename an asset whose path is unknown", $"{e.OldFullPath} {e.FullPath}");
                 return;
             }
 
@@ -283,13 +284,13 @@ namespace March.Editor.AssetPipeline
 
             if (oldImporter == null)
             {
-                Debug.LogWarning("Attempting to rename an asset whose importer is unknown: " + oldLocation.AssetPath);
+                Log.Message(LogLevel.Warning, "Attempting to rename an asset whose importer is unknown", $"{oldLocation.AssetPath}");
                 return;
             }
 
             if (s_Path2Importers.TryGetValue(newLocation.AssetPath, out AssetImporter? newImporter))
             {
-                Debug.LogWarning("Asset already exists at new path. It will be deleted.");
+                Log.Message(LogLevel.Warning, "Asset already exists at new path. It will be deleted");
                 DeleteImporter(newImporter);
                 OnRemoved?.Invoke(newLocation);
             }
@@ -306,7 +307,7 @@ namespace March.Editor.AssetPipeline
 
             if (location.Category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to create and import an asset whose path is unknown: {e.FullPath}");
+                Log.Message(LogLevel.Warning, "Attempting to create and import an asset whose path is unknown", $"{e.FullPath}");
                 return;
             }
 
@@ -324,7 +325,7 @@ namespace March.Editor.AssetPipeline
 
             if (location.Category == AssetCategory.Unknown)
             {
-                Debug.LogWarning($"Attempting to delete an asset whose path is unknown: {e.FullPath}");
+                Log.Message(LogLevel.Warning, "Attempting to delete an asset whose path is unknown", $"{e.FullPath}");
                 return;
             }
 
@@ -457,7 +458,7 @@ namespace March.Editor.AssetPipeline
 
             if (obj == null)
             {
-                Debug.LogError($"Attempting to load a non-native asset: {path}");
+                Log.Message(LogLevel.Error, "Attempting to load a non-native asset", $"{path}");
                 return nint.Zero;
             }
 
@@ -473,7 +474,7 @@ namespace March.Editor.AssetPipeline
         {
             if (!s_NativeRefs.TryGetValue(nativePtr, out NativeReference nativeRefs))
             {
-                Debug.LogError("Attempting to unload an asset that is not loaded");
+                Log.Message(LogLevel.Error, "The native code is attempting to unload an asset that is not loaded");
                 return;
             }
 
