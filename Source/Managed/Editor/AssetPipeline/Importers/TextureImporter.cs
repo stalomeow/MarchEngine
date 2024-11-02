@@ -56,11 +56,8 @@ namespace March.Editor.AssetPipeline.Importers
 
     internal class TextureImporterDrawer : AssetImporterDrawerFor<TextureImporter>
     {
-        private Texture? m_PreviewTexture; // 保存强引用，避免频繁被 GC 回收
-
         public override void OnDestroy()
         {
-            m_PreviewTexture = null;
             base.OnDestroy();
         }
 
@@ -74,12 +71,7 @@ namespace March.Editor.AssetPipeline.Importers
 
             if (EditorGUI.Foldout("Preview", string.Empty, defaultOpen: true))
             {
-                m_PreviewTexture = (Texture)Target.MainAsset;
-                EditorGUI.DrawTexture(m_PreviewTexture);
-            }
-            else
-            {
-                m_PreviewTexture = null;
+                EditorGUI.DrawTexture((Texture)Target.MainAsset);
             }
         }
     }

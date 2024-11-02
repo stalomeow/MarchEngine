@@ -37,6 +37,7 @@ namespace March.Editor
         private static void OnTick()
         {
             AssetDatabase.Update();
+            DragDrop.Update();
 
             Gizmos.Clear();
             SceneManager.CurrentScene.DrawGizmos(selected: go => Selection.Active == go);

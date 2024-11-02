@@ -2,7 +2,6 @@ using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
-using March.Core.Serialization;
 using March.Editor.AssetPipeline;
 using March.Editor.AssetPipeline.Importers;
 using System.Numerics;
@@ -48,26 +47,6 @@ namespace March.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Load Sponza", (ref object? arg) =>
-            {
-                GameObject? go = AssetDatabase.Load<GameObject>("Assets/Models/Sponza/Sponza.gltf");
-
-                if (go != null)
-                {
-                    SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
-                }
-            });
-
-            s_ContextMenu.AddMenuItem("Load Fox", (ref object? arg) =>
-            {
-                GameObject? go = AssetDatabase.Load<GameObject>("Assets/Models/Fox/Fox.gltf");
-
-                if (go != null)
-                {
-                    SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
-                }
-            });
-
             s_ContextMenu.AddMenuItem("Create Material", (ref object? arg) =>
             {
                 string path = Application.SaveFilePanelInProject("Save Material", "New Material", "mat");
@@ -88,6 +67,7 @@ namespace March.Editor.Windows
         {
             base.OnDraw();
 
+            bool enableDragDrop = false;
             Scene scene = SceneManager.CurrentScene;
             using var sceneLabel = EditorGUIUtility.BuildIconText(SceneImporter.SceneIcon, scene.Name);
             using var selections = ListPool<GameObject>.Get();
@@ -117,11 +97,36 @@ namespace March.Editor.Windows
                 }
 
                 s_ContextMenu.ShowAsWindowContext();
+                enableDragDrop = true;
             }
             else if (EditorGUI.IsWindowClicked())
             {
                 // 点在空白上取消选择，这样用户体验更好一点
                 Selection.Active = null;
+            }
+
+            HandleDragDrop(scene, enableDragDrop);
+        }
+
+        private static void HandleDragDrop(Scene scene, bool enabled)
+        {
+            if (!DragDrop.BeginTarget(DragDropArea.Window, out MarchObject? payload, out bool isDelivery))
+            {
+                return;
+            }
+
+            if (enabled && payload is GameObject go)
+            {
+                if (isDelivery)
+                {
+                    scene.AddRootGameObject(Instantiate(go));
+                }
+
+                DragDrop.EndTarget(accept: true);
+            }
+            else
+            {
+                DragDrop.EndTarget(accept: false);
             }
         }
 

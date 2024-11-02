@@ -3,7 +3,7 @@
 
 namespace march
 {
-    LogLevel                Log::s_MinimumLevel = LogLevel::Debug;
+    LogLevel                Log::s_MinimumLevel = LogLevel::Trace;
     std::deque<LogEntry>    Log::s_Entries{};
     uint32_t                Log::s_Counts[]{};
     std::mutex              Log::s_Mutex{};

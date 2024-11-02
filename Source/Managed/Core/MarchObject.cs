@@ -15,6 +15,9 @@ namespace March.Core
         [JsonIgnore]
         public string? PersistentGuid { get; internal set; }
 
+        [JsonIgnore]
+        public bool IsPersistent => PersistentGuid != null;
+
         protected MarchObject() { }
 
         public static T Instantiate<T>(T original) where T : MarchObject

@@ -223,6 +223,8 @@ namespace march
 
         std::string&& move() { return std::move(*data); }
 
+        const char* c_str() { return data->c_str(); }
+
         static managed_type create_data()
         {
             return DBG_NEW typename std::remove_pointer_t<managed_type>();

@@ -3,6 +3,7 @@ using March.Core.Interop;
 using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
+using March.Editor.AssetPipeline;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
 using System.Text;
@@ -396,14 +397,6 @@ namespace March.Editor
             set => EditorGUI_SetCursorPosX(value);
         }
 
-        public static bool BeginAssetTreeNode(StringLike label, StringLike assetPath, StringLike assetGuid, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
-        {
-            using NativeString l = label;
-            using NativeString a = assetPath;
-            using NativeString ag = assetGuid;
-            return EditorGUI_BeginAssetTreeNode(l.Data, a.Data, ag.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
-        }
-
         public static bool MarchObjectField<T>(StringLike label, StringLike tooltip, ref T? asset) where T : MarchObject
         {
             MarchObject? obj = asset;
@@ -417,70 +410,47 @@ namespace March.Editor
             return false;
         }
 
-        private enum MarchObjectState : int
-        {
-            Null = 0,
-            Persistent = 1,
-            Temporary = 2
-        };
-
         public static bool MarchObjectField(StringLike label, StringLike tooltip, Type assetType, ref MarchObject? asset)
         {
-            MarchObjectState state;
-            string? path;
+            using var label2 = StringBuilderPool.Get();
 
             if (asset == null)
             {
-                state = MarchObjectState.Null;
-                path = string.Empty;
+                label2.Value.Append("None (").Append(assetType.Name).Append(')');
             }
             else if (asset.PersistentGuid == null)
             {
-                state = MarchObjectState.Temporary;
-                path = string.Empty;
+                label2.Value.Append("Runtime Object (").Append(assetType.Name).Append(')');
             }
             else
             {
-                state = MarchObjectState.Persistent;
-                path = AssetManager.GetPathByGuid(asset.PersistentGuid);
-
-                if (path == null)
-                {
-                    LabelField(label, tooltip, "Asset is invalid");
-                    return false;
-                }
+                AssetImporter importer = AssetDatabase.GetAssetImporter(asset)!;
+                label2.Value.AppendAssetPath(importer, asset.PersistentGuid);
             }
 
-            using NativeString l = label;
-            using NativeString t = tooltip;
-            using NativeString ty = assetType.Name;
-            using NativeString p = path;
-            nint pNewGuid = nint.Zero;
+            LabelField(label, tooltip, label2);
 
-            if (EditorGUI_MarchObjectField(l.Data, t.Data, ty.Data, p.Data, &pNewGuid, state))
+            bool isChanged = false;
+
+            if (DragDrop.BeginTarget(DragDropArea.Item, out MarchObject? newAsset, out bool isDelivery))
             {
-                string newGuid = NativeString.GetAndFree(pNewGuid);
-                MarchObject? newAsset = AssetManager.LoadByGuid<MarchObject>(newGuid);
-
-                if (newAsset != asset)
+                if (assetType.IsAssignableFrom(newAsset.GetType()))
                 {
-                    if (newAsset == null || assetType.IsAssignableFrom(newAsset.GetType()))
+                    if (isDelivery && newAsset != asset)
                     {
                         asset = newAsset;
-                        return true;
+                        isChanged = true;
                     }
-                    else
-                    {
-                        return false;
-                    }
+
+                    DragDrop.EndTarget(true);
                 }
                 else
                 {
-                    return false;
+                    DragDrop.EndTarget(false);
                 }
             }
 
-            return false;
+            return isChanged;
         }
 
         public static float CollapsingHeaderOuterExtend => EditorGUI_GetCollapsingHeaderOuterExtend();
@@ -867,12 +837,6 @@ namespace March.Editor
 
         [NativeFunction]
         private static partial void EditorGUI_SetCursorPosX(float localX);
-
-        [NativeFunction]
-        private static partial bool EditorGUI_BeginAssetTreeNode(nint label, nint assetPath, nint assetGuid, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
-
-        [NativeFunction]
-        private static partial bool EditorGUI_MarchObjectField(nint label, nint tooltip, nint type, nint persistentPath, nint* outNewPersistentGuid, MarchObjectState currentObjectState);
 
         [NativeFunction]
         private static partial float EditorGUI_GetCollapsingHeaderOuterExtend();

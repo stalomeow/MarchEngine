@@ -33,33 +33,9 @@ namespace March.Editor
 
             private static void DrawFolderAssetNode(string name, FolderNode node)
             {
-                // 如果 importer 是 null，说明是 Assets 根结点
                 AssetImporter? importer = AssetDatabase.GetAssetImporter(node.FolderPath);
 
-                string icon;
-                using var id = EditorGUIUtility.BuildId(name);
-                if (EditorGUI.IsTreeNodeOpen(id))
-                {
-                    icon = importer?.MainAssetExpandedIcon ?? FolderImporter.FolderIconExpanded;
-                }
-                else
-                {
-                    icon = importer?.MainAssetNormalIcon ?? FolderImporter.FolderIconNormal;
-                }
-
-                using var label = EditorGUIUtility.BuildIconText(icon, name);
-                string assetPath = importer?.Location.AssetPath ?? string.Empty;
-                string assetGuid = importer?.MainAssetGuid ?? string.Empty;
-                bool selected = (importer != null) && (Selection.Active == importer);
-                bool defaultOpen = (importer == null); // 默认展开 Assets 根结点
-                bool open = EditorGUI.BeginAssetTreeNode(label, assetPath, assetGuid, openOnArrow: true, openOnDoubleClick: true, selected: selected, defaultOpen: defaultOpen, spanWidth: true);
-
-                if (importer != null && EditorGUI.IsTreeNodeClicked(open, isLeaf: false) == EditorGUI.ItemClickResult.True)
-                {
-                    Selection.Active = importer;
-                }
-
-                if (open)
+                if (BeginAssetTreeNode(name, importer, importer?.MainAssetGuid, isLeaf: false))
                 {
                     node.Draw();
                     EditorGUI.EndTreeNode();
@@ -72,22 +48,8 @@ namespace March.Editor
                 using var guids = ListPool<string>.Get();
                 importer.GetAssetGuids(guids);
 
-                using var id = EditorGUIUtility.BuildId(name);
-                string icon = EditorGUI.IsTreeNodeOpen(id) ? importer.MainAssetExpandedIcon : importer.MainAssetNormalIcon;
-
-                using var label = EditorGUIUtility.BuildIconText(icon, name);
-                bool selected = Selection.Active == importer;
                 bool isLeaf = guids.Value.Count == 1;
-                bool open = EditorGUI.BeginAssetTreeNode(label,
-                    importer.Location.AssetPath, importer.MainAssetGuid,
-                    openOnArrow: true, openOnDoubleClick: true, isLeaf: isLeaf, selected: selected, spanWidth: true);
-
-                if (EditorGUI.IsTreeNodeClicked(open, isLeaf: isLeaf) == EditorGUI.ItemClickResult.True)
-                {
-                    Selection.Active = importer;
-                }
-
-                if (open)
+                if (BeginAssetTreeNode(name, importer, importer.MainAssetGuid, isLeaf))
                 {
                     if (!isLeaf)
                     {
@@ -100,12 +62,7 @@ namespace March.Editor
                                     continue;
                                 }
 
-                                string subAssetIcon = importer.GetAssetNormalIcon(guid)!;
-                                string subAssetName = importer.GetAssetName(guid)!;
-                                using var subAssetLabel = EditorGUIUtility.BuildIconText(subAssetIcon, subAssetName);
-
-                                if (EditorGUI.BeginAssetTreeNode(subAssetLabel,
-                                    importer.Location.AssetPath, guid, isLeaf: true, spanWidth: true))
+                                if (BeginAssetTreeNode(importer.GetAssetName(guid)!, importer, guid, isLeaf: true))
                                 {
                                     EditorGUI.EndTreeNode();
                                 }
@@ -115,6 +72,42 @@ namespace March.Editor
 
                     EditorGUI.EndTreeNode();
                 }
+            }
+
+            private static bool BeginAssetTreeNode(string name, AssetImporter? importer, string? assetGuid, bool isLeaf)
+            {
+                bool selectable = (importer != null) && (assetGuid == importer.MainAssetGuid);
+                bool selected = selectable && (Selection.Active == importer);
+                bool defaultOpen = (importer == null);
+
+                string icon = importer?.GetAssetNormalIcon(assetGuid!) ?? FolderImporter.FolderIconNormal;
+
+                if (selectable)
+                {
+                    using var id = EditorGUIUtility.BuildId(name);
+
+                    if (EditorGUI.IsTreeNodeOpen(id))
+                    {
+                        icon = importer?.GetAssetExpandedIcon(assetGuid!) ?? FolderImporter.FolderIconExpanded;
+                    }
+                }
+
+                using var label = EditorGUIUtility.BuildIconText(icon, name);
+                bool isOpen = EditorGUI.BeginTreeNode(label, isLeaf: isLeaf, selected: selected, defaultOpen: defaultOpen,
+                    openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
+
+                if (importer != null && assetGuid != null && DragDrop.BeginSource())
+                {
+                    using var tooltip = EditorGUIUtility.BuildAssetPath(importer, assetGuid);
+                    DragDrop.EndSource(tooltip, importer.GetAsset(assetGuid)!);
+                }
+
+                if (selectable && EditorGUI.IsTreeNodeClicked(isOpen, isLeaf) == EditorGUI.ItemClickResult.True)
+                {
+                    Selection.Active = importer;
+                }
+
+                return isOpen;
             }
 
             public void Clear()

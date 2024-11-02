@@ -1,7 +1,6 @@
 using March.Core.Pool;
 using March.Core.Rendering;
 using Newtonsoft.Json.Serialization;
-using System.Text;
 
 namespace March.Editor.Drawers
 {
@@ -16,23 +15,29 @@ namespace March.Editor.Drawers
 
             bool areMaterialsChanged = false;
 
-            for (int i = 0; i < component.Mesh.SubMeshCount; i++)
+            if (EditorGUI.Foldout("Materials", string.Empty) && component.Mesh != null)
             {
-                if (i >= component.Materials.Count)
+                using (new EditorGUI.IndentedScope())
                 {
-                    component.Materials.Add(null);
-                    areMaterialsChanged = true;
-                }
+                    for (int i = 0; i < component.Mesh.SubMeshCount; i++)
+                    {
+                        if (i >= component.Materials.Count)
+                        {
+                            component.Materials.Add(null);
+                            areMaterialsChanged = true;
+                        }
 
-                Material? material = component.Materials[i];
+                        Material? material = component.Materials[i];
 
-                using var label = StringBuilderPool.Get();
-                label.Value.Append("Material").Append(i);
+                        using var label = StringBuilderPool.Get();
+                        label.Value.Append("SubMesh ").Append(i);
 
-                if (EditorGUI.MarchObjectField(label, string.Empty, ref material))
-                {
-                    component.Materials[i] = material;
-                    areMaterialsChanged = true;
+                        if (EditorGUI.MarchObjectField(label, string.Empty, ref material))
+                        {
+                            component.Materials[i] = material;
+                            areMaterialsChanged = true;
+                        }
+                    }
                 }
             }
 

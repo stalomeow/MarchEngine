@@ -1,5 +1,6 @@
 using March.Core;
 using March.Core.Diagnostics;
+using March.Core.Pool;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline.Importers;
 using Newtonsoft.Json;
@@ -343,11 +344,22 @@ namespace March.Editor.AssetPipeline
     public abstract class AssetImporterDrawerFor<T> : InspectorDrawerFor<T> where T : AssetImporter
     {
         private bool m_IsChanged;
+        private List<MarchObject>? m_EditingAssets; // 保存资产的强引用，避免编辑时被 GC 回收
 
         public override void OnCreate()
         {
             base.OnCreate();
+
             m_IsChanged = false;
+            m_EditingAssets = ListPool<MarchObject>.Shared.Rent();
+
+            using var guids = ListPool<string>.Get();
+            Target.GetAssetGuids(guids);
+
+            foreach (string guid in guids.Value)
+            {
+                m_EditingAssets.Add(Target.GetAsset(guid)!);
+            }
         }
 
         public override void OnDestroy()
@@ -356,6 +368,12 @@ namespace March.Editor.AssetPipeline
             {
                 RevertChanges();
                 m_IsChanged = false;
+            }
+
+            if (m_EditingAssets != null)
+            {
+                ListPool<MarchObject>.Shared.Return(m_EditingAssets);
+                m_EditingAssets = null;
             }
 
             base.OnDestroy();

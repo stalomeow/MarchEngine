@@ -63,6 +63,9 @@
     <ClCompile Include="Private\GraphicsDebuggerWindow.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\DragDrop.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\EditorGUI.h">

@@ -353,6 +353,23 @@ namespace March.Editor.AssetPipeline
 
         public static bool IsAsset(string path) => GetAssetImporter(path) != null;
 
+        public static AssetImporter? GetAssetImporter(MarchObject asset, bool reimportAssetIfNeeded = true)
+        {
+            if (asset.PersistentGuid == null)
+            {
+                return null;
+            }
+
+            string? path = GetPathByGuid(asset.PersistentGuid);
+
+            if (path == null)
+            {
+                return null;
+            }
+
+            return GetAssetImporter(path, reimportAssetIfNeeded);
+        }
+
         public static AssetImporter? GetAssetImporter(string path, bool reimportAssetIfNeeded = true)
         {
             AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);

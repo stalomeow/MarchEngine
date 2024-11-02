@@ -121,6 +121,7 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <ClCompile Include="Private\ConsoleWindow.cpp" />
     <ClCompile Include="Private\DescriptorHeapDebuggerWindow.binding.cpp" />
     <ClCompile Include="Private\DescriptorHeapDebuggerWindow.cpp" />
+    <ClCompile Include="Private\DragDrop.binding.cpp" />
     <ClCompile Include="Private\EditorGUI.binding.cpp" />
     <ClCompile Include="Private\EditorGUI.cpp" />
     <ClCompile Include="Private\EditorWindow.binding.cpp" />
