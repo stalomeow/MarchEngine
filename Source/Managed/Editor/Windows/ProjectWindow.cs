@@ -1,5 +1,7 @@
+using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
+using March.Core.Rendering;
 using March.Editor.AssetPipeline;
 using System.Numerics;
 
@@ -47,6 +49,7 @@ namespace March.Editor.Windows
             base.OnDraw();
             m_ProjectTree.Draw();
             m_EngineFileTree.Draw();
+            s_ContextMenu.ShowAsWindowContext();
         }
 
         private void AddPath(AssetLocation location)
@@ -77,6 +80,32 @@ namespace March.Editor.Windows
         {
             RemovePath(oldLocation);
             AddPath(newLocation);
+        }
+
+        private static readonly GenericMenu s_ContextMenu = new("ProjectWindowContextMenu");
+
+        static ProjectWindow()
+        {
+            s_ContextMenu.AddMenuItem("Create/Shader", (ref object? arg) =>
+            {
+                string path = Application.SaveFilePanelInProject("Create Shader", "NewShader", "shader");
+
+                if (!string.IsNullOrEmpty(path))
+                {
+                    string name = Path.GetFileNameWithoutExtension(path);
+                    File.WriteAllText(AssetLocation.FromPath(path).AssetFullPath, $"Shader \"{name}\" {{}}");
+                }
+            });
+
+            s_ContextMenu.AddMenuItem("Create/Material", (ref object? arg) =>
+            {
+                string path = Application.SaveFilePanelInProject("Create Material", "NewMaterial", "mat");
+
+                if (!string.IsNullOrEmpty(path))
+                {
+                    AssetDatabase.Create(path, new Material());
+                }
+            });
         }
     }
 }

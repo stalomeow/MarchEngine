@@ -1,4 +1,3 @@
-using March.Core;
 using March.Core.Pool;
 using March.Editor.AssetPipeline;
 using March.Editor.AssetPipeline.Importers;
@@ -118,32 +117,6 @@ namespace March.Editor
 
         private readonly FolderNode m_Root = new("Root");
 
-        private static readonly GenericMenu s_ContextMenu = new("ProjectFileTreeContextMenu");
-
-        static ProjectFileTree()
-        {
-            s_ContextMenu.AddMenuItem("Create/Shader", (ref object? arg) =>
-            {
-                var importer = Selection.Active as AssetImporter;
-                string folder;
-
-                if (AssetDatabase.IsFolder(importer))
-                {
-                    folder = importer.Location.AssetFullPath;
-                }
-                else if (importer == null)
-                {
-                    folder = Path.Combine(Application.DataPath, "Assets");
-                }
-                else
-                {
-                    folder = Path.GetDirectoryName(importer.Location.AssetFullPath)!;
-                }
-
-                File.WriteAllText(Path.Combine(folder, "NewShader.shader"), string.Empty);
-            }, enabled: (ref object? arg) => Selection.Active is (AssetImporter or null));
-        }
-
         public void AddFile(string path) => Add(path, false);
 
         public void AddFolder(string path) => Add(path, true);
@@ -227,7 +200,6 @@ namespace March.Editor
         public void Draw()
         {
             m_Root.Draw();
-            s_ContextMenu.ShowAsWindowContext();
         }
     }
 }

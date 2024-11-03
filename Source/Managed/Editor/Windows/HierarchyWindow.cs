@@ -2,7 +2,6 @@ using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
-using March.Editor.AssetPipeline;
 using March.Editor.AssetPipeline.Importers;
 using System.Numerics;
 
@@ -15,7 +14,7 @@ namespace March.Editor.Windows
 
         static HierarchyWindow()
         {
-            s_ContextMenu.AddMenuItem("Create/Primitive/Cube", (ref object? arg) =>
+            s_ContextMenu.AddMenuItem("Create/Geometry/Cube", (ref object? arg) =>
             {
                 var go = SceneManager.CurrentScene.CreateGameObject("Cube", Selection.Active as GameObject);
                 var renderer = go.AddComponent<MeshRenderer>();
@@ -24,7 +23,7 @@ namespace March.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Create/Primitive/Sphere", (ref object? arg) =>
+            s_ContextMenu.AddMenuItem("Create/Geometry/Sphere", (ref object? arg) =>
             {
                 var go = SceneManager.CurrentScene.CreateGameObject("Sphere", Selection.Active as GameObject);
                 var renderer = go.AddComponent<MeshRenderer>();
@@ -33,10 +32,37 @@ namespace March.Editor.Windows
                 Selection.Active = go;
             });
 
-            s_ContextMenu.AddMenuItem("Create/Light", (ref object? arg) =>
+            s_ContextMenu.AddMenuItem("Create/Light/Directional", (ref object? arg) =>
             {
                 var go = SceneManager.CurrentScene.CreateGameObject("Directional Light", Selection.Active as GameObject);
-                go.AddComponent<Light>();
+                var light = go.AddComponent<Light>();
+                light.Type = LightType.Directional;
+
+                Selection.Active = go;
+            });
+
+            s_ContextMenu.AddMenuItem("Create/Light/Point", (ref object? arg) =>
+            {
+                var go = SceneManager.CurrentScene.CreateGameObject("Point Light", Selection.Active as GameObject);
+                var light = go.AddComponent<Light>();
+                light.Type = LightType.Point;
+
+                Selection.Active = go;
+            });
+
+            s_ContextMenu.AddMenuItem("Create/Light/Spot", (ref object? arg) =>
+            {
+                var go = SceneManager.CurrentScene.CreateGameObject("Spot Light", Selection.Active as GameObject);
+                var light = go.AddComponent<Light>();
+                light.Type = LightType.Spot;
+
+                Selection.Active = go;
+            });
+
+            s_ContextMenu.AddMenuItem("Create/Camera", (ref object? arg) =>
+            {
+                var go = SceneManager.CurrentScene.CreateGameObject("Camera", Selection.Active as GameObject);
+                go.AddComponent<Camera>();
 
                 Selection.Active = go;
             });
@@ -45,16 +71,6 @@ namespace March.Editor.Windows
             {
                 var go = SceneManager.CurrentScene.CreateGameObject(parent: Selection.Active as GameObject);
                 Selection.Active = go;
-            });
-
-            s_ContextMenu.AddMenuItem("Create Material", (ref object? arg) =>
-            {
-                string path = Application.SaveFilePanelInProject("Save Material", "New Material", "mat");
-
-                if (!string.IsNullOrEmpty(path))
-                {
-                    AssetDatabase.Create(path, new Material());
-                }
             });
         }
 

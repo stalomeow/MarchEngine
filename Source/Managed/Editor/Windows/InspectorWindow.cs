@@ -42,5 +42,15 @@ namespace March.Editor.Windows
 
             m_LastDrawer?.Draw();
         }
+        protected override void OnClose()
+        {
+            if (m_LastDrawer != null)
+            {
+                m_LastDrawer.OnDestroy();
+                m_LastDrawer = null;
+            }
+
+            base.OnClose();
+        }
     }
 }

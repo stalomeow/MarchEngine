@@ -1,5 +1,4 @@
 using Antlr4.Runtime;
-using March.Core;
 using March.Core.Diagnostics;
 using March.Core.IconFont;
 using March.Core.Rendering;
@@ -12,7 +11,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = 47)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = 49)]
     internal class ShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -35,7 +34,7 @@ namespace March.Editor.AssetPipeline.Importers
             m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
             m_ColorSpace = GraphicsSettings.ColorSpace;
 
-            Shader shader = context.AddMainAsset<Shader>(normalIcon: FontAwesome6.Code);
+            Shader shader = context.AddMainAsset<Shader>(normalIcon: FontAwesome6Brands.StripeS);
             CompileShader(shader, File.ReadAllText(Location.AssetFullPath, Encoding.UTF8));
         }
 

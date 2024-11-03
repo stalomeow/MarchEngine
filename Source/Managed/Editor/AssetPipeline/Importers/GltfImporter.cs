@@ -11,7 +11,7 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 8)]
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 10)]
     internal class GltfImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
@@ -34,7 +34,7 @@ namespace March.Editor.AssetPipeline.Importers
 
             var scene = gltf.Scenes[gltf.Scene ?? 0]; // 只加载一个 Scene
 
-            GameObject root = context.AddMainAsset("Root", () => new GameObject(), FontAwesome6.Cube);
+            GameObject root = context.AddMainAsset("Root", () => new GameObject(), FontAwesome6.DiceD6);
             root.Name = scene.Name ?? Path.GetFileNameWithoutExtension(Location.AssetFullPath);
 
             // Reset children
