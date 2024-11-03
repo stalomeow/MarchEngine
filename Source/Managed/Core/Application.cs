@@ -1,4 +1,5 @@
 using March.Core.Interop;
+using March.Core.Rendering;
 using System.Runtime.InteropServices;
 
 namespace March.Core
@@ -40,6 +41,7 @@ namespace March.Core
         private static void OnQuit()
         {
             SceneManager.CurrentScene.Dispose();
+            Mesh.DestroyGeometries();
 
             GC.Collect();
             GC.WaitForPendingFinalizers();

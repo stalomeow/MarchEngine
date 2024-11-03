@@ -13,12 +13,12 @@ namespace march
     {
         DirectX::XMFLOAT3 Position;
         DirectX::XMFLOAT3 Normal;
-        DirectX::XMFLOAT3 Tangent;
+        DirectX::XMFLOAT4 Tangent;
         DirectX::XMFLOAT2 UV;
 
         GfxMeshVertex() = default;
-        GfxMeshVertex(float px, float py, float pz, float nx, float ny, float nz, float tx, float ty, float tz, float u, float v)
-            : Position(px, py, pz), Normal(nx, ny, nz), Tangent(tx, ty, tz), UV(u, v) { }
+        GfxMeshVertex(float px, float py, float pz, float nx, float ny, float nz, float tx, float ty, float tz, float tw, float u, float v)
+            : Position(px, py, pz), Normal(nx, ny, nz), Tangent(tx, ty, tz, tw), UV(u, v) { }
     };
 
     struct GfxSubMesh
@@ -26,6 +26,13 @@ namespace march
         int32_t BaseVertexLocation;
         uint32_t StartIndexLocation;
         uint32_t IndexCount;
+    };
+
+    enum class GfxMeshGeometry
+    {
+        FullScreenTriangle,
+        Cube,
+        Sphere,
     };
 
     class GfxMeshBinding;
@@ -43,14 +50,14 @@ namespace march
 
         void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv);
         void RecalculateNormals();
+        void RecalculateTangents();
 
         void AddSubMesh(const std::vector<GfxMeshVertex>& vertices, const std::vector<uint16_t>& indices);
-        void AddSubMeshCube(float width, float height, float depth);
-        void AddSubMeshSphere(float radius, uint32_t sliceCount, uint32_t stackCount);
-        void AddFullScreenTriangle();
 
         static int32_t GetPipelineInputDescId();
         static D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopology();
+
+        static GfxMesh* GetGeometry(GfxMeshGeometry geometry);
 
         GfxMesh(const GfxMesh&) = delete;
         GfxMesh& operator=(const GfxMesh&) = delete;

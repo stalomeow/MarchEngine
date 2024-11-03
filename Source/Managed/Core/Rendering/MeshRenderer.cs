@@ -1,22 +1,12 @@
 using March.Core.Interop;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
-    public enum MeshType
-    {
-        Cube,
-        Sphere,
-        Custom,
-    }
-
     public partial class MeshRenderer : Component
     {
-        private MeshType m_MeshType = MeshType.Cube;
-        private List<Material?> m_Materials = [];
         private Mesh? m_Mesh;
+        private List<Material?> m_Materials = [];
 
         public MeshRenderer() : base(RenderObject_New()) { }
 
@@ -27,29 +17,13 @@ namespace March.Core.Rendering
         }
 
         [JsonProperty]
-        public Mesh Mesh
+        public Mesh? Mesh
         {
-            get => m_Mesh!;
+            get => m_Mesh;
             set
             {
                 m_Mesh = value;
-                UpdateMesh(false);
-            }
-        }
-
-        [JsonProperty]
-        public MeshType MeshType
-        {
-            get => m_MeshType;
-            set
-            {
-                if (m_MeshType == value)
-                {
-                    return;
-                }
-
-                m_MeshType = value;
-                UpdateMesh(true);
+                RenderObject_SetMesh(NativePtr, value?.NativePtr ?? nint.Zero);
             }
         }
 
@@ -65,46 +39,6 @@ namespace March.Core.Rendering
                 m_Materials = value;
                 SyncNativeMaterials();
             }
-        }
-
-        private void UpdateMesh(bool resetMesh)
-        {
-            if (resetMesh)
-            {
-                switch (MeshType)
-                {
-                    case MeshType.Cube:
-                        m_Mesh = new Mesh();
-                        m_Mesh.AddSubMeshCube();
-                        break;
-
-                    case MeshType.Sphere:
-                        m_Mesh = new Mesh();
-                        m_Mesh.AddSubMeshSphere(0.5f, 40, 40);
-                        break;
-                }
-            }
-            else
-            {
-                if (m_Mesh != null)
-                {
-                    m_MeshType = MeshType.Custom;
-                }
-                else
-                {
-                    m_MeshType = MeshType.Cube;
-                    m_Mesh = new Mesh();
-                    m_Mesh.AddSubMeshCube();
-                }
-            }
-
-            RenderObject_SetMesh(NativePtr, m_Mesh?.NativePtr ?? nint.Zero);
-        }
-
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
-        {
-            UpdateMesh(false);
         }
 
         internal void SyncNativeMaterials()

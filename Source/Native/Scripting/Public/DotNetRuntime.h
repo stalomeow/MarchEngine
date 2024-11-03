@@ -13,6 +13,7 @@ namespace march
         EditorApplication_OpenConsoleWindowIfNot,
         AssetManager_NativeLoadAsset,
         AssetManager_NativeUnloadAsset,
+        Mesh_NativeGetGeometry,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

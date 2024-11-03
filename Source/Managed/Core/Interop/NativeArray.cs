@@ -57,7 +57,7 @@ namespace March.Core.Interop
             }
         }
 
-        public static implicit operator NativeArray<T>(Span<T> value) => new() { Data = New(value) };
+        public static implicit operator NativeArray<T>(ReadOnlySpan<T> value) => new() { Data = New(value) };
 
         public static implicit operator NativeArray<T>(T[] value) => new() { Data = New(value) };
 
@@ -65,7 +65,7 @@ namespace March.Core.Interop
 
         public static explicit operator NativeArray<T>(nint data) => new() { Data = data };
 
-        public static nint New(Span<T> span)
+        public static nint New(ReadOnlySpan<T> span)
         {
             fixed (T* p = span)
             {

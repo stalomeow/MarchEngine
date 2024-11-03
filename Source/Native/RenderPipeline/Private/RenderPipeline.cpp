@@ -27,8 +27,7 @@ namespace march
 {
     RenderPipeline::RenderPipeline()
     {
-        m_FullScreenTriangleMesh = std::make_unique<GfxMesh>();
-        m_FullScreenTriangleMesh->AddFullScreenTriangle();
+        m_FullScreenTriangleMesh = GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle);
 
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), GfxHelpers::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM);
@@ -225,7 +224,7 @@ namespace march
                 context.SetTexture(gBuffers[i].Id(), gBuffers[i].Get());
             }
 
-            context.DrawMesh(m_FullScreenTriangleMesh.get(), m_DeferredLitMaterial.get());
+            context.DrawMesh(m_FullScreenTriangleMesh, m_DeferredLitMaterial.get());
         });
     }
 
@@ -237,7 +236,7 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawMesh(m_FullScreenTriangleMesh.get(), material);
+            context.DrawMesh(m_FullScreenTriangleMesh, material);
         });
     }
 

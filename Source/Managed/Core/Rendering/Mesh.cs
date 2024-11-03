@@ -6,12 +6,16 @@ using System.Runtime.InteropServices;
 namespace March.Core.Rendering
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct MeshVertex(Vector3 position, Vector3 normal, Vector3 tangent, Vector2 uv)
+    public struct MeshVertex(Vector3 position, Vector3 normal, Vector4 tangent, Vector2 uv)
     {
         public Vector3 Position = position;
         public Vector3 Normal = normal;
-        public Vector3 Tangent = tangent;
+        public Vector4 Tangent = tangent;
         public Vector2 UV = uv;
+
+        public MeshVertex(Vector3 position, Vector2 uv) : this(position, Vector3.Zero, Vector4.Zero, uv) { }
+
+        public MeshVertex(float x, float y, float z, float u, float v) : this(new Vector3(x, y, z), new Vector2(u, v)) { }
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -48,6 +52,11 @@ namespace March.Core.Rendering
             GfxMesh_RecalculateNormals(NativePtr);
         }
 
+        public void RecalculateTangents()
+        {
+            GfxMesh_RecalculateTangents(NativePtr);
+        }
+
         public void AddSubMesh(List<MeshVertex> vertices, List<ushort> indices)
         {
             using NativeArray<MeshVertex> v = vertices;
@@ -56,14 +65,12 @@ namespace March.Core.Rendering
             GfxMesh_AddSubMesh(NativePtr, v.Data, i.Data);
         }
 
-        public void AddSubMeshCube()
+        public void AddSubMesh(ReadOnlySpan<MeshVertex> vertices, ReadOnlySpan<ushort> indices)
         {
-            GfxMesh_AddSubMeshCube(NativePtr);
-        }
+            using NativeArray<MeshVertex> v = vertices;
+            using NativeArray<ushort> i = indices;
 
-        public void AddSubMeshSphere(float radius, uint sliceCount, uint stackCount)
-        {
-            GfxMesh_AddSubMeshSphere(NativePtr, radius, sliceCount, stackCount);
+            GfxMesh_AddSubMesh(NativePtr, v.Data, i.Data);
         }
 
         #region Serialization
@@ -134,7 +141,7 @@ namespace March.Core.Rendering
                     ref MeshVertex v = ref vertices[i];
                     v.Position = reader.ReadVector3();
                     v.Normal = reader.ReadVector3();
-                    v.Tangent = reader.ReadVector3();
+                    v.Tangent = reader.ReadVector4();
                     v.UV = reader.ReadVector2();
                 }
 
@@ -178,13 +185,10 @@ namespace March.Core.Rendering
         private static partial void GfxMesh_RecalculateNormals(nint self);
 
         [NativeFunction]
+        private static partial void GfxMesh_RecalculateTangents(nint self);
+
+        [NativeFunction]
         private static partial void GfxMesh_AddSubMesh(nint self, nint vertices, nint indices);
-
-        [NativeFunction]
-        private static partial void GfxMesh_AddSubMeshCube(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_AddSubMeshSphere(nint self, float radius, uint sliceCount, uint stackCount);
 
         [NativeFunction]
         private static partial nint GfxMesh_GetVertices(nint self);

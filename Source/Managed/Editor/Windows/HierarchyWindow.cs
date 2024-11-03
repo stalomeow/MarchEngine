@@ -18,8 +18,8 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Primitive/Cube", (ref object? arg) =>
             {
                 var go = SceneManager.CurrentScene.CreateGameObject("Cube", Selection.Active as GameObject);
-                var mr = go.AddComponent<MeshRenderer>();
-                mr.MeshType = MeshType.Cube;
+                var renderer = go.AddComponent<MeshRenderer>();
+                renderer.Mesh = Mesh.GetGeometry(MeshGeometry.Cube);
 
                 Selection.Active = go;
             });
@@ -27,8 +27,8 @@ namespace March.Editor.Windows
             s_ContextMenu.AddMenuItem("Create/Primitive/Sphere", (ref object? arg) =>
             {
                 var go = SceneManager.CurrentScene.CreateGameObject("Sphere", Selection.Active as GameObject);
-                var mr = go.AddComponent<MeshRenderer>();
-                mr.MeshType = MeshType.Sphere;
+                var renderer = go.AddComponent<MeshRenderer>();
+                renderer.Mesh = Mesh.GetGeometry(MeshGeometry.Sphere);
 
                 Selection.Active = go;
             });

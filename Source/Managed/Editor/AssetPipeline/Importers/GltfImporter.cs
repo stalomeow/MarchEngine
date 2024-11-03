@@ -11,7 +11,7 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 7)]
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 8)]
     internal class GltfImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
@@ -144,7 +144,7 @@ namespace March.Editor.AssetPipeline.Importers
             {
                 using var positions = ListPool<Vector3>.Get();
                 using var normals = ListPool<Vector3>.Get();
-                using var tangents = ListPool<Vector3>.Get();
+                using var tangents = ListPool<Vector4>.Get();
                 using var uvs = ListPool<Vector2>.Get();
 
                 foreach (KeyValuePair<string, int> kv in primitive.Attributes)
@@ -160,7 +160,7 @@ namespace March.Editor.AssetPipeline.Importers
                             break;
 
                         case "TANGENT":
-                            ReadVector3List(gltf, buffers, gltf.Accessors[kv.Value], tangents);
+                            ReadVector4List(gltf, buffers, gltf.Accessors[kv.Value], tangents);
                             break;
 
                         case "TEXCOORD_0":
@@ -344,6 +344,47 @@ namespace March.Editor.AssetPipeline.Importers
                         X = ReadAsFloat(buffer, accessor.ComponentType),
                         Y = ReadAsFloat(buffer, accessor.ComponentType),
                         Z = ReadAsFloat(buffer, accessor.ComponentType)
+                    });
+                }
+            }
+        }
+
+        private static void ReadVector4List(Gltf gltf, BinaryReader[] buffers, Accessor accessor, List<Vector4> results)
+        {
+            var bufferView = gltf.BufferViews[accessor.BufferView!.Value];
+            var buffer = buffers[bufferView.Buffer];
+
+            int offset = accessor.ByteOffset + bufferView.ByteOffset;
+
+            if (bufferView.ByteStride != null)
+            {
+                int stride = bufferView.ByteStride.Value;
+
+                for (int i = 0; i < accessor.Count; i++)
+                {
+                    buffer.BaseStream.Seek(offset + stride * i, SeekOrigin.Begin);
+
+                    results.Add(new Vector4
+                    {
+                        X = ReadAsFloat(buffer, accessor.ComponentType),
+                        Y = ReadAsFloat(buffer, accessor.ComponentType),
+                        Z = ReadAsFloat(buffer, accessor.ComponentType),
+                        W = ReadAsFloat(buffer, accessor.ComponentType)
+                    });
+                }
+            }
+            else
+            {
+                buffer.BaseStream.Seek(offset, SeekOrigin.Begin);
+
+                for (int i = 0; i < accessor.Count; i++)
+                {
+                    results.Add(new Vector4
+                    {
+                        X = ReadAsFloat(buffer, accessor.ComponentType),
+                        Y = ReadAsFloat(buffer, accessor.ComponentType),
+                        Z = ReadAsFloat(buffer, accessor.ComponentType),
+                        W = ReadAsFloat(buffer, accessor.ComponentType)
                     });
                 }
             }

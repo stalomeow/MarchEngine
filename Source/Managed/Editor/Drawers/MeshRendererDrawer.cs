@@ -11,7 +11,6 @@ namespace March.Editor.Drawers
             bool isChanged = false;
 
             isChanged |= EditorGUI.PropertyField(contract.GetEditorProperty(component, "Mesh"));
-            isChanged |= EditorGUI.PropertyField(contract.GetEditorProperty(component, "MeshType"));
 
             bool areMaterialsChanged = false;
 

@@ -402,7 +402,7 @@ namespace march
 
     GfxMesh* EditorApplication::GetFullScreenTriangleMesh()
     {
-        return m_RenderPipeline->m_FullScreenTriangleMesh.get();
+        return m_RenderPipeline->m_FullScreenTriangleMesh;
     }
 
     const std::string& EditorApplication::GetDataPath() const

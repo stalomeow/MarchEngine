@@ -5,7 +5,7 @@ struct CSharpMeshVertex
 {
     cs_vec3 Position;
     cs_vec3 Normal;
-    cs_vec3 Tangent;
+    cs_vec4 Tangent;
     cs_vec2 UV;
 };
 
@@ -160,6 +160,11 @@ NATIVE_EXPORT_AUTO GfxMesh_RecalculateNormals(cs<GfxMesh*> pObject)
     pObject->RecalculateNormals();
 }
 
+NATIVE_EXPORT_AUTO GfxMesh_RecalculateTangents(cs<GfxMesh*> pObject)
+{
+    pObject->RecalculateTangents();
+}
+
 NATIVE_EXPORT_AUTO GfxMesh_AddSubMesh(cs<GfxMesh*> pObject, cs<CSharpMeshVertex[]> vertices, cs<cs_ushort[]> indices)
 {
     std::vector<GfxMeshVertex> vertexVec{};
@@ -180,16 +185,6 @@ NATIVE_EXPORT_AUTO GfxMesh_AddSubMesh(cs<GfxMesh*> pObject, cs<CSharpMeshVertex[
     }
 
     pObject->AddSubMesh(vertexVec, indexVec);
-}
-
-NATIVE_EXPORT_AUTO GfxMesh_AddSubMeshCube(cs<GfxMesh*> pObject)
-{
-    pObject->AddSubMeshCube(1, 1, 1);
-}
-
-NATIVE_EXPORT_AUTO GfxMesh_AddSubMeshSphere(cs<GfxMesh*> pObject, cs_float radius, cs_uint sliceCount, cs_uint stackCount)
-{
-    pObject->AddSubMeshSphere(radius, sliceCount, stackCount);
 }
 
 NATIVE_EXPORT_AUTO GfxMesh_GetVertices(cs<GfxMesh*> pObject)
