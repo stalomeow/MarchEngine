@@ -263,7 +263,18 @@ namespace March.Editor.ShaderLab
 
         private int m_CurrentPassIndex = -1;
 
-        private ParsedShaderPass CurrentPass => Data.Passes[m_CurrentPassIndex];
+        private ParsedShaderPass CurrentPass
+        {
+            get
+            {
+                if (m_CurrentPassIndex == -1)
+                {
+                    throw new InvalidOperationException("Not in a pass block");
+                }
+
+                return Data.Passes[m_CurrentPassIndex];
+            }
+        }
 
         private ParsedMetadataContainer CurrentMetadataContainer
         {
