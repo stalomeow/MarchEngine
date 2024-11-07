@@ -254,7 +254,7 @@ namespace march
         int32_t ShaderPassIndex;
     };
 
-    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, std::function<int32_t(Shader*)> getPassIndex)
+    void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, std::function<int32_t(const Shader*)> getPassIndex)
     {
         if (numObjects <= 0)
         {
@@ -312,23 +312,7 @@ namespace march
         auto cbPerObj = device->AllocateTransientUploadMemory(sizeof(PerObjectConstants), activeObjectCount, GfxConstantBuffer::Alignment);
 
         std::unordered_map<size_t, uint32_t> cbIndexMap{}; // obj index -> cb Index
-
         uint32_t nextCbIndex = 0;
-        for (auto& [pso, drawCalls] : psoMap)
-        {
-            for (const DrawCall& dc : drawCalls)
-            {
-                if (cbIndexMap.count(dc.ObjectIndex) > 0)
-                {
-                    continue;
-                }
-
-                PerObjectConstants& consts = *reinterpret_cast<PerObjectConstants*>(cbPerObj.GetMappedData(nextCbIndex));
-                XMStoreFloat4x4(&consts.WorldMatrix, objects[dc.ObjectIndex]->GetTransform()->LoadLocalToWorldMatrix());
-                cbIndexMap[dc.ObjectIndex] = nextCbIndex;
-                nextCbIndex++;
-            }
-        }
 
         for (auto& [pso, drawCalls] : psoMap)
         {
@@ -336,9 +320,17 @@ namespace march
             {
                 const RenderObject* obj = objects[dc.ObjectIndex];
                 ShaderPass* pass = dc.Mat->GetShader()->GetPass(dc.ShaderPassIndex);
+                auto [cbIndexIt, isNewCb] = cbIndexMap.try_emplace(dc.ObjectIndex, nextCbIndex);
+
+                if (isNewCb)
+                {
+                    auto consts = reinterpret_cast<PerObjectConstants*>(cbPerObj.GetMappedData(cbIndexIt->second));
+                    consts->WorldMatrix = obj->GetTransform()->GetLocalToWorldMatrix();
+                    nextCbIndex++;
+                }
 
                 SetPipelineStateAndRootSignature(pso, pass);
-                BindResources(dc.Mat, dc.ShaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndexMap[dc.ObjectIndex]));
+                BindResources(dc.Mat, dc.ShaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndexIt->second));
                 DrawSubMeshes(GetD3D12GraphicsCommandList(), m_CurrentPrimitiveTopology, obj->Mesh, dc.SubMeshIndex);
             }
         }
@@ -346,7 +338,7 @@ namespace march
 
     void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, int32_t shaderPassIndex)
     {
-        DrawObjects(numObjects, objects, [shaderPassIndex](Shader* shader) {return shaderPassIndex; });
+        DrawObjects(numObjects, objects, [shaderPassIndex](const Shader* shader) {return shaderPassIndex; });
     }
 
     void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, const std::string& lightMode, int32_t subMeshIndex)
@@ -375,7 +367,7 @@ namespace march
 
     void RenderGraphContext::DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::string& lightMode)
     {
-        DrawObjects(numObjects, objects, [&lightMode](Shader* shader)
+        DrawObjects(numObjects, objects, [&lightMode](const Shader* shader)
         {
             return shader->GetFirstPassIndexWithTagValue("LightMode", lightMode);
         });

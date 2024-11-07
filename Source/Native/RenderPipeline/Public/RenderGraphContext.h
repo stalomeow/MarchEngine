@@ -82,7 +82,7 @@ namespace march
         void DrawObjects(size_t numObjects, const RenderObject* const* objects, const std::string& lightMode);
 
     private:
-        void DrawObjects(size_t numObjects, const RenderObject* const* objects, std::function<int32_t(Shader*)> getPassIndex);
+        void DrawObjects(size_t numObjects, const RenderObject* const* objects, std::function<int32_t(const Shader*)> getPassIndex);
 
         // 如果 viewport 为 nullptr，则使用默认 viewport
         // 如果 scissorRect 为 nullptr，则使用默认 scissorRect
