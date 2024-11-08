@@ -234,8 +234,8 @@ namespace March.Editor.AssetPipeline.Importers
 
                         if (sourceIndex != null)
                         {
-                            string uri = gltf.Images[sourceIndex.Value].Uri;
-                            var tex = AssetDatabase.Load<Texture>(Path.Combine(Path.GetDirectoryName(Location.AssetPath)!, uri).ValidatePath());
+                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
+                            var tex = AssetDatabase.Load<Texture>(uri);
                             mat.SetTexture("_DiffuseMap", tex);
                         }
                     }

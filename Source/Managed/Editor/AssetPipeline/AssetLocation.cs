@@ -1,6 +1,9 @@
 using March.Core;
+using March.Core.Interop;
+using March.Core.Pool;
 using March.Core.Rendering;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace March.Editor.AssetPipeline
 {
@@ -38,14 +41,12 @@ namespace March.Editor.AssetPipeline
                 // 需要排除掉 Assets 文件夹本身
                 if (path.StartsWith("Assets/", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    string fullPath = AssetLocationUtility.CombinePath(Application.DataPath, path);
-
                     return new()
                     {
                         Category = AssetCategory.ProjectAsset,
                         AssetPath = path,
-                        AssetFullPath = fullPath,
-                        ImporterFullPath = fullPath + k_ImporterPathSuffix,
+                        AssetFullPath = AssetLocationUtility.CombinePath(Application.DataPath, path),
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
                     };
                 }
 
@@ -56,10 +57,8 @@ namespace March.Editor.AssetPipeline
                     {
                         Category = AssetCategory.EngineShader,
                         AssetPath = path,
-                        // "Engine/".Length == 7
-                        // "Engine/Shaders/".Length == 15
-                        AssetFullPath = AssetLocationUtility.CombinePath(Shader.EngineShaderPath, path[15..]),
-                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "EngineMeta", path[7..] + k_ImporterPathSuffix),
+                        AssetFullPath = AssetLocationUtility.CombinePath(Shader.EngineShaderPath, path[15..]), // "Engine/Shaders/".Length == 15
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
                     };
                 }
             }
@@ -69,7 +68,7 @@ namespace March.Editor.AssetPipeline
                 Category = AssetCategory.Unknown,
                 AssetPath = path,
                 AssetFullPath = path,
-                ImporterFullPath = path + k_ImporterPathSuffix,
+                ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
             };
         }
 
@@ -81,12 +80,14 @@ namespace March.Editor.AssetPipeline
             {
                 if (fullPath.StartsWith(Application.DataPath + "/", StringComparison.CurrentCultureIgnoreCase))
                 {
+                    string relativePath = fullPath[(Application.DataPath.Length + 1)..];
+
                     return new()
                     {
                         Category = AssetCategory.ProjectAsset,
-                        AssetPath = fullPath[(Application.DataPath.Length + 1)..],
+                        AssetPath = relativePath,
                         AssetFullPath = fullPath,
-                        ImporterFullPath = fullPath + k_ImporterPathSuffix,
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", relativePath + k_ImporterPathSuffix),
                     };
                 }
 
@@ -99,7 +100,7 @@ namespace March.Editor.AssetPipeline
                         Category = AssetCategory.EngineShader,
                         AssetPath = "Engine/Shaders/" + relativePath,
                         AssetFullPath = fullPath,
-                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "EngineMeta/Shaders", relativePath + k_ImporterPathSuffix),
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", relativePath + k_ImporterPathSuffix),
                     };
                 }
             }
@@ -118,31 +119,60 @@ namespace March.Editor.AssetPipeline
 
     public static class AssetLocationUtility
     {
+        private static StringBuilder AppendPath(this StringBuilder builder, StringLike path)
+        {
+            int initialLength = builder.Length;
+
+            builder.Append(path);
+            builder.Replace('\\', '/', initialLength, path.Length);
+
+            while (builder.Length > initialLength && builder[^1] == '/')
+            {
+                builder.Remove(builder.Length - 1, 1);
+            }
+
+            return builder;
+        }
+
         [return: NotNullIfNotNull(nameof(path))]
         public static string? ValidatePath(this string? path)
         {
             if (path != null)
             {
-                path = path.Replace('\\', '/');
-                path = path.TrimEnd('/');
+                using var builder = StringBuilderPool.Get();
+                builder.Value.AppendPath(path);
+                path = builder.Value.ToString();
             }
 
             return path;
         }
 
-        public static string CombinePath(string path1, string path2)
+        public static string CombinePath(StringLike path1, StringLike path2)
         {
-            return Path.Combine(path1, path2).ValidatePath();
+            using var builder = StringBuilderPool.Get();
+            builder.Value.AppendPath(path1).Append('/').AppendPath(path2);
+            return builder.Value.ToString();
         }
 
-        public static string CombinePath(string path1, string path2, string path3)
+        public static string CombinePath(StringLike path1, StringLike path2, StringLike path3)
         {
-            return Path.Combine(path1, path2, path3).ValidatePath();
+            using var builder = StringBuilderPool.Get();
+            builder.Value.AppendPath(path1).Append('/').AppendPath(path2).Append('/').AppendPath(path3);
+            return builder.Value.ToString();
         }
 
-        public static string CombinePath(string path1, string path2, string path3, string path4)
+        public static string CombinePath(StringLike path1, StringLike path2, StringLike path3, StringLike path4)
         {
-            return Path.Combine(path1, path2, path3, path4).ValidatePath();
+            using var builder = StringBuilderPool.Get();
+            builder.Value.AppendPath(path1).Append('/').AppendPath(path2).Append('/').AppendPath(path3).Append('/').AppendPath(path4);
+            return builder.Value.ToString();
+        }
+
+        public static string CombinePath(StringLike path1, StringLike path2, StringLike path3, StringLike path4, StringLike path5)
+        {
+            using var builder = StringBuilderPool.Get();
+            builder.Value.AppendPath(path1).Append('/').AppendPath(path2).Append('/').AppendPath(path3).Append('/').AppendPath(path4).Append('/').AppendPath(path5);
+            return builder.Value.ToString();
         }
     }
 }

@@ -255,7 +255,9 @@ namespace March.Editor.AssetPipeline
 
         protected static string GetAssetCacheFileFullPath(string guid)
         {
-            return Path.Combine(Application.DataPath, "Library/AssetCache", guid).ValidatePath();
+            using var folder = StringBuilderPool.Get();
+            folder.Value.Append(guid[0]).Append(guid[1]);
+            return AssetLocationUtility.CombinePath(Application.DataPath, "Library", "Artifacts", folder, guid);
         }
 
         private static readonly Dictionary<string, Type> s_ExtensionToTypeMap = new();
