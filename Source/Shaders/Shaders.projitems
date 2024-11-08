@@ -17,6 +17,7 @@
     <None Include="$(MSBuildThisFileDirectory)Public\BlitImGui.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\GBuffer.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\Packing.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
   </ItemGroup>
   <ItemGroup>

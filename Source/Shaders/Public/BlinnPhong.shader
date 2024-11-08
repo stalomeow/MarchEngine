@@ -99,16 +99,13 @@ Shader "BlinnPhong"
         {
             DoDitherAlphaEffect(input.positionCS, _DitherAlpha);
 
-            PixelGBufferOutput output;
-            output.GBuffer0.xyz = (_DiffuseMap.Sample(sampler_DiffuseMap, input.uv) * _DiffuseAlbedo).xyz;
-            output.GBuffer0.w = 1 - _Roughness;
-            output.GBuffer1.xyz = normalize(input.normalWS) * 0.5 + 0.5;
-            output.GBuffer1.w = 0;
-            output.GBuffer2.xyz = _FresnelR0;
-            output.GBuffer2.w = 0;
-            output.GBuffer3.x = input.positionCS.z;
-            output.GBuffer3.yzw = 0;
-            return output;
+            GBufferData data;
+            data.albedo = (_DiffuseMap.Sample(sampler_DiffuseMap, input.uv) * _DiffuseAlbedo).xyz;
+            data.shininess = 1 - _Roughness;
+            data.normalWS = normalize(input.normalWS);
+            data.depth = input.positionCS.z;
+            data.fresnelR0 = _FresnelR0;
+            return PackGBufferData(data);
         }
         ENDHLSL
     }

@@ -2,6 +2,7 @@
 #define _GBUFFER_INCLUDED
 
 #include "Common.hlsl"
+#include "Packing.hlsl"
 
 struct PixelGBufferOutput
 {
@@ -25,6 +26,20 @@ struct GBufferData
     float3 fresnelR0;
 };
 
+PixelGBufferOutput PackGBufferData(GBufferData data)
+{
+    PixelGBufferOutput output;
+    output.GBuffer0.xyz = data.albedo;
+    output.GBuffer0.w = data.shininess;
+    output.GBuffer1.xyz = PackFloat2To888(PackNormalOctQuadEncode(data.normalWS) * 0.5 + 0.5);
+    output.GBuffer1.w = 0;
+    output.GBuffer2.xyz = data.fresnelR0;
+    output.GBuffer2.w = 0;
+    output.GBuffer3.x = data.depth;
+    output.GBuffer3.yzw = 0;
+    return output;
+}
+
 GBufferData LoadGBufferData(int3 location)
 {
     float4 gbuffer0 = _GBuffer0.Load(location);
@@ -35,7 +50,7 @@ GBufferData LoadGBufferData(int3 location)
     GBufferData data;
     data.albedo = gbuffer0.rgb;
     data.shininess = gbuffer0.a;
-    data.normalWS = gbuffer1.rgb * 2.0 - 1.0;
+    data.normalWS = UnpackNormalOctQuadEncode(Unpack888ToFloat2(gbuffer1.rgb) * 2 - 1);
     data.fresnelR0 = gbuffer2.rgb;
     data.depth = gbuffer3.r;
     return data;
