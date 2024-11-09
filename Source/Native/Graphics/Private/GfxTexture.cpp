@@ -101,11 +101,13 @@ namespace march
         device->CreateSampler(&samplerDesc, m_SamplerDescriptorHandle.GetCpuHandle());
     }
 
-    std::unique_ptr<GfxTexture2D> GfxTexture::s_pBlackTexture = nullptr;
-    std::unique_ptr<GfxTexture2D> GfxTexture::s_pWhiteTexture = nullptr;
+    static std::unique_ptr<GfxTexture2D> g_pBlackTexture = nullptr;
+    static std::unique_ptr<GfxTexture2D> g_pWhiteTexture = nullptr;
+    static std::unique_ptr<GfxTexture2D> g_pBumpTexture = nullptr;
 
     GfxTexture* GfxTexture::GetDefaultBlack()
     {
+        // RGBA: 0, 0, 0, 1
         static const uint8_t ddsData[] =
         {
             0x44, 0x44, 0x53, 0x20, 0x7C, 0x00, 0x00, 0x00, 0x0F, 0x10, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
@@ -119,19 +121,20 @@ namespace march
             0x00, 0x00, 0x00, 0xFF,
         };
 
-        if (s_pBlackTexture == nullptr)
+        if (g_pBlackTexture == nullptr)
         {
-            s_pBlackTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
-            s_pBlackTexture->SetIsSRGB(true);
-            s_pBlackTexture->LoadFromSource("DefaultBlackTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
-            s_pBlackTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
+            g_pBlackTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            g_pBlackTexture->SetIsSRGB(true);
+            g_pBlackTexture->LoadFromSource("DefaultBlackTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
+            g_pBlackTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
-        return s_pBlackTexture.get();
+        return g_pBlackTexture.get();
     }
 
     GfxTexture* GfxTexture::GetDefaultWhite()
     {
+        // RGBA: 1, 1, 1, 1
         static const uint8_t ddsData[] =
         {
             0x44, 0x44, 0x53, 0x20, 0x7C, 0x00, 0x00, 0x00, 0x0F, 0x10, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
@@ -145,21 +148,49 @@ namespace march
             0xFF, 0xFF, 0xFF, 0xFF,
         };
 
-        if (s_pWhiteTexture == nullptr)
+        if (g_pWhiteTexture == nullptr)
         {
-            s_pWhiteTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
-            s_pWhiteTexture->SetIsSRGB(true);
-            s_pWhiteTexture->LoadFromSource("DefaultWhiteTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
-            s_pWhiteTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
+            g_pWhiteTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            g_pWhiteTexture->SetIsSRGB(true);
+            g_pWhiteTexture->LoadFromSource("DefaultWhiteTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
+            g_pWhiteTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
         }
 
-        return s_pWhiteTexture.get();
+        return g_pWhiteTexture.get();
+    }
+
+    GfxTexture* GfxTexture::GetDefaultBump()
+    {
+        // RGBA: 0.5, 0.5, 1, 1
+        static const uint8_t ddsData[] =
+        {
+            0x44, 0x44, 0x53, 0x20, 0x7C, 0x00, 0x00, 0x00, 0x0F, 0x10, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+            0x47, 0x49, 0x4D, 0x50, 0x2D, 0x44, 0x44, 0x53, 0x5C, 0x09, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
+            0x41, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00,
+            0x00, 0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x10, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x7F, 0x7F, 0xFF, 0xFF,
+        };
+
+        if (g_pBumpTexture == nullptr)
+        {
+            g_pBumpTexture = std::make_unique<GfxTexture2D>(GetGfxDevice());
+            g_pBumpTexture->SetIsSRGB(false);
+            g_pBumpTexture->LoadFromSource("DefaultBumpTexture", GfxTexture2DSourceType::DDS, ddsData, sizeof(ddsData));
+            g_pBumpTexture->SetFilterAndWrapMode(GfxFilterMode::Point, GfxWrapMode::Clamp);
+        }
+
+        return g_pBumpTexture.get();
     }
 
     void GfxTexture::DestroyDefaultTextures()
     {
-        s_pBlackTexture.reset();
-        s_pWhiteTexture.reset();
+        g_pBlackTexture.reset();
+        g_pWhiteTexture.reset();
+        g_pBumpTexture.reset();
     }
 
     GfxTexture2D::GfxTexture2D(GfxDevice* device) : GfxTexture(device), m_IsSRGB(true), m_MetaData{}

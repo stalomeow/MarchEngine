@@ -194,8 +194,9 @@ namespace March.Core.Rendering
 
     internal enum ShaderDefaultTexture
     {
-        Black = 0,
-        White = 1
+        Black = 0, // RGBA: 0, 0, 0, 1
+        White = 1, // RGBA: 1, 1, 1, 1
+        Bump = 2,  // RGBA: 0.5, 0.5, 1, 1
     }
 
     internal class ShaderPropertyAttribute

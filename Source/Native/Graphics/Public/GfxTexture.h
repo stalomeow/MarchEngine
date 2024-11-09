@@ -11,7 +11,6 @@
 namespace march
 {
     class GfxDevice;
-    class GfxTexture2D;
 
     enum class GfxFilterMode
     {
@@ -52,6 +51,7 @@ namespace march
 
         static GfxTexture* GetDefaultBlack();
         static GfxTexture* GetDefaultWhite();
+        static GfxTexture* GetDefaultBump();
         static void DestroyDefaultTextures();
 
     private:
@@ -62,9 +62,6 @@ namespace march
 
         GfxDescriptorHandle m_SrvDescriptorHandle;
         GfxDescriptorHandle m_SamplerDescriptorHandle;
-
-        static std::unique_ptr<GfxTexture2D> s_pBlackTexture;
-        static std::unique_ptr<GfxTexture2D> s_pWhiteTexture;
     };
 
     enum class GfxTexture2DSourceType

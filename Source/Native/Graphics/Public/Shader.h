@@ -96,7 +96,8 @@ namespace march
     enum class ShaderDefaultTexture
     {
         Black = 0,
-        White = 1
+        White = 1,
+        Bump = 2,
     };
 
     struct ShaderProperty

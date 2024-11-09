@@ -11,7 +11,7 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 11)]
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 17)]
     internal class GltfImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
@@ -193,24 +193,36 @@ namespace March.Editor.AssetPipeline.Importers
                     if (i < positions.Value.Count)
                     {
                         v.Position = positions.Value[i];
+                        v.Position.X = -v.Position.X; // glTF 是左手坐标系
                     }
 
                     if (i < normals.Value.Count)
                     {
                         v.Normal = normals.Value[i];
+                        v.Normal.X = -v.Normal.X; // glTF 是左手坐标系
                     }
 
                     if (i < tangents.Value.Count)
                     {
                         v.Tangent = tangents.Value[i];
+                        v.Tangent.X = -v.Tangent.X; // glTF 是左手坐标系
+                        v.Tangent.W = -v.Tangent.W;
                     }
 
                     if (i < uvs.Value.Count)
                     {
-                        v.UV = uvs.Value[i];
+                        v.UV = uvs.Value[i]; // glTF 的 UV 坐标系是左上角为原点，不用变
                     }
 
                     vertices.Value.Add(v);
+                }
+
+                // glTF 逆时针为正面，我们顺时针为正面
+                for (int i = 0; i < indices.Value.Count / 3; i++)
+                {
+                    int a = i * 3 + 0;
+                    int b = i * 3 + 1;
+                    (indices.Value[a], indices.Value[b]) = (indices.Value[b], indices.Value[a]);
                 }
 
                 mesh.AddSubMesh(vertices.Value, indices.Value);
@@ -238,6 +250,18 @@ namespace March.Editor.AssetPipeline.Importers
                             string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
                             var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false);
                             mat.SetTexture("_DiffuseMap", tex);
+                        }
+                    }
+
+                    if (matData.NormalTexture != null)
+                    {
+                        int? sourceIndex = gltf.Textures[matData.NormalTexture.Index].Source;
+
+                        if (sourceIndex != null)
+                        {
+                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
+                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false);
+                            mat.SetTexture("_BumpMap", tex);
                         }
                     }
                 }

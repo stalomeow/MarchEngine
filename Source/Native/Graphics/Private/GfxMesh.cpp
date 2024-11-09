@@ -174,7 +174,7 @@ namespace march
 
             XMMATRIX result = XMMatrixMultiply(XMMatrixInverse(nullptr, XMLoadFloat4x4(&uv)), XMLoadFloat4x4(&pos));
             XMVECTOR tangent = result.r[0];
-            XMVECTOR binormal = result.r[1];
+            XMVECTOR bitangent = result.r[1];
 
             for (int j = 0; j < 3; j++)
             {
@@ -184,7 +184,7 @@ namespace march
                 // 施密特正交化
                 XMVECTOR t = XMVector3Normalize(XMVectorSubtract(tangent, XMVectorScale(normal, XMVectorGetX(XMVector3Dot(normal, tangent)))));
 
-                XMVectorSetW(t, XMVectorGetX(XMVector3Dot(XMVector3Cross(normal, t), binormal)) < 0.0f ? -1.0f : 1.0f);
+                XMVectorSetW(t, XMVectorGetX(XMVector3Dot(XMVector3Cross(normal, t), bitangent)) < 0.0f ? -1.0f : 1.0f);
                 XMStoreFloat4(&v.Tangent, t);
             }
         }

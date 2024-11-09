@@ -23,6 +23,9 @@ namespace march
         case ShaderDefaultTexture::White:
             return GfxTexture::GetDefaultWhite();
 
+        case ShaderDefaultTexture::Bump:
+            return GfxTexture::GetDefaultBump();
+
         default:
             throw GfxException("Unknown default texture type");
         }

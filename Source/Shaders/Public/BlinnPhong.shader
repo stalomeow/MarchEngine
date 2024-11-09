@@ -6,6 +6,7 @@ Shader "BlinnPhong"
         [Tooltip(The fresnel R0.)] _FresnelR0("Fresnel R0", Vector) = (0.01, 0.01, 0.01, 0)
         [Tooltip(The roughness.)] [Range(0, 1)] _Roughness("Roughness", Float) = 0.25
         [Tooltip(The diffuse map.)] _DiffuseMap("Diffuse Map", 2D) = "white" {}
+        [Tooltip(The normal map.)] _BumpMap("Bump Map", 2D) = "bump" {}
         [Range(0, 1)] _DitherAlpha("Dither Alpha", Float) = 1
     }
 
@@ -46,6 +47,8 @@ Shader "BlinnPhong"
 
         Texture2D _DiffuseMap;
         SAMPLER(_DiffuseMap);
+        Texture2D _BumpMap;
+        SAMPLER(_BumpMap);
 
         cbuffer cbMaterial
         {
@@ -59,6 +62,7 @@ Shader "BlinnPhong"
         {
             float3 positionOS : POSITION;
             float3 normalOS : NORMAL;
+            float4 tangentOS : TANGENT;
             float2 uv : TEXCOORD0;
         };
 
@@ -66,6 +70,7 @@ Shader "BlinnPhong"
         {
             float4 positionCS : SV_Position;
             float3 normalWS : NORMAL;
+            float4 tangentWS : TANGENT;
             float2 uv : TEXCOORD0;
         };
 
@@ -76,6 +81,8 @@ Shader "BlinnPhong"
             Varyings output;
             output.positionCS = TransformWorldToHClip(positionWS);
             output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+            output.tangentWS.xyz = TransformObjectToWorldDir(input.tangentOS.xyz);
+            output.tangentWS.w = input.tangentOS.w;
             output.uv = input.uv;
             return output;
         }
@@ -99,10 +106,16 @@ Shader "BlinnPhong"
         {
             DoDitherAlphaEffect(input.positionCS, _DitherAlpha);
 
+            float3 normalTS = normalize(_BumpMap.Sample(sampler_BumpMap, input.uv).xyz * 2.0 - 1.0);
+            float3 N = normalize(input.normalWS);
+            float3 T = normalize(input.tangentWS.xyz - dot(input.tangentWS.xyz, N) * N);
+            float3 B = cross(N, T) * input.tangentWS.w;
+            float3 bumpedNomalWS = normalize(mul(normalTS, float3x3(T, B, N))); // float3x3() 是行主序矩阵
+
             GBufferData data;
             data.albedo = (_DiffuseMap.Sample(sampler_DiffuseMap, input.uv) * _DiffuseAlbedo).xyz;
             data.shininess = 1 - _Roughness;
-            data.normalWS = normalize(input.normalWS);
+            data.normalWS = bumpedNomalWS;
             data.depth = input.positionCS.z;
             data.fresnelR0 = _FresnelR0;
             return PackGBufferData(data);

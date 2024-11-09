@@ -811,6 +811,7 @@ namespace March.Editor.ShaderLab
             {
                 "black" => ShaderDefaultTexture.Black,
                 "white" => ShaderDefaultTexture.White,
+                "bump" => ShaderDefaultTexture.Bump,
                 _ => throw new NotSupportedException("Unknown texture value")
             };
         }

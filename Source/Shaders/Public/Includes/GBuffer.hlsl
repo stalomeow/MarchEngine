@@ -50,7 +50,7 @@ GBufferData LoadGBufferData(int3 location)
     GBufferData data;
     data.albedo = gbuffer0.rgb;
     data.shininess = gbuffer0.a;
-    data.normalWS = UnpackNormalOctQuadEncode(Unpack888ToFloat2(gbuffer1.rgb) * 2 - 1);
+    data.normalWS = UnpackNormalOctQuadEncode(Unpack888ToFloat2(gbuffer1.rgb) * 2.0 - 1.0);
     data.fresnelR0 = gbuffer2.rgb;
     data.depth = gbuffer3.r;
     return data;
