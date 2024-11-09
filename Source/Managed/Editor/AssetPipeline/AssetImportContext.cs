@@ -30,6 +30,14 @@ namespace March.Editor.AssetPipeline
 
         public readonly ReadOnlySpan<string> Dependencies => CollectionsMarshal.AsSpan(m_Dependencies.Value);
 
+        internal readonly void GetUnusedGuids(List<string> guids)
+        {
+            foreach (KeyValuePair<string, AssetData> kv in m_DataPool.Value)
+            {
+                guids.Add(kv.Value.Guid);
+            }
+        }
+
         internal readonly void GetResults(out string mainAssetGuid, Dictionary<string, AssetData> guidToAssetMap)
         {
             if (m_MainAssetName == null)

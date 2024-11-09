@@ -109,6 +109,13 @@ namespace March.Editor.AssetPipeline
                     SaveAssetToCache(asset);
                 }
 
+                using var unusedGuids = ListPool<string>.Get();
+                context.GetUnusedGuids(unusedGuids);
+                foreach (string unusedGuid in unusedGuids.Value)
+                {
+                    DeleteAssetCache(unusedGuid);
+                }
+
                 // 保存 Importer，放在最后面的原因：
                 // 1. 如果导入失败，不会保存 Importer，下次重新导入时会再次尝试
                 // 2. 导入过程中可能写入原始资产文件，这里可以记录到最后一次的写入时间，避免再触发一次导入
