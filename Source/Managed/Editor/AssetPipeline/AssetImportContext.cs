@@ -10,6 +10,7 @@ namespace March.Editor.AssetPipeline
         private readonly PooledObject<List<MarchObject>> m_ImportedAssets; // 保存强引用，避免 Import 时被 GC 回收
         private readonly PooledObject<Dictionary<string, AssetData>> m_ImportedData; // 使用 name 作为 key
         private readonly PooledObject<Dictionary<string, AssetData>> m_DataPool; // 使用 name 作为 key
+        private readonly PooledObject<List<string>> m_Dependencies;
 
         internal AssetImportContext(Dictionary<string, AssetData> oldGuidToAssetMap)
         {
@@ -17,6 +18,7 @@ namespace March.Editor.AssetPipeline
             m_ImportedAssets = ListPool<MarchObject>.Get();
             m_ImportedData = DictionaryPool<string, AssetData>.Get();
             m_DataPool = DictionaryPool<string, AssetData>.Get();
+            m_Dependencies = ListPool<string>.Get();
 
             foreach (KeyValuePair<string, AssetData> kv in oldGuidToAssetMap)
             {
@@ -25,6 +27,8 @@ namespace March.Editor.AssetPipeline
         }
 
         public readonly ReadOnlySpan<MarchObject> ImportedAssets => CollectionsMarshal.AsSpan(m_ImportedAssets.Value);
+
+        public readonly ReadOnlySpan<string> Dependencies => CollectionsMarshal.AsSpan(m_Dependencies.Value);
 
         internal readonly void GetResults(out string mainAssetGuid, Dictionary<string, AssetData> guidToAssetMap)
         {
@@ -47,6 +51,7 @@ namespace March.Editor.AssetPipeline
             m_ImportedAssets.Dispose();
             m_ImportedData.Dispose();
             m_DataPool.Dispose();
+            m_Dependencies.Dispose();
         }
 
         public T AddAsset<T>(string name, bool isMainAsset, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject, new()
@@ -108,6 +113,18 @@ namespace March.Editor.AssetPipeline
         public T AddSubAsset<T>(string name, Func<T> factory, string? normalIcon = null, string? expandedIcon = null) where T : MarchObject
         {
             return AddAsset(name, factory, false, normalIcon, expandedIcon);
+        }
+
+        public readonly T RequireOtherAsset<T>(string path, bool dependsOn) where T : MarchObject
+        {
+            T asset = AssetDatabase.Load<T>(path) ?? throw new FileNotFoundException($"Asset not found at path: {path}");
+
+            if (dependsOn && !m_Dependencies.Value.Contains(path))
+            {
+                m_Dependencies.Value.Add(path);
+            }
+
+            return asset;
         }
     }
 }

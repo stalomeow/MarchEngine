@@ -1,6 +1,7 @@
 using Antlr4.Runtime;
 using March.Core.Diagnostics;
 using March.Core.IconFont;
+using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.ShaderLab;
@@ -11,7 +12,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = 49)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = 50)]
     internal class ShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -35,10 +36,10 @@ namespace March.Editor.AssetPipeline.Importers
             m_ColorSpace = GraphicsSettings.ColorSpace;
 
             Shader shader = context.AddMainAsset<Shader>(normalIcon: FontAwesome6Brands.StripeS);
-            CompileShader(shader, File.ReadAllText(Location.AssetFullPath, Encoding.UTF8));
+            CompileShader(ref context, shader, File.ReadAllText(Location.AssetFullPath, Encoding.UTF8));
         }
 
-        private void CompileShader(Shader shader, string content)
+        private void CompileShader(ref AssetImportContext context, Shader shader, string content)
         {
             shader.ClearWarningsAndErrors();
             ParsedShaderData result = ParseShaderLabWithFallback(shader, content);
@@ -69,20 +70,36 @@ namespace March.Editor.AssetPipeline.Importers
 
             for (int i = 0; i < result.Passes.Count; i++)
             {
-                CompileShaderPassWithFallback(shader, i, result.GetSourceCode(i));
+                CompileShaderPassWithFallback(ref context, shader, i, result.GetSourceCode(i));
             }
         }
 
-        private void CompileShaderPassWithFallback(Shader shader, int passIndex, string source)
+        private void CompileShaderPassWithFallback(ref AssetImportContext context, Shader shader, int passIndex, string source)
         {
             if (shader.CompilePass(passIndex, Location.AssetFullPath, source))
             {
+                AddDependency(ref context, source);
                 return;
             }
 
-            if (!shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program))
+            if (shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program))
+            {
+                AddDependency(ref context, FallbackShaderCodes.Program);
+            }
+            else
             {
                 Log.Message(LogLevel.Error, "Failed to compile fallback shader program");
+            }
+        }
+
+        private void AddDependency(ref AssetImportContext context, string source)
+        {
+            using var includes = ListPool<AssetLocation>.Get();
+            ShaderProgramUtility.GetIncludeFiles(Location.AssetFullPath, source, includes);
+
+            foreach (AssetLocation location in includes.Value)
+            {
+                context.RequireOtherAsset<ShaderIncludeAsset>(location.AssetPath, dependsOn: true);
             }
         }
 

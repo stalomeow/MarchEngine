@@ -11,7 +11,7 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 10)]
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 11)]
     internal class GltfImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
@@ -24,12 +24,13 @@ namespace March.Editor.AssetPipeline.Importers
             }
 
             BinaryReader[] buffers = new BinaryReader[gltf.Buffers.Length];
-            string directory = Path.GetDirectoryName(Location.AssetFullPath)!;
+            string directory = Path.GetDirectoryName(Location.AssetPath)!;
 
             for (int i = 0; i < buffers.Length; i++)
             {
-                string path = Path.Combine(directory, gltf.Buffers[i].Uri);
-                buffers[i] = new BinaryReader(File.OpenRead(path));
+                string path = AssetLocationUtility.CombinePath(directory, gltf.Buffers[i].Uri);
+                BinaryAsset bin = context.RequireOtherAsset<BinaryAsset>(path, dependsOn: true);
+                buffers[i] = new BinaryReader(new MemoryStream(bin.Data));
             }
 
             var scene = gltf.Scenes[gltf.Scene ?? 0]; // 只加载一个 Scene
@@ -224,7 +225,7 @@ namespace March.Editor.AssetPipeline.Importers
                     mat.Reset();
                     materials.Add(mat);
 
-                    mat.Shader = AssetDatabase.Load<Shader>("Engine/Shaders/BlinnPhong.shader");
+                    mat.Shader = context.RequireOtherAsset<Shader>("Engine/Shaders/BlinnPhong.shader", dependsOn: false);
 
                     var matData = gltf.Materials[primitive.Material.Value];
 
@@ -235,7 +236,7 @@ namespace March.Editor.AssetPipeline.Importers
                         if (sourceIndex != null)
                         {
                             string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
-                            var tex = AssetDatabase.Load<Texture>(uri);
+                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false);
                             mat.SetTexture("_DiffuseMap", tex);
                         }
                     }

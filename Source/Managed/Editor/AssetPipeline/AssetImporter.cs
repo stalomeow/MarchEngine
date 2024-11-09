@@ -15,6 +15,7 @@ namespace March.Editor.AssetPipeline
         [JsonProperty, HideInInspector] private DateTime? m_AssetLastWriteTimeUtc; // 资产最后写入时间，用于判断是否需要重新导入
         [JsonProperty, HideInInspector] private string m_MainAssetGuid = string.Empty;
         [JsonProperty, HideInInspector] private Dictionary<string, AssetData> m_GuidToAssetMap = [];
+        [JsonProperty, HideInInspector] private Dictionary<string, DateTime> m_DependentImporterLastWriteTimeUtc = [];
 
         protected AssetImporter()
         {
@@ -95,6 +96,13 @@ namespace March.Editor.AssetPipeline
             {
                 OnImportAssets(ref context);
                 context.GetResults(out m_MainAssetGuid, m_GuidToAssetMap);
+
+                m_DependentImporterLastWriteTimeUtc.Clear();
+                foreach (string dependency in context.Dependencies)
+                {
+                    AssetImporter importer = AssetDatabase.GetAssetImporter(dependency, ReimportAssetMode.Dont)!;
+                    m_DependentImporterLastWriteTimeUtc.Add(dependency, File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath));
+                }
 
                 foreach (MarchObject asset in context.ImportedAssets)
                 {
@@ -212,15 +220,54 @@ namespace March.Editor.AssetPipeline
             }
         }
 
+        public void GetDependencies(List<string> dependencies)
+        {
+            foreach (KeyValuePair<string, DateTime> kv in m_DependentImporterLastWriteTimeUtc)
+            {
+                dependencies.Add(kv.Key);
+            }
+        }
+
         public string DisplayName => GetCustomAttribute().DisplayName;
 
         private int Version => GetCustomAttribute().Version + 8;
 
         protected virtual bool NeedReimport
         {
-            get => string.IsNullOrEmpty(m_MainAssetGuid)
-                || m_SerializedVersion != Version
-                || m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(Location.AssetFullPath);
+            get
+            {
+                if (string.IsNullOrEmpty(m_MainAssetGuid))
+                {
+                    return true;
+                }
+
+                if (m_SerializedVersion != Version)
+                {
+                    return true;
+                }
+
+                if (m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(Location.AssetFullPath))
+                {
+                    return true;
+                }
+
+                foreach (KeyValuePair<string, DateTime> kv in m_DependentImporterLastWriteTimeUtc)
+                {
+                    AssetImporter? importer = AssetDatabase.GetAssetImporter(kv.Key, ReimportAssetMode.Dont);
+
+                    if (importer == null || importer.NeedReimport)
+                    {
+                        return true;
+                    }
+
+                    if (File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath) != kv.Value)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
         }
 
         protected abstract void OnImportAssets(ref AssetImportContext context);

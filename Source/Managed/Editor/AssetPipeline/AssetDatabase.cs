@@ -9,6 +9,13 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor.AssetPipeline
 {
+    public enum ReimportAssetMode
+    {
+        Auto,
+        Dont,
+        Force,
+    }
+
     public static class AssetDatabase
     {
         private struct NativeReference
@@ -20,6 +27,7 @@ namespace March.Editor.AssetPipeline
         // TODO: use case-insensitive dictionary
         private static readonly Dictionary<string, string> s_Guid2PathMap = new();
         private static readonly Dictionary<string, AssetImporter> s_Path2Importers = new();
+        private static readonly Dictionary<string, HashSet<string>> s_Path2Dependers = new(); // 路径 -> 依赖该路径的路径列表
 
         // TODO: check memory leaks
         private static readonly Dictionary<nint, NativeReference> s_NativeRefs = new();
@@ -70,7 +78,7 @@ namespace March.Editor.AssetPipeline
 
                     // 仅创建 importer，不导入资产，构建一张 guid 到 importer 的表
                     // 资产间的依赖是用 guid 记录的，只有构建完 guid 表才能正确导入资产
-                    GetAssetImporter(location.AssetPath, reimportAssetIfNeeded: false);
+                    GetAssetImporter(location.AssetPath, ReimportAssetMode.Dont);
                 }
             }
         }
@@ -204,7 +212,7 @@ namespace March.Editor.AssetPipeline
             }
 
             directAssetImporter.SetAssetAndSave(asset);
-            RegisterAssetImporterGuids(directAssetImporter);
+            RegisterAssetImporterData(directAssetImporter);
             AddImporterEventHandlers(directAssetImporter);
 
             // 通过 FileSystemWatcher 的 Create 事件触发 OnImported 事件
@@ -343,8 +351,9 @@ namespace March.Editor.AssetPipeline
             importer.DeleteAssetCaches();
             importer.DeleteImporterFile();
             RemoveImporterEventHandlers(importer);
-            UnregisterAssetImporterGuids(importer);
+            UnregisterAssetImporterData(importer);
             s_Path2Importers.Remove(importer.Location.AssetPath);
+            s_Path2Dependers.Remove(importer.Location.AssetPath);
         }
 
         public static bool IsFolder(string path) => IsFolder(GetAssetImporter(path));
@@ -353,7 +362,7 @@ namespace March.Editor.AssetPipeline
 
         public static bool IsAsset(string path) => GetAssetImporter(path) != null;
 
-        public static AssetImporter? GetAssetImporter(MarchObject asset, bool reimportAssetIfNeeded = true)
+        public static AssetImporter? GetAssetImporter(MarchObject asset, ReimportAssetMode mode = ReimportAssetMode.Auto)
         {
             if (asset.PersistentGuid == null)
             {
@@ -367,22 +376,25 @@ namespace March.Editor.AssetPipeline
                 return null;
             }
 
-            return GetAssetImporter(path, reimportAssetIfNeeded);
+            return GetAssetImporter(path, mode);
         }
 
-        public static AssetImporter? GetAssetImporter(string path, bool reimportAssetIfNeeded = true)
+        public static AssetImporter? GetAssetImporter(string path, ReimportAssetMode mode = ReimportAssetMode.Auto)
         {
             AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
 
-            if (importer != null && isNewlyCreated)
+            if (importer != null)
             {
-                if (reimportAssetIfNeeded)
+                if (mode != ReimportAssetMode.Dont)
                 {
-                    importer.ReimportAndSave(force: false);
+                    importer.ReimportAndSave(force: mode == ReimportAssetMode.Force);
                 }
 
-                RegisterAssetImporterGuids(importer);
-                AddImporterEventHandlers(importer);
+                if (isNewlyCreated)
+                {
+                    RegisterAssetImporterData(importer);
+                    AddImporterEventHandlers(importer);
+                }
             }
 
             return importer;
@@ -390,17 +402,17 @@ namespace March.Editor.AssetPipeline
 
         private static void AddImporterEventHandlers(AssetImporter importer)
         {
-            importer.OnWillReimport += UnregisterAssetImporterGuids;
-            importer.OnDidReimport += RegisterAssetImporterGuids;
+            importer.OnWillReimport += UnregisterAssetImporterData;
+            importer.OnDidReimport += RegisterAssetImporterData;
         }
 
         private static void RemoveImporterEventHandlers(AssetImporter importer)
         {
-            importer.OnWillReimport -= UnregisterAssetImporterGuids;
-            importer.OnDidReimport -= RegisterAssetImporterGuids;
+            importer.OnWillReimport -= UnregisterAssetImporterData;
+            importer.OnDidReimport -= RegisterAssetImporterData;
         }
 
-        private static void UnregisterAssetImporterGuids(AssetImporter importer)
+        private static void UnregisterAssetImporterData(AssetImporter importer)
         {
             using var guids = ListPool<string>.Get();
             importer.GetAssetGuids(guids);
@@ -409,9 +421,25 @@ namespace March.Editor.AssetPipeline
             {
                 s_Guid2PathMap.Remove(guid);
             }
+
+            using var dependencies = ListPool<string>.Get();
+            importer.GetDependencies(dependencies);
+
+            foreach (string d in dependencies.Value)
+            {
+                if (s_Path2Dependers.TryGetValue(d, out HashSet<string>? dependers))
+                {
+                    dependers.Remove(importer.Location.AssetPath);
+
+                    //if (dependers.Count <= 0)
+                    //{
+                    //    s_Path2Dependers.Remove(d);
+                    //}
+                }
+            }
         }
 
-        private static void RegisterAssetImporterGuids(AssetImporter importer)
+        private static void RegisterAssetImporterData(AssetImporter importer)
         {
             using var guids = ListPool<string>.Get();
             importer.GetAssetGuids(guids);
@@ -419,6 +447,32 @@ namespace March.Editor.AssetPipeline
             foreach (string guid in guids.Value)
             {
                 s_Guid2PathMap.Add(guid, importer.Location.AssetPath);
+            }
+
+            using var dependencies = ListPool<string>.Get();
+            importer.GetDependencies(dependencies);
+
+            foreach (string d in dependencies.Value)
+            {
+                if (!s_Path2Dependers.TryGetValue(d, out HashSet<string>? dependers))
+                {
+                    dependers = new HashSet<string>();
+                    s_Path2Dependers.Add(d, dependers);
+                }
+
+                dependers.Add(importer.Location.AssetPath);
+            }
+
+            // 重新导入依赖该资产的资产
+            if (s_Path2Dependers.TryGetValue(importer.Location.AssetPath, out HashSet<string>? myDependers))
+            {
+                using var myDependerList = ListPool<string>.Get();
+                myDependerList.Value.AddRange(myDependers); // Reimport 时可能修改 myDependers，所以要拷贝一份
+
+                foreach (string d in myDependerList.Value)
+                {
+                    GetAssetImporter(d, ReimportAssetMode.Auto);
+                }
             }
         }
 
