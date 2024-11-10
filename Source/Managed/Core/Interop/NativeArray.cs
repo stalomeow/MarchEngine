@@ -57,6 +57,20 @@ namespace March.Core.Interop
             }
         }
 
+        public delegate U ElementConverter<U>(in T element);
+
+        public readonly U[] ConvertValue<U>(ElementConverter<U> converter)
+        {
+            U[] results = new U[Length];
+
+            for (int i = 0; i < results.Length; i++)
+            {
+                results[i] = converter(in this[i]);
+            }
+
+            return results;
+        }
+
         public static implicit operator NativeArray<T>(ReadOnlySpan<T> value) => new() { Data = New(value) };
 
         public static implicit operator NativeArray<T>(T[] value) => new() { Data = New(value) };

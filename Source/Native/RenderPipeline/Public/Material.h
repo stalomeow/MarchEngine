@@ -1,16 +1,16 @@
 #pragma once
 
 #include "GfxBuffer.h"
+#include "Shader.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <memory>
 
 namespace march
 {
-    class Shader;
-    class ShaderPass;
     class GfxTexture;
     class GfxConstantBuffer;
     class MaterialInternalUtility;
@@ -51,17 +51,25 @@ namespace march
 
         Shader* GetShader() const;
         void SetShader(Shader* pShader);
+
+        const ShaderKeywordSet& GetKeywords();
+        void EnableKeyword(const std::string& keyword);
+        void DisableKeyword(const std::string& keyword);
+        void SetKeyword(const std::string& keyword, bool value);
         GfxConstantBuffer* GetConstantBuffer(ShaderPass* pass, GfxConstantBuffer* defaultValue = nullptr);
 
     private:
         void CheckShaderVersion();
         void RecreateConstantBuffers();
+        void RebuildKeywordCache();
 
         template<typename T>
         void SetConstantBufferValue(int32_t id, const T& value);
 
         Shader* m_Shader;
         int32_t m_ShaderVersion;
+        ShaderKeywordSet m_KeywordCache;
+        std::unordered_set<std::string> m_EnabledKeywords;
         std::unordered_map<ShaderPass*, std::unique_ptr<GfxConstantBuffer>> m_ConstantBuffers;
 
         std::unordered_map<int32_t, int32_t> m_Ints;
@@ -79,5 +87,6 @@ namespace march
         static const std::unordered_map<int32_t, DirectX::XMFLOAT4>& GetRawVectors(Material* m);
         static const std::unordered_map<int32_t, DirectX::XMFLOAT4>& GetRawColors(Material* m);
         static const std::unordered_map<int32_t, GfxTexture*>& GetRawTextures(Material* m);
+        static const std::unordered_set<std::string>& GetRawEnabledKeywords(Material* m);
     };
 }

@@ -264,3 +264,34 @@ NATIVE_EXPORT_AUTO Material_GetAllTextures(cs<Material*> pMaterial)
 
     retcs props;
 }
+
+NATIVE_EXPORT_AUTO Material_EnableKeyword(cs<Material*> pMaterial, cs_string keyword)
+{
+    pMaterial->EnableKeyword(keyword);
+}
+
+NATIVE_EXPORT_AUTO Material_DisableKeyword(cs<Material*> pMaterial, cs_string keyword)
+{
+    pMaterial->DisableKeyword(keyword);
+}
+
+NATIVE_EXPORT_AUTO Material_SetKeyword(cs<Material*> pMaterial, cs_string keyword, cs_bool value)
+{
+    pMaterial->SetKeyword(keyword, value);
+}
+
+NATIVE_EXPORT_AUTO Material_GetAllKeywords(cs<Material*> pMaterial)
+{
+    const std::unordered_set<std::string>& keywords = MaterialInternalUtility::GetRawEnabledKeywords(pMaterial);
+
+    cs_array<cs_string> ks{};
+    ks.assign(static_cast<int32_t>(keywords.size()));
+
+    int32_t i = 0;
+    for (const std::string& k : keywords)
+    {
+        ks[i++].assign(k);
+    }
+
+    retcs ks;
+}

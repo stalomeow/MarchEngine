@@ -190,6 +190,24 @@ namespace March.Core.Rendering
             return TryGetTexture(name, out Texture? value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
         }
 
+        public void EnableKeyword(string keyword)
+        {
+            using NativeString k = keyword;
+            Material_EnableKeyword(NativePtr, k.Data);
+        }
+
+        public void DisableKeyword(string keyword)
+        {
+            using NativeString k = keyword;
+            Material_DisableKeyword(NativePtr, k.Data);
+        }
+
+        public void SetKeyword(string keyword, bool value)
+        {
+            using NativeString k = keyword;
+            Material_SetKeyword(NativePtr, k.Data, value);
+        }
+
         #region Serialization
 
         [StructLayout(LayoutKind.Sequential)]
@@ -330,6 +348,24 @@ namespace March.Core.Rendering
             }
         }
 
+        [JsonProperty("m_Keywords")]
+        private string[] Keywords
+        {
+            get
+            {
+                using var ks = (NativeArray<nint>)Material_GetAllKeywords(NativePtr);
+                return ks.ConvertValue((in nint s) => NativeString.GetAndFree(s));
+            }
+
+            set
+            {
+                foreach (string keyword in value)
+                {
+                    EnableKeyword(keyword);
+                }
+            }
+        }
+
         #endregion
 
         #region Native
@@ -390,6 +426,18 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial nint Material_GetAllTextures(nint pMaterial);
+
+        [NativeFunction]
+        private static partial void Material_EnableKeyword(nint pMaterial, nint keyword);
+
+        [NativeFunction]
+        private static partial void Material_DisableKeyword(nint pMaterial, nint keyword);
+
+        [NativeFunction]
+        private static partial void Material_SetKeyword(nint pMaterial, nint keyword, bool value);
+
+        [NativeFunction]
+        private static partial nint Material_GetAllKeywords(nint pMaterial);
 
         #endregion
     }

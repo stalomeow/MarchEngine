@@ -65,7 +65,7 @@ namespace march
                 ImportTextures(colorTargetResolvedId, display->GetResolvedColorBuffer());
             }
 
-            SetCameraGlobalConstantBuffer(camera, Shader::GetNameId("cbCamera"));
+            SetCameraGlobalConstantBuffer("CameraConstantBuffer", camera);
             SetLightGlobalConstantBuffer(Shader::GetNameId("cbLight"));
 
             ClearTargets(colorTargetId, depthStencilTargetId);
@@ -102,16 +102,21 @@ namespace march
         builder.ImportTexture(id, texture);
     }
 
-    void RenderPipeline::SetCameraGlobalConstantBuffer(Camera* camera, int32_t id)
+    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, Camera* camera)
     {
-        auto builder = m_RenderGraph->AddPass("CameraConstantBuffer");
+        SetCameraGlobalConstantBuffer(passName, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
+    }
+
+    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
+    {
+        auto builder = m_RenderGraph->AddPass(passName);
 
         builder.AllowPassCulling(false);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            XMMATRIX view = camera->LoadViewMatrix();
-            XMMATRIX proj = camera->LoadProjectionMatrix();
-            XMMATRIX viewProj = camera->LoadViewProjectionMatrix();
+            XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
+            XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
+            XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
 
             GfxDevice* device = context.GetDevice();
             auto cb = device->AllocateTransientUploadMemory(sizeof(CameraConstants), 1, GfxConstantBuffer::Alignment);
@@ -123,9 +128,9 @@ namespace march
             XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
             XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
             XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
-            XMStoreFloat4(&consts.CameraPositionWS, camera->GetTransform()->LoadPosition());
+            consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
 
-            context.SetGlobalConstantBuffer(id, cb.GetGpuVirtualAddress(0));
+            context.SetGlobalConstantBuffer("cbCamera", cb.GetGpuVirtualAddress(0));
         });
     }
 

@@ -41,7 +41,7 @@ namespace march
         , m_Blends{}
         , m_DepthState{}
         , m_StencilState{}
-        , m_RootSignature(nullptr)
+        , m_RootSignatures{}
         , m_PipelineStates{}
     {
     }
@@ -64,11 +64,6 @@ namespace march
     const std::unordered_map<int32_t, ShaderPropertyLocation>& ShaderPass::GetPropertyLocations() const
     {
         return m_PropertyLocations;
-    }
-
-    ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type) const
-    {
-        return m_Programs[static_cast<int32_t>(type)].get();
     }
 
     const ShaderPassCullMode& ShaderPass::GetCull() const
@@ -94,6 +89,11 @@ namespace march
     const std::string& Shader::GetName() const
     {
         return m_Name;
+    }
+
+    const ShaderKeywordSpace& Shader::GetKeywordSpace() const
+    {
+        return m_KeywordSpace;
     }
 
     const std::unordered_map<int32_t, ShaderProperty>& Shader::GetProperties() const

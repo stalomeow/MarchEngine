@@ -11,7 +11,7 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 17)]
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 18)]
     internal class GltfImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
@@ -240,6 +240,12 @@ namespace March.Editor.AssetPipeline.Importers
                     mat.Shader = context.RequireOtherAsset<Shader>("Engine/Shaders/BlinnPhong.shader", dependsOn: false);
 
                     var matData = gltf.Materials[primitive.Material.Value];
+
+                    if (matData.AlphaMode == glTFLoader.Schema.Material.AlphaModeEnum.MASK)
+                    {
+                        mat.EnableKeyword("_ALPHATEST_ON");
+                        mat.SetFloat("_Cutoff", matData.AlphaCutoff);
+                    }
 
                     if (matData.PbrMetallicRoughness.BaseColorTexture != null)
                     {

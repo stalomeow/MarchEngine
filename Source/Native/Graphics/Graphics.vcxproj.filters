@@ -122,5 +122,8 @@
     <ClCompile Include="Private\ShaderPipelineState.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="ShaderKeyword.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

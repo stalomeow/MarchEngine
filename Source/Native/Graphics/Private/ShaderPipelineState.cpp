@@ -134,90 +134,92 @@ namespace march
         return result.Get();
     }
 
-    ID3D12RootSignature* ShaderPass::GetRootSignature()
+    ID3D12RootSignature* ShaderPass::GetRootSignature(const ShaderKeywordSet& keywords)
     {
-        if (m_RootSignature == nullptr)
+        if (auto it = m_RootSignatures.find(keywords); it != m_RootSignatures.end())
         {
-            std::vector<CD3DX12_ROOT_PARAMETER> params;
-            std::vector<CD3DX12_STATIC_SAMPLER_DESC> staticSamplers;
-            std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges;
-            std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
-
-            for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
-            {
-                ShaderProgram* program = m_Programs[i].get();
-
-                if (program == nullptr)
-                {
-                    continue;
-                }
-
-                size_t srvUavStartIndex = srvUavRanges.size();
-                size_t samplerStartIndex = samplerRanges.size();
-                D3D12_SHADER_VISIBILITY visibility = GetShaderVisibility(static_cast<ShaderProgramType>(i));
-
-                for (auto& kv : program->m_Textures)
-                {
-                    ShaderTexture& tex = kv.second;
-
-                    srvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
-                        tex.ShaderRegisterTexture, tex.RegisterSpaceTexture, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-                    tex.TextureDescriptorTableIndex = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
-
-                    if (tex.HasSampler)
-                    {
-                        samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
-                            tex.ShaderRegisterSampler, tex.RegisterSpaceSampler, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-                        tex.SamplerDescriptorTableIndex = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex - 1);
-                    }
-                }
-
-                // TODO: Performance TIP: Order from most frequent to least frequent.
-
-                for (auto& kv : program->m_ConstantBuffers)
-                {
-                    ShaderConstantBuffer& cb = kv.second;
-                    params.emplace_back().InitAsConstantBufferView(cb.ShaderRegister, cb.RegisterSpace, visibility);
-                    cb.RootParameterIndex = static_cast<uint32_t>(params.size() - 1);
-                }
-
-                if (srvUavRanges.size() > srvUavStartIndex)
-                {
-                    uint32_t count = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex);
-                    params.emplace_back().InitAsDescriptorTable(count, srvUavRanges.data() + srvUavStartIndex, visibility);
-                    program->m_SrvUavRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
-                }
-
-                if (samplerRanges.size() > samplerStartIndex)
-                {
-                    uint32_t count = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex);
-                    params.emplace_back().InitAsDescriptorTable(count, samplerRanges.data() + samplerStartIndex, visibility);
-                    program->m_SamplerRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
-                }
-
-                AddStaticSamplers(staticSamplers, program, visibility);
-            }
-
-            CD3DX12_ROOT_SIGNATURE_DESC desc(
-                static_cast<UINT>(params.size()), params.data(),
-                static_cast<UINT>(staticSamplers.size()), staticSamplers.data(),
-                D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-            ComPtr<ID3DBlob> serializedData = nullptr;
-            ComPtr<ID3DBlob> error = nullptr;
-            HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, serializedData.GetAddressOf(), error.GetAddressOf());
-
-            if (error != nullptr)
-            {
-                LOG_ERROR(reinterpret_cast<char*>(error->GetBufferPointer()));
-            }
-
-            GFX_HR(hr);
-
-            m_RootSignature = CreateRootSignature(serializedData.Get());
+            return it->second.Get();
         }
 
-        return m_RootSignature.Get();
+        std::vector<CD3DX12_ROOT_PARAMETER> params;
+        std::vector<CD3DX12_STATIC_SAMPLER_DESC> staticSamplers;
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges;
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
+
+        for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
+        {
+            ShaderProgram* program = GetProgram(static_cast<ShaderProgramType>(i), keywords);
+
+            if (program == nullptr)
+            {
+                continue;
+            }
+
+            size_t srvUavStartIndex = srvUavRanges.size();
+            size_t samplerStartIndex = samplerRanges.size();
+            D3D12_SHADER_VISIBILITY visibility = GetShaderVisibility(static_cast<ShaderProgramType>(i));
+
+            for (auto& kv : program->m_Textures)
+            {
+                ShaderTexture& tex = kv.second;
+
+                srvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
+                    tex.ShaderRegisterTexture, tex.RegisterSpaceTexture, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                tex.TextureDescriptorTableIndex = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
+
+                if (tex.HasSampler)
+                {
+                    samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
+                        tex.ShaderRegisterSampler, tex.RegisterSpaceSampler, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                    tex.SamplerDescriptorTableIndex = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex - 1);
+                }
+            }
+
+            // TODO: Performance TIP: Order from most frequent to least frequent.
+
+            for (auto& kv : program->m_ConstantBuffers)
+            {
+                ShaderConstantBuffer& cb = kv.second;
+                params.emplace_back().InitAsConstantBufferView(cb.ShaderRegister, cb.RegisterSpace, visibility);
+                cb.RootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+
+            if (srvUavRanges.size() > srvUavStartIndex)
+            {
+                uint32_t count = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex);
+                params.emplace_back().InitAsDescriptorTable(count, srvUavRanges.data() + srvUavStartIndex, visibility);
+                program->m_SrvUavRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+
+            if (samplerRanges.size() > samplerStartIndex)
+            {
+                uint32_t count = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex);
+                params.emplace_back().InitAsDescriptorTable(count, samplerRanges.data() + samplerStartIndex, visibility);
+                program->m_SamplerRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+
+            AddStaticSamplers(staticSamplers, program, visibility);
+        }
+
+        CD3DX12_ROOT_SIGNATURE_DESC desc(
+            static_cast<UINT>(params.size()), params.data(),
+            static_cast<UINT>(staticSamplers.size()), staticSamplers.data(),
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+        ComPtr<ID3DBlob> serializedData = nullptr;
+        ComPtr<ID3DBlob> error = nullptr;
+        HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, serializedData.GetAddressOf(), error.GetAddressOf());
+
+        if (error != nullptr)
+        {
+            LOG_ERROR(reinterpret_cast<char*>(error->GetBufferPointer()));
+        }
+
+        GFX_HR(hr);
+
+        ID3D12RootSignature* result = CreateRootSignature(serializedData.Get());
+        m_RootSignatures[keywords] = result;
+        return result;
     }
 
     void Shader::ClearRootSignatureCache()
@@ -369,9 +371,9 @@ namespace march
         return hash;
     }
 
-    static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, const ShaderPass* pass, ShaderProgramType type)
+    static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, const ShaderPass* pass, ShaderProgramType type, const ShaderKeywordSet& keywords)
     {
-        ShaderProgram* program = pass->GetProgram(type);
+        ShaderProgram* program = pass->GetProgram(type, keywords);
 
         if (program == nullptr)
         {
@@ -412,19 +414,37 @@ namespace march
         }
     }
 
-    ID3D12PipelineState* ShaderPass::GetGraphicsPipelineState(int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash)
+    template<size_t Bits>
+    static size_t HashBitset(const std::bitset<Bits>& b, size_t hash)
+    {
+        using word_type = decltype(b._Getword(0));
+
+        constexpr size_t bitsPerWord = sizeof(word_type) * CHAR_BIT;
+        constexpr size_t wordCount = (Bits == 0) ? 0 : (Bits - 1) / bitsPerWord + 1;
+
+        for (size_t i = 0; i < wordCount; i++)
+        {
+            word_type word = b._Getword(i);
+            hash = HashHelper::FNV1(&word, 1, hash);
+        }
+
+        return hash;
+    }
+
+    ID3D12PipelineState* ShaderPass::GetGraphicsPipelineState(const ShaderKeywordSet& keywords, int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash)
     {
         size_t hash = HashHelper::FNV1(&stateDescHash, 1, GetPipelineInputDescHash(inputDescId));
+        hash = HashBitset(keywords.m_Keywords, hash);
         ComPtr<ID3D12PipelineState>& result = m_PipelineStates[hash];
 
         if (result == nullptr)
         {
             D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
-            psoDesc.pRootSignature = GetRootSignature();
+            psoDesc.pRootSignature = GetRootSignature(keywords);
 
-            SetShaderProgramIfExists(psoDesc.VS, this, ShaderProgramType::Vertex);
-            SetShaderProgramIfExists(psoDesc.PS, this, ShaderProgramType::Pixel);
+            SetShaderProgramIfExists(psoDesc.VS, this, ShaderProgramType::Vertex, keywords);
+            SetShaderProgramIfExists(psoDesc.PS, this, ShaderProgramType::Pixel, keywords);
 
             psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
             psoDesc.BlendState.IndependentBlendEnable = m_Blends.size() > 1 ? TRUE : FALSE;

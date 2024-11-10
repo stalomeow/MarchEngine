@@ -7,7 +7,7 @@ Shader "BlinnPhong"
         [Tooltip(The roughness.)] [Range(0, 1)] _Roughness("Roughness", Float) = 0.25
         [Tooltip(The diffuse map.)] _DiffuseMap("Diffuse Map", 2D) = "white" {}
         [Tooltip(The normal map.)] _BumpMap("Bump Map", 2D) = "bump" {}
-        [Range(0, 1)] _DitherAlpha("Dither Alpha", Float) = 1
+        [Range(0, 1)] _Cutoff("Alpha Cutoff", Float) = 0.5
     }
 
     Pass
@@ -42,6 +42,8 @@ Shader "BlinnPhong"
         #pragma vs vert
         #pragma ps frag
 
+        #pragma multi_compile _ _ALPHATEST_ON
+
         #include "Includes/Common.hlsl"
         #include "Includes/GBuffer.hlsl"
 
@@ -56,6 +58,7 @@ Shader "BlinnPhong"
             float3 _FresnelR0;
             float _Roughness;
             float _DitherAlpha;
+            float _Cutoff;
         };
 
         struct Attributes
@@ -87,24 +90,13 @@ Shader "BlinnPhong"
             return output;
         }
 
-        void DoDitherAlphaEffect(float4 pos, float ditherAlpha)
-        {
-            static const float4 thresholds[4] =
-            {
-                float4(01.0 / 17.0, 09.0 / 17.0, 03.0 / 17.0, 11.0 / 17.0),
-                float4(13.0 / 17.0, 05.0 / 17.0, 15.0 / 17.0, 07.0 / 17.0),
-                float4(04.0 / 17.0, 12.0 / 17.0, 02.0 / 17.0, 10.0 / 17.0),
-                float4(16.0 / 17.0, 08.0 / 17.0, 14.0 / 17.0, 06.0 / 17.0)
-            };
-
-            uint xIndex = fmod(pos.x - 0.5, 4);
-            uint yIndex = fmod(pos.y - 0.5, 4);
-            clip(ditherAlpha - thresholds[yIndex][xIndex]);
-        }
-
         PixelGBufferOutput frag(Varyings input)
         {
-            DoDitherAlphaEffect(input.positionCS, _DitherAlpha);
+            float4 diffuse = _DiffuseMap.Sample(sampler_DiffuseMap, input.uv);
+
+            #ifdef _ALPHATEST_ON
+                clip(diffuse.a - _Cutoff);
+            #endif
 
             float3 normalTS = normalize(_BumpMap.Sample(sampler_BumpMap, input.uv).xyz * 2.0 - 1.0);
             float3 N = normalize(input.normalWS);
@@ -113,7 +105,7 @@ Shader "BlinnPhong"
             float3 bumpedNomalWS = normalize(mul(normalTS, float3x3(T, B, N))); // float3x3() 是行主序矩阵
 
             GBufferData data;
-            data.albedo = (_DiffuseMap.Sample(sampler_DiffuseMap, input.uv) * _DiffuseAlbedo).xyz;
+            data.albedo = (diffuse * _DiffuseAlbedo).xyz;
             data.shininess = 1 - _Roughness;
             data.normalWS = bumpedNomalWS;
             data.depth = input.positionCS.z;

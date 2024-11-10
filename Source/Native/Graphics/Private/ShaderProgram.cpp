@@ -6,7 +6,12 @@
 #include <algorithm>
 #include <regex>
 #include <sstream>
+#include <limits>
+#include <unordered_set>
 #include <d3d12shader.h> // Shader reflection
+
+#undef min
+#undef max
 
 using namespace Microsoft::WRL;
 
@@ -14,6 +19,7 @@ namespace march
 {
     ShaderProgram::ShaderProgram()
         : m_Hash{}
+        , m_Keywords{}
         , m_Binary(nullptr)
         , m_ConstantBuffers{}
         , m_StaticSamplers{}
@@ -26,6 +32,11 @@ namespace march
     const ShaderProgram::HashType& ShaderProgram::GetHash() const
     {
         return m_Hash;
+    }
+
+    const ShaderKeywordSet& ShaderProgram::GetKeywords() const
+    {
+        return m_Keywords;
     }
 
     uint8_t* ShaderProgram::GetBinaryData() const
@@ -61,6 +72,48 @@ namespace march
     uint32_t ShaderProgram::GetSamplerRootParameterIndex() const
     {
         return m_SamplerRootParameterIndex;
+    }
+
+    static size_t absdiff(size_t a, size_t b)
+    {
+        return a > b ? a - b : b - a;
+    }
+
+    ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords) const
+    {
+        const std::vector<std::unique_ptr<ShaderProgram>>& programs = m_Programs[static_cast<int32_t>(type)];
+
+        ShaderProgram* result = nullptr;
+        size_t minDiff = std::numeric_limits<size_t>::max();
+        size_t targetKeywordCount = keywords.GetEnabledKeywordCount();
+
+        for (const std::unique_ptr<ShaderProgram>& program : programs)
+        {
+            const ShaderKeywordSet& ks = program->GetKeywords();
+            size_t matchingCount = ks.GetMatchingKeywordCount(keywords);
+            size_t enabledCount = ks.GetEnabledKeywordCount();
+
+            // 没 match 的数量 + 多余的数量
+            size_t diff = absdiff(targetKeywordCount, matchingCount) + absdiff(enabledCount, matchingCount);
+
+            if (diff < minDiff)
+            {
+                result = program.get();
+                minDiff = diff;
+            }
+        }
+
+        return result;
+    }
+
+    ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type, int32_t index) const
+    {
+        return m_Programs[static_cast<size_t>(type)][static_cast<size_t>(index)].get();
+    }
+
+    int32_t ShaderPass::GetProgramCount(ShaderProgramType type) const
+    {
+        return static_cast<int32_t>(m_Programs[static_cast<size_t>(type)].size());
     }
 
     static ComPtr<IDxcUtils> g_Utils = nullptr;
@@ -116,8 +169,9 @@ namespace march
         std::string ShaderModel;
         bool EnableDebugInfo;
         std::string Entrypoints[static_cast<int32_t>(ShaderProgramType::NumTypes)];
+        std::vector<std::vector<std::string>> MultiCompile;
 
-        ShaderConfig() : Entrypoints{}
+        ShaderConfig() : Entrypoints{}, MultiCompile{}
         {
             ShaderModel = "6.0";
             EnableDebugInfo = false;
@@ -163,58 +217,80 @@ namespace march
             {
                 config.EnableDebugInfo = true;
             }
+            else if (args[0] == "multi_compile" && args.size() > 1)
+            {
+                config.MultiCompile.emplace_back(args.begin() + 1, args.end());
+            }
         }
 
         return config;
     }
 
-    bool ShaderPass::Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
+    struct ShaderCompilationContext
     {
+        IDxcUtils* Utils;
+        IDxcCompiler3* Compiler;
+        IDxcIncludeHandler* IncludeHandler;
+
+        ShaderConfig Config;
+        std::wstring FileName;
+        std::wstring IncludePath;
+        DxcBuffer Source;
+    };
+
+    static bool IsEmptyKeyword(const std::string& keyword)
+    {
+        // _ 表示没有 Keyword
+        return keyword.empty() || std::all_of(keyword.begin(), keyword.end(), [](char c) { return c == '_'; });
+    }
+
+    bool ShaderPass::CompileRecursive(const ShaderCompilationContext& context, std::vector<std::string>& keywords, std::vector<std::string>& warnings, std::string& error)
+    {
+        if (keywords.size() < context.Config.MultiCompile.size())
+        {
+            const std::vector<std::string>& candidates = context.Config.MultiCompile[keywords.size()];
+
+            for (size_t i = 0; i < candidates.size(); i++)
+            {
+                keywords.push_back(candidates[i]);
+                bool success = CompileRecursive(context, keywords, warnings, error);
+                keywords.pop_back();
+
+                if (!success)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
-
-        IDxcUtils* utils = Shader::GetDxcUtils();
-        IDxcCompiler3* compiler = Shader::GetDxcCompiler();
-
-        //
-        // Create default include handler. (You can create your own...)
-        //
-        ComPtr<IDxcIncludeHandler> pIncludeHandler;
-        GFX_HR(utils->CreateDefaultIncludeHandler(&pIncludeHandler));
-
-        ShaderConfig config = GetShaderConfig(source); // 预处理
-        std::wstring wFilename = StringUtility::Utf8ToUtf16(filename);
-        std::wstring wIncludePath = StringUtility::Utf8ToUtf16(Shader::GetEngineShaderPathUnixStyle());
-
-        DxcBuffer Source = {};
-        Source.Ptr = source.data();
-        Source.Size = static_cast<SIZE_T>(source.size());
-        Source.Encoding = DXC_CP_UTF8;
 
         for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
         {
-            if (config.Entrypoints[i].empty())
+            if (context.Config.Entrypoints[i].empty())
             {
-                m_Programs[i].reset();
                 continue;
             }
 
             ShaderProgramType type = static_cast<ShaderProgramType>(i);
-            std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(config.Entrypoints[i]);
-            std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(GetTargetProfile(config.ShaderModel, type));
+            std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(context.Config.Entrypoints[i]);
+            std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(GetTargetProfile(context.Config.ShaderModel, type));
 
             std::vector<LPCWSTR> pszArgs =
             {
-                wFilename.c_str(),             // Optional shader source file name for error reporting and for PIX shader source view.
-                L"-E", wEntrypoint.c_str(),    // Entry point.
-                L"-T", wTargetProfile.c_str(), // Target.
-                L"-I", wIncludePath.c_str(),   // Include directory.
-                L"-Zpc",                       // Pack matrices in column-major order.
-                L"-Zsb",                       // Compute Shader Hash considering only output binary
-                L"-Ges",                       // Enable strict mode
-                L"-O3",                        // Optimization Level 3 (Default)
+                context.FileName.c_str(),           // Optional shader source file name for error reporting and for PIX shader source view.
+                L"-E", wEntrypoint.c_str(),         // Entry point.
+                L"-T", wTargetProfile.c_str(),      // Target.
+                L"-I", context.IncludePath.c_str(), // Include directory.
+                L"-Zpc",                            // Pack matrices in column-major order.
+                L"-Zsb",                            // Compute Shader Hash considering only output binary
+                L"-Ges",                            // Enable strict mode
+                L"-O3",                             // Optimization Level 3 (Default)
             };
 
-            if (config.EnableDebugInfo)
+            if (context.Config.EnableDebugInfo)
             {
                 pszArgs.push_back(L"-Zi"); // Enable debug information.
             }
@@ -244,6 +320,18 @@ namespace march
                 L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxHelpers::GetFarClipPlaneDepth()),
             };
 
+            std::unordered_set<std::string> uniqueKeywords{};
+
+            for (const std::string& kw : keywords)
+            {
+                if (IsEmptyKeyword(kw) || !uniqueKeywords.insert(kw).second)
+                {
+                    continue;
+                }
+
+                dynamicDefines.push_back(StringUtility::Utf8ToUtf16(kw) + L"=1");
+            }
+
             for (const auto& d : dynamicDefines)
             {
                 pszArgs.push_back(L"-D");
@@ -254,11 +342,11 @@ namespace march
             // Compile it with specified arguments.
             //
             ComPtr<IDxcResult> pResults = nullptr;
-            GFX_HR(compiler->Compile(
-                &Source,                             // Source buffer.
+            GFX_HR(context.Compiler->Compile(
+                &context.Source,                     // Source buffer.
                 pszArgs.data(),                      // Array of pointers to arguments.
                 static_cast<UINT32>(pszArgs.size()), // Number of arguments.
-                pIncludeHandler.Get(),               // User-provided interface to handle #include directives (optional).
+                context.IncludeHandler,              // User-provided interface to handle #include directives (optional).
                 IID_PPV_ARGS(&pResults)              // Compiler output status, buffer, and errors.
             ));
 
@@ -289,8 +377,15 @@ namespace march
                 return false;
             }
 
-            m_Programs[i] = std::make_unique<ShaderProgram>();
-            ShaderProgram* program = m_Programs[i].get();
+            m_Programs[i].emplace_back(std::make_unique<ShaderProgram>());
+            ShaderProgram* program = m_Programs[i].back().get();
+
+            // 保存 Keyword
+            for (const std::string& kw : uniqueKeywords)
+            {
+                m_Shader->m_KeywordSpace.AddKeyword(kw);
+                program->m_Keywords.EnableKeyword(m_Shader->m_KeywordSpace, kw);
+            }
 
             // 保存编译结果
             ComPtr<IDxcBlobUtf16> shaderName = nullptr;
@@ -319,7 +414,7 @@ namespace march
                 ReflectionData.Size = pReflectionData->GetBufferSize();
 
                 ComPtr<ID3D12ShaderReflection> pReflection;
-                utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection));
+                context.Utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection));
 
                 // Use reflection interface here.
 
@@ -403,5 +498,29 @@ namespace march
         }
 
         return true;
+    }
+
+    bool ShaderPass::Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
+    {
+        ShaderCompilationContext context{};
+        context.Utils = Shader::GetDxcUtils();
+        context.Compiler = Shader::GetDxcCompiler();
+
+        //
+        // Create default include handler. (You can create your own...)
+        //
+        ComPtr<IDxcIncludeHandler> pIncludeHandler;
+        GFX_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
+        context.IncludeHandler = pIncludeHandler.Get();
+
+        context.Config = GetShaderConfig(source); // 预处理
+        context.FileName = StringUtility::Utf8ToUtf16(filename);
+        context.IncludePath = StringUtility::Utf8ToUtf16(Shader::GetEngineShaderPathUnixStyle());
+        context.Source.Ptr = source.data();
+        context.Source.Size = static_cast<SIZE_T>(source.size());
+        context.Source.Encoding = DXC_CP_UTF8;
+
+        std::vector<std::string> keywords{};
+        return CompileRecursive(context, keywords, warnings, error);
     }
 }

@@ -198,9 +198,9 @@ namespace march
     {
         int32_t inputDescId = mesh->GetPipelineInputDescId();
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetPipelineState(inputDescId, pass);
+        ID3D12PipelineState* pso = GetPipelineState(inputDescId, pass, material);
 
-        SetPipelineStateAndRootSignature(pso, pass);
+        SetPipelineStateAndRootSignature(pso, pass, material);
         BindResources(material, shaderPassIndex, 0);
         DrawSubMeshes(GetD3D12GraphicsCommandList(), m_CurrentPrimitiveTopology, mesh, subMeshIndex);
     }
@@ -209,9 +209,9 @@ namespace march
     {
         int32_t inputDescId = meshDesc->InputDescId;
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetPipelineState(inputDescId, pass);
+        ID3D12PipelineState* pso = GetPipelineState(inputDescId, pass, material);
 
-        SetPipelineStateAndRootSignature(pso, pass);
+        SetPipelineStateAndRootSignature(pso, pass, material);
         BindResources(material, shaderPassIndex, 0);
 
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
@@ -289,7 +289,7 @@ namespace march
                     }
 
                     ShaderPass* pass = mat->GetShader()->GetPass(shaderPassIndex);
-                    ID3D12PipelineState* pso = GetPipelineState(obj->Mesh->GetPipelineInputDescId(), pass);
+                    ID3D12PipelineState* pso = GetPipelineState(obj->Mesh->GetPipelineInputDescId(), pass, mat);
 
                     DrawCall& dc = psoMap[pso].emplace_back();
                     dc.ObjectIndex = i;
@@ -329,7 +329,7 @@ namespace march
                     nextCbIndex++;
                 }
 
-                SetPipelineStateAndRootSignature(pso, pass);
+                SetPipelineStateAndRootSignature(pso, pass, dc.Mat);
                 BindResources(dc.Mat, dc.ShaderPassIndex, cbPerObj.GetGpuVirtualAddress(cbIndexIt->second));
                 DrawSubMeshes(GetD3D12GraphicsCommandList(), m_CurrentPrimitiveTopology, obj->Mesh, dc.SubMeshIndex);
             }
@@ -523,7 +523,7 @@ namespace march
         return scissorRect;
     }
 
-    ID3D12PipelineState* RenderGraphContext::GetPipelineState(int32_t inputDescId, ShaderPass* pass)
+    ID3D12PipelineState* RenderGraphContext::GetPipelineState(int32_t inputDescId, ShaderPass* pass, Material* material)
     {
         if (m_IsStateDescDirty)
         {
@@ -531,10 +531,10 @@ namespace march
             m_IsStateDescDirty = false;
         }
 
-        return pass->GetGraphicsPipelineState(inputDescId, m_StateDesc, m_StateDescHash);
+        return pass->GetGraphicsPipelineState(material->GetKeywords(), inputDescId, m_StateDesc, m_StateDescHash);
     }
 
-    void RenderGraphContext::SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass)
+    void RenderGraphContext::SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass, Material* material)
     {
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
 
@@ -544,7 +544,7 @@ namespace march
             m_CurrentPipelineState = pso;
         }
 
-        ID3D12RootSignature* rootSignature = pass->GetRootSignature();
+        ID3D12RootSignature* rootSignature = pass->GetRootSignature(material->GetKeywords());
 
         if (rootSignature != m_CurrentRootSignature)
         {
@@ -571,7 +571,7 @@ namespace march
 
         for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
         {
-            ShaderProgram* program = pass->GetProgram(static_cast<ShaderProgramType>(i));
+            ShaderProgram* program = pass->GetProgram(static_cast<ShaderProgramType>(i), material->GetKeywords());
 
             if (program == nullptr)
             {

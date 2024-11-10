@@ -76,7 +76,8 @@ namespace march
         }
 
         void ImportTextures(int32_t id, GfxRenderTexture* texture);
-        void SetCameraGlobalConstantBuffer(Camera* camera, int32_t id);
+        void SetCameraGlobalConstantBuffer(const std::string& passName, Camera* camera);
+        void SetCameraGlobalConstantBuffer(const std::string& passName, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         void SetLightGlobalConstantBuffer(int32_t id);
         void ResolveMSAA(int32_t id, int32_t resolvedId);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);

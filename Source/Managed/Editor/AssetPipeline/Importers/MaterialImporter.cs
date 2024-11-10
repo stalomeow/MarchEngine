@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Material Asset", ".mat", Version = 1)]
+    [CustomAssetImporter("Material Asset", ".mat", Version = 2)]
     internal class MaterialImporter : DirectAssetImporter
     {
         protected override MarchObject CreateAsset()

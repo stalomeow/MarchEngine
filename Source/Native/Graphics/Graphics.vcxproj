@@ -49,6 +49,7 @@
     <ClCompile Include="Private\ShaderProgram.cpp" />
     <ClCompile Include="Private\Texture.binding.cpp" />
     <ClCompile Include="Private\GfxTexture.cpp" />
+    <ClCompile Include="ShaderKeyword.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

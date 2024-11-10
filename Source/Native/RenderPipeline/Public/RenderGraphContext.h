@@ -94,8 +94,8 @@ namespace march
         D3D12_VIEWPORT GetDefaultViewport() const;
         D3D12_RECT GetDefaultScissorRect() const;
 
-        ID3D12PipelineState* GetPipelineState(int32_t inputDescId, ShaderPass* pass);
-        void SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass);
+        ID3D12PipelineState* GetPipelineState(int32_t inputDescId, ShaderPass* pass, Material* material);
+        void SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass, Material* material);
         void BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress);
 
         void ClearPreviousPassData();

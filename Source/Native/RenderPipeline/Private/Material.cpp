@@ -1,5 +1,4 @@
 #include "Material.h"
-#include "Shader.h"
 #include "Debug.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
@@ -13,13 +12,14 @@ namespace march
         : m_Shader(nullptr)
         , m_ShaderVersion(0)
         , m_ConstantBuffers{}
+        , m_KeywordCache{}
+        , m_EnabledKeywords{}
         , m_Ints{}
         , m_Floats{}
         , m_Vectors{}
         , m_Colors{}
         , m_Textures{}
     {
-
     }
 
     void Material::Reset()
@@ -230,6 +230,7 @@ namespace march
 
         m_ShaderVersion = m_Shader->GetVersion();
         RecreateConstantBuffers();
+        RebuildKeywordCache();
     }
 
     void Material::RecreateConstantBuffers()
@@ -237,6 +238,11 @@ namespace march
         LOG_TRACE("Recreate material cbuffer");
 
         m_ConstantBuffers.clear();
+
+        if (m_Shader == nullptr)
+        {
+            return;
+        }
 
         // 创建 cbuffer
         for (int32_t i = 0; i < m_Shader->GetPassCount(); i++)
@@ -246,24 +252,29 @@ namespace march
 
             for (int32_t j = 0; j < static_cast<int32_t>(ShaderProgramType::NumTypes); j++)
             {
-                ShaderProgram* program = pass->GetProgram(static_cast<ShaderProgramType>(j));
+                ShaderProgramType type = static_cast<ShaderProgramType>(j);
 
-                if (program == nullptr)
+                for (int32_t k = 0; k < pass->GetProgramCount(type); k++)
                 {
-                    continue;
-                }
+                    ShaderProgram* program = pass->GetProgram(type, k);
 
-                const auto& cbMap = program->GetConstantBuffers();
-                if (auto it = cbMap.find(Shader::GetMaterialConstantBufferId()); it != cbMap.end())
-                {
-                    if (cbUnalignedSize == 0)
+                    if (program == nullptr)
                     {
-                        cbUnalignedSize = it->second.UnalignedSize;
+                        continue;
                     }
-                    else if (cbUnalignedSize != it->second.UnalignedSize)
+
+                    const auto& cbMap = program->GetConstantBuffers();
+                    if (auto it = cbMap.find(Shader::GetMaterialConstantBufferId()); it != cbMap.end())
                     {
-                        // 同一个 pass 下的所有 program 的 material cbuffer 大小必须一致
-                        throw std::runtime_error("Material cbuffer size mismatch");
+                        if (cbUnalignedSize == 0)
+                        {
+                            cbUnalignedSize = it->second.UnalignedSize;
+                        }
+                        else if (cbUnalignedSize != it->second.UnalignedSize)
+                        {
+                            // 同一个 pass 下的所有 program 的 material cbuffer 大小必须一致
+                            throw std::runtime_error("Material cbuffer size mismatch");
+                        }
                     }
                 }
             }
@@ -367,16 +378,56 @@ namespace march
         }
 
         m_Shader = pShader;
+        m_ShaderVersion = pShader == nullptr ? 0 : pShader->GetVersion();
 
-        if (pShader != nullptr)
+        RecreateConstantBuffers();
+        RebuildKeywordCache();
+    }
+
+    const ShaderKeywordSet& Material::GetKeywords()
+    {
+        CheckShaderVersion();
+        return m_KeywordCache;
+    }
+
+    void Material::EnableKeyword(const std::string& keyword)
+    {
+        CheckShaderVersion();
+
+        if (m_EnabledKeywords.insert(keyword).second && m_Shader != nullptr)
         {
-            m_ShaderVersion = pShader->GetVersion();
-            RecreateConstantBuffers();
+            m_KeywordCache.EnableKeyword(m_Shader->GetKeywordSpace(), keyword);
         }
-        else
+    }
+
+    void Material::DisableKeyword(const std::string& keyword)
+    {
+        CheckShaderVersion();
+
+        if (m_EnabledKeywords.erase(keyword) == 1 && m_Shader != nullptr)
         {
-            m_ShaderVersion = 0;
-            m_ConstantBuffers.clear();
+            m_KeywordCache.DisableKeyword(m_Shader->GetKeywordSpace(), keyword);
+        }
+    }
+
+    void Material::SetKeyword(const std::string& keyword, bool value)
+    {
+        if (value) EnableKeyword(keyword);
+        else       DisableKeyword(keyword);
+    }
+
+    void Material::RebuildKeywordCache()
+    {
+        m_KeywordCache.Clear();
+
+        if (m_Shader == nullptr)
+        {
+            return;
+        }
+
+        for (const std::string& keyword : m_EnabledKeywords)
+        {
+            m_KeywordCache.EnableKeyword(m_Shader->GetKeywordSpace(), keyword);
         }
     }
 
@@ -410,5 +461,10 @@ namespace march
     const std::unordered_map<int32_t, GfxTexture*>& MaterialInternalUtility::GetRawTextures(Material* m)
     {
         return m->m_Textures;
+    }
+
+    const std::unordered_set<std::string>& MaterialInternalUtility::GetRawEnabledKeywords(Material* m)
+    {
+        return m->m_EnabledKeywords;
     }
 }

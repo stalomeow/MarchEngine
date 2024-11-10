@@ -136,6 +136,7 @@ namespace March.Core.Rendering
     internal class ShaderProgram : INativeMarshal<ShaderProgram, ShaderProgram.Native>
     {
         public ShaderProgramType Type;
+        public string[] Keywords = [];
         public byte[] Hash = [];
         public byte[] Binary = [];
         public ShaderConstantBuffer[] ConstantBuffers = [];
@@ -146,6 +147,7 @@ namespace March.Core.Rendering
         internal struct Native
         {
             public ShaderProgramType Type;
+            public NativeArray<nint> Keywords;
             public NativeArray<byte> Hash;
             public NativeArray<byte> Binary;
             public NativeArrayMarshal<ShaderConstantBuffer> ConstantBuffers;
@@ -156,6 +158,7 @@ namespace March.Core.Rendering
         public static ShaderProgram FromNative(ref Native native) => new()
         {
             Type = native.Type,
+            Keywords = native.Keywords.ConvertValue((in nint s) => NativeString.Get(s)),
             Hash = native.Hash.Value,
             Binary = native.Binary.Value,
             ConstantBuffers = native.ConstantBuffers.Value,
@@ -166,16 +169,28 @@ namespace March.Core.Rendering
         public static void ToNative(ShaderProgram value, out Native native)
         {
             native.Type = value.Type;
+            native.Keywords = new NativeArray<nint>(value.Keywords.Length);
             native.Hash = value.Hash;
             native.Binary = value.Binary;
             native.ConstantBuffers = value.ConstantBuffers;
             native.StaticSamplers = value.StaticSamplers;
             native.Textures = value.Textures;
+
+            for (int i = 0; i < value.Keywords.Length; i++)
+            {
+                native.Keywords[i] = NativeString.New(value.Keywords[i]);
+            }
         }
 
         public static void FreeNative(ref Native native)
         {
+            for (int i = 0; i < native.Keywords.Length; i++)
+            {
+                NativeString.Free(native.Keywords[i]);
+            }
+
             native.Hash.Dispose();
+            native.Keywords.Dispose();
             native.Binary.Dispose();
             native.ConstantBuffers.Dispose();
             native.StaticSamplers.Dispose();

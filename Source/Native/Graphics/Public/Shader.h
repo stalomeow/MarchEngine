@@ -9,6 +9,7 @@
 #include <dxcapi.h>
 #include <stdint.h>
 #include <memory>
+#include <bitset>
 
 namespace march
 {
@@ -16,7 +17,67 @@ namespace march
     class Shader;
     class ShaderPass;
     class ShaderBinding;
+    class ShaderKeywordSet;
+    class ShaderKeywordSpace;
 
+    class ShaderKeywordSet
+    {
+        friend ::std::hash<ShaderKeywordSet>;
+        friend ShaderPass;
+
+    public:
+        ShaderKeywordSet();
+
+        size_t GetEnabledKeywordCount() const;
+        size_t GetMatchingKeywordCount(const ShaderKeywordSet& other) const;
+        std::vector<std::string> GetEnabledKeywords(const ShaderKeywordSpace& space) const;
+
+        void SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value);
+        void EnableKeyword(const ShaderKeywordSpace& space, const std::string& keyword);
+        void DisableKeyword(const ShaderKeywordSpace& space, const std::string& keyword);
+        void Clear();
+
+        bool operator ==(const ShaderKeywordSet& other) const;
+
+    private:
+        std::bitset<128> m_Keywords;
+    };
+
+    class ShaderKeywordSpace
+    {
+    public:
+        ShaderKeywordSpace();
+
+        ShaderKeywordSpace(const ShaderKeywordSpace&) = delete;
+        ShaderKeywordSpace& operator =(const ShaderKeywordSpace&) = delete;
+
+        size_t GetKeywordCount() const;
+        int8_t GetKeywordIndex(const std::string& keyword) const;
+        const std::string& GetKeywordName(int8_t index) const;
+        bool AddKeyword(const std::string& keyword);
+        void Clear();
+
+    private:
+        std::unordered_map<std::string, uint8_t> m_KeywordIndexMap;
+        uint8_t m_NextIndex; // 目前最多支持 128 个 Keyword
+    };
+}
+
+namespace std
+{
+    template<>
+    struct hash<march::ShaderKeywordSet>
+    {
+        size_t operator ()(const march::ShaderKeywordSet& set) const
+        {
+            using t = decltype(set.m_Keywords);
+            return hash<t>()(set.m_Keywords);
+        }
+    };
+}
+
+namespace march
+{
     struct ShaderConstantBuffer
     {
         uint32_t ShaderRegister;
@@ -63,6 +124,7 @@ namespace march
         ShaderProgram();
 
         const HashType& GetHash() const;
+        const ShaderKeywordSet& GetKeywords() const;
         uint8_t* GetBinaryData() const;
         uint64_t GetBinarySize() const;
 
@@ -75,6 +137,7 @@ namespace march
 
     private:
         HashType m_Hash;
+        ShaderKeywordSet m_Keywords;
         Microsoft::WRL::ComPtr<IDxcBlob> m_Binary;
         std::unordered_map<int32_t, ShaderConstantBuffer> m_ConstantBuffers;
         std::unordered_map<int32_t, ShaderStaticSampler> m_StaticSamplers;
@@ -267,6 +330,8 @@ namespace march
         static size_t CalculateHash(const PipelineStateDesc& desc);
     };
 
+    struct ShaderCompilationContext;
+
     class ShaderPass
     {
         friend Shader;
@@ -279,40 +344,45 @@ namespace march
         const std::string& GetName() const;
         const std::unordered_map<std::string, std::string>& GetTags() const;
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
-        ShaderProgram* GetProgram(ShaderProgramType type) const;
+        ShaderProgram* GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords) const;
+        ShaderProgram* GetProgram(ShaderProgramType type, int32_t index) const;
+        int32_t GetProgramCount(ShaderProgramType type) const;
 
         const ShaderPassCullMode& GetCull() const;
         const std::vector<ShaderPassBlendState>& GetBlends() const;
         const ShaderPassDepthState& GetDepthState() const;
         const ShaderPassStencilState& GetStencilState() const;
 
-        ID3D12RootSignature* GetRootSignature();
-        ID3D12PipelineState* GetGraphicsPipelineState(int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash);
+        ID3D12RootSignature* GetRootSignature(const ShaderKeywordSet& keywords);
+        ID3D12PipelineState* GetGraphicsPipelineState(const ShaderKeywordSet& keywords, int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash);
 
     private:
+        bool CompileRecursive(const ShaderCompilationContext& context, std::vector<std::string>& keywords, std::vector<std::string>& warnings, std::string& error);
         bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
 
         Shader* m_Shader;
         std::string m_Name;
         std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
-        std::unique_ptr<ShaderProgram> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
+        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
 
         ShaderPassCullMode m_Cull;
         std::vector<ShaderPassBlendState> m_Blends; // 如果长度大于 1 则使用 Independent Blend
         ShaderPassDepthState m_DepthState;
         ShaderPassStencilState m_StencilState;
 
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
+        std::unordered_map<ShaderKeywordSet, Microsoft::WRL::ComPtr<ID3D12RootSignature>> m_RootSignatures;
         std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_PipelineStates;
     };
 
     class Shader
     {
+        friend ShaderPass;
         friend ShaderBinding;
 
     public:
         const std::string& GetName() const;
+        const ShaderKeywordSpace& GetKeywordSpace() const;
         const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const;
         ShaderPass* GetPass(int32_t index) const;
         int32_t GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const;
@@ -337,6 +407,7 @@ namespace march
 
     private:
         std::string m_Name;
+        ShaderKeywordSpace m_KeywordSpace;
         std::unordered_map<int32_t, ShaderProperty> m_Properties;
         std::vector<std::unique_ptr<ShaderPass>> m_Passes;
         int32_t m_Version = 0;
