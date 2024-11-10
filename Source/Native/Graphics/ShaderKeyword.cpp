@@ -92,21 +92,21 @@ namespace march
         throw std::runtime_error("Invalid shader keyword index");
     }
 
-    bool ShaderKeywordSpace::AddKeyword(const std::string& keyword)
+    ShaderKeywordSpace::AddKeywordResult ShaderKeywordSpace::AddKeyword(const std::string& keyword)
     {
         if (m_KeywordIndexMap.count(keyword) > 0)
         {
-            return false;
+            return AddKeywordResult::AlreadyExists;
         }
 
         if (m_NextIndex >= 128)
         {
             LOG_WARNING("Keyword count exceeds 128; '%s' is ignored!", keyword.c_str());
-            return false;
+            return AddKeywordResult::OutOfSpace;
         }
 
         m_KeywordIndexMap[keyword] = m_NextIndex++;
-        return true;
+        return AddKeywordResult::Success;
     }
 
     void ShaderKeywordSpace::Clear()

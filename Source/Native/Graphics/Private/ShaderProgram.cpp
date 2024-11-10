@@ -170,18 +170,17 @@ namespace march
         bool EnableDebugInfo;
         std::string Entrypoints[static_cast<int32_t>(ShaderProgramType::NumTypes)];
         std::vector<std::vector<std::string>> MultiCompile;
+        ShaderKeywordSpace KeywordSpace; // 编译时使用的临时 KeywordSpace
 
-        ShaderConfig() : Entrypoints{}, MultiCompile{}
+        ShaderConfig() : Entrypoints{}, MultiCompile{}, KeywordSpace{}
         {
             ShaderModel = "6.0";
             EnableDebugInfo = false;
         }
     };
 
-    static ShaderConfig GetShaderConfig(const std::string& source)
+    static bool PreprocessAndGetShaderConfig(const std::string& source, ShaderConfig& config, std::string& error)
     {
-        ShaderConfig config{};
-
         std::regex re(R"(^\s*#\s*pragma\s+(.*))", std::regex::ECMAScript);
         auto itEnd = std::sregex_iterator();
 
@@ -219,11 +218,34 @@ namespace march
             }
             else if (args[0] == "multi_compile" && args.size() > 1)
             {
-                config.MultiCompile.emplace_back(args.begin() + 1, args.end());
+                std::unordered_set<std::string> uniqueKeywords{};
+
+                for (size_t i = 1; i < args.size(); i++)
+                {
+                    // _ 表示没有 Keyword，替换为空字符串
+                    if (std::all_of(args[i].begin(), args[i].end(), [](char c) { return c == '_'; }))
+                    {
+                        uniqueKeywords.insert("");
+                    }
+                    else
+                    {
+                        ShaderKeywordSpace::AddKeywordResult result = config.KeywordSpace.AddKeyword(args[i]);
+
+                        if (result == ShaderKeywordSpace::AddKeywordResult::OutOfSpace)
+                        {
+                            error = "Too many keywords!";
+                            return false;
+                        }
+
+                        uniqueKeywords.insert(args[i]);
+                    }
+                }
+
+                config.MultiCompile.emplace_back(uniqueKeywords.begin(), uniqueKeywords.end());
             }
         }
 
-        return config;
+        return true;
     }
 
     struct ShaderCompilationContext
@@ -236,25 +258,55 @@ namespace march
         std::wstring FileName;
         std::wstring IncludePath;
         DxcBuffer Source;
+
+        std::unordered_set<ShaderKeywordSet> CompiledKeywordSets;
+        std::vector<std::string> Keywords;
+        std::vector<std::string>& Warnings;
+        std::string& Error;
+
+        ShaderCompilationContext(std::vector<std::string>& warnings, std::string& error)
+            : Utils(nullptr)
+            , Compiler(nullptr)
+            , IncludeHandler(nullptr)
+            , Config{}
+            , FileName{}
+            , IncludePath{}
+            , Source{}
+            , CompiledKeywordSets{}
+            , Keywords{}
+            , Warnings(warnings)
+            , Error(error)
+        {
+        }
     };
 
-    static bool IsEmptyKeyword(const std::string& keyword)
+    static bool ShouldCompileKeywords(ShaderCompilationContext& context)
     {
-        // _ 表示没有 Keyword
-        return keyword.empty() || std::all_of(keyword.begin(), keyword.end(), [](char c) { return c == '_'; });
+        ShaderKeywordSet keywordSet{};
+
+        for (const std::string& kw : context.Keywords)
+        {
+            if (!kw.empty())
+            {
+                keywordSet.EnableKeyword(context.Config.KeywordSpace, kw);
+            }
+        }
+
+        // 如果已经编译过了，就不再编译
+        return context.CompiledKeywordSets.insert(keywordSet).second;
     }
 
-    bool ShaderPass::CompileRecursive(const ShaderCompilationContext& context, std::vector<std::string>& keywords, std::vector<std::string>& warnings, std::string& error)
+    bool ShaderPass::CompileRecursive(ShaderCompilationContext& context)
     {
-        if (keywords.size() < context.Config.MultiCompile.size())
+        if (context.Keywords.size() < context.Config.MultiCompile.size())
         {
-            const std::vector<std::string>& candidates = context.Config.MultiCompile[keywords.size()];
+            const std::vector<std::string>& candidates = context.Config.MultiCompile[context.Keywords.size()];
 
             for (size_t i = 0; i < candidates.size(); i++)
             {
-                keywords.push_back(candidates[i]);
-                bool success = CompileRecursive(context, keywords, warnings, error);
-                keywords.pop_back();
+                context.Keywords.push_back(candidates[i]);
+                bool success = CompileRecursive(context);
+                context.Keywords.pop_back();
 
                 if (!success)
                 {
@@ -262,6 +314,11 @@ namespace march
                 }
             }
 
+            return true;
+        }
+
+        if (!ShouldCompileKeywords(context))
+        {
             return true;
         }
 
@@ -320,16 +377,12 @@ namespace march
                 L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxHelpers::GetFarClipPlaneDepth()),
             };
 
-            std::unordered_set<std::string> uniqueKeywords{};
-
-            for (const std::string& kw : keywords)
+            for (const std::string& kw : context.Keywords)
             {
-                if (IsEmptyKeyword(kw) || !uniqueKeywords.insert(kw).second)
+                if (!kw.empty())
                 {
-                    continue;
+                    dynamicDefines.push_back(StringUtility::Utf8ToUtf16(kw) + L"=1");
                 }
-
-                dynamicDefines.push_back(StringUtility::Utf8ToUtf16(kw) + L"=1");
             }
 
             for (const auto& d : dynamicDefines)
@@ -364,11 +417,11 @@ namespace march
             {
                 if (failed)
                 {
-                    error = pErrors->GetStringPointer();
+                    context.Error = pErrors->GetStringPointer();
                 }
                 else
                 {
-                    warnings.push_back(pErrors->GetStringPointer());
+                    context.Warnings.push_back(pErrors->GetStringPointer());
                 }
             }
 
@@ -381,10 +434,13 @@ namespace march
             ShaderProgram* program = m_Programs[i].back().get();
 
             // 保存 Keyword
-            for (const std::string& kw : uniqueKeywords)
+            for (const std::string& kw : context.Keywords)
             {
-                m_Shader->m_KeywordSpace.AddKeyword(kw);
-                program->m_Keywords.EnableKeyword(m_Shader->m_KeywordSpace, kw);
+                if (!kw.empty())
+                {
+                    m_Shader->m_KeywordSpace.AddKeyword(kw);
+                    program->m_Keywords.EnableKeyword(m_Shader->m_KeywordSpace, kw);
+                }
             }
 
             // 保存编译结果
@@ -502,7 +558,7 @@ namespace march
 
     bool ShaderPass::Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
-        ShaderCompilationContext context{};
+        ShaderCompilationContext context(warnings, error);
         context.Utils = Shader::GetDxcUtils();
         context.Compiler = Shader::GetDxcCompiler();
 
@@ -513,14 +569,17 @@ namespace march
         GFX_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
         context.IncludeHandler = pIncludeHandler.Get();
 
-        context.Config = GetShaderConfig(source); // 预处理
+        if (!PreprocessAndGetShaderConfig(source, context.Config, error))
+        {
+            return false;
+        }
+
         context.FileName = StringUtility::Utf8ToUtf16(filename);
         context.IncludePath = StringUtility::Utf8ToUtf16(Shader::GetEngineShaderPathUnixStyle());
         context.Source.Ptr = source.data();
         context.Source.Size = static_cast<SIZE_T>(source.size());
         context.Source.Encoding = DXC_CP_UTF8;
 
-        std::vector<std::string> keywords{};
-        return CompileRecursive(context, keywords, warnings, error);
+        return CompileRecursive(context);
     }
 }

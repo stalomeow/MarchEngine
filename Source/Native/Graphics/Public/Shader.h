@@ -51,10 +51,17 @@ namespace march
         ShaderKeywordSpace(const ShaderKeywordSpace&) = delete;
         ShaderKeywordSpace& operator =(const ShaderKeywordSpace&) = delete;
 
+        enum class AddKeywordResult
+        {
+            Success = 0,
+            AlreadyExists = 1,
+            OutOfSpace = 2,
+        };
+
         size_t GetKeywordCount() const;
         int8_t GetKeywordIndex(const std::string& keyword) const;
         const std::string& GetKeywordName(int8_t index) const;
-        bool AddKeyword(const std::string& keyword);
+        AddKeywordResult AddKeyword(const std::string& keyword);
         void Clear();
 
     private:
@@ -357,7 +364,7 @@ namespace march
         ID3D12PipelineState* GetGraphicsPipelineState(const ShaderKeywordSet& keywords, int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash);
 
     private:
-        bool CompileRecursive(const ShaderCompilationContext& context, std::vector<std::string>& keywords, std::vector<std::string>& warnings, std::string& error);
+        bool CompileRecursive(ShaderCompilationContext& context);
         bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
 
         Shader* m_Shader;
