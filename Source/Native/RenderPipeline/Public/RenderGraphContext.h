@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GfxTexture.h"
+#include "GfxPipelineState.h"
 #include "Shader.h"
 #include <directx/d3d12.h>
 #include <vector>
@@ -94,7 +95,7 @@ namespace march
         D3D12_VIEWPORT GetDefaultViewport() const;
         D3D12_RECT GetDefaultScissorRect() const;
 
-        ID3D12PipelineState* GetPipelineState(int32_t inputDescId, ShaderPass* pass, Material* material);
+        ID3D12PipelineState* GetPipelineState(Material* material, int32_t passIndex, int32_t inputDescId);
         void SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass, Material* material);
         void BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress);
 

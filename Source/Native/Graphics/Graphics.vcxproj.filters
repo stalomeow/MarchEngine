@@ -60,6 +60,15 @@
     <ClInclude Include="Public\GfxHelpers.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\GfxEnums.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Material.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\GfxPipelineState.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\GfxDescriptorHeap.cpp">
@@ -119,10 +128,19 @@
     <ClCompile Include="Private\ShaderProgram.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\ShaderPipelineState.cpp">
+    <ClCompile Include="Private\ShaderRootSignature.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="ShaderKeyword.cpp">
+    <ClCompile Include="Private\ShaderKeyword.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Material.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Material.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxPipelineState.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

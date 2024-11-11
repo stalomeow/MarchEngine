@@ -26,70 +26,86 @@ namespace March.Editor.ShaderLab
     internal struct ParsedBlend
     {
         public bool Enable;
-        public ShaderPassBlend SrcRgb;
-        public ShaderPassBlend DstRgb;
-        public ShaderPassBlend SrcAlpha;
-        public ShaderPassBlend DstAlpha;
+        public ShaderPassVar<BlendMode> SrcRgb;
+        public ShaderPassVar<BlendMode> DstRgb;
+        public ShaderPassVar<BlendMode> SrcAlpha;
+        public ShaderPassVar<BlendMode> DstAlpha;
 
         public static readonly ParsedBlend Default = new()
         {
             Enable = false,
-            SrcRgb = ShaderPassBlend.One,
-            DstRgb = ShaderPassBlend.Zero,
-            SrcAlpha = ShaderPassBlend.One,
-            DstAlpha = ShaderPassBlend.Zero,
+            SrcRgb = BlendMode.One,
+            DstRgb = BlendMode.Zero,
+            SrcAlpha = BlendMode.One,
+            DstAlpha = BlendMode.Zero,
         };
     }
 
     internal struct ParsedBlendOp
     {
-        public ShaderPassBlendOp OpRgb;
-        public ShaderPassBlendOp OpAlpha;
+        public ShaderPassVar<BlendOp> OpRgb;
+        public ShaderPassVar<BlendOp> OpAlpha;
 
         public static readonly ParsedBlendOp Default = new()
         {
-            OpRgb = ShaderPassBlendOp.Add,
-            OpAlpha = ShaderPassBlendOp.Add,
+            OpRgb = BlendOp.Add,
+            OpAlpha = BlendOp.Add,
         };
     }
 
     internal abstract class ParsedMetadataContainer
     {
-        private ShaderPassCullMode? m_Cull;
+        private ShaderPassVar<CullMode>? m_Cull;
 
-        private bool? m_ZWrite;
+        private ShaderPassVar<bool>? m_ZWrite;
         private bool? m_IsZTestDisabled;
-        private ShaderPassCompareFunc? m_ZTest;
+        private ShaderPassVar<CompareFunction>? m_ZTest;
 
         private ParsedBlend[]? m_Blends;
         private ParsedBlendOp[]? m_BlendOps;
-        private ShaderPassColorWriteMask[]? m_ColorMasks;
+        private ShaderPassVar<ColorWriteMask>[]? m_ColorMasks;
 
         private bool m_IsStencilSet = false;
         private ShaderPassStencilState m_Stencil = ShaderPassStencilState.Default;
 
         private readonly Dictionary<string, string> m_Tags = [];
 
-        public void SetCull(ShaderPassCullMode cull)
+        public void SetCull(CullMode cull)
         {
-            m_Cull = cull;
+            m_Cull = new ShaderPassVar<CullMode>(cull);
+        }
+
+        public void SetCull(string propertyName)
+        {
+            m_Cull = new ShaderPassVar<CullMode>(propertyName);
         }
 
         public void SetZWrite(bool zWrite)
         {
-            m_ZWrite = zWrite;
+            m_ZWrite = new ShaderPassVar<bool>(zWrite);
         }
 
-        public void SetZTest(ShaderPassCompareFunc zTest)
+        public void SetZWrite(string propertyName)
+        {
+            m_ZWrite = new ShaderPassVar<bool>(propertyName);
+        }
+
+        public void SetZTest(CompareFunction zTest)
         {
             m_IsZTestDisabled = false;
-            m_ZTest = zTest;
+            m_ZTest = new ShaderPassVar<CompareFunction>(zTest);
+        }
+
+        public void SetZTest(string propertyName)
+        {
+            m_IsZTestDisabled = false;
+            m_ZTest = new ShaderPassVar<CompareFunction>(propertyName);
         }
 
         public void DisableZTest()
         {
             m_IsZTestDisabled = true;
-            m_ZTest = ShaderPassCompareFunc.Always;
+            m_ZTest = CompareFunction.Always;
         }
 
         public ParsedBlend[] SetBlends()
@@ -102,9 +118,9 @@ namespace March.Editor.ShaderLab
             return m_BlendOps ??= Enumerable.Repeat(ParsedBlendOp.Default, 8).ToArray();
         }
 
-        public ShaderPassColorWriteMask[] SetColorMasks()
+        public ShaderPassVar<ColorWriteMask>[] SetColorMasks()
         {
-            return m_ColorMasks ??= Enumerable.Repeat(ShaderPassColorWriteMask.All, 8).ToArray();
+            return m_ColorMasks ??= Enumerable.Repeat(new ShaderPassVar<ColorWriteMask>(ColorWriteMask.All), 8).ToArray();
         }
 
         public ref ShaderPassStencilState SetStencilState()
@@ -118,9 +134,9 @@ namespace March.Editor.ShaderLab
             m_Tags[key] = value;
         }
 
-        public ShaderPassCullMode GetCull(ParsedMetadataContainer parent)
+        public ShaderPassVar<CullMode> GetCull(ParsedMetadataContainer parent)
         {
-            return m_Cull ?? parent.m_Cull ?? ShaderPassCullMode.Back;
+            return m_Cull ?? parent.m_Cull ?? CullMode.Back;
         }
 
         public ShaderPassDepthState GetDepthState(ParsedMetadataContainer parent)
@@ -128,15 +144,15 @@ namespace March.Editor.ShaderLab
             if (m_IsZTestDisabled ?? parent.m_IsZTestDisabled ?? false)
             {
                 // 禁用 ZTest 时，ZWrite 默认为 Off
-                bool write = m_ZWrite ?? parent.m_ZWrite ?? false;
+                ShaderPassVar<bool> write = m_ZWrite ?? parent.m_ZWrite ?? false;
 
                 // https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-depth-stencil
                 // Set DepthEnable to FALSE to disable depth testing and prevent writing to the depth buffer.
                 return new ShaderPassDepthState
                 {
-                    Enable = write, // 如果强制要求写入深度，则启用深度测试，否则写不进去
+                    Enable = write.PropertyId.HasValue || write.Value, // 如果强制要求写入深度，则启用深度测试，否则写不进去
                     Write = write,
-                    Compare = ShaderPassCompareFunc.Always, // 深度测试关闭时，默认通过
+                    Compare = CompareFunction.Always, // 深度测试关闭时，默认通过
                 };
             }
             else
@@ -145,7 +161,7 @@ namespace March.Editor.ShaderLab
                 {
                     Enable = true,
                     Write = m_ZWrite ?? parent.m_ZWrite ?? true,
-                    Compare = m_ZTest ?? parent.m_ZTest ?? ShaderPassCompareFunc.Less,
+                    Compare = m_ZTest ?? parent.m_ZTest ?? CompareFunction.Less,
                 };
             }
         }
@@ -156,7 +172,7 @@ namespace March.Editor.ShaderLab
 
             ParsedBlend[]? parsedBlends = m_Blends ?? parent.m_Blends;
             ParsedBlendOp[]? parsedOps = m_BlendOps ?? parent.m_BlendOps;
-            ShaderPassColorWriteMask[]? writeMasks = m_ColorMasks ?? parent.m_ColorMasks;
+            ShaderPassVar<ColorWriteMask>[]? writeMasks = m_ColorMasks ?? parent.m_ColorMasks;
 
             if (parsedBlends != null)
             {
@@ -431,13 +447,21 @@ namespace March.Editor.ShaderLab
 
         public override int VisitCullDeclaration([NotNull] ShaderLabParser.CullDeclarationContext context)
         {
-            CurrentMetadataContainer.SetCull(context.cullModeValue().GetChild<ITerminalNode>(0).Symbol.Type switch
+            if (context.cullModeValue() != null)
             {
-                ShaderLabParser.Back => ShaderPassCullMode.Back,
-                ShaderLabParser.Front => ShaderPassCullMode.Front,
-                ShaderLabParser.Off => ShaderPassCullMode.Off,
-                _ => throw new NotSupportedException("Unknown cull mode"),
-            });
+                CurrentMetadataContainer.SetCull(context.cullModeValue().GetChild<ITerminalNode>(0).Symbol.Type switch
+                {
+                    ShaderLabParser.Back => CullMode.Back,
+                    ShaderLabParser.Front => CullMode.Front,
+                    ShaderLabParser.Off => CullMode.Off,
+                    _ => throw new NotSupportedException("Unknown cull mode"),
+                });
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                CurrentMetadataContainer.SetCull(propertyName);
+            }
 
             return base.VisitCullDeclaration(context);
         }
@@ -448,9 +472,14 @@ namespace March.Editor.ShaderLab
             {
                 CurrentMetadataContainer.DisableZTest();
             }
-            else
+            else if (context.compareFuncValue() != null)
             {
                 CurrentMetadataContainer.SetZTest(ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0)));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                CurrentMetadataContainer.SetZTest(propertyName);
             }
 
             return base.VisitZTestDeclaration(context);
@@ -458,7 +487,20 @@ namespace March.Editor.ShaderLab
 
         public override int VisitZWriteDeclaration([NotNull] ShaderLabParser.ZWriteDeclarationContext context)
         {
-            CurrentMetadataContainer.SetZWrite(context.On() != null);
+            if (context.Off() != null)
+            {
+                CurrentMetadataContainer.SetZWrite(false);
+            }
+            else if (context.On() != null)
+            {
+                CurrentMetadataContainer.SetZWrite(true);
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                CurrentMetadataContainer.SetZWrite(propertyName);
+            }
+
             return base.VisitZWriteDeclaration(context);
         }
 
@@ -492,13 +534,13 @@ namespace March.Editor.ShaderLab
                 else
                 {
                     blend.Enable = true;
-                    blend.SrcRgb = ParseBlendFactor(context.blendFactorValue(0).GetChild<ITerminalNode>(0));
-                    blend.DstRgb = ParseBlendFactor(context.blendFactorValue(1).GetChild<ITerminalNode>(0));
+                    blend.SrcRgb = GetBlendMode(context.blendFactorValueOrBracketLiteral(0));
+                    blend.DstRgb = GetBlendMode(context.blendFactorValueOrBracketLiteral(1));
 
-                    if (context.blendFactorValue(2) != null && context.blendFactorValue(3) != null)
+                    if (context.blendFactorValueOrBracketLiteral(2) != null && context.blendFactorValueOrBracketLiteral(3) != null)
                     {
-                        blend.SrcAlpha = ParseBlendFactor(context.blendFactorValue(2).GetChild<ITerminalNode>(0));
-                        blend.DstAlpha = ParseBlendFactor(context.blendFactorValue(3).GetChild<ITerminalNode>(0));
+                        blend.SrcAlpha = GetBlendMode(context.blendFactorValueOrBracketLiteral(2));
+                        blend.DstAlpha = GetBlendMode(context.blendFactorValueOrBracketLiteral(3));
                     }
                     else
                     {
@@ -509,6 +551,19 @@ namespace March.Editor.ShaderLab
             }
 
             return base.VisitBlendDeclaration(context);
+
+            static ShaderPassVar<BlendMode> GetBlendMode(ShaderLabParser.BlendFactorValueOrBracketLiteralContext context)
+            {
+                if (context.blendFactorValue() != null)
+                {
+                    return ParseBlendFactor(context.blendFactorValue().GetChild<ITerminalNode>(0));
+                }
+                else
+                {
+                    string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                    return new ShaderPassVar<BlendMode>(propertyName);
+                }
+            }
         }
 
         public override int VisitBlendOpDeclaration([NotNull] ShaderLabParser.BlendOpDeclarationContext context)
@@ -534,11 +589,11 @@ namespace March.Editor.ShaderLab
             {
                 ref ParsedBlendOp blend = ref blendOps[i];
 
-                blend.OpRgb = ParseBlendOp(context.blendOpValue(0).GetChild<ITerminalNode>(0));
+                blend.OpRgb = GetBlendOp(context.blendOpValueOrBracketLiteral(0));
 
-                if (context.blendOpValue(1) != null)
+                if (context.blendOpValueOrBracketLiteral(1) != null)
                 {
-                    blend.OpAlpha = ParseBlendOp(context.blendOpValue(1).GetChild<ITerminalNode>(0));
+                    blend.OpAlpha = GetBlendOp(context.blendOpValueOrBracketLiteral(1));
                 }
                 else
                 {
@@ -547,6 +602,19 @@ namespace March.Editor.ShaderLab
             }
 
             return base.VisitBlendOpDeclaration(context);
+
+            static ShaderPassVar<BlendOp> GetBlendOp(ShaderLabParser.BlendOpValueOrBracketLiteralContext context)
+            {
+                if (context.blendOpValue() != null)
+                {
+                    return ParseBlendOp(context.blendOpValue().GetChild<ITerminalNode>(0));
+                }
+                else
+                {
+                    string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                    return new ShaderPassVar<BlendOp>(propertyName);
+                }
+            }
         }
 
         public override int VisitColorMaskInt1Declaration([NotNull] ShaderLabParser.ColorMaskInt1DeclarationContext context)
@@ -556,11 +624,11 @@ namespace March.Editor.ShaderLab
                 throw new NotSupportedException("Invalid color write mask");
             }
 
-            ShaderPassColorWriteMask[] colorMasks = CurrentMetadataContainer.SetColorMasks();
+            ShaderPassVar<ColorWriteMask>[] colorMasks = CurrentMetadataContainer.SetColorMasks();
 
             for (int i = 0; i < colorMasks.Length; i++)
             {
-                colorMasks[i] = ShaderPassColorWriteMask.None;
+                colorMasks[i] = ColorWriteMask.None;
             }
 
             return base.VisitColorMaskInt1Declaration(context);
@@ -568,7 +636,7 @@ namespace March.Editor.ShaderLab
 
         public override int VisitColorMaskInt2Declaration([NotNull] ShaderLabParser.ColorMaskInt2DeclarationContext context)
         {
-            ShaderPassColorWriteMask[] colorMasks = CurrentMetadataContainer.SetColorMasks();
+            ShaderPassVar<ColorWriteMask>[] colorMasks = CurrentMetadataContainer.SetColorMasks();
 
             int i = int.Parse(context.IntegerLiteral(0).GetText());
 
@@ -582,14 +650,14 @@ namespace March.Editor.ShaderLab
                 throw new NotSupportedException("Invalid color write mask");
             }
 
-            colorMasks[i] = ShaderPassColorWriteMask.None;
+            colorMasks[i] = ColorWriteMask.None;
 
             return base.VisitColorMaskInt2Declaration(context);
         }
 
         public override int VisitColorMaskIdentifierDeclaration([NotNull] ShaderLabParser.ColorMaskIdentifierDeclarationContext context)
         {
-            ShaderPassColorWriteMask[] colorMasks = CurrentMetadataContainer.SetColorMasks();
+            ShaderPassVar<ColorWriteMask>[] colorMasks = CurrentMetadataContainer.SetColorMasks();
 
             // 默认设置所有 Target
             int begin = 0;
@@ -606,7 +674,7 @@ namespace March.Editor.ShaderLab
                 }
             }
 
-            ShaderPassColorWriteMask mask = ShaderPassColorWriteMask.None;
+            ColorWriteMask mask = ColorWriteMask.None;
             HashSet<char> chars = [];
 
             foreach (char c in context.Identifier().GetText().ToLower())
@@ -618,10 +686,10 @@ namespace March.Editor.ShaderLab
 
                 switch (c)
                 {
-                    case 'r': mask |= ShaderPassColorWriteMask.Red; break;
-                    case 'g': mask |= ShaderPassColorWriteMask.Green; break;
-                    case 'b': mask |= ShaderPassColorWriteMask.Blue; break;
-                    case 'a': mask |= ShaderPassColorWriteMask.Alpha; break;
+                    case 'r': mask |= ColorWriteMask.Red; break;
+                    case 'g': mask |= ColorWriteMask.Green; break;
+                    case 'b': mask |= ColorWriteMask.Blue; break;
+                    case 'a': mask |= ColorWriteMask.Alpha; break;
                 }
             }
 
@@ -631,6 +699,35 @@ namespace March.Editor.ShaderLab
             }
 
             return base.VisitColorMaskIdentifierDeclaration(context);
+        }
+
+        public override int VisitColorMaskBracketLiteralDeclaration([NotNull] ShaderLabParser.ColorMaskBracketLiteralDeclarationContext context)
+        {
+            ShaderPassVar<ColorWriteMask>[] colorMasks = CurrentMetadataContainer.SetColorMasks();
+
+            // 默认设置所有 Target
+            int begin = 0;
+            int end = colorMasks.Length;
+
+            if (context.IntegerLiteral() != null)
+            {
+                begin = int.Parse(context.IntegerLiteral().GetText());
+                end = begin + 1;
+
+                if (begin < 0 || begin >= colorMasks.Length)
+                {
+                    throw new NotSupportedException("Invalid render target index");
+                }
+            }
+
+            string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+
+            for (int i = begin; i < end; i++)
+            {
+                colorMasks[i] = new ShaderPassVar<ColorWriteMask>(propertyName);
+            }
+
+            return base.VisitColorMaskBracketLiteralDeclaration(context);
         }
 
         public override int VisitStencilBlock([NotNull] ShaderLabParser.StencilBlockContext context)
@@ -643,131 +740,285 @@ namespace March.Editor.ShaderLab
         public override int VisitStencilRefDeclaration([NotNull] ShaderLabParser.StencilRefDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.Ref = byte.Parse(context.IntegerLiteral().GetText());
+
+            if (context.IntegerLiteral() != null)
+            {
+                stencil.Ref = byte.Parse(context.IntegerLiteral().GetText());
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.Ref = new ShaderPassVar<byte>(propertyName);
+            }
+
             return base.VisitStencilRefDeclaration(context);
         }
 
         public override int VisitStencilReadMaskDeclaration([NotNull] ShaderLabParser.StencilReadMaskDeclarationContext context)
         {
-            int numBase = 10;
-            string mask = context.IntegerLiteral().GetText();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
 
-            if (mask.StartsWith("0x"))
+            if (context.IntegerLiteral() != null)
             {
-                numBase = 16;
-                mask = mask[2..];
+                int numBase = 10;
+                string mask = context.IntegerLiteral().GetText();
+
+                if (mask.StartsWith("0x"))
+                {
+                    numBase = 16;
+                    mask = mask[2..];
+                }
+
+                stencil.ReadMask = Convert.ToByte(mask, numBase);
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.ReadMask = new ShaderPassVar<byte>(propertyName);
             }
 
-            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.ReadMask = Convert.ToByte(mask, numBase);
             return base.VisitStencilReadMaskDeclaration(context);
         }
 
         public override int VisitStencilWriteMaskDeclaration([NotNull] ShaderLabParser.StencilWriteMaskDeclarationContext context)
         {
-            int numBase = 10;
-            string mask = context.IntegerLiteral().GetText();
+            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
 
-            if (mask.StartsWith("0x"))
+            if (context.IntegerLiteral() != null)
             {
-                numBase = 16;
-                mask = mask[2..];
+                int numBase = 10;
+                string mask = context.IntegerLiteral().GetText();
+
+                if (mask.StartsWith("0x"))
+                {
+                    numBase = 16;
+                    mask = mask[2..];
+                }
+
+                stencil.WriteMask = Convert.ToByte(mask, numBase);
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.WriteMask = new ShaderPassVar<byte>(propertyName);
             }
 
-            ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.WriteMask = Convert.ToByte(mask, numBase);
             return base.VisitStencilWriteMaskDeclaration(context);
         }
 
         public override int VisitStencilCompDeclaration([NotNull] ShaderLabParser.StencilCompDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            ShaderPassCompareFunc compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
-            stencil.FrontFace.Compare = compare;
-            stencil.BackFace.Compare = compare;
+
+            if (context.compareFuncValue() != null)
+            {
+                CompareFunction compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+                stencil.FrontFace.Compare = compare;
+                stencil.BackFace.Compare = compare;
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.Compare = new ShaderPassVar<CompareFunction>(propertyName);
+                stencil.BackFace.Compare = new ShaderPassVar<CompareFunction>(propertyName);
+            }
+
             return base.VisitStencilCompDeclaration(context);
         }
 
         public override int VisitStencilPassDeclaration([NotNull] ShaderLabParser.StencilPassDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
-            stencil.FrontFace.PassOp = op;
-            stencil.BackFace.PassOp = op;
+
+            if (context.stencilOpValue() != null)
+            {
+                StencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+                stencil.FrontFace.PassOp = op;
+                stencil.BackFace.PassOp = op;
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.PassOp = new ShaderPassVar<StencilOp>(propertyName);
+                stencil.BackFace.PassOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilPassDeclaration(context);
         }
 
         public override int VisitStencilFailDeclaration([NotNull] ShaderLabParser.StencilFailDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
-            stencil.FrontFace.FailOp = op;
-            stencil.BackFace.FailOp = op;
+
+            if (context.stencilOpValue() != null)
+            {
+                StencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+                stencil.FrontFace.FailOp = op;
+                stencil.BackFace.FailOp = op;
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.FailOp = new ShaderPassVar<StencilOp>(propertyName);
+                stencil.BackFace.FailOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilFailDeclaration(context);
         }
 
         public override int VisitStencilZFailDeclaration([NotNull] ShaderLabParser.StencilZFailDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            ShaderPassStencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
-            stencil.FrontFace.DepthFailOp = op;
-            stencil.BackFace.DepthFailOp = op;
+
+            if (context.stencilOpValue() != null)
+            {
+                StencilOp op = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+                stencil.FrontFace.DepthFailOp = op;
+                stencil.BackFace.DepthFailOp = op;
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.DepthFailOp = new ShaderPassVar<StencilOp>(propertyName);
+                stencil.BackFace.DepthFailOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilZFailDeclaration(context);
         }
 
         public override int VisitStencilCompFrontDeclaration([NotNull] ShaderLabParser.StencilCompFrontDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.FrontFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+
+            if (context.compareFuncValue() != null)
+            {
+                stencil.FrontFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.Compare = new ShaderPassVar<CompareFunction>(propertyName);
+            }
+
             return base.VisitStencilCompFrontDeclaration(context);
         }
 
         public override int VisitStencilPassFrontDeclaration([NotNull] ShaderLabParser.StencilPassFrontDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.FrontFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+
+            if (context.stencilOpValue() != null)
+            {
+                stencil.FrontFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.PassOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilPassFrontDeclaration(context);
         }
 
         public override int VisitStencilFailFrontDeclaration([NotNull] ShaderLabParser.StencilFailFrontDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.FrontFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+
+            if (context.stencilOpValue() != null)
+            {
+                stencil.FrontFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.FailOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilFailFrontDeclaration(context);
         }
 
         public override int VisitStencilZFailFrontDeclaration([NotNull] ShaderLabParser.StencilZFailFrontDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.FrontFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+
+            if (context.stencilOpValue() != null)
+            {
+                stencil.FrontFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.FrontFace.DepthFailOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilZFailFrontDeclaration(context);
         }
 
         public override int VisitStencilCompBackDeclaration([NotNull] ShaderLabParser.StencilCompBackDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.BackFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+
+            if (context.compareFuncValue() != null)
+            {
+                stencil.BackFace.Compare = ParseCompareFunc(context.compareFuncValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.BackFace.Compare = new ShaderPassVar<CompareFunction>(propertyName);
+            }
+
             return base.VisitStencilCompBackDeclaration(context);
         }
 
         public override int VisitStencilPassBackDeclaration([NotNull] ShaderLabParser.StencilPassBackDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.BackFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+
+            if (context.stencilOpValue() != null)
+            {
+                stencil.BackFace.PassOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.BackFace.PassOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilPassBackDeclaration(context);
         }
 
         public override int VisitStencilFailBackDeclaration([NotNull] ShaderLabParser.StencilFailBackDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.BackFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+
+            if (context.stencilOpValue() != null)
+            {
+                stencil.BackFace.FailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.BackFace.FailOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilFailBackDeclaration(context);
         }
 
         public override int VisitStencilZFailBackDeclaration([NotNull] ShaderLabParser.StencilZFailBackDeclarationContext context)
         {
             ref ShaderPassStencilState stencil = ref CurrentMetadataContainer.SetStencilState();
-            stencil.BackFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+
+            if (context.stencilOpValue() != null)
+            {
+                stencil.BackFace.DepthFailOp = ParseStencilOp(context.stencilOpValue().GetChild<ITerminalNode>(0));
+            }
+            else
+            {
+                string propertyName = context.BracketLiteral().GetText()[1..^1]; // 去掉方括号
+                stencil.BackFace.DepthFailOp = new ShaderPassVar<StencilOp>(propertyName);
+            }
+
             return base.VisitStencilZFailBackDeclaration(context);
         }
 
@@ -816,66 +1067,66 @@ namespace March.Editor.ShaderLab
             };
         }
 
-        private static ShaderPassCompareFunc ParseCompareFunc(ITerminalNode node)
+        private static CompareFunction ParseCompareFunc(ITerminalNode node)
         {
             return node.Symbol.Type switch
             {
-                ShaderLabParser.Never => ShaderPassCompareFunc.Never,
-                ShaderLabParser.Less => ShaderPassCompareFunc.Less,
-                ShaderLabParser.Equal => ShaderPassCompareFunc.Equal,
-                ShaderLabParser.LEqual => ShaderPassCompareFunc.LessEqual,
-                ShaderLabParser.Greater => ShaderPassCompareFunc.Greater,
-                ShaderLabParser.NotEqual => ShaderPassCompareFunc.NotEqual,
-                ShaderLabParser.GEqual => ShaderPassCompareFunc.GreaterEqual,
-                ShaderLabParser.Always => ShaderPassCompareFunc.Always,
+                ShaderLabParser.Never => CompareFunction.Never,
+                ShaderLabParser.Less => CompareFunction.Less,
+                ShaderLabParser.Equal => CompareFunction.Equal,
+                ShaderLabParser.LEqual => CompareFunction.LessEqual,
+                ShaderLabParser.Greater => CompareFunction.Greater,
+                ShaderLabParser.NotEqual => CompareFunction.NotEqual,
+                ShaderLabParser.GEqual => CompareFunction.GreaterEqual,
+                ShaderLabParser.Always => CompareFunction.Always,
                 _ => throw new NotSupportedException("Unknown comparison function"),
             };
         }
 
-        private static ShaderPassBlend ParseBlendFactor(ITerminalNode node)
+        private static BlendMode ParseBlendFactor(ITerminalNode node)
         {
             return node.Symbol.Type switch
             {
-                ShaderLabParser.Zero => ShaderPassBlend.Zero,
-                ShaderLabParser.One => ShaderPassBlend.One,
-                ShaderLabParser.SrcColor => ShaderPassBlend.SrcColor,
-                ShaderLabParser.OneMinusSrcColor => ShaderPassBlend.InvSrcColor,
-                ShaderLabParser.SrcAlpha => ShaderPassBlend.SrcAlpha,
-                ShaderLabParser.OneMinusSrcAlpha => ShaderPassBlend.InvSrcAlpha,
-                ShaderLabParser.DstAlpha => ShaderPassBlend.DestAlpha,
-                ShaderLabParser.OneMinusDstAlpha => ShaderPassBlend.InvDestAlpha,
-                ShaderLabParser.DstColor => ShaderPassBlend.DestColor,
-                ShaderLabParser.OneMinusDstColor => ShaderPassBlend.InvDestColor,
-                ShaderLabParser.SrcAlphaSaturate => ShaderPassBlend.SrcAlphaSat,
+                ShaderLabParser.Zero => BlendMode.Zero,
+                ShaderLabParser.One => BlendMode.One,
+                ShaderLabParser.SrcColor => BlendMode.SrcColor,
+                ShaderLabParser.OneMinusSrcColor => BlendMode.InvSrcColor,
+                ShaderLabParser.SrcAlpha => BlendMode.SrcAlpha,
+                ShaderLabParser.OneMinusSrcAlpha => BlendMode.InvSrcAlpha,
+                ShaderLabParser.DstAlpha => BlendMode.DestAlpha,
+                ShaderLabParser.OneMinusDstAlpha => BlendMode.InvDestAlpha,
+                ShaderLabParser.DstColor => BlendMode.DestColor,
+                ShaderLabParser.OneMinusDstColor => BlendMode.InvDestColor,
+                ShaderLabParser.SrcAlphaSaturate => BlendMode.SrcAlphaSat,
                 _ => throw new NotSupportedException("Unknown blend factor"),
             };
         }
 
-        private static ShaderPassBlendOp ParseBlendOp(ITerminalNode node)
+        private static BlendOp ParseBlendOp(ITerminalNode node)
         {
             return node.Symbol.Type switch
             {
-                ShaderLabParser.Add => ShaderPassBlendOp.Add,
-                ShaderLabParser.Sub => ShaderPassBlendOp.Subtract,
-                ShaderLabParser.RevSub => ShaderPassBlendOp.RevSubtract,
-                ShaderLabParser.Min => ShaderPassBlendOp.Min,
-                ShaderLabParser.Max => ShaderPassBlendOp.Max,
+                ShaderLabParser.Add => BlendOp.Add,
+                ShaderLabParser.Sub => BlendOp.Subtract,
+                ShaderLabParser.RevSub => BlendOp.RevSubtract,
+                ShaderLabParser.Min => BlendOp.Min,
+                ShaderLabParser.Max => BlendOp.Max,
                 _ => throw new NotSupportedException("Unknown blend operation"),
             };
         }
 
-        private static ShaderPassStencilOp ParseStencilOp(ITerminalNode node)
+        private static StencilOp ParseStencilOp(ITerminalNode node)
         {
             return node.Symbol.Type switch
             {
-                ShaderLabParser.Keep => ShaderPassStencilOp.Keep,
-                ShaderLabParser.Zero => ShaderPassStencilOp.Zero,
-                ShaderLabParser.Replace => ShaderPassStencilOp.Replace,
-                ShaderLabParser.IncrSat => ShaderPassStencilOp.IncrSat,
-                ShaderLabParser.DecrSat => ShaderPassStencilOp.DecrSat,
-                ShaderLabParser.Invert => ShaderPassStencilOp.Invert,
-                ShaderLabParser.IncrWrap => ShaderPassStencilOp.Incr,
-                ShaderLabParser.DecrWrap => ShaderPassStencilOp.Decr,
+                ShaderLabParser.Keep => StencilOp.Keep,
+                ShaderLabParser.Zero => StencilOp.Zero,
+                ShaderLabParser.Replace => StencilOp.Replace,
+                ShaderLabParser.IncrSat => StencilOp.IncrSat,
+                ShaderLabParser.DecrSat => StencilOp.DecrSat,
+                ShaderLabParser.Invert => StencilOp.Invert,
+                ShaderLabParser.IncrWrap => StencilOp.Incr,
+                ShaderLabParser.DecrWrap => StencilOp.Decr,
                 _ => throw new NotSupportedException("Unknown stencil operation"),
             };
         }

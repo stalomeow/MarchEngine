@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <vector>
 #include <memory>
 
 namespace march
@@ -56,12 +57,14 @@ namespace march
         void EnableKeyword(const std::string& keyword);
         void DisableKeyword(const std::string& keyword);
         void SetKeyword(const std::string& keyword, bool value);
-        GfxConstantBuffer* GetConstantBuffer(ShaderPass* pass, GfxConstantBuffer* defaultValue = nullptr);
+        GfxConstantBuffer* GetConstantBuffer(int32_t passIndex);
+        const ShaderPassRenderState& GetResolvedRenderState(int32_t passIndex, size_t* outHash = nullptr);
 
     private:
         void CheckShaderVersion();
         void RecreateConstantBuffers();
         void RebuildKeywordCache();
+        void ClearResolvedRenderStates();
 
         template<typename T>
         void SetConstantBufferValue(int32_t id, const T& value);
@@ -70,7 +73,10 @@ namespace march
         int32_t m_ShaderVersion;
         ShaderKeywordSet m_KeywordCache;
         std::unordered_set<std::string> m_EnabledKeywords;
-        std::unordered_map<ShaderPass*, std::unique_ptr<GfxConstantBuffer>> m_ConstantBuffers;
+        std::vector<std::unique_ptr<GfxConstantBuffer>> m_ConstantBuffers;
+
+        // Key 是 ShaderPassIndex, Value 是 ShaderPassRenderState 和对应的 Hash
+        std::unordered_map<int32_t, std::pair<ShaderPassRenderState, size_t>> m_ResolvedRenderStates;
 
         std::unordered_map<int32_t, int32_t> m_Ints;
         std::unordered_map<int32_t, float> m_Floats;

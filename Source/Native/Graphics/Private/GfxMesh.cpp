@@ -1,26 +1,26 @@
 #include "GfxMesh.h"
 #include "GfxDevice.h"
 #include "GfxCommandList.h"
+#include "GfxPipelineState.h"
 #include "DotNetRuntime.h"
-#include "Shader.h"
 #include <Windows.h>
 
 using namespace DirectX;
 
 namespace march
 {
-    static int32_t g_PipelineInputDescId = Shader::GetInvalidPipelineInputDescId();
+    static int32_t g_PipelineInputDescId = GfxPipelineState::GetInvalidInputDescId();
 
     int32_t GfxMesh::GetPipelineInputDescId()
     {
-        if (g_PipelineInputDescId == Shader::GetInvalidPipelineInputDescId())
+        if (g_PipelineInputDescId == GfxPipelineState::GetInvalidInputDescId())
         {
             std::vector<PipelineInputElement> inputs{};
             inputs.emplace_back(PipelineInputSematicName::Position, 0, DXGI_FORMAT_R32G32B32_FLOAT);
             inputs.emplace_back(PipelineInputSematicName::Normal, 0, DXGI_FORMAT_R32G32B32_FLOAT);
             inputs.emplace_back(PipelineInputSematicName::Tangent, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
             inputs.emplace_back(PipelineInputSematicName::TexCoord, 0, DXGI_FORMAT_R32G32_FLOAT);
-            g_PipelineInputDescId = Shader::CreatePipelineInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            g_PipelineInputDescId = GfxPipelineState::CreateInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         }
 
         return g_PipelineInputDescId;
@@ -28,7 +28,7 @@ namespace march
 
     D3D12_PRIMITIVE_TOPOLOGY GfxMesh::GetPrimitiveTopology()
     {
-        return Shader::GetPipelineInputDescPrimitiveTopology(GetPipelineInputDescId());
+        return GfxPipelineState::GetInputDescPrimitiveTopology(GetPipelineInputDescId());
     }
 
     GfxMesh* GfxMesh::GetGeometry(GfxMeshGeometry geometry)

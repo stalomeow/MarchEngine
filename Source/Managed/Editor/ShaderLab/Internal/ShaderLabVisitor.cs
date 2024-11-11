@@ -180,6 +180,13 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitColorMaskIdentifierDeclaration([NotNull] ShaderLabParser.ColorMaskIdentifierDeclarationContext context);
 	/// <summary>
+	/// Visit a parse tree produced by the <c>colorMaskBracketLiteralDeclaration</c>
+	/// labeled alternative in <see cref="ShaderLabParser.colorMaskDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitColorMaskBracketLiteralDeclaration([NotNull] ShaderLabParser.ColorMaskBracketLiteralDeclarationContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.stencilBlock"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -306,11 +313,23 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitBlendFactorValue([NotNull] ShaderLabParser.BlendFactorValueContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.blendFactorValueOrBracketLiteral"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitBlendFactorValueOrBracketLiteral([NotNull] ShaderLabParser.BlendFactorValueOrBracketLiteralContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.blendOpValue"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitBlendOpValue([NotNull] ShaderLabParser.BlendOpValueContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="ShaderLabParser.blendOpValueOrBracketLiteral"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitBlendOpValueOrBracketLiteral([NotNull] ShaderLabParser.BlendOpValueOrBracketLiteralContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="ShaderLabParser.compareFuncValue"/>.
 	/// </summary>

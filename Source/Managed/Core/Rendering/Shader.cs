@@ -3,6 +3,7 @@ using March.Core.Interop;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
@@ -298,54 +299,102 @@ namespace March.Core.Rendering
         }
     }
 
-    internal enum ShaderPassCullMode
+    [StructLayout(LayoutKind.Sequential)]
+    [JsonConverter(typeof(OptionalShaderPropertyIdJsonConverter))]
+    internal struct OptionalShaderPropertyId(string propertyName)
     {
-        Off = 0,
-        Front = 1,
-        Back = 2,
+        public bool HasValue = true;
+        public int Value = Shader.GetNameId(propertyName);
     }
 
-    internal enum ShaderPassBlend
+    internal sealed class OptionalShaderPropertyIdJsonConverter : JsonConverter<OptionalShaderPropertyId>
     {
-        Zero = 0,
-        One = 1,
-        SrcColor = 2,
-        InvSrcColor = 3,
-        SrcAlpha = 4,
-        InvSrcAlpha = 5,
-        DestAlpha = 6,
-        InvDestAlpha = 7,
-        DestColor = 8,
-        InvDestColor = 9,
-        SrcAlphaSat = 10,
+        public override OptionalShaderPropertyId ReadJson(JsonReader reader, Type objectType, OptionalShaderPropertyId existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            if (reader.TokenType == JsonToken.Null)
+            {
+                return default;
+            }
+
+            string propertyName = reader.Value!.ToString()!;
+            return new OptionalShaderPropertyId(propertyName);
+        }
+
+        public override void WriteJson(JsonWriter writer, OptionalShaderPropertyId value, JsonSerializer serializer)
+        {
+            if (value.HasValue)
+            {
+                writer.WriteValue(Shader.GetIdName(value.Value));
+            }
+            else
+            {
+                writer.WriteNull();
+            }
+        }
     }
 
-    internal enum ShaderPassBlendOp
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ShaderPassVar<T> : IEquatable<ShaderPassVar<T>> where T : unmanaged
     {
-        Add = 0,
-        Subtract = 1,
-        RevSubtract = 2,
-        Min = 3,
-        Max = 4,
-    }
+        [JsonProperty("PropertyName")]
+        public OptionalShaderPropertyId PropertyId;
+        public T Value;
 
-    [Flags]
-    internal enum ShaderPassColorWriteMask
-    {
-        None = 0,
-        Red = 1 << 0,
-        Green = 1 << 1,
-        Blue = 1 << 2,
-        Alpha = 1 << 3,
-        All = Red | Green | Blue | Alpha
+        public ShaderPassVar(string propertyName)
+        {
+            PropertyId = new OptionalShaderPropertyId(propertyName);
+            Value = default;
+        }
+
+        public ShaderPassVar(T value)
+        {
+            PropertyId = default;
+            Value = value;
+        }
+
+        public readonly bool Equals(ShaderPassVar<T> other)
+        {
+            // 两个都使用 Value -> 比较 Value
+            // 两个都使用 PropertyId -> 比较 PropertyId
+            // 一个使用 Value，一个使用 PropertyId -> false
+
+            if (!PropertyId.HasValue && !other.PropertyId.HasValue)
+            {
+                return EqualityComparer<T>.Default.Equals(Value, other.Value);
+            }
+
+            return PropertyId.HasValue && other.PropertyId.HasValue && PropertyId.Value == other.PropertyId.Value;
+        }
+
+        public override readonly bool Equals([NotNullWhen(true)] object? obj)
+        {
+            return (obj is ShaderPassVar<T> v) && Equals(v);
+        }
+
+        public override readonly int GetHashCode()
+        {
+            return PropertyId.HasValue ? HashCode.Combine(true, PropertyId.Value, default(T)) : HashCode.Combine(false, default(int), Value);
+        }
+
+        public static bool operator ==(ShaderPassVar<T> left, ShaderPassVar<T> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ShaderPassVar<T> left, ShaderPassVar<T> right)
+        {
+            return !left.Equals(right);
+        }
+
+        public static implicit operator ShaderPassVar<T>(T value) => new(value);
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassBlendFormula : IEquatable<ShaderPassBlendFormula>
     {
-        public ShaderPassBlend Src;
-        public ShaderPassBlend Dest;
-        public ShaderPassBlendOp Op;
+        public ShaderPassVar<BlendMode> Src;
+        public ShaderPassVar<BlendMode> Dest;
+        public ShaderPassVar<BlendOp> Op;
 
         public readonly override bool Equals(object? obj)
         {
@@ -366,9 +415,9 @@ namespace March.Core.Rendering
 
         public static readonly ShaderPassBlendFormula Default = new()
         {
-            Src = ShaderPassBlend.One,
-            Dest = ShaderPassBlend.Zero,
-            Op = ShaderPassBlendOp.Add
+            Src = BlendMode.One,
+            Dest = BlendMode.Zero,
+            Op = BlendOp.Add
         };
     }
 
@@ -376,7 +425,7 @@ namespace March.Core.Rendering
     internal struct ShaderPassBlendState : IEquatable<ShaderPassBlendState>
     {
         public bool Enable;
-        public ShaderPassColorWriteMask WriteMask;
+        public ShaderPassVar<ColorWriteMask> WriteMask;
         public ShaderPassBlendFormula Rgb;
         public ShaderPassBlendFormula Alpha;
 
@@ -401,60 +450,36 @@ namespace March.Core.Rendering
         public static readonly ShaderPassBlendState Default = new()
         {
             Enable = false,
-            WriteMask = ShaderPassColorWriteMask.All,
+            WriteMask = ColorWriteMask.All,
             Rgb = ShaderPassBlendFormula.Default,
             Alpha = ShaderPassBlendFormula.Default
         };
-    }
-
-    internal enum ShaderPassCompareFunc
-    {
-        Never = 0,
-        Less = 1,
-        Equal = 2,
-        LessEqual = 3,
-        Greater = 4,
-        NotEqual = 5,
-        GreaterEqual = 6,
-        Always = 7,
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassDepthState
     {
         public bool Enable;
-        public bool Write;
-        public ShaderPassCompareFunc Compare;
-    }
-
-    internal enum ShaderPassStencilOp
-    {
-        Keep = 0,
-        Zero = 1,
-        Replace = 2,
-        IncrSat = 3,
-        DecrSat = 4,
-        Invert = 5,
-        Incr = 6,
-        Decr = 7,
+        public ShaderPassVar<bool> Write;
+        public ShaderPassVar<CompareFunction> Compare;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassStencilAction
     {
-        public ShaderPassCompareFunc Compare;
-        public ShaderPassStencilOp PassOp;
-        public ShaderPassStencilOp FailOp;
-        public ShaderPassStencilOp DepthFailOp;
+        public ShaderPassVar<CompareFunction> Compare;
+        public ShaderPassVar<StencilOp> PassOp;
+        public ShaderPassVar<StencilOp> FailOp;
+        public ShaderPassVar<StencilOp> DepthFailOp;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassStencilState
     {
-        public byte Ref;
         public bool Enable;
-        public byte ReadMask;
-        public byte WriteMask;
+        public ShaderPassVar<byte> Ref;
+        public ShaderPassVar<byte> ReadMask;
+        public ShaderPassVar<byte> WriteMask;
         public ShaderPassStencilAction FrontFace;
         public ShaderPassStencilAction BackFace;
 
@@ -466,17 +491,17 @@ namespace March.Core.Rendering
             WriteMask = 0xFF,
             FrontFace = new()
             {
-                Compare = ShaderPassCompareFunc.Always,
-                PassOp = ShaderPassStencilOp.Keep,
-                FailOp = ShaderPassStencilOp.Keep,
-                DepthFailOp = ShaderPassStencilOp.Keep,
+                Compare = CompareFunction.Always,
+                PassOp = StencilOp.Keep,
+                FailOp = StencilOp.Keep,
+                DepthFailOp = StencilOp.Keep,
             },
             BackFace = new()
             {
-                Compare = ShaderPassCompareFunc.Always,
-                PassOp = ShaderPassStencilOp.Keep,
-                FailOp = ShaderPassStencilOp.Keep,
-                DepthFailOp = ShaderPassStencilOp.Keep,
+                Compare = CompareFunction.Always,
+                PassOp = StencilOp.Keep,
+                FailOp = StencilOp.Keep,
+                DepthFailOp = StencilOp.Keep,
             },
         };
     }
@@ -521,7 +546,7 @@ namespace March.Core.Rendering
         public ShaderPropertyLocation[] PropertyLocations = [];
         public ShaderProgram[] Programs = [];
 
-        public ShaderPassCullMode Cull;
+        public ShaderPassVar<CullMode> Cull;
         public ShaderPassBlendState[] Blends = []; // 如果长度大于 1 则使用 Independent Blend
         public ShaderPassDepthState DepthState;
         public ShaderPassStencilState StencilState;
@@ -533,7 +558,7 @@ namespace March.Core.Rendering
             public NativeArrayMarshal<ShaderPassTag> Tags;
             public NativeArrayMarshal<ShaderPropertyLocation> PropertyLocations;
             public NativeArrayMarshal<ShaderProgram> Programs;
-            public ShaderPassCullMode Cull;
+            public ShaderPassVar<CullMode> Cull;
             public NativeArray<ShaderPassBlendState> Blends;
             public ShaderPassDepthState DepthState;
             public ShaderPassStencilState StencilState;
@@ -739,6 +764,22 @@ namespace March.Core.Rendering
 
         #endregion
 
+        #region Id Name Conversion
+
+        public static int GetNameId(StringLike name)
+        {
+            using NativeString n = name;
+            return Shader_GetNameId(n.Data);
+        }
+
+        public static string GetIdName(int id)
+        {
+            nint n = Shader_GetIdName(id);
+            return NativeString.GetAndFree(n);
+        }
+
+        #endregion
+
         #region Native
 
         [NativeFunction]
@@ -770,6 +811,12 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial nint Shader_GetEngineShaderPathUnixStyle();
+
+        [NativeFunction]
+        private static partial int Shader_GetNameId(nint name);
+
+        [NativeFunction]
+        private static partial nint Shader_GetIdName(int id);
 
         #endregion
     }

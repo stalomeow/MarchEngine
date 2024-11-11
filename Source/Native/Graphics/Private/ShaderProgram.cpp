@@ -29,7 +29,7 @@ namespace march
     {
     }
 
-    const ShaderProgram::HashType& ShaderProgram::GetHash() const
+    const ShaderProgram::hash_t& ShaderProgram::GetHash() const
     {
         return m_Hash;
     }

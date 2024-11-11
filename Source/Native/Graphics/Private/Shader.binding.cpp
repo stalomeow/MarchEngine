@@ -59,17 +59,30 @@ struct CSharpShaderPropertyLocation
     cs_uint Size;
 };
 
+struct CSharpOptionalShaderPropertyId
+{
+    cs_bool HasValue;
+    cs_int Value;
+};
+
+template<typename T>
+struct CSharpShaderPassVar
+{
+    CSharpOptionalShaderPropertyId PropertyId;
+    cs<T> Value;
+};
+
 struct CSharpShaderPassBlendFormula
 {
-    cs<ShaderPassBlend> Src;
-    cs<ShaderPassBlend> Dest;
-    cs<ShaderPassBlendOp> Op;
+    CSharpShaderPassVar<BlendMode> Src;
+    CSharpShaderPassVar<BlendMode> Dest;
+    CSharpShaderPassVar<BlendOp> Op;
 };
 
 struct CSharpShaderPassBlendState
 {
     cs_bool Enable;
-    cs<ShaderPassColorWriteMask> WriteMask;
+    CSharpShaderPassVar<ColorWriteMask> WriteMask;
     CSharpShaderPassBlendFormula Rgb;
     CSharpShaderPassBlendFormula Alpha;
 };
@@ -77,24 +90,24 @@ struct CSharpShaderPassBlendState
 struct CSharpShaderPassDepthState
 {
     cs_bool Enable;
-    cs_bool Write;
-    cs<ShaderPassCompareFunc> Compare;
+    CSharpShaderPassVar<bool> Write;
+    CSharpShaderPassVar<CompareFunction> Compare;
 };
 
 struct CSharpShaderPassStencilAction
 {
-    cs<ShaderPassCompareFunc> Compare;
-    cs<ShaderPassStencilOp> PassOp;
-    cs<ShaderPassStencilOp> FailOp;
-    cs<ShaderPassStencilOp> DepthFailOp;
+    CSharpShaderPassVar<CompareFunction> Compare;
+    CSharpShaderPassVar<StencilOp> PassOp;
+    CSharpShaderPassVar<StencilOp> FailOp;
+    CSharpShaderPassVar<StencilOp> DepthFailOp;
 };
 
 struct CSharpShaderPassStencilState
 {
-    march::cs_byte Ref;
     cs_bool Enable;
-    march::cs_byte ReadMask;
-    march::cs_byte WriteMask;
+    CSharpShaderPassVar<uint8_t> Ref;
+    CSharpShaderPassVar<uint8_t> ReadMask;
+    CSharpShaderPassVar<uint8_t> WriteMask;
     CSharpShaderPassStencilAction FrontFace;
     CSharpShaderPassStencilAction BackFace;
 };
@@ -112,11 +125,49 @@ struct CSharpShaderPass
     cs<CSharpShaderPropertyLocation[]> PropertyLocations;
     cs<CSharpShaderProgram[]> Programs;
 
-    cs<ShaderPassCullMode> Cull;
+    CSharpShaderPassVar<CullMode> Cull;
     cs<CSharpShaderPassBlendState[]> Blends;
     CSharpShaderPassDepthState DepthState;
     CSharpShaderPassStencilState StencilState;
 };
+
+template<typename T>
+ShaderPassVar<T> UnpackShaderPassVar(const CSharpShaderPassVar<T>& v)
+{
+    ShaderPassVar<T> result{};
+
+    if (v.PropertyId.HasValue)
+    {
+        result.IsDynamic = true;
+        result.PropertyId = v.PropertyId.Value;
+    }
+    else
+    {
+        result.IsDynamic = false;
+        result.Value = v.Value;
+    }
+
+    return result;
+}
+
+template<typename T>
+CSharpShaderPassVar<T> PackShaderPassVar(const ShaderPassVar<T>& v)
+{
+    CSharpShaderPassVar<T> result{};
+
+    if (v.IsDynamic)
+    {
+        result.PropertyId.HasValue.assign(true);
+        result.PropertyId.Value.assign(v.PropertyId);
+    }
+    else
+    {
+        result.PropertyId.HasValue.assign(false);
+        result.Value.assign(v.Value);
+    }
+
+    return result;
+}
 
 namespace march
 {
@@ -250,42 +301,42 @@ namespace march
                     pass->m_Programs[static_cast<int32_t>(p.Type.data)].emplace_back(std::move(program));
                 }
 
-                pass->m_Cull = src.Cull;
+                pass->m_RenderState.Cull = UnpackShaderPassVar(src.Cull);
 
-                pass->m_Blends.resize(src.Blends.size());
-                for (int32_t j = 0; j < pass->m_Blends.size(); j++)
+                pass->m_RenderState.Blends.resize(src.Blends.size());
+                for (int32_t j = 0; j < pass->m_RenderState.Blends.size(); j++)
                 {
                     const auto& blend = src.Blends[j];
-                    pass->m_Blends[j].Enable = blend.Enable;
-                    pass->m_Blends[j].WriteMask = blend.WriteMask;
-                    pass->m_Blends[j].Rgb = { blend.Rgb.Src, blend.Rgb.Dest, blend.Rgb.Op };
-                    pass->m_Blends[j].Alpha = { blend.Alpha.Src, blend.Alpha.Dest, blend.Alpha.Op };
+                    pass->m_RenderState.Blends[j].Enable = blend.Enable;
+                    pass->m_RenderState.Blends[j].WriteMask = UnpackShaderPassVar(blend.WriteMask);
+                    pass->m_RenderState.Blends[j].Rgb = { UnpackShaderPassVar(blend.Rgb.Src), UnpackShaderPassVar(blend.Rgb.Dest), UnpackShaderPassVar(blend.Rgb.Op) };
+                    pass->m_RenderState.Blends[j].Alpha = { UnpackShaderPassVar(blend.Alpha.Src), UnpackShaderPassVar(blend.Alpha.Dest), UnpackShaderPassVar(blend.Alpha.Op) };
                 }
 
-                pass->m_DepthState =
+                pass->m_RenderState.DepthState =
                 {
                     src.DepthState.Enable,
-                    src.DepthState.Write,
-                    src.DepthState.Compare
+                    UnpackShaderPassVar(src.DepthState.Write),
+                    UnpackShaderPassVar(src.DepthState.Compare)
                 };
 
-                pass->m_StencilState =
+                pass->m_RenderState.StencilState =
                 {
-                    src.StencilState.Ref,
                     src.StencilState.Enable,
-                    src.StencilState.ReadMask,
-                    src.StencilState.WriteMask,
+                    UnpackShaderPassVar(src.StencilState.Ref),
+                    UnpackShaderPassVar(src.StencilState.ReadMask),
+                    UnpackShaderPassVar(src.StencilState.WriteMask),
                     {
-                        src.StencilState.FrontFace.Compare,
-                        src.StencilState.FrontFace.PassOp,
-                        src.StencilState.FrontFace.FailOp,
-                        src.StencilState.FrontFace.DepthFailOp
+                        UnpackShaderPassVar(src.StencilState.FrontFace.Compare),
+                        UnpackShaderPassVar(src.StencilState.FrontFace.PassOp),
+                        UnpackShaderPassVar(src.StencilState.FrontFace.FailOp),
+                        UnpackShaderPassVar(src.StencilState.FrontFace.DepthFailOp)
                     },
                     {
-                        src.StencilState.BackFace.Compare,
-                        src.StencilState.BackFace.PassOp,
-                        src.StencilState.BackFace.FailOp,
-                        src.StencilState.BackFace.DepthFailOp
+                        UnpackShaderPassVar(src.StencilState.BackFace.Compare),
+                        UnpackShaderPassVar(src.StencilState.BackFace.PassOp),
+                        UnpackShaderPassVar(src.StencilState.BackFace.FailOp),
+                        UnpackShaderPassVar(src.StencilState.BackFace.DepthFailOp)
                     }
                 };
             }
@@ -411,36 +462,36 @@ namespace march
                     }
                 }
 
-                dest.Cull.assign(pass->GetCull());
-                dest.Blends.assign(static_cast<int32_t>(pass->GetBlends().size()));
-                for (int32_t j = 0; j < pass->GetBlends().size(); j++)
+                dest.Cull = PackShaderPassVar(pass->m_RenderState.Cull);
+                dest.Blends.assign(static_cast<int32_t>(pass->m_RenderState.Blends.size()));
+                for (int32_t j = 0; j < pass->m_RenderState.Blends.size(); j++)
                 {
                     auto& blend = dest.Blends[j];
-                    blend.Enable.assign(pass->GetBlends()[j].Enable);
-                    blend.WriteMask.assign(pass->GetBlends()[j].WriteMask);
-                    blend.Rgb.Src.assign(pass->GetBlends()[j].Rgb.Src);
-                    blend.Rgb.Dest.assign(pass->GetBlends()[j].Rgb.Dest);
-                    blend.Rgb.Op.assign(pass->GetBlends()[j].Rgb.Op);
-                    blend.Alpha.Src.assign(pass->GetBlends()[j].Alpha.Src);
-                    blend.Alpha.Dest.assign(pass->GetBlends()[j].Alpha.Dest);
-                    blend.Alpha.Op.assign(pass->GetBlends()[j].Alpha.Op);
+                    blend.Enable.assign(pass->m_RenderState.Blends[j].Enable);
+                    blend.WriteMask = PackShaderPassVar(pass->m_RenderState.Blends[j].WriteMask);
+                    blend.Rgb.Src = PackShaderPassVar(pass->m_RenderState.Blends[j].Rgb.Src);
+                    blend.Rgb.Dest = PackShaderPassVar(pass->m_RenderState.Blends[j].Rgb.Dest);
+                    blend.Rgb.Op = PackShaderPassVar(pass->m_RenderState.Blends[j].Rgb.Op);
+                    blend.Alpha.Src = PackShaderPassVar(pass->m_RenderState.Blends[j].Alpha.Src);
+                    blend.Alpha.Dest = PackShaderPassVar(pass->m_RenderState.Blends[j].Alpha.Dest);
+                    blend.Alpha.Op = PackShaderPassVar(pass->m_RenderState.Blends[j].Alpha.Op);
                 }
 
-                dest.DepthState.Enable.assign(pass->GetDepthState().Enable);
-                dest.DepthState.Write.assign(pass->GetDepthState().Write);
-                dest.DepthState.Compare.assign(pass->GetDepthState().Compare);
-                dest.StencilState.Ref.assign(pass->GetStencilState().Ref);
-                dest.StencilState.Enable.assign(pass->GetStencilState().Enable);
-                dest.StencilState.ReadMask.assign(pass->GetStencilState().ReadMask);
-                dest.StencilState.WriteMask.assign(pass->GetStencilState().WriteMask);
-                dest.StencilState.FrontFace.Compare.assign(pass->GetStencilState().FrontFace.Compare);
-                dest.StencilState.FrontFace.PassOp.assign(pass->GetStencilState().FrontFace.PassOp);
-                dest.StencilState.FrontFace.FailOp.assign(pass->GetStencilState().FrontFace.FailOp);
-                dest.StencilState.FrontFace.DepthFailOp.assign(pass->GetStencilState().FrontFace.DepthFailOp);
-                dest.StencilState.BackFace.Compare.assign(pass->GetStencilState().BackFace.Compare);
-                dest.StencilState.BackFace.PassOp.assign(pass->GetStencilState().BackFace.PassOp);
-                dest.StencilState.BackFace.FailOp.assign(pass->GetStencilState().BackFace.FailOp);
-                dest.StencilState.BackFace.DepthFailOp.assign(pass->GetStencilState().BackFace.DepthFailOp);
+                dest.DepthState.Enable.assign(pass->m_RenderState.DepthState.Enable);
+                dest.DepthState.Write = PackShaderPassVar(pass->m_RenderState.DepthState.Write);
+                dest.DepthState.Compare = PackShaderPassVar(pass->m_RenderState.DepthState.Compare);
+                dest.StencilState.Enable.assign(pass->m_RenderState.StencilState.Enable);
+                dest.StencilState.Ref = PackShaderPassVar(pass->m_RenderState.StencilState.Ref);
+                dest.StencilState.ReadMask = PackShaderPassVar(pass->m_RenderState.StencilState.ReadMask);
+                dest.StencilState.WriteMask = PackShaderPassVar(pass->m_RenderState.StencilState.WriteMask);
+                dest.StencilState.FrontFace.Compare = PackShaderPassVar(pass->m_RenderState.StencilState.FrontFace.Compare);
+                dest.StencilState.FrontFace.PassOp = PackShaderPassVar(pass->m_RenderState.StencilState.FrontFace.PassOp);
+                dest.StencilState.FrontFace.FailOp = PackShaderPassVar(pass->m_RenderState.StencilState.FrontFace.FailOp);
+                dest.StencilState.FrontFace.DepthFailOp = PackShaderPassVar(pass->m_RenderState.StencilState.FrontFace.DepthFailOp);
+                dest.StencilState.BackFace.Compare = PackShaderPassVar(pass->m_RenderState.StencilState.BackFace.Compare);
+                dest.StencilState.BackFace.PassOp = PackShaderPassVar(pass->m_RenderState.StencilState.BackFace.PassOp);
+                dest.StencilState.BackFace.FailOp = PackShaderPassVar(pass->m_RenderState.StencilState.BackFace.FailOp);
+                dest.StencilState.BackFace.DepthFailOp = PackShaderPassVar(pass->m_RenderState.StencilState.BackFace.DepthFailOp);
             }
         }
     };
@@ -494,4 +545,14 @@ NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_
 NATIVE_EXPORT_AUTO Shader_GetEngineShaderPathUnixStyle()
 {
     retcs Shader::GetEngineShaderPathUnixStyle();
+}
+
+NATIVE_EXPORT_AUTO Shader_GetNameId(cs_string name)
+{
+    retcs Shader::GetNameId(name);
+}
+
+NATIVE_EXPORT_AUTO Shader_GetIdName(cs_int id)
+{
+    retcs Shader::GetIdName(id);
 }

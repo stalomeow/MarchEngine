@@ -1,5 +1,6 @@
 #include "Gizmos.h"
 #include "GfxHelpers.h"
+#include "GfxPipelineState.h"
 #include "RenderGraph.h"
 #include "Debug.h"
 #include "AssetManger.h"
@@ -28,16 +29,16 @@ namespace march
         constexpr Vertex(const XMFLOAT3& positionWS, const XMFLOAT4& color) : PositionWS(positionWS), Color(color) {}
     };
 
-    static int32_t g_PipelineInputDescId = Shader::GetInvalidPipelineInputDescId();
+    static int32_t g_PipelineInputDescId = GfxPipelineState::GetInvalidInputDescId();
 
     static int32_t GetPipelineInputDescId()
     {
-        if (g_PipelineInputDescId == Shader::GetInvalidPipelineInputDescId())
+        if (g_PipelineInputDescId == GfxPipelineState::GetInvalidInputDescId())
         {
             std::vector<PipelineInputElement> inputs{};
             inputs.emplace_back(PipelineInputSematicName::Position, 0, DXGI_FORMAT_R32G32B32_FLOAT);
             inputs.emplace_back(PipelineInputSematicName::Color, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
-            g_PipelineInputDescId = Shader::CreatePipelineInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+            g_PipelineInputDescId = GfxPipelineState::CreateInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_LINELIST);
         }
 
         return g_PipelineInputDescId;

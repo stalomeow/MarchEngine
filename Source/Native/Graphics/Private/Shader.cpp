@@ -37,10 +37,7 @@ namespace march
         , m_Tags{}
         , m_PropertyLocations{}
         , m_Programs{}
-        , m_Cull{}
-        , m_Blends{}
-        , m_DepthState{}
-        , m_StencilState{}
+        , m_RenderState{}
         , m_RootSignatures{}
         , m_PipelineStates{}
     {
@@ -66,24 +63,9 @@ namespace march
         return m_PropertyLocations;
     }
 
-    const ShaderPassCullMode& ShaderPass::GetCull() const
+    const ShaderPassRenderState& ShaderPass::GetRenderState() const
     {
-        return m_Cull;
-    }
-
-    const std::vector<ShaderPassBlendState>& ShaderPass::GetBlends() const
-    {
-        return m_Blends;
-    }
-
-    const ShaderPassDepthState& ShaderPass::GetDepthState() const
-    {
-        return m_DepthState;
-    }
-
-    const ShaderPassStencilState& ShaderPass::GetStencilState() const
-    {
-        return m_StencilState;
+        return m_RenderState;
     }
 
     const std::string& Shader::GetName() const

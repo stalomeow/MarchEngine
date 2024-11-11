@@ -198,7 +198,7 @@ namespace march
     {
         int32_t inputDescId = mesh->GetPipelineInputDescId();
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetPipelineState(inputDescId, pass, material);
+        ID3D12PipelineState* pso = GetPipelineState(material, shaderPassIndex, inputDescId);
 
         SetPipelineStateAndRootSignature(pso, pass, material);
         BindResources(material, shaderPassIndex, 0);
@@ -209,14 +209,14 @@ namespace march
     {
         int32_t inputDescId = meshDesc->InputDescId;
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetPipelineState(inputDescId, pass, material);
+        ID3D12PipelineState* pso = GetPipelineState(material, shaderPassIndex, inputDescId);
 
         SetPipelineStateAndRootSignature(pso, pass, material);
         BindResources(material, shaderPassIndex, 0);
 
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
 
-        D3D12_PRIMITIVE_TOPOLOGY topology = Shader::GetPipelineInputDescPrimitiveTopology(inputDescId);
+        D3D12_PRIMITIVE_TOPOLOGY topology = GfxPipelineState::GetInputDescPrimitiveTopology(inputDescId);
         if (topology != m_CurrentPrimitiveTopology)
         {
             cmd->IASetPrimitiveTopology(topology);
@@ -288,8 +288,7 @@ namespace march
                         continue;
                     }
 
-                    ShaderPass* pass = mat->GetShader()->GetPass(shaderPassIndex);
-                    ID3D12PipelineState* pso = GetPipelineState(obj->Mesh->GetPipelineInputDescId(), pass, mat);
+                    ID3D12PipelineState* pso = GetPipelineState(mat, shaderPassIndex, obj->Mesh->GetPipelineInputDescId());
 
                     DrawCall& dc = psoMap[pso].emplace_back();
                     dc.ObjectIndex = i;
@@ -523,7 +522,7 @@ namespace march
         return scissorRect;
     }
 
-    ID3D12PipelineState* RenderGraphContext::GetPipelineState(int32_t inputDescId, ShaderPass* pass, Material* material)
+    ID3D12PipelineState* RenderGraphContext::GetPipelineState(Material* material, int32_t passIndex, int32_t inputDescId)
     {
         if (m_IsStateDescDirty)
         {
@@ -531,7 +530,7 @@ namespace march
             m_IsStateDescDirty = false;
         }
 
-        return pass->GetGraphicsPipelineState(material->GetKeywords(), inputDescId, m_StateDesc, m_StateDescHash);
+        return GfxPipelineState::GetGraphicsState(material, passIndex, inputDescId, m_StateDesc, m_StateDescHash);
     }
 
     void RenderGraphContext::SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass, Material* material)
@@ -588,7 +587,7 @@ namespace march
                 BindConstantBuffer(cmd, program, kv.first, kv.second);
             }
 
-            if (GfxConstantBuffer* cbMat = material->GetConstantBuffer(pass); cbMat != nullptr)
+            if (GfxConstantBuffer* cbMat = material->GetConstantBuffer(shaderPassIndex); cbMat != nullptr)
             {
                 BindConstantBuffer(cmd, program, Shader::GetMaterialConstantBufferId(), cbMat->GetGpuVirtualAddress(0));
             }
@@ -659,12 +658,14 @@ namespace march
             }
         }
 
-        if (pass->GetStencilState().Enable)
+        const ShaderPassRenderState& rs = material->GetResolvedRenderState(shaderPassIndex);
+
+        if (rs.StencilState.Enable)
         {
-            if (!m_IsStencilRefSet || m_CurrentStencilRef != pass->GetStencilState().Ref)
+            if (!m_IsStencilRefSet || m_CurrentStencilRef != rs.StencilState.Ref.Value)
             {
-                cmd->OMSetStencilRef(static_cast<UINT>(pass->GetStencilState().Ref));
-                m_CurrentStencilRef = pass->GetStencilState().Ref;
+                cmd->OMSetStencilRef(static_cast<UINT>(rs.StencilState.Ref.Value));
+                m_CurrentStencilRef = rs.StencilState.Ref.Value;
                 m_IsStencilRefSet = true;
             }
         }

@@ -8,13 +8,14 @@ Shader "BlinnPhong"
         [Tooltip(The diffuse map.)] _DiffuseMap("Diffuse Map", 2D) = "white" {}
         [Tooltip(The normal map.)] _BumpMap("Bump Map", 2D) = "bump" {}
         [Range(0, 1)] _Cutoff("Alpha Cutoff", Float) = 0.5
+        _CullMode("Cull Mode", Int) = 2
     }
 
     Pass
     {
         Name "GBuffer"
 
-        Cull Back
+        Cull [_CullMode]
         ZTest Less
         ZWrite On
 

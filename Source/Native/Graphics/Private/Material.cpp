@@ -11,9 +11,10 @@ namespace march
     Material::Material()
         : m_Shader(nullptr)
         , m_ShaderVersion(0)
-        , m_ConstantBuffers{}
         , m_KeywordCache{}
         , m_EnabledKeywords{}
+        , m_ConstantBuffers{}
+        , m_ResolvedRenderStates{}
         , m_Ints{}
         , m_Floats{}
         , m_Vectors{}
@@ -26,7 +27,10 @@ namespace march
     {
         m_Shader = nullptr;
         m_ShaderVersion = 0;
+        m_KeywordCache.Clear();
+        m_EnabledKeywords.clear();
         m_ConstantBuffers.clear();
+        m_ResolvedRenderStates.clear();
 
         m_Ints.clear();
         m_Floats.clear();
@@ -39,12 +43,14 @@ namespace march
     {
         m_Ints[id] = value;
         SetConstantBufferValue(id, value);
+        ClearResolvedRenderStates(); // 解析时用到了 Int 和 Float，强制重新解析
     }
 
     void Material::SetFloat(int32_t id, float value)
     {
         m_Floats[id] = value;
         SetConstantBufferValue(id, value);
+        ClearResolvedRenderStates(); // 解析时用到了 Int 和 Float，强制重新解析
     }
 
     void Material::SetVector(int32_t id, const XMFLOAT4& value)
@@ -105,11 +111,14 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->GetProperties().find(id);
-        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Int)
+        if (m_Shader != nullptr)
         {
-            *outValue = shaderProp->second.DefaultValue.Int;
-            return true;
+            auto shaderProp = m_Shader->GetProperties().find(id);
+            if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Int)
+            {
+                *outValue = shaderProp->second.DefaultValue.Int;
+                return true;
+            }
         }
 
         return false;
@@ -124,11 +133,14 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->GetProperties().find(id);
-        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Float)
+        if (m_Shader != nullptr)
         {
-            *outValue = shaderProp->second.DefaultValue.Float;
-            return true;
+            auto shaderProp = m_Shader->GetProperties().find(id);
+            if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Float)
+            {
+                *outValue = shaderProp->second.DefaultValue.Float;
+                return true;
+            }
         }
 
         return false;
@@ -143,11 +155,14 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->GetProperties().find(id);
-        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Vector)
+        if (m_Shader != nullptr)
         {
-            *outValue = shaderProp->second.DefaultValue.Vector;
-            return true;
+            auto shaderProp = m_Shader->GetProperties().find(id);
+            if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Vector)
+            {
+                *outValue = shaderProp->second.DefaultValue.Vector;
+                return true;
+            }
         }
 
         return false;
@@ -162,11 +177,14 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->GetProperties().find(id);
-        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Color)
+        if (m_Shader != nullptr)
         {
-            *outValue = shaderProp->second.DefaultValue.Color;
-            return true;
+            auto shaderProp = m_Shader->GetProperties().find(id);
+            if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Color)
+            {
+                *outValue = shaderProp->second.DefaultValue.Color;
+                return true;
+            }
         }
 
         return false;
@@ -181,11 +199,14 @@ namespace march
             return true;
         }
 
-        auto shaderProp = m_Shader->GetProperties().find(id);
-        if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Texture)
+        if (m_Shader != nullptr)
         {
-            *outValue = shaderProp->second.GetDefaultTexture();
-            return true;
+            auto shaderProp = m_Shader->GetProperties().find(id);
+            if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Texture)
+            {
+                *outValue = shaderProp->second.GetDefaultTexture();
+                return true;
+            }
         }
 
         return false;
@@ -231,6 +252,7 @@ namespace march
         m_ShaderVersion = m_Shader->GetVersion();
         RecreateConstantBuffers();
         RebuildKeywordCache();
+        ClearResolvedRenderStates();
     }
 
     void Material::RecreateConstantBuffers()
@@ -282,7 +304,12 @@ namespace march
             if (cbUnalignedSize > 0)
             {
                 std::string cbName = pass->GetName() + "ConstantBuffer";
-                m_ConstantBuffers[pass] = std::make_unique<GfxConstantBuffer>(GetGfxDevice(), cbName, cbUnalignedSize, 1, false);
+                m_ConstantBuffers.emplace_back(std::make_unique<GfxConstantBuffer>(GetGfxDevice(), cbName, cbUnalignedSize, 1, false));
+            }
+            else
+            {
+                // 插入 nullptr
+                m_ConstantBuffers.emplace_back();
             }
         }
 
@@ -350,11 +377,21 @@ namespace march
     {
         CheckShaderVersion();
 
-        for (const auto& kv : m_ConstantBuffers)
+        if (m_Shader == nullptr)
         {
-            const ShaderPass* pass = kv.first;
-            const GfxConstantBuffer* cb = kv.second.get();
-            auto& locations = pass->GetPropertyLocations();
+            return;
+        }
+
+        for (int32_t i = 0; i < m_ConstantBuffers.size(); i++)
+        {
+            const GfxConstantBuffer* cb = m_ConstantBuffers[static_cast<size_t>(i)].get();
+
+            if (cb == nullptr)
+            {
+                continue;
+            }
+
+            auto& locations = m_Shader->GetPass(i)->GetPropertyLocations();
 
             if (const auto prop = locations.find(id); prop != locations.end())
             {
@@ -382,6 +419,7 @@ namespace march
 
         RecreateConstantBuffers();
         RebuildKeywordCache();
+        ClearResolvedRenderStates();
     }
 
     const ShaderKeywordSet& Material::GetKeywords()
@@ -431,11 +469,37 @@ namespace march
         }
     }
 
-    GfxConstantBuffer* Material::GetConstantBuffer(ShaderPass* pass, GfxConstantBuffer* defaultValue)
+    GfxConstantBuffer* Material::GetConstantBuffer(int32_t passIndex)
     {
         CheckShaderVersion();
-        auto it = m_ConstantBuffers.find(pass);
-        return it == m_ConstantBuffers.end() ? defaultValue : it->second.get();
+        return m_ConstantBuffers[static_cast<size_t>(passIndex)].get();
+    }
+
+    const ShaderPassRenderState& Material::GetResolvedRenderState(int32_t passIndex, size_t* outHash)
+    {
+        CheckShaderVersion();
+        auto it = m_ResolvedRenderStates.find(passIndex);
+
+        if (it == m_ResolvedRenderStates.end())
+        {
+            ShaderPassRenderState rs = m_Shader->GetPass(passIndex)->GetRenderState(); // 拷贝一份
+            size_t hash = ShaderPassRenderState::Resolve(rs,
+                [this](int32_t id, int32_t* outInt) { return GetInt(id, outInt); },
+                [this](int32_t id, float* outFloat) { return GetFloat(id, outFloat); });
+            it = m_ResolvedRenderStates.emplace(passIndex, std::make_pair(rs, hash)).first;
+        }
+
+        if (outHash != nullptr)
+        {
+            *outHash = it->second.second;
+        }
+
+        return it->second.first;
+    }
+
+    void Material::ClearResolvedRenderStates()
+    {
+        m_ResolvedRenderStates.clear();
     }
 
     const std::unordered_map<int32_t, int32_t>& MaterialInternalUtility::GetRawInts(Material* m)

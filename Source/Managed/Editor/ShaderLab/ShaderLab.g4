@@ -85,29 +85,30 @@ tagDeclaration
     ;
 
 cullDeclaration
-    : 'Cull' cullModeValue
+    : 'Cull' (cullModeValue | BracketLiteral)
     ;
 
 zTestDeclaration
-    : 'ZTest' (Disabled | compareFuncValue)
+    : 'ZTest' (Disabled | compareFuncValue | BracketLiteral)
     ;
 
 zWriteDeclaration
-    : 'ZWrite' (Off | On)
+    : 'ZWrite' (Off | On | BracketLiteral)
     ;
 
 blendDeclaration
-    : 'Blend' IntegerLiteral? (Off | (blendFactorValue blendFactorValue (',' blendFactorValue blendFactorValue)?))
+    : 'Blend' IntegerLiteral? (Off | (blendFactorValueOrBracketLiteral blendFactorValueOrBracketLiteral (',' blendFactorValueOrBracketLiteral blendFactorValueOrBracketLiteral)?))
     ;
 
 blendOpDeclaration
-    : 'BlendOp' IntegerLiteral? blendOpValue (',' blendOpValue)?
+    : 'BlendOp' IntegerLiteral? blendOpValueOrBracketLiteral (',' blendOpValueOrBracketLiteral)?
     ;
 
 colorMaskDeclaration
-    : 'ColorMask' IntegerLiteral                # colorMaskInt1Declaration
-    | 'ColorMask' IntegerLiteral IntegerLiteral # colorMaskInt2Declaration
-    | 'ColorMask' IntegerLiteral? Identifier    # colorMaskIdentifierDeclaration
+    : 'ColorMask' IntegerLiteral                 # colorMaskInt1Declaration
+    | 'ColorMask' IntegerLiteral IntegerLiteral  # colorMaskInt2Declaration
+    | 'ColorMask' IntegerLiteral? Identifier     # colorMaskIdentifierDeclaration
+    | 'ColorMask' IntegerLiteral? BracketLiteral # colorMaskBracketLiteralDeclaration
     ;
 
 stencilBlock
@@ -133,63 +134,63 @@ stencilDeclaration
     ;
 
 stencilRefDeclaration
-    : 'Ref' IntegerLiteral
+    : 'Ref' (IntegerLiteral | BracketLiteral)
     ;
 
 stencilReadMaskDeclaration
-    : 'ReadMask' IntegerLiteral
+    : 'ReadMask' (IntegerLiteral | BracketLiteral)
     ;
 
 stencilWriteMaskDeclaration
-    : 'WriteMask' IntegerLiteral
+    : 'WriteMask' (IntegerLiteral | BracketLiteral)
     ;
 
 stencilCompDeclaration
-    : 'Comp' compareFuncValue
+    : 'Comp' (compareFuncValue | BracketLiteral)
     ;
 
 stencilPassDeclaration
-    : 'Pass' stencilOpValue
+    : 'Pass' (stencilOpValue | BracketLiteral)
     ;
 
 stencilFailDeclaration
-    : 'Fail' stencilOpValue
+    : 'Fail' (stencilOpValue | BracketLiteral)
     ;
 
 stencilZFailDeclaration
-    : 'ZFail' stencilOpValue
+    : 'ZFail' (stencilOpValue | BracketLiteral)
     ;
 
 stencilCompFrontDeclaration
-    : 'CompFront' compareFuncValue
+    : 'CompFront' (compareFuncValue | BracketLiteral)
     ;
 
 stencilPassFrontDeclaration
-    : 'PassFront' stencilOpValue
+    : 'PassFront' (stencilOpValue | BracketLiteral)
     ;
 
 stencilFailFrontDeclaration
-    : 'FailFront' stencilOpValue
+    : 'FailFront' (stencilOpValue | BracketLiteral)
     ;
 
 stencilZFailFrontDeclaration
-    : 'ZFailFront' stencilOpValue
+    : 'ZFailFront' (stencilOpValue | BracketLiteral)
     ;
 
 stencilCompBackDeclaration
-    : 'CompBack' compareFuncValue
+    : 'CompBack' (compareFuncValue | BracketLiteral)
     ;
 
 stencilPassBackDeclaration
-    : 'PassBack' stencilOpValue
+    : 'PassBack' (stencilOpValue | BracketLiteral)
     ;
 
 stencilFailBackDeclaration
-    : 'FailBack' stencilOpValue
+    : 'FailBack' (stencilOpValue | BracketLiteral)
     ;
 
 stencilZFailBackDeclaration
-    : 'ZFailBack' stencilOpValue
+    : 'ZFailBack' (stencilOpValue | BracketLiteral)
     ;
 
 hlslIncludeDeclaration
@@ -228,12 +229,22 @@ blendFactorValue
     | SrcAlphaSaturate
     ;
 
+blendFactorValueOrBracketLiteral
+    : blendFactorValue
+    | BracketLiteral
+    ;
+
 blendOpValue
     : Add
     | Sub
     | RevSub
     | Min
     | Max
+    ;
+
+blendOpValueOrBracketLiteral
+    : blendOpValue
+    | BracketLiteral
     ;
 
 compareFuncValue

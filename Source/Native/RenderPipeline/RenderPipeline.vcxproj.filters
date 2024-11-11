@@ -12,9 +12,6 @@
     <ClInclude Include="Public\Light.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Material.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\RenderObject.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -39,12 +36,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Material.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Material.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\RenderObject.binding.cpp">

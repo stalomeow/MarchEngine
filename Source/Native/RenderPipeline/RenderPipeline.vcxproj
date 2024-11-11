@@ -14,7 +14,6 @@
     <ClInclude Include="Public\Camera.h" />
     <ClInclude Include="Public\Display.h" />
     <ClInclude Include="Public\Light.h" />
-    <ClInclude Include="Public\Material.h" />
     <ClInclude Include="Public\RenderGraph.h" />
     <ClInclude Include="Public\RenderGraphContext.h" />
     <ClInclude Include="Public\RenderGraphResource.h" />
@@ -27,8 +26,6 @@
     <ClCompile Include="Private\Display.cpp" />
     <ClCompile Include="Private\Light.binding.cpp" />
     <ClCompile Include="Private\Light.cpp" />
-    <ClCompile Include="Private\Material.binding.cpp" />
-    <ClCompile Include="Private\Material.cpp" />
     <ClCompile Include="Private\RenderGraph.cpp" />
     <ClCompile Include="Private\RenderGraphContext.cpp" />
     <ClCompile Include="Private\RenderGraphResource.cpp" />
