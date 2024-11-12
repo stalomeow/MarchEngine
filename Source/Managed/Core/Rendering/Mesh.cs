@@ -47,22 +47,11 @@ namespace March.Core.Rendering
             GfxMesh_ClearSubMeshes(NativePtr);
         }
 
-        public void RecalculateNormals()
-        {
-            GfxMesh_RecalculateNormals(NativePtr);
-        }
-
-        public void RecalculateTangents()
-        {
-            GfxMesh_RecalculateTangents(NativePtr);
-        }
+        public Bounds bounds => GfxMesh_GetBounds(NativePtr);
 
         public void AddSubMesh(List<MeshVertex> vertices, List<ushort> indices)
         {
-            using NativeArray<MeshVertex> v = vertices;
-            using NativeArray<ushort> i = indices;
-
-            GfxMesh_AddSubMesh(NativePtr, v.Data, i.Data);
+            AddSubMesh(CollectionsMarshal.AsSpan(vertices), CollectionsMarshal.AsSpan(indices));
         }
 
         public void AddSubMesh(ReadOnlySpan<MeshVertex> vertices, ReadOnlySpan<ushort> indices)
@@ -71,6 +60,24 @@ namespace March.Core.Rendering
             using NativeArray<ushort> i = indices;
 
             GfxMesh_AddSubMesh(NativePtr, v.Data, i.Data);
+        }
+
+        public void RecalculateNormals()
+        {
+            GfxMesh_RecalculateNormals(NativePtr);
+        }
+
+        /// <summary>
+        /// 注意：计算 Tangent 需要使用 Normal
+        /// </summary>
+        public void RecalculateTangents()
+        {
+            GfxMesh_RecalculateTangents(NativePtr);
+        }
+
+        public void RecalculateBounds()
+        {
+            GfxMesh_RecalculateBounds(NativePtr);
         }
 
         #region Serialization
@@ -90,6 +97,7 @@ namespace March.Core.Rendering
                 using var ms = new MemoryStream();
                 using var writer = new BinaryWriter(ms);
 
+                writer.Write(bounds);
                 writer.Write(subMeshes.Length);
                 writer.Write(vertices.Length);
                 writer.Write(indices.Length);
@@ -123,6 +131,8 @@ namespace March.Core.Rendering
             set
             {
                 using var reader = new BinaryReader(new MemoryStream(value, writable: false));
+
+                GfxMesh_SetBounds(NativePtr, reader.ReadBounds());
 
                 using var subMeshes = new NativeArray<SubMesh>(reader.ReadInt32());
                 using var vertices = new NativeArray<MeshVertex>(reader.ReadInt32());
@@ -201,6 +211,15 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void GfxMesh_SetIndices(nint self, nint indices);
+
+        [NativeFunction]
+        private static partial void GfxMesh_RecalculateBounds(nint self);
+
+        [NativeFunction]
+        private static partial Bounds GfxMesh_GetBounds(nint self);
+
+        [NativeFunction]
+        private static partial void GfxMesh_SetBounds(nint self, Bounds bounds);
 
         #endregion
     }

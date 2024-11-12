@@ -6,17 +6,14 @@ namespace march::HashUtils
 {
     // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Hash.h
 
-    namespace
+    inline size_t FNV1Range(const uint32_t* const Begin, const uint32_t* const End, size_t Hash)
     {
-        inline size_t FNV1Range(const uint32_t* const Begin, const uint32_t* const End, size_t Hash)
+        for (const uint32_t* Iter = Begin; Iter < End; ++Iter)
         {
-            for (const uint32_t* Iter = Begin; Iter < End; ++Iter)
-            {
-                Hash = 16777619U * Hash ^ *Iter;
-            }
-
-            return Hash;
+            Hash = 16777619U * Hash ^ *Iter;
         }
+
+        return Hash;
     }
 
     template <typename T>

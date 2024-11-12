@@ -26,3 +26,8 @@ NATIVE_EXPORT_AUTO RenderObject_SetMaterials(cs<RenderObject*> pObject, cs<cs<Ma
         pObject->Materials.push_back(materials[i]);
     }
 }
+
+NATIVE_EXPORT_AUTO RenderObject_GetBounds(cs<RenderObject*> pObject)
+{
+    retcs pObject->GetBounds();
+}

@@ -4,6 +4,8 @@ using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
+using March.Core.Serialization;
+using Newtonsoft.Json;
 using System.Numerics;
 using Material = March.Core.Rendering.Material;
 using Mesh = March.Core.Rendering.Mesh;
@@ -11,9 +13,29 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 19)]
+    internal enum ModelImporterNormals
+    {
+        Import,
+        Calculate,
+    }
+
+    internal enum ModelImporterTangents
+    {
+        Import,
+        Calculate,
+    }
+
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 39)]
     internal class GltfImporter : AssetImporter
     {
+        [JsonProperty]
+        [InspectorName("Normals")]
+        private ModelImporterNormals m_ImportNormals = ModelImporterNormals.Import;
+
+        [JsonProperty]
+        [InspectorName("Tangents")]
+        private ModelImporterTangents m_ImportTangents = ModelImporterTangents.Import;
+
         protected override void OnImportAssets(ref AssetImportContext context)
         {
             Gltf gltf;
@@ -278,6 +300,17 @@ namespace March.Editor.AssetPipeline.Importers
                 }
             }
 
+            if (m_ImportNormals == ModelImporterNormals.Calculate)
+            {
+                mesh.RecalculateNormals();
+            }
+
+            if (m_ImportTangents == ModelImporterTangents.Calculate)
+            {
+                mesh.RecalculateTangents();
+            }
+
+            mesh.RecalculateBounds();
             return mesh;
         }
 

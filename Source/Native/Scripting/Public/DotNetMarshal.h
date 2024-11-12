@@ -3,6 +3,7 @@
 #include "DotNetTypeTraits.h"
 #include "Debug.h"
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <stdint.h>
 #include <string>
 #include <utility>
@@ -189,6 +190,35 @@ namespace march
             float* d = reinterpret_cast<float*>(dst);
             const float* s = reinterpret_cast<const float*>(src);
             std::copy_n(s, 16, d);
+        }
+    };
+
+    template<>
+    struct cs<DirectX::BoundingBox> final
+    {
+        using managed_type = struct
+        {
+            cs<DirectX::XMFLOAT3> center;
+            cs<DirectX::XMFLOAT3> extents;
+        };
+
+        managed_type data;
+
+        constexpr void assign(const DirectX::BoundingBox& value)
+        {
+            data.center.assign(value.Center);
+            data.extents.assign(value.Extents);
+        }
+
+        constexpr void assign(DirectX::BoundingBox&& value)
+        {
+            data.center.assign(std::move(value.Center));
+            data.extents.assign(std::move(value.Extents));
+        }
+
+        constexpr operator DirectX::BoundingBox() const
+        {
+            return DirectX::BoundingBox(data.center, data.extents);
         }
     };
 
@@ -382,6 +412,7 @@ namespace march
     using cs_mat4 = cs<DirectX::XMFLOAT4X4>;
     using cs_quat = cs<DirectX::XMFLOAT4>;
     using cs_color = cs<DirectX::XMFLOAT4>;
+    using cs_bounds = cs<DirectX::BoundingBox>;
 
     template<typename T>
     using cs_array = cs<T[]>;
@@ -413,6 +444,7 @@ namespace march
     using cs_mat4_t = cs_mat4::managed_type;
     using cs_quat_t = cs_quat::managed_type;
     using cs_color_t = cs_color::managed_type;
+    using cs_bounds_t = cs_bounds::managed_type;
 
     template<typename T>
     using cs_array_t = typename cs_array<T>::managed_type;
@@ -447,4 +479,5 @@ namespace march
     static_assert(is_valid_cs_type_v<cs_mat4>);
     static_assert(is_valid_cs_type_v<cs_quat>);
     static_assert(is_valid_cs_type_v<cs_color>);
+    static_assert(is_valid_cs_type_v<cs_bounds>);
 }

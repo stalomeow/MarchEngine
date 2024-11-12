@@ -44,6 +44,12 @@ namespace March.Core
             }
         }
 
+        public static void Write(this BinaryWriter writer, in Bounds bounds)
+        {
+            writer.Write(bounds.Center);
+            writer.Write(bounds.Extents);
+        }
+
         public static Vector2 ReadVector2(this BinaryReader reader)
         {
             float x = reader.ReadSingle();
@@ -90,6 +96,13 @@ namespace March.Core
             }
 
             return m;
+        }
+
+        public static Bounds ReadBounds(this BinaryReader reader)
+        {
+            Vector3 center = reader.ReadVector3();
+            Vector3 extents = reader.ReadVector3();
+            return new Bounds(center, extents);
         }
     }
 }

@@ -139,6 +139,7 @@ namespace March.Core.Rendering
             AddSubMesh(vertices, indices);
             RecalculateNormals();
             RecalculateTangents();
+            RecalculateBounds();
         }
 
         private void AddSubMeshSphere(float radius, int sliceCount, int stackCount)
@@ -229,6 +230,7 @@ namespace March.Core.Rendering
             AddSubMesh(vertices, indices);
             RecalculateNormals();
             RecalculateTangents();
+            RecalculateBounds();
         }
     }
 }

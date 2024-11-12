@@ -1,6 +1,9 @@
 #include "RenderObject.h"
 #include "Application.h"
 #include "RenderPipeline.h"
+#include "Transform.h"
+
+using namespace DirectX;
 
 namespace march
 {
@@ -14,5 +17,17 @@ namespace march
     {
         GetApp()->GetRenderPipeline()->RemoveRenderObject(this);
         Component::OnUnmount();
+    }
+
+    BoundingBox RenderObject::GetBounds() const
+    {
+        BoundingBox result = {};
+
+        if (Mesh != nullptr)
+        {
+            Mesh->GetBounds().Transform(result, GetTransform()->LoadLocalToWorldMatrix());
+        }
+
+        return result;
     }
 }

@@ -98,6 +98,11 @@ namespace march
                 pObject->m_Indices.push_back(indices[i]);
             }
         }
+
+        static inline void SetBounds(cs<GfxMesh*> pObject, cs_bounds bounds)
+        {
+            pObject->m_Bounds = bounds;
+        }
     };
 }
 
@@ -205,4 +210,19 @@ NATIVE_EXPORT_AUTO GfxMesh_GetIndices(cs<GfxMesh*> pObject)
 NATIVE_EXPORT_AUTO GfxMesh_SetIndices(cs<GfxMesh*> pObject, cs<cs_ushort[]> indices)
 {
     GfxMeshBinding::SetIndices(pObject, indices);
+}
+
+NATIVE_EXPORT_AUTO GfxMesh_RecalculateBounds(cs<GfxMesh*> pObject)
+{
+    pObject->RecalculateBounds();
+}
+
+NATIVE_EXPORT_AUTO GfxMesh_GetBounds(cs<GfxMesh*> pObject)
+{
+    retcs pObject->GetBounds();
+}
+
+NATIVE_EXPORT_AUTO GfxMesh_SetBounds(cs<GfxMesh*> pObject, cs_bounds bounds)
+{
+    GfxMeshBinding::SetBounds(pObject, bounds);
 }

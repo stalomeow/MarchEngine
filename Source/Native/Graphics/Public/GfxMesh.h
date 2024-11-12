@@ -51,10 +51,13 @@ namespace march
         const GfxSubMesh& GetSubMesh(uint32_t index) const;
         void ClearSubMeshes();
 
+        const DirectX::BoundingBox& GetBounds() const { return m_Bounds; }
+
         const GfxInputDesc& GetInputDesc();
         void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv);
         void RecalculateNormals();
         void RecalculateTangents();
+        void RecalculateBounds();
 
         void AddSubMesh(const std::vector<GfxMeshVertex>& vertices, const std::vector<uint16_t>& indices);
 
@@ -67,7 +70,7 @@ namespace march
         std::vector<GfxSubMesh> m_SubMeshes;
         std::vector<GfxMeshVertex> m_Vertices;
         std::vector<uint16_t> m_Indices;
-        DirectX::BoundingBox m_Bounds;
+        DirectX::BoundingBox m_Bounds; // Object space bounds
         bool m_IsDirty;
 
         std::unique_ptr<GfxVertexBuffer<GfxMeshVertex>> m_VertexBuffer;

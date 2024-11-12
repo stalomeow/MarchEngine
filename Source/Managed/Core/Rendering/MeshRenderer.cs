@@ -53,6 +53,11 @@ namespace March.Core.Rendering
             RenderObject_SetMaterials(NativePtr, materials.Data);
         }
 
+        /// <summary>
+        /// 获取世界空间 Bounds
+        /// </summary>
+        public Bounds bounds => RenderObject_GetBounds(NativePtr);
+
         #region Bindings
 
         [NativeFunction]
@@ -66,6 +71,9 @@ namespace March.Core.Rendering
 
         [NativeFunction]
         private static partial void RenderObject_SetMaterials(nint self, nint materials);
+
+        [NativeFunction]
+        private static partial Bounds RenderObject_GetBounds(nint self);
 
         #endregion
     }
