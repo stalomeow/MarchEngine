@@ -1,7 +1,7 @@
-#include "MathHelper.h"
+#include "MathUtils.h"
 #include <assert.h>
 
-namespace march::MathHelper
+namespace march::MathUtils
 {
     DirectX::XMFLOAT4X4 Identity4x4()
     {

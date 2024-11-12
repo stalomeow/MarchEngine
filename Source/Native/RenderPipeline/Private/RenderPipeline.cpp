@@ -3,10 +3,9 @@
 #include "GfxTexture.h"
 #include "GfxDevice.h"
 #include "GfxMesh.h"
-#include "GfxDescriptorHeap.h"
-#include "GfxExcept.h"
+#include "GfxDescriptor.h"
 #include "GfxBuffer.h"
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "Transform.h"
 #include "Material.h"
 #include "Camera.h"
@@ -18,7 +17,7 @@
 #include <array>
 #include <fstream>
 #include "RenderGraph.h"
-#include "GfxHelpers.h"
+#include "GfxUtils.h"
 #include "Gizmos.h"
 
 using namespace DirectX;
@@ -29,7 +28,7 @@ namespace march
     {
         m_FullScreenTriangleMesh = GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle);
 
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), GfxHelpers::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), GfxUtils::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM);
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer2"), DXGI_FORMAT_R8G8B8A8_UNORM);
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer3"), DXGI_FORMAT_R32_FLOAT);
@@ -64,6 +63,8 @@ namespace march
             {
                 ImportTextures(colorTargetResolvedId, display->GetResolvedColorBuffer());
             }
+
+            DrawShadowCasters(Shader::GetNameId("ShadowMap"));
 
             SetCameraGlobalConstantBuffer("CameraConstantBuffer", camera);
             SetLightGlobalConstantBuffer(Shader::GetNameId("cbLight"));
@@ -230,6 +231,48 @@ namespace march
             }
 
             context.DrawMesh(m_FullScreenTriangleMesh, m_DeferredLitMaterial.get());
+        });
+    }
+
+    void RenderPipeline::DrawShadowCasters(int32_t targetId)
+    {
+        if (m_Lights.empty())
+        {
+            return;
+        }
+
+        float radius = 30.0f; // test
+        XMVECTOR forward = m_Lights[0]->GetTransform()->LoadForward();
+        XMVECTOR up = m_Lights[0]->GetTransform()->LoadUp();
+        XMVECTOR pos = m_Lights[0]->GetTransform()->LoadPosition();
+
+        XMFLOAT3 pos3 = {};
+        XMStoreFloat3(&pos3, pos);
+
+        XMFLOAT4X4 view = {};
+        XMStoreFloat4x4(&view, XMMatrixLookToLH(pos, forward, up));
+
+        XMFLOAT4X4 proj = {};
+        XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(radius * 2, radius * 2, 100, 0.01f));
+        SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", pos3, view, proj);
+
+        auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
+
+        GfxRenderTextureDesc desc = {};
+        desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        desc.Width = 2048;
+        desc.Height = 2048;
+        desc.SampleCount = 1;
+        desc.SampleQuality = 0;
+
+        builder.AllowPassCulling(false);
+        builder.CreateTransientTexture(targetId, desc);
+        builder.SetDepthStencilTarget(targetId);
+        builder.ClearRenderTargets(ClearFlags::DepthStencil);
+
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), "ShadowCaster");
         });
     }
 

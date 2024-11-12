@@ -78,7 +78,7 @@ namespace march
             ImGui::EndPopup();
         }
 
-        ImGui::SeparatorText(StringUtility::Format("%d Trace | %d Debug | %d Info | %d Warning | %d Error",
+        ImGui::SeparatorText(StringUtils::Format("%d Trace | %d Debug | %d Info | %d Warning | %d Error",
             Log::GetCount(LogLevel::Trace),
             Log::GetCount(LogLevel::Debug),
             Log::GetCount(LogLevel::Info),

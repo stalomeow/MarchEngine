@@ -4,11 +4,14 @@
 #include <directx/d3dx12.h>
 #include <stdint.h>
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <vector>
 #include <memory>
 
 namespace march
 {
+    class GfxInputDesc;
+
     struct GfxMeshVertex
     {
         DirectX::XMFLOAT3 Position;
@@ -48,14 +51,12 @@ namespace march
         const GfxSubMesh& GetSubMesh(uint32_t index) const;
         void ClearSubMeshes();
 
+        const GfxInputDesc& GetInputDesc();
         void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv);
         void RecalculateNormals();
         void RecalculateTangents();
 
         void AddSubMesh(const std::vector<GfxMeshVertex>& vertices, const std::vector<uint16_t>& indices);
-
-        static int32_t GetPipelineInputDescId();
-        static D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopology();
 
         static GfxMesh* GetGeometry(GfxMeshGeometry geometry);
 
@@ -66,6 +67,7 @@ namespace march
         std::vector<GfxSubMesh> m_SubMeshes;
         std::vector<GfxMeshVertex> m_Vertices;
         std::vector<uint16_t> m_Indices;
+        DirectX::BoundingBox m_Bounds;
         bool m_IsDirty;
 
         std::unique_ptr<GfxVertexBuffer<GfxMeshVertex>> m_VertexBuffer;

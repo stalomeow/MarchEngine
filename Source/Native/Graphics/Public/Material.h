@@ -22,7 +22,6 @@ namespace march
 
     public:
         Material();
-        ~Material() = default;
 
         void Reset();
 

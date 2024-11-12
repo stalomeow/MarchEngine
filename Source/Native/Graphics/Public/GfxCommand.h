@@ -10,6 +10,7 @@
 namespace march
 {
     class GfxDevice;
+    class GfxFence;
     class GfxResource;
 
     // https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization
@@ -73,5 +74,24 @@ namespace march
         std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> m_Allocators; // 保存所有的 allocator 的引用
         std::vector<ID3D12CommandAllocator*> m_UsedAllocators;
         std::queue<std::pair<uint64_t, ID3D12CommandAllocator*>> m_ReleaseQueue;
+    };
+
+    class GfxCommandQueue
+    {
+    public:
+        GfxCommandQueue(GfxDevice* device, GfxCommandListType type, const std::string& name, int32_t priority = 0, bool disableGpuTimeout = false);
+        ~GfxCommandQueue() = default;
+
+        GfxCommandListType GetType() const;
+        ID3D12CommandQueue* GetD3D12CommandQueue() const { return m_CommandQueue.Get(); }
+
+        void ExecuteCommandList(GfxCommandList* commandList);
+
+        void Wait(GfxFence* fence);
+        void Wait(GfxFence* fence, uint64_t value);
+        uint64_t SignalNextValue(GfxFence* fence);
+
+    private:
+        Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CommandQueue;
     };
 }

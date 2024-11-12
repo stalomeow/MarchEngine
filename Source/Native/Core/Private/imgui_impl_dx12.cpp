@@ -678,7 +678,7 @@ bool    ImGui_ImplDX12_CreateDeviceObjects()
 
     // Create the pixel shader
     {
-        static const char* pixelShader = (march::GfxSettings::GetColorSpace() == march::GfxColorSpace::Linear) ?
+        static const char* pixelShader = (march::GfxSettings::ColorSpace == march::GfxColorSpace::Linear) ?
             "struct PS_INPUT\
             {\
               float4 pos : SV_POSITION;\

@@ -141,7 +141,7 @@ namespace march
 
     XMMATRIX Camera::LoadProjectionMatrix() const
     {
-        if constexpr (GfxSettings::UseReversedZBuffer())
+        if constexpr (GfxSettings::UseReversedZBuffer)
         {
             return XMMatrixPerspectiveFovLH(m_FovY, GetAspectRatio(), m_FarZ, m_NearZ);
         }

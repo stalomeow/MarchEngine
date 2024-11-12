@@ -11,15 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\GfxDescriptorHeap.h" />
+    <ClInclude Include="Public\Display.h" />
+    <ClInclude Include="Public\GfxDescriptor.h" />
     <ClInclude Include="Public\GfxBuffer.h" />
-    <ClInclude Include="Public\GfxCommandList.h" />
-    <ClInclude Include="Public\GfxCommandQueue.h" />
+    <ClInclude Include="Public\GfxCommand.h" />
     <ClInclude Include="Public\GfxDevice.h" />
-    <ClInclude Include="Public\GfxEnums.h" />
-    <ClInclude Include="Public\GfxExcept.h" />
     <ClInclude Include="Public\GfxFence.h" />
-    <ClInclude Include="Public\GfxHelpers.h" />
+    <ClInclude Include="Public\GfxUtils.h" />
     <ClInclude Include="Public\GfxPipelineState.h" />
     <ClInclude Include="Public\GfxResource.h" />
     <ClInclude Include="Public\GfxSettings.h" />
@@ -32,18 +30,19 @@
     <ClInclude Include="ThirdParty\renderdoc_app.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\GfxDescriptorHeap.cpp" />
+    <ClCompile Include="Private\Display.cpp" />
+    <ClCompile Include="Private\GfxDescriptor.cpp" />
     <ClCompile Include="Private\GfxBuffer.cpp" />
     <ClCompile Include="Private\GfxCommandList.cpp" />
     <ClCompile Include="Private\GfxCommandQueue.cpp" />
     <ClCompile Include="Private\GfxDevice.cpp" />
-    <ClCompile Include="Private\GfxExcept.cpp" />
+    <ClCompile Include="Private\GfxException.cpp" />
     <ClCompile Include="Private\GfxFence.cpp" />
     <ClCompile Include="Private\GfxMesh.cpp" />
     <ClCompile Include="Private\GfxPipelineState.cpp" />
     <ClCompile Include="Private\GfxResource.cpp" />
     <ClCompile Include="Private\GfxSettings.binding.cpp" />
-    <ClCompile Include="Private\GfxHelpers.cpp" />
+    <ClCompile Include="Private\GfxUtils.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />
     <ClCompile Include="Private\GfxMesh.binding.cpp" />
     <ClCompile Include="Private\Material.binding.cpp" />

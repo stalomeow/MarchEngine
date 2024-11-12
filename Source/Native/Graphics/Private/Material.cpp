@@ -2,7 +2,8 @@
 #include "Debug.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
-#include "GfxHelpers.h"
+#include "GfxUtils.h"
+#include "GfxPipelineState.h"
 
 using namespace DirectX;
 
@@ -62,7 +63,7 @@ namespace march
     void Material::SetColor(int32_t id, const XMFLOAT4& value)
     {
         m_Colors[id] = value;
-        SetConstantBufferValue(id, GfxHelpers::GetShaderColor(value));
+        SetConstantBufferValue(id, GfxUtils::GetShaderColor(value));
     }
 
     void Material::SetTexture(int32_t id, GfxTexture* texture)
@@ -346,7 +347,7 @@ namespace march
                 XMFLOAT4 value;
                 if (GetColor(id, &value))
                 {
-                    SetConstantBufferValue(id, GfxHelpers::GetShaderColor(value));
+                    SetConstantBufferValue(id, GfxUtils::GetShaderColor(value));
                 }
                 break;
             }
@@ -483,7 +484,7 @@ namespace march
         if (it == m_ResolvedRenderStates.end())
         {
             ShaderPassRenderState rs = m_Shader->GetPass(passIndex)->GetRenderState(); // 拷贝一份
-            size_t hash = ShaderPassRenderState::Resolve(rs,
+            size_t hash = GfxPipelineState::ResolveShaderPassRenderState(rs,
                 [this](int32_t id, int32_t* outInt) { return GetInt(id, outInt); },
                 [this](int32_t id, float* outFloat) { return GetFloat(id, outFloat); });
             it = m_ResolvedRenderStates.emplace(passIndex, std::make_pair(rs, hash)).first;

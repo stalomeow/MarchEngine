@@ -1,14 +1,14 @@
 #include "RenderGraphContext.h"
 #include "GfxDevice.h"
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "GfxMesh.h"
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include "GfxBuffer.h"
 #include "Shader.h"
 #include "Material.h"
 #include "RenderObject.h"
 #include "Transform.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include "RenderDoc.h"
 #include <stdexcept>
 #include <DirectXMath.h>
@@ -42,9 +42,7 @@ namespace march
         , m_DepthStencilTarget(nullptr)
         , m_Viewport{}
         , m_ScissorRect{}
-        , m_StateDesc{}
-        , m_StateDescHash{}
-        , m_IsStateDescDirty(true)
+        , m_OutputDesc{}
         , m_CurrentPipelineState(nullptr)
         , m_CurrentRootSignature(nullptr)
         , m_CurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_UNDEFINED)
@@ -78,7 +76,7 @@ namespace march
         }
 
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
-        std::wstring wName = StringUtility::Utf8ToUtf16(name);
+        std::wstring wName = StringUtils::Utf8ToUtf16(name);
         cmd->BeginEvent(0, wName.c_str(), static_cast<UINT>(wName.size() * sizeof(wchar_t))); // 第一个参数貌似是颜色
     }
 
@@ -164,7 +162,7 @@ namespace march
 
     static void DrawSubMeshes(ID3D12GraphicsCommandList* cmd, D3D12_PRIMITIVE_TOPOLOGY& currentPrimitiveTopology, GfxMesh* mesh, int32_t subMeshIndex)
     {
-        D3D12_PRIMITIVE_TOPOLOGY topology = mesh->GetPrimitiveTopology();
+        D3D12_PRIMITIVE_TOPOLOGY topology = mesh->GetInputDesc().GetPrimitiveTopology();
         if (topology != currentPrimitiveTopology)
         {
             cmd->IASetPrimitiveTopology(topology);
@@ -196,9 +194,8 @@ namespace march
 
     void RenderGraphContext::DrawMesh(GfxMesh* mesh, Material* material, int32_t shaderPassIndex, int32_t subMeshIndex)
     {
-        int32_t inputDescId = mesh->GetPipelineInputDescId();
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetPipelineState(material, shaderPassIndex, inputDescId);
+        ID3D12PipelineState* pso = GetPipelineState(material, shaderPassIndex, mesh->GetInputDesc());
 
         SetPipelineStateAndRootSignature(pso, pass, material);
         BindResources(material, shaderPassIndex, 0);
@@ -207,16 +204,15 @@ namespace march
 
     void RenderGraphContext::DrawMesh(const MeshDesc* meshDesc, Material* material, int32_t shaderPassIndex)
     {
-        int32_t inputDescId = meshDesc->InputDescId;
         ShaderPass* pass = material->GetShader()->GetPass(shaderPassIndex);
-        ID3D12PipelineState* pso = GetPipelineState(material, shaderPassIndex, inputDescId);
+        ID3D12PipelineState* pso = GetPipelineState(material, shaderPassIndex, *meshDesc->InputDesc);
 
         SetPipelineStateAndRootSignature(pso, pass, material);
         BindResources(material, shaderPassIndex, 0);
 
         ID3D12GraphicsCommandList* cmd = GetD3D12GraphicsCommandList();
 
-        D3D12_PRIMITIVE_TOPOLOGY topology = GfxPipelineState::GetInputDescPrimitiveTopology(inputDescId);
+        D3D12_PRIMITIVE_TOPOLOGY topology = meshDesc->InputDesc->GetPrimitiveTopology();
         if (topology != m_CurrentPrimitiveTopology)
         {
             cmd->IASetPrimitiveTopology(topology);
@@ -288,7 +284,7 @@ namespace march
                         continue;
                     }
 
-                    ID3D12PipelineState* pso = GetPipelineState(mat, shaderPassIndex, obj->Mesh->GetPipelineInputDescId());
+                    ID3D12PipelineState* pso = GetPipelineState(mat, shaderPassIndex, obj->Mesh->GetInputDesc());
 
                     DrawCall& dc = psoMap[pso].emplace_back();
                     dc.ObjectIndex = i;
@@ -405,34 +401,34 @@ namespace march
         {
             D3D12_CPU_DESCRIPTOR_HANDLE rtv[8]{}; // 目前最多 8 个
             m_ColorTargets.clear();
-            m_StateDesc.RTVFormats.clear();
-            m_IsStateDescDirty = true;
+            m_OutputDesc.RTVFormats.clear();
+            m_OutputDesc.MarkDirty();
 
             for (int32_t i = 0; i < numColorTargets; i++)
             {
                 rtv[i] = colorTargets[i]->GetRtvDsvCpuDescriptorHandle();
                 m_ColorTargets.push_back(colorTargets[i]);
-                m_StateDesc.RTVFormats.push_back(colorTargets[i]->GetFormat());
+                m_OutputDesc.RTVFormats.push_back(colorTargets[i]->GetFormat());
             }
 
             if (depthStencilTarget == nullptr)
             {
                 m_DepthStencilTarget = nullptr;
-                m_StateDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+                m_OutputDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
                 cmd->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, nullptr);
             }
             else
             {
                 m_DepthStencilTarget = depthStencilTarget;
-                m_StateDesc.DSVFormat = depthStencilTarget->GetFormat();
+                m_OutputDesc.DSVFormat = depthStencilTarget->GetFormat();
                 D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthStencilTarget->GetRtvDsvCpuDescriptorHandle();
                 cmd->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, &dsv);
             }
 
             GfxRenderTexture* anyRT = numColorTargets > 0 ? colorTargets[0] : depthStencilTarget;
             GfxRenderTextureDesc anyRTDesc = anyRT->GetDesc();
-            m_StateDesc.SampleCount = anyRTDesc.SampleCount;
-            m_StateDesc.SampleQuality = anyRTDesc.SampleQuality;
+            m_OutputDesc.SampleCount = anyRTDesc.SampleCount;
+            m_OutputDesc.SampleQuality = anyRTDesc.SampleQuality;
         }
 
         const D3D12_VIEWPORT& viewportValue = viewport != nullptr ? *viewport : GetDefaultViewport();
@@ -487,13 +483,13 @@ namespace march
 
     void RenderGraphContext::SetWireframe(bool value)
     {
-        if (m_StateDesc.Wireframe == value)
+        if (m_OutputDesc.Wireframe == value)
         {
             return;
         }
 
-        m_StateDesc.Wireframe = value;
-        m_IsStateDescDirty = true;
+        m_OutputDesc.Wireframe = value;
+        m_OutputDesc.MarkDirty();
     }
 
     D3D12_VIEWPORT RenderGraphContext::GetDefaultViewport() const
@@ -522,15 +518,9 @@ namespace march
         return scissorRect;
     }
 
-    ID3D12PipelineState* RenderGraphContext::GetPipelineState(Material* material, int32_t passIndex, int32_t inputDescId)
+    ID3D12PipelineState* RenderGraphContext::GetPipelineState(Material* material, int32_t passIndex, const GfxInputDesc& inputDesc)
     {
-        if (m_IsStateDescDirty)
-        {
-            m_StateDescHash = PipelineStateDesc::CalculateHash(m_StateDesc);
-            m_IsStateDescDirty = false;
-        }
-
-        return GfxPipelineState::GetGraphicsState(material, passIndex, inputDescId, m_StateDesc, m_StateDescHash);
+        return GfxPipelineState::GetGraphicsPSO(material, passIndex, inputDesc, m_OutputDesc);
     }
 
     void RenderGraphContext::SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass, Material* material)
@@ -680,7 +670,7 @@ namespace march
     {
         m_ColorTargets.clear();
         m_DepthStencilTarget = nullptr;
-        m_IsStateDescDirty = true;
+        m_OutputDesc.MarkDirty();
         m_CurrentPipelineState = nullptr;
         m_CurrentRootSignature = nullptr;
         m_CurrentPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;

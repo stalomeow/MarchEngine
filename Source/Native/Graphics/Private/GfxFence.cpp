@@ -1,7 +1,6 @@
 #include "GfxFence.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 
 namespace march
 {
@@ -12,7 +11,7 @@ namespace march
         GFX_HR(d3d12Device->CreateFence(static_cast<UINT64>(initialValue), flags, IID_PPV_ARGS(&m_Fence)));
 
 #ifdef ENABLE_GFX_DEBUG_NAME
-        GFX_HR(m_Fence->SetName(StringUtility::Utf8ToUtf16(name).c_str()));
+        GFX_HR(m_Fence->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
 #else
         (name);
 #endif

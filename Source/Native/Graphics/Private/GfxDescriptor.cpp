@@ -1,8 +1,7 @@
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include "GfxDevice.h"
 #include "GfxFence.h"
-#include "GfxExcept.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include "Debug.h"
 #include <Windows.h>
 
@@ -38,7 +37,7 @@ namespace march
         GFX_HR(d3d12Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_Heap)));
 
 #ifdef ENABLE_GFX_DEBUG_NAME
-        GFX_HR(m_Heap->SetName(StringUtility::Utf8ToUtf16(name).c_str()));
+        GFX_HR(m_Heap->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
 #else
         (name);
 #endif

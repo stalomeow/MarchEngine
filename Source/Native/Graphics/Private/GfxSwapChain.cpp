@@ -1,9 +1,7 @@
 #include "GfxSwapChain.h"
-#include "GfxCommandQueue.h"
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "GfxTexture.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
 
 using namespace Microsoft::WRL;
 

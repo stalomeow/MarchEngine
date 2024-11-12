@@ -1,8 +1,8 @@
 #include "DescriptorHeapDebuggerWindow.h"
 #include "GfxDevice.h"
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include "Application.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include <imgui.h>
 #include <stdint.h>
 
@@ -68,8 +68,8 @@ namespace march
         ImGui::Dummy(ImVec2(width, height));
 
         float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
-        std::string label1 = StringUtility::Format("Dynamic Capacity: %d / %d (%.2f%% Used)", dynamicDescriptorCount, static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
-        std::string label2 = StringUtility::Format("Static Count: %d", staticCount);
+        std::string label1 = StringUtils::Format("Dynamic Capacity: %d / %d (%.2f%% Used)", dynamicDescriptorCount, static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
+        std::string label2 = StringUtils::Format("Static Count: %d", staticCount);
 
         float startX = ImGui::GetCursorPosX();
         ImGui::TextUnformatted(label1.c_str());

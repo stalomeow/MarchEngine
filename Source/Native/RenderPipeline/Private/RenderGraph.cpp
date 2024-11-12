@@ -1,6 +1,6 @@
 #include "RenderGraph.h"
 #include "GfxDevice.h"
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "GfxResource.h"
 #include "Debug.h"
 #include <utility>

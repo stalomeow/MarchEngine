@@ -1,6 +1,6 @@
 #include "DotNetRuntime.h"
-#include "PathHelper.h"
-#include "StringUtility.h"
+#include "PathUtils.h"
+#include "StringUtils.h"
 #include "hostfxr.h"
 #include "coreclr_delegates.h"
 #include <Windows.h>
@@ -38,13 +38,13 @@ namespace march
 
     static std::wstring GetHostfxrPath()
     {
-        std::wstring dir = PathHelper::GetWorkingDirectoryUtf16();
+        std::wstring dir = PathUtils::GetWorkingDirectoryUtf16();
         return dir + L"\\Runtime\\host\\fxr\\8.0.8\\hostfxr.dll";
     }
 
     static std::wstring GetManagedFilePath(const LPCWSTR fileName)
     {
-        std::wstring dir = PathHelper::GetWorkingDirectoryUtf16();
+        std::wstring dir = PathUtils::GetWorkingDirectoryUtf16();
         return dir + L"\\Managed\\" + fileName;
     }
 
@@ -136,7 +136,7 @@ namespace march
 
             if (m_LoadAssembly(path.c_str(), nullptr, nullptr) != 0)
             {
-                throw std::runtime_error("Failed to load assembly: " + StringUtility::Utf16ToUtf8(path));
+                throw std::runtime_error("Failed to load assembly: " + StringUtils::Utf16ToUtf8(path));
             }
         }
     }

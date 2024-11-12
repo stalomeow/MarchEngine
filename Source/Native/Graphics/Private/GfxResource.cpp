@@ -1,7 +1,6 @@
 #include "GfxResource.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 
 namespace march
 {
@@ -20,7 +19,7 @@ namespace march
     void GfxResource::SetD3D12ResourceName(const std::string& name)
     {
 #ifdef ENABLE_GFX_DEBUG_NAME
-        GFX_HR(m_Resource->SetName(StringUtility::Utf8ToUtf16(name).c_str()));
+        GFX_HR(m_Resource->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
 #else
         (name);
 #endif

@@ -1,14 +1,11 @@
 #include "GfxDevice.h"
-#include "GfxCommandList.h"
-#include "GfxCommandQueue.h"
+#include "GfxCommand.h"
 #include "GfxFence.h"
 #include "GfxBuffer.h"
 #include "GfxSwapChain.h"
-#include "GfxDescriptorHeap.h"
-#include "GfxExcept.h"
+#include "GfxDescriptor.h"
 #include "Debug.h"
 #include <assert.h>
-#include <dxgidebug.h>
 
 using namespace Microsoft::WRL;
 
@@ -261,6 +258,17 @@ namespace march
         }
     }
 
+    uint32_t GfxDevice::GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount)
+    {
+        D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS levels = {};
+        levels.Format = format;
+        levels.SampleCount = static_cast<UINT>(sampleCount);
+        levels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+
+        GFX_HR(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels)));
+        return static_cast<uint32_t>(levels.NumQualityLevels - 1);
+    }
+
     void GfxDevice::LogAdapters(DXGI_FORMAT format)
     {
         UINT i = 0;
@@ -315,13 +323,6 @@ namespace march
 
             LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
         }
-    }
-
-    void GfxUtility::ReportLiveObjects()
-    {
-        ComPtr<IDXGIDebug1> debug = nullptr;
-        GFX_HR(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)));
-        GFX_HR(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
     }
 
     static void __stdcall D3D12DebugMessageCallback(

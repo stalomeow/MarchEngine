@@ -1,10 +1,10 @@
 #include "GfxPipelineState.h"
-#include "HashHelper.h"
-#include "StringUtility.h"
-#include "GfxExcept.h"
+#include "HashUtils.h"
+#include "StringUtils.h"
 #include "Shader.h"
 #include "Material.h"
 #include "GfxSettings.h"
+#include "GfxUtils.h"
 #include "GfxDevice.h"
 #include "Debug.h"
 #include <wrl.h>
@@ -13,143 +13,207 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
-    PipelineInputElement::PipelineInputElement(
-        PipelineInputSematicName semanticName,
-        uint32_t semanticIndex,
-        DXGI_FORMAT format,
-        uint32_t inputSlot,
-        D3D12_INPUT_CLASSIFICATION inputSlotClass,
-        uint32_t instanceDataStepRate)
+    GfxInputDesc::GfxInputDesc(D3D12_PRIMITIVE_TOPOLOGY topology, const std::vector<GfxInputElement>& elements)
+        : m_PrimitiveTopology(topology), m_Layout{}
     {
-        SemanticName = semanticName;
-        SemanticIndex = semanticIndex;
-        Format = format;
-        InputSlot = inputSlot;
-        InputSlotClass = inputSlotClass;
-        InstanceDataStepRate = instanceDataStepRate;
-    }
-
-    size_t PipelineStateDesc::CalculateHash(const PipelineStateDesc& desc)
-    {
-        size_t hash = HashHelper::FNV1(desc.RTVFormats.data(), desc.RTVFormats.size());
-        hash = HashHelper::FNV1(&desc.DSVFormat, 1, hash);
-        hash = HashHelper::FNV1(&desc.SampleCount, 1, hash);
-        hash = HashHelper::FNV1(&desc.SampleQuality, 1, hash);
-
-        // bool 不够 4 字节
-        uint32_t wireframe = desc.Wireframe ? 1 : 0;
-        hash = HashHelper::FNV1(&wireframe, 1, hash);
-
-        return hash;
-    }
-
-    struct PipelineInputDesc
-    {
-        std::vector<D3D12_INPUT_ELEMENT_DESC> InputLayout{};
-        D3D12_PRIMITIVE_TOPOLOGY PrimitiveTopology{};
-        size_t Hash{};
-    };
-
-    static std::vector<PipelineInputDesc> g_PipelineInputDescs{};
-
-    static constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType(D3D12_PRIMITIVE_TOPOLOGY topology)
-    {
-        switch (topology)
+        for (const GfxInputElement& input : elements)
         {
-        case D3D_PRIMITIVE_TOPOLOGY_UNDEFINED:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+            D3D12_INPUT_ELEMENT_DESC& desc = m_Layout.emplace_back();
 
-        case D3D_PRIMITIVE_TOPOLOGY_POINTLIST:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-
-        case D3D_PRIMITIVE_TOPOLOGY_LINELIST:
-        case D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
-        case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP:
-        case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
-        case D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
-        default:
-            return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-        }
-    }
-
-    int32_t GfxPipelineState::CreateInputDesc(const std::vector<PipelineInputElement>& inputLayout, D3D12_PRIMITIVE_TOPOLOGY primitiveTopology)
-    {
-        PipelineInputDesc& desc = g_PipelineInputDescs.emplace_back();
-        desc.PrimitiveTopology = primitiveTopology;
-
-        // Hash
-        desc.Hash = HashHelper::FNV1(inputLayout.data(), inputLayout.size());
-        D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType = GetTopologyType(primitiveTopology);
-        desc.Hash = HashHelper::FNV1(&topologyType, 1, desc.Hash); // PSO 里用的是 D3D12_PRIMITIVE_TOPOLOGY_TYPE
-
-        // Input Layout
-        for (const auto& input : inputLayout)
-        {
-            D3D12_INPUT_ELEMENT_DESC& element = desc.InputLayout.emplace_back();
-
-            switch (input.SemanticName)
+            switch (input.Semantic)
             {
-            case PipelineInputSematicName::Position:
-                element.SemanticName = "POSITION";
+            case GfxSemantic::Position:
+                desc.SemanticName = "POSITION";
+                desc.SemanticIndex = 0;
                 break;
 
-            case PipelineInputSematicName::Normal:
-                element.SemanticName = "NORMAL";
+            case GfxSemantic::Normal:
+                desc.SemanticName = "NORMAL";
+                desc.SemanticIndex = 0;
                 break;
 
-            case PipelineInputSematicName::Tangent:
-                element.SemanticName = "TANGENT";
+            case GfxSemantic::Tangent:
+                desc.SemanticName = "TANGENT";
+                desc.SemanticIndex = 0;
                 break;
 
-            case PipelineInputSematicName::TexCoord:
-                element.SemanticName = "TEXCOORD";
+            case GfxSemantic::Color:
+                desc.SemanticName = "COLOR";
+                desc.SemanticIndex = 0;
                 break;
 
-            case PipelineInputSematicName::Color:
-                element.SemanticName = "COLOR";
+            case GfxSemantic::TexCoord0:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 0;
+                break;
+
+            case GfxSemantic::TexCoord1:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 1;
+                break;
+
+            case GfxSemantic::TexCoord2:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 2;
+                break;
+
+            case GfxSemantic::TexCoord3:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 3;
+                break;
+
+            case GfxSemantic::TexCoord4:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 4;
+                break;
+
+            case GfxSemantic::TexCoord5:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 5;
+                break;
+
+            case GfxSemantic::TexCoord6:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 6;
+                break;
+
+            case GfxSemantic::TexCoord7:
+                desc.SemanticName = "TEXCOORD";
+                desc.SemanticIndex = 7;
                 break;
 
             default:
                 throw GfxException("Unknown input semantic name");
             }
 
-            element.SemanticIndex = static_cast<UINT>(input.SemanticIndex);
-            element.Format = input.Format;
-            element.InputSlot = static_cast<UINT>(input.InputSlot);
-            element.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-            element.InputSlotClass = input.InputSlotClass;
-            element.InstanceDataStepRate = static_cast<UINT>(input.InstanceDataStepRate);
+            desc.Format = input.Format;
+            desc.InputSlot = static_cast<UINT>(input.InputSlot);
+            desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+            desc.InputSlotClass = input.InputSlotClass;
+            desc.InstanceDataStepRate = static_cast<UINT>(input.InstanceDataStepRate);
         }
 
-        return static_cast<int32_t>(g_PipelineInputDescs.size() - 1);
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType = GetPrimitiveTopologyType();
+        m_Hash = HashUtils::FNV1(elements.data(), elements.size());
+        m_Hash = HashUtils::FNV1(&topologyType, 1, m_Hash); // PSO 里用的是 D3D12_PRIMITIVE_TOPOLOGY_TYPE
     }
 
-    D3D12_PRIMITIVE_TOPOLOGY GfxPipelineState::GetInputDescPrimitiveTopology(int32_t inputDescId)
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE GfxInputDesc::GetPrimitiveTopologyType() const
     {
-        return g_PipelineInputDescs[inputDescId].PrimitiveTopology;
+        return GfxUtils::GetTopologyType(m_PrimitiveTopology);
     }
 
-    static size_t GetPipelineInputDescHash(int32_t inputDescId)
+    GfxOutputDesc::GfxOutputDesc()
+        : RTVFormats{}
+        , DSVFormat(DXGI_FORMAT_UNKNOWN)
+        , SampleCount(1)
+        , SampleQuality(0)
+        , Wireframe(false)
+        , m_IsDirty(true)
+        , m_Hash(0)
     {
-        return g_PipelineInputDescs[inputDescId].Hash;
     }
 
-    static const std::vector<D3D12_INPUT_ELEMENT_DESC>& GetPipelineInputLayout(int32_t inputDescId)
+    void GfxOutputDesc::MarkDirty()
     {
-        return g_PipelineInputDescs[inputDescId].InputLayout;
+        m_IsDirty = true;
     }
 
-    static D3D12_PRIMITIVE_TOPOLOGY_TYPE GetPipelineInputDescPrimitiveTopologyType(int32_t inputDescId)
+    size_t GfxOutputDesc::GetHash() const
     {
-        return GetTopologyType(GfxPipelineState::GetInputDescPrimitiveTopology(inputDescId));
+        if (m_IsDirty)
+        {
+            m_IsDirty = false;
+
+            m_Hash = HashUtils::FNV1(RTVFormats.data(), RTVFormats.size());
+            m_Hash = HashUtils::FNV1(&DSVFormat, 1, m_Hash);
+            m_Hash = HashUtils::FNV1(&SampleCount, 1, m_Hash);
+            m_Hash = HashUtils::FNV1(&SampleQuality, 1, m_Hash);
+
+            // bool 不够 4 字节
+            uint32_t wireframe = Wireframe ? 1 : 0;
+            m_Hash = HashUtils::FNV1(&wireframe, 1, m_Hash);
+        }
+
+        return m_Hash;
+    }
+
+    template<typename T, typename Intermediate>
+    static T& ResolveShaderPassVar(ShaderPassVar<T>& v, const std::function<Intermediate(int32_t)>& resolve)
+    {
+        if (v.IsDynamic)
+        {
+            v.Value = static_cast<T>(resolve(v.PropertyId));
+            v.IsDynamic = false;
+        }
+
+        return v.Value;
+    }
+
+    size_t GfxPipelineState::ResolveShaderPassRenderState(ShaderPassRenderState& state,
+        const std::function<bool(int32_t, int32_t*)>& intResolver,
+        const std::function<bool(int32_t, float*)>& floatResolver)
+    {
+        std::function<int32_t(int32_t)> resolveInt = [&intResolver, &floatResolver](int32_t id)
+        {
+            if (int32_t i = 0; intResolver(id, &i)) return i;
+            if (float f = 0.0f; floatResolver(id, &f)) return static_cast<int32_t>(f);
+            return 0;
+        };
+
+        std::function<bool(int32_t)> resolveBool = [&intResolver, &floatResolver](int32_t id)
+        {
+            if (int32_t i = 0; intResolver(id, &i)) return i != 0;
+            if (float f = 0.0f; floatResolver(id, &f)) return f != 0.0f;
+            return false;
+        };
+
+        std::function<float(int32_t)> resolveFloat = [&intResolver, &floatResolver](int32_t id)
+        {
+            if (float f = 0.0f; floatResolver(id, &f)) return f;
+            if (int32_t i = 0; intResolver(id, &i)) return static_cast<float>(i);
+            return 0.0f;
+        };
+
+        size_t hash = HashUtils::FNV1(&ResolveShaderPassVar(state.Cull, resolveInt));
+
+        for (ShaderPassBlendState& blend : state.Blends)
+        {
+            uint32_t enabled = blend.Enable ? 1 : 0; // bool 不够 4 字节
+            hash = HashUtils::FNV1(&enabled, 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.WriteMask, resolveInt), 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Rgb.Src, resolveInt), 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Rgb.Dest, resolveInt), 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Rgb.Op, resolveInt), 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Alpha.Src, resolveInt), 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Alpha.Dest, resolveInt), 1, hash);
+            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Alpha.Op, resolveInt), 1, hash);
+        }
+
+        uint32_t depthEnabled = state.DepthState.Enable ? 1 : 0; // bool 不够 4 字节
+        hash = HashUtils::FNV1(&depthEnabled, 1, hash);
+        uint32_t depthWrite = ResolveShaderPassVar(state.DepthState.Write, resolveBool) ? 1 : 0; // bool 不够 4 字节
+        hash = HashUtils::FNV1(&depthWrite, 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.DepthState.Compare, resolveInt), 1, hash);
+
+        uint32_t stencilEnabled = state.StencilState.Enable ? 1 : 0; // bool 不够 4 字节
+        hash = HashUtils::FNV1(&stencilEnabled, 1, hash);
+        uint32_t stencilRef = ResolveShaderPassVar(state.StencilState.Ref, resolveInt); // uint8_t 不够 4 字节
+        hash = HashUtils::FNV1(&stencilRef, 1, hash);
+        uint32_t stencilReadMask = ResolveShaderPassVar(state.StencilState.ReadMask, resolveInt); // uint8_t 不够 4 字节
+        hash = HashUtils::FNV1(&stencilReadMask, 1, hash);
+        uint32_t stencilWriteMask = ResolveShaderPassVar(state.StencilState.WriteMask, resolveInt); // uint8_t 不够 4 字节
+        hash = HashUtils::FNV1(&stencilWriteMask, 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.Compare, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.PassOp, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.FailOp, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.DepthFailOp, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.Compare, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.PassOp, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.FailOp, resolveInt), 1, hash);
+        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.DepthFailOp, resolveInt), 1, hash);
+
+        return hash;
     }
 
     static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, const ShaderPass* pass, ShaderProgramType type, const ShaderKeywordSet& keywords)
@@ -170,7 +234,7 @@ namespace march
 
     static inline void ApplyReversedZBuffer(D3D12_DEPTH_STENCIL_DESC& depthStencil)
     {
-        if constexpr (!GfxSettings::UseReversedZBuffer())
+        if constexpr (!GfxSettings::UseReversedZBuffer)
         {
             return;
         }
@@ -206,91 +270,13 @@ namespace march
         for (size_t i = 0; i < wordCount; i++)
         {
             word_type word = b._Getword(i);
-            hash = HashHelper::FNV1(&word, 1, hash);
+            hash = HashUtils::FNV1(&word, 1, hash);
         }
 
         return hash;
     }
 
-    template<typename T, typename Intermediate>
-    static T& ResolveShaderPassVar(ShaderPassVar<T>& v, const std::function<Intermediate(int32_t)>& resolve)
-    {
-        if (v.IsDynamic)
-        {
-            v.Value = static_cast<T>(resolve(v.PropertyId));
-            v.IsDynamic = false;
-        }
-
-        return v.Value;
-    }
-
-    size_t ShaderPassRenderState::Resolve(ShaderPassRenderState& state,
-        const std::function<bool(int32_t, int32_t*)>& intResolver,
-        const std::function<bool(int32_t, float*)>& floatResolver)
-    {
-        std::function<int32_t(int32_t)> resolveInt = [&intResolver, &floatResolver](int32_t id)
-        {
-            if (int32_t i = 0; intResolver(id, &i)) return i;
-            if (float f = 0.0f; floatResolver(id, &f)) return static_cast<int32_t>(f);
-            return 0;
-        };
-
-        std::function<bool(int32_t)> resolveBool = [&intResolver, &floatResolver](int32_t id)
-        {
-            if (int32_t i = 0; intResolver(id, &i)) return i != 0;
-            if (float f = 0.0f; floatResolver(id, &f)) return f != 0.0f;
-            return false;
-        };
-
-        std::function<float(int32_t)> resolveFloat = [&intResolver, &floatResolver](int32_t id)
-        {
-            if (float f = 0.0f; floatResolver(id, &f)) return f;
-            if (int32_t i = 0; intResolver(id, &i)) return static_cast<float>(i);
-            return 0.0f;
-        };
-
-        size_t hash = HashHelper::FNV1(&ResolveShaderPassVar(state.Cull, resolveInt));
-
-        for (ShaderPassBlendState& blend : state.Blends)
-        {
-            uint32_t enabled = blend.Enable ? 1 : 0; // bool 不够 4 字节
-            hash = HashHelper::FNV1(&enabled, 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.WriteMask, resolveInt), 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.Rgb.Src, resolveInt), 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.Rgb.Dest, resolveInt), 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.Rgb.Op, resolveInt), 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.Alpha.Src, resolveInt), 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.Alpha.Dest, resolveInt), 1, hash);
-            hash = HashHelper::FNV1(&ResolveShaderPassVar(blend.Alpha.Op, resolveInt), 1, hash);
-        }
-
-        uint32_t depthEnabled = state.DepthState.Enable ? 1 : 0; // bool 不够 4 字节
-        hash = HashHelper::FNV1(&depthEnabled, 1, hash);
-        uint32_t depthWrite = ResolveShaderPassVar(state.DepthState.Write, resolveBool) ? 1 : 0; // bool 不够 4 字节
-        hash = HashHelper::FNV1(&depthWrite, 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.DepthState.Compare, resolveInt), 1, hash);
-
-        uint32_t stencilEnabled = state.StencilState.Enable ? 1 : 0; // bool 不够 4 字节
-        hash = HashHelper::FNV1(&stencilEnabled, 1, hash);
-        uint32_t stencilRef = ResolveShaderPassVar(state.StencilState.Ref, resolveInt); // uint8_t 不够 4 字节
-        hash = HashHelper::FNV1(&stencilRef, 1, hash);
-        uint32_t stencilReadMask = ResolveShaderPassVar(state.StencilState.ReadMask, resolveInt); // uint8_t 不够 4 字节
-        hash = HashHelper::FNV1(&stencilReadMask, 1, hash);
-        uint32_t stencilWriteMask = ResolveShaderPassVar(state.StencilState.WriteMask, resolveInt); // uint8_t 不够 4 字节
-        hash = HashHelper::FNV1(&stencilWriteMask, 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.Compare, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.PassOp, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.FailOp, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.DepthFailOp, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.Compare, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.PassOp, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.FailOp, resolveInt), 1, hash);
-        hash = HashHelper::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.DepthFailOp, resolveInt), 1, hash);
-
-        return hash;
-    }
-
-    ID3D12PipelineState* GfxPipelineState::GetGraphicsState(Material* material, int32_t passIndex, int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash)
+    ID3D12PipelineState* GfxPipelineState::GetGraphicsPSO(Material* material, int32_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc)
     {
         Shader* shader = material->GetShader();
         if (shader == nullptr)
@@ -304,9 +290,10 @@ namespace march
         size_t hash = 0;
         const ShaderPassRenderState& rs = material->GetResolvedRenderState(passIndex, &hash);
         hash = HashBitset(keywords.m_Keywords, hash);
-        size_t inputDescHash = GetPipelineInputDescHash(inputDescId);
-        hash = HashHelper::FNV1(&inputDescHash, 1, hash);
-        hash = HashHelper::FNV1(&stateDescHash, 1, hash);
+        size_t inputDescHash = inputDesc.GetHash();
+        hash = HashUtils::FNV1(&inputDescHash, 1, hash);
+        size_t outputDescHash = outputDesc.GetHash();
+        hash = HashUtils::FNV1(&outputDescHash, 1, hash);
 
         ComPtr<ID3D12PipelineState>& result = pass->m_PipelineStates[hash];
 
@@ -342,7 +329,7 @@ namespace march
 
             psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
             psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(rs.Cull.Value) + 1);
-            psoDesc.RasterizerState.FillMode = stateDesc.Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
+            psoDesc.RasterizerState.FillMode = outputDesc.Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
 
             psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
             psoDesc.DepthStencilState.DepthEnable = rs.DepthState.Enable;
@@ -361,24 +348,23 @@ namespace march
             psoDesc.DepthStencilState.BackFace.StencilFunc = static_cast<D3D12_COMPARISON_FUNC>(static_cast<int>(rs.StencilState.BackFace.Compare.Value) + 1);
             ApplyReversedZBuffer(psoDesc.DepthStencilState);
 
-            const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout = GetPipelineInputLayout(inputDescId);
-            psoDesc.InputLayout.NumElements = static_cast<UINT>(inputLayout.size());
-            psoDesc.InputLayout.pInputElementDescs = inputLayout.data();
-            psoDesc.PrimitiveTopologyType = GetPipelineInputDescPrimitiveTopologyType(inputDescId);
+            psoDesc.InputLayout.NumElements = static_cast<UINT>(inputDesc.GetLayout().size());
+            psoDesc.InputLayout.pInputElementDescs = inputDesc.GetLayout().data();
+            psoDesc.PrimitiveTopologyType = inputDesc.GetPrimitiveTopologyType();
 
-            psoDesc.NumRenderTargets = static_cast<UINT>(stateDesc.RTVFormats.size());
-            std::copy_n(stateDesc.RTVFormats.data(), stateDesc.RTVFormats.size(), psoDesc.RTVFormats);
-            psoDesc.DSVFormat = stateDesc.DSVFormat;
+            psoDesc.NumRenderTargets = static_cast<UINT>(outputDesc.RTVFormats.size());
+            std::copy_n(outputDesc.RTVFormats.data(), outputDesc.RTVFormats.size(), psoDesc.RTVFormats);
+            psoDesc.DSVFormat = outputDesc.DSVFormat;
 
-            psoDesc.SampleDesc.Count = static_cast<UINT>(stateDesc.SampleCount);
-            psoDesc.SampleDesc.Quality = static_cast<UINT>(stateDesc.SampleQuality);
+            psoDesc.SampleDesc.Count = static_cast<UINT>(outputDesc.SampleCount);
+            psoDesc.SampleDesc.Quality = static_cast<UINT>(outputDesc.SampleQuality);
 
             ID3D12Device4* device = GetGfxDevice()->GetD3D12Device();
             GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
 
 #ifdef ENABLE_GFX_DEBUG_NAME
             const std::string& debugName = shader->GetName() + " - " + pass->GetName();
-            result->SetName(StringUtility::Utf8ToUtf16(debugName).c_str());
+            result->SetName(StringUtils::Utf8ToUtf16(debugName).c_str());
 #endif
 
             LOG_TRACE("Create Graphics PSO for '%s' Pass of '%s' Shader", pass->GetName().c_str(), shader->GetName().c_str());

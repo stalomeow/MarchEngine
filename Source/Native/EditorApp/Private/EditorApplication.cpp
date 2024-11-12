@@ -1,14 +1,15 @@
 #include "EditorApplication.h"
 #include "GfxDevice.h"
 #include "EditorGUI.h"
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "GfxBuffer.h"
 #include "Debug.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include "RenderDoc.h"
 #include "DotNetRuntime.h"
-#include "PathHelper.h"
+#include "PathUtils.h"
 #include "EditorGUI.h"
+#include "GfxUtils.h"
 #include "Camera.h"
 #include "Display.h"
 #include "GfxTexture.h"
@@ -261,7 +262,7 @@ namespace march
         Shader::ClearRootSignatureCache();
         Display::DestroyMainDisplay();
         DestroyGfxDevice();
-        GfxUtility::ReportLiveObjects();
+        GfxUtils::ReportLiveObjects();
     }
 
     void EditorApplication::DrawBaseImGui()
@@ -422,13 +423,13 @@ namespace march
 
     std::string EditorApplication::GetFontPath(std::string fontName) const
     {
-        std::string basePath = PathHelper::GetWorkingDirectoryUtf8();
+        std::string basePath = PathUtils::GetWorkingDirectoryUtf8();
         return basePath + "\\Resources\\Fonts\\" + fontName;
     }
 
     std::string EditorApplication::GetFontAwesomePath(std::string fontName) const
     {
-        std::string basePath = PathHelper::GetWorkingDirectoryUtf8();
+        std::string basePath = PathUtils::GetWorkingDirectoryUtf8();
         return basePath + "\\Resources\\FontAwesome\\" + fontName;
     }
 

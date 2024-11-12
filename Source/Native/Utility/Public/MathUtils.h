@@ -4,7 +4,7 @@
 #include <Windows.h>
 #include <stdint.h>
 
-namespace march::MathHelper
+namespace march::MathUtils
 {
     DirectX::XMFLOAT4X4 Identity4x4();
 

@@ -10,13 +10,13 @@ namespace march
     {
         EditorGUI::SeparatorText("Settings");
         {
-            EditorGUI::LabelField("Reversed Z", "", GfxSettings::UseReversedZBuffer() ? "Yes" : "No");
+            EditorGUI::LabelField("Reversed Z", "", GfxSettings::UseReversedZBuffer ? "Yes" : "No");
 
-            if constexpr (GfxSettings::GetColorSpace() == GfxColorSpace::Linear)
+            if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Linear)
             {
                 EditorGUI::LabelField("Color Space", "", "Linear");
             }
-            else if constexpr (GfxSettings::GetColorSpace() == GfxColorSpace::Gamma)
+            else if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Gamma)
             {
                 EditorGUI::LabelField("Color Space", "", "Gamma");
             }

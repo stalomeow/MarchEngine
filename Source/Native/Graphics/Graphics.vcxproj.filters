@@ -12,7 +12,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\GfxDescriptorHeap.h">
+    <ClInclude Include="Public\GfxDescriptor.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GfxMesh.h">
@@ -33,10 +33,7 @@
     <ClInclude Include="Public\GfxSwapChain.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxCommandQueue.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GfxCommandList.h">
+    <ClInclude Include="Public\GfxCommand.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GfxResource.h">
@@ -48,19 +45,13 @@
     <ClInclude Include="Public\RenderDoc.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxExcept.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\Shader.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\GfxSettings.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxHelpers.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GfxEnums.h">
+    <ClInclude Include="Public\GfxUtils.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\Material.h">
@@ -69,9 +60,12 @@
     <ClInclude Include="Public\GfxPipelineState.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Display.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\GfxDescriptorHeap.cpp">
+    <ClCompile Include="Private\GfxDescriptor.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxMesh.binding.cpp">
@@ -86,7 +80,7 @@
     <ClCompile Include="Private\GfxFence.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxExcept.cpp">
+    <ClCompile Include="Private\GfxException.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxSwapChain.cpp">
@@ -119,7 +113,7 @@
     <ClCompile Include="Private\Shader.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxHelpers.cpp">
+    <ClCompile Include="Private\GfxUtils.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxSettings.binding.cpp">
@@ -141,6 +135,9 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxPipelineState.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Display.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

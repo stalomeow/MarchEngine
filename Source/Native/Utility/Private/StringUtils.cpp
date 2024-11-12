@@ -1,7 +1,7 @@
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include <Windows.h>
 
-namespace march::StringUtility
+namespace march::StringUtils
 {
     std::string Utf16ToBytes(const wchar_t* s, int32_t size, uint32_t codePage)
     {

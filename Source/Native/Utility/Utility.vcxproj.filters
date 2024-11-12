@@ -9,27 +9,27 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\MathHelper.cpp">
+    <ClCompile Include="Private\MathUtils.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\StringUtility.cpp">
+    <ClCompile Include="Private\StringUtils.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\PathHelper.cpp">
+    <ClCompile Include="Private\PathUtils.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\MathHelper.h">
+    <ClInclude Include="Public\MathUtils.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\StringUtility.h">
+    <ClInclude Include="Public\StringUtils.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\PathHelper.h">
+    <ClInclude Include="Public\PathUtils.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\HashHelper.h">
+    <ClInclude Include="Public\HashUtils.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

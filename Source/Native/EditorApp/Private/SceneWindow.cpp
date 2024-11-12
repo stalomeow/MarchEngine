@@ -4,7 +4,7 @@
 #include "Camera.h"
 #include "GfxDevice.h"
 #include "GfxTexture.h"
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include "Debug.h"
 #include "IconsFontAwesome6.h"
 #include "EditorGUI.h"

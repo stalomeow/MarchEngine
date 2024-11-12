@@ -1,8 +1,8 @@
 #include "Shader.h"
-#include "GfxExcept.h"
+#include "GfxDevice.h"
 #include "GfxSettings.h"
-#include "GfxHelpers.h"
-#include "StringUtility.h"
+#include "GfxUtils.h"
+#include "StringUtils.h"
 #include <algorithm>
 #include <regex>
 #include <sstream>
@@ -332,8 +332,8 @@ namespace march
             }
 
             ShaderProgramType type = static_cast<ShaderProgramType>(i);
-            std::wstring wEntrypoint = StringUtility::Utf8ToUtf16(context.Config.Entrypoints[i]);
-            std::wstring wTargetProfile = StringUtility::Utf8ToUtf16(GetTargetProfile(context.Config.ShaderModel, type));
+            std::wstring wEntrypoint = StringUtils::Utf8ToUtf16(context.Config.Entrypoints[i]);
+            std::wstring wTargetProfile = StringUtils::Utf8ToUtf16(GetTargetProfile(context.Config.ShaderModel, type));
 
             std::vector<LPCWSTR> pszArgs =
             {
@@ -359,13 +359,13 @@ namespace march
                 pszArgs.push_back(L"-Qstrip_rootsignature"); // Strip root signature data from shader bytecode
             }
 
-            if constexpr (GfxSettings::UseReversedZBuffer())
+            if constexpr (GfxSettings::UseReversedZBuffer)
             {
                 pszArgs.push_back(L"-D");
                 pszArgs.push_back(L"MARCH_REVERSED_Z=1");
             }
 
-            if constexpr (GfxSettings::GetColorSpace() == GfxColorSpace::Gamma)
+            if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Gamma)
             {
                 pszArgs.push_back(L"-D");
                 pszArgs.push_back(L"MARCH_COLORSPACE_GAMMA=1");
@@ -373,15 +373,15 @@ namespace march
 
             std::vector<std::wstring> dynamicDefines =
             {
-                L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxHelpers::GetNearClipPlaneDepth()),
-                L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxHelpers::GetFarClipPlaneDepth()),
+                L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxUtils::NearClipPlaneDepth),
+                L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxUtils::FarClipPlaneDepth),
             };
 
             for (const std::string& kw : context.Keywords)
             {
                 if (!kw.empty())
                 {
-                    dynamicDefines.push_back(StringUtility::Utf8ToUtf16(kw) + L"=1");
+                    dynamicDefines.push_back(StringUtils::Utf8ToUtf16(kw) + L"=1");
                 }
             }
 
@@ -574,8 +574,8 @@ namespace march
             return false;
         }
 
-        context.FileName = StringUtility::Utf8ToUtf16(filename);
-        context.IncludePath = StringUtility::Utf8ToUtf16(Shader::GetEngineShaderPathUnixStyle());
+        context.FileName = StringUtils::Utf8ToUtf16(filename);
+        context.IncludePath = StringUtils::Utf8ToUtf16(Shader::GetEngineShaderPathUnixStyle());
         context.Source.Ptr = source.data();
         context.Source.Size = static_cast<SIZE_T>(source.size());
         context.Source.Encoding = DXC_CP_UTF8;

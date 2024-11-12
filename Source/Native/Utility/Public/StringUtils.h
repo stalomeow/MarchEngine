@@ -6,7 +6,7 @@
 #include <string>
 #include <type_traits>
 
-namespace march::StringUtility
+namespace march::StringUtils
 {
     // size does not include the null terminator
     std::string Utf16ToBytes(const wchar_t* s, int32_t size, uint32_t codePage);

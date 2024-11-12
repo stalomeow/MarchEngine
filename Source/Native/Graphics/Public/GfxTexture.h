@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GfxResource.h"
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include <directx/d3dx12.h>
 #include <DirectXTex.h>
 #include <string>

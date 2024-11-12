@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include <string>
 #include <time.h>
 #include <vector>
@@ -62,7 +62,7 @@ namespace march
 
 #define LOG_MSG(level, fmt, ...) \
     if (::march::Log::IsLevelEnabled(level)) \
-        ::march::Log::Message(level, ::march::StringUtility::Format(fmt, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
+        ::march::Log::Message(level, ::march::StringUtils::Format(fmt, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
 
 #define LOG_TRACE(fmt, ...) LOG_MSG(::march::LogLevel::Trace, fmt, __VA_ARGS__)
 #define LOG_DEBUG(fmt, ...) LOG_MSG(::march::LogLevel::Debug, fmt, __VA_ARGS__)

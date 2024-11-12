@@ -1,8 +1,7 @@
 #include "GfxBuffer.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
 #include "GfxFence.h"
-#include "MathHelper.h"
+#include "MathUtils.h"
 #include "Debug.h"
 #include <stdexcept>
 
@@ -60,7 +59,7 @@ namespace march
 
     uint32_t GfxConstantBuffer::GetAlignedSize(uint32_t size)
     {
-        return MathHelper::AlignUp(size, Alignment);
+        return MathUtils::AlignUp(size, Alignment);
     }
 
     GfxUploadMemory::GfxUploadMemory(GfxUploadBuffer* buffer, uint32_t offset, uint32_t stride, uint32_t count)
@@ -126,7 +125,7 @@ namespace march
 
     GfxUploadMemory GfxUploadMemoryAllocator::Allocate(uint32_t size, uint32_t count, uint32_t alignment)
     {
-        uint32_t stride = MathHelper::AlignUp(size, alignment);
+        uint32_t stride = MathUtils::AlignUp(size, alignment);
         uint32_t totalSize = stride * count;
 
         if (totalSize > PageSize)
@@ -138,7 +137,7 @@ namespace march
             return GfxUploadMemory(m_LargePages.back().get(), 0, stride, count);
         }
 
-        uint32_t offset = MathHelper::AlignUp(m_AllocateOffset, alignment);
+        uint32_t offset = MathUtils::AlignUp(m_AllocateOffset, alignment);
 
         if (m_UsedPages.empty() || offset + totalSize > PageSize)
         {

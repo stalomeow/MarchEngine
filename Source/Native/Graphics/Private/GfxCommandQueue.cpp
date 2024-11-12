@@ -1,9 +1,7 @@
-#include "GfxCommandQueue.h"
+#include "GfxCommand.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
 #include "GfxFence.h"
-#include "GfxCommandList.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include <Windows.h>
 
 namespace march
@@ -23,7 +21,7 @@ namespace march
         GFX_HR(d3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_CommandQueue)));
 
 #ifdef ENABLE_GFX_DEBUG_NAME
-        GFX_HR(m_CommandQueue->SetName(StringUtility::Utf8ToUtf16(name).c_str()));
+        GFX_HR(m_CommandQueue->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
 #else
         (name);
 #endif

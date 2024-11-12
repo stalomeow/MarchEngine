@@ -12,7 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Camera.h" />
-    <ClInclude Include="Public\Display.h" />
     <ClInclude Include="Public\Light.h" />
     <ClInclude Include="Public\RenderGraph.h" />
     <ClInclude Include="Public\RenderGraphContext.h" />
@@ -23,7 +22,6 @@
   <ItemGroup>
     <ClCompile Include="Private\Camera.binding.cpp" />
     <ClCompile Include="Private\Camera.cpp" />
-    <ClCompile Include="Private\Display.cpp" />
     <ClCompile Include="Private\Light.binding.cpp" />
     <ClCompile Include="Private\Light.cpp" />
     <ClCompile Include="Private\RenderGraph.cpp" />

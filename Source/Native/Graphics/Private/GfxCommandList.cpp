@@ -1,9 +1,8 @@
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "GfxDevice.h"
 #include "GfxResource.h"
-#include "GfxExcept.h"
 #include "GfxFence.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include <assert.h>
 
 using namespace Microsoft::WRL;
@@ -24,7 +23,7 @@ namespace march
             GFX_HR(d3d12Device->CreateCommandList(0, type, commandAllocator, nullptr, IID_PPV_ARGS(m_CommandList.GetAddressOf())));
 
 #ifdef ENABLE_GFX_DEBUG_NAME
-            GFX_HR(m_CommandList->SetName(StringUtility::Utf8ToUtf16(m_Name).c_str()));
+            GFX_HR(m_CommandList->SetName(StringUtils::Utf8ToUtf16(m_Name).c_str()));
 #endif
         }
         else

@@ -3,40 +3,78 @@
 #include <directx/d3dx12.h>
 #include <stdint.h>
 #include <vector>
+#include <functional>
 
 namespace march
 {
-    class Material;
-
-    enum class PipelineInputSematicName
+    enum class GfxSemantic
     {
         Position,
         Normal,
         Tangent,
-        TexCoord,
         Color,
+        TexCoord0,
+        TexCoord1,
+        TexCoord2,
+        TexCoord3,
+        TexCoord4,
+        TexCoord5,
+        TexCoord6,
+        TexCoord7,
+
+        // Aliases
+        TexCoord = TexCoord0,
     };
 
-    struct PipelineInputElement
+    struct GfxInputElement
     {
-        PipelineInputSematicName SemanticName;
-        uint32_t SemanticIndex;
+        GfxSemantic Semantic;
         DXGI_FORMAT Format;
         uint32_t InputSlot;
         D3D12_INPUT_CLASSIFICATION InputSlotClass;
         uint32_t InstanceDataStepRate;
 
-        PipelineInputElement(
-            PipelineInputSematicName semanticName,
-            uint32_t semanticIndex,
+        constexpr GfxInputElement(
+            GfxSemantic semantic,
             DXGI_FORMAT format,
             uint32_t inputSlot = 0,
             D3D12_INPUT_CLASSIFICATION inputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-            uint32_t instanceDataStepRate = 0);
+            uint32_t instanceDataStepRate = 0) noexcept
+            : Semantic(semantic)
+            , Format(format)
+            , InputSlot(inputSlot)
+            , InputSlotClass(inputSlotClass)
+            , InstanceDataStepRate(instanceDataStepRate) {}
     };
 
-    struct PipelineStateDesc
+    class GfxInputDesc final
     {
+    public:
+        GfxInputDesc(D3D12_PRIMITIVE_TOPOLOGY topology, const std::vector<GfxInputElement>& elements);
+
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE GetPrimitiveTopologyType() const;
+
+        D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopology() const { return m_PrimitiveTopology; }
+        const std::vector<D3D12_INPUT_ELEMENT_DESC>& GetLayout() const { return m_Layout; }
+        size_t GetHash() const { return m_Hash; }
+
+    private:
+        D3D12_PRIMITIVE_TOPOLOGY m_PrimitiveTopology;
+        std::vector<D3D12_INPUT_ELEMENT_DESC> m_Layout;
+        size_t m_Hash;
+    };
+
+    class GfxOutputDesc final
+    {
+    public:
+        GfxOutputDesc();
+
+        void MarkDirty();
+        size_t GetHash() const;
+
+        bool IsDirty() const { return m_IsDirty; }
+
+    public:
         std::vector<DXGI_FORMAT> RTVFormats;
         DXGI_FORMAT DSVFormat;
 
@@ -45,16 +83,21 @@ namespace march
 
         bool Wireframe;
 
-        static size_t CalculateHash(const PipelineStateDesc& desc);
+    private:
+        mutable bool m_IsDirty;
+        mutable size_t m_Hash;
     };
 
-    class GfxPipelineState
-    {
-    public:
-        static constexpr int32_t GetInvalidInputDescId() { return -1; }
-        static int32_t CreateInputDesc(const std::vector<PipelineInputElement>& inputLayout, D3D12_PRIMITIVE_TOPOLOGY primitiveTopology);
-        static D3D12_PRIMITIVE_TOPOLOGY GetInputDescPrimitiveTopology(int32_t inputDescId);
+    struct ShaderPassRenderState;
+    class Material;
 
-        static ID3D12PipelineState* GetGraphicsState(Material* material, int32_t passIndex, int32_t inputDescId, const PipelineStateDesc& stateDesc, size_t stateDescHash);
+    struct GfxPipelineState final
+    {
+        static size_t ResolveShaderPassRenderState(ShaderPassRenderState& state,
+            const std::function<bool(int32_t, int32_t*)>& intResolver,
+            const std::function<bool(int32_t, float*)>& floatResolver);
+
+        static ID3D12PipelineState* GetGraphicsPSO(Material* material, int32_t passIndex,
+            const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc);
     };
 }

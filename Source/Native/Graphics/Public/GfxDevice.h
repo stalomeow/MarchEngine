@@ -5,6 +5,8 @@
 #include <wrl.h>
 #include <memory>
 #include <queue>
+#include <string>
+#include <exception>
 #include <stdint.h>
 #include <Windows.h>
 
@@ -68,6 +70,8 @@ namespace march
         GfxDescriptorTable AllocateTransientDescriptorTable(GfxDescriptorTableType type, uint32_t descriptorCount);
         GfxDescriptorTable GetStaticDescriptorTable(GfxDescriptorTableType type);
 
+        uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
+
         void LogAdapters(DXGI_FORMAT format);
 
     protected:
@@ -93,13 +97,35 @@ namespace march
         std::queue<std::pair<uint64_t, ID3D12Object*>> m_ReleaseQueue;
     };
 
-    class GfxUtility
+    class GfxException : public std::exception
     {
     public:
-        static void ReportLiveObjects();
+        explicit GfxException(const std::string& message);
+
+        char const* what() const override;
+
+    private:
+        std::string m_Message;
+    };
+
+    class GfxHResultException : public std::exception
+    {
+    public:
+        GfxHResultException(HRESULT hr, const std::string& expr, const std::string& filename, int line);
+
+        char const* what() const override;
+
+    private:
+        std::string m_Message;
     };
 
     GfxDevice* GetGfxDevice();
     void InitGfxDevice(const GfxDeviceDesc& desc);
     void DestroyGfxDevice();
+}
+
+#define GFX_HR(x) \
+{ \
+    HRESULT ___hr___ = (x); \
+    if (FAILED(___hr___)) { throw ::march::GfxHResultException(___hr___, #x, __FILE__, __LINE__); } \
 }

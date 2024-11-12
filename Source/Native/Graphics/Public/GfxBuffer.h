@@ -52,7 +52,7 @@ namespace march
 
         void CreateView(uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor) const;
 
-        static const uint32_t Alignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+        static constexpr uint32_t Alignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
         static uint32_t GetAlignedSize(uint32_t size);
     };
 

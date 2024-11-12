@@ -1,9 +1,9 @@
-#include "PathHelper.h"
-#include "StringUtility.h"
+#include "PathUtils.h"
+#include "StringUtils.h"
 #include <Windows.h>
 #include <algorithm>
 
-namespace march::PathHelper
+namespace march::PathUtils
 {
     std::wstring GetWorkingDirectoryUtf16(PathStyle style)
     {
@@ -27,6 +27,6 @@ namespace march::PathHelper
 
     std::string GetWorkingDirectoryUtf8(PathStyle style)
     {
-        return StringUtility::Utf16ToUtf8(GetWorkingDirectoryUtf16(style));
+        return StringUtils::Utf16ToUtf8(GetWorkingDirectoryUtf16(style));
     }
 }

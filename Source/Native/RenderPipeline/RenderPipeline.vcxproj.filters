@@ -21,9 +21,6 @@
     <ClInclude Include="Public\Camera.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Display.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\RenderGraph.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -54,9 +51,6 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Camera.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Display.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Camera.binding.cpp">

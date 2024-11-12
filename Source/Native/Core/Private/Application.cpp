@@ -1,6 +1,6 @@
 #include "Application.h"
 #include "EngineTimer.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include <WindowsX.h>
 #include <stdexcept>
 #include <assert.h>
@@ -58,7 +58,7 @@ namespace march
 
     void Application::SetWindowTitle(const std::string& title) const
     {
-        std::wstring wTitle = StringUtility::Utf8ToUtf16(title);
+        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
         SetWindowTextW(m_WindowHandle, wTitle.c_str());
     }
 
@@ -164,7 +164,7 @@ namespace march
 
         for (int i = 0; i < numArgs; i++)
         {
-            results[i] = StringUtility::Utf16ToUtf8(args[i], static_cast<int32_t>(wcslen(args[i])));
+            results[i] = StringUtils::Utf16ToUtf8(args[i], static_cast<int32_t>(wcslen(args[i])));
         }
 
         LocalFree(args);
@@ -220,11 +220,11 @@ namespace march
 
     std::string Application::SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const
     {
-        std::wstring wBasePathWinStyle = StringUtility::Utf8ToUtf16(GetDataPath());
+        std::wstring wBasePathWinStyle = StringUtils::Utf8ToUtf16(GetDataPath());
         if (!path.empty())
         {
             wBasePathWinStyle += L'\\';
-            wBasePathWinStyle += StringUtility::Utf8ToUtf16(path);
+            wBasePathWinStyle += StringUtils::Utf8ToUtf16(path);
 
             if (wBasePathWinStyle.back() == L'\\' || wBasePathWinStyle.back() == L'/')
             {
@@ -233,7 +233,7 @@ namespace march
         }
         std::replace(wBasePathWinStyle.begin(), wBasePathWinStyle.end(), L'/', L'\\');
 
-        std::wstring wExtension = StringUtility::Utf8ToUtf16(extension);
+        std::wstring wExtension = StringUtils::Utf8ToUtf16(extension);
 
         std::vector<wchar_t> filter{};
         filter.insert(filter.end(), wExtension.begin(), wExtension.end());
@@ -249,10 +249,10 @@ namespace march
         filter.push_back(L'\0');
         filter.push_back(L'\0');
 
-        std::wstring fileNameBuffer = StringUtility::Utf8ToUtf16(defaultName);
+        std::wstring fileNameBuffer = StringUtils::Utf8ToUtf16(defaultName);
         fileNameBuffer.resize(MAX_PATH);
 
-        std::wstring wTitle = StringUtility::Utf8ToUtf16(title);
+        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
 
         OPENFILENAMEW ofn = {};
         ofn.lStructSize = sizeof(ofn);
@@ -267,7 +267,7 @@ namespace march
 
         if (GetSaveFileNameW(&ofn) && fileNameBuffer.find(wBasePathWinStyle) != std::wstring::npos)
         {
-            std::string result = StringUtility::Utf16ToUtf8(fileNameBuffer.c_str()); // 使用 c_str 忽略 buffer 后面大量 '\0'
+            std::string result = StringUtils::Utf16ToUtf8(fileNameBuffer.c_str()); // 使用 c_str 忽略 buffer 后面大量 '\0'
             std::replace(result.begin(), result.end(), '\\', '/');
             return result.substr(GetDataPath().size() + 1); // 返回相对 Data 目录的路径
         }
@@ -277,7 +277,7 @@ namespace march
 
     void Application::ShowErrorMessageBox(const std::string& message)
     {
-        std::wstring wMessage = StringUtility::Utf8ToUtf16(message);
+        std::wstring wMessage = StringUtils::Utf8ToUtf16(message);
         MessageBoxW(NULL, wMessage.c_str(), L"Error", MB_OK);
     }
 

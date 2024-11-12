@@ -1,5 +1,5 @@
 #include "Gizmos.h"
-#include "GfxHelpers.h"
+#include "GfxUtils.h"
 #include "GfxPipelineState.h"
 #include "RenderGraph.h"
 #include "Debug.h"
@@ -29,20 +29,11 @@ namespace march
         constexpr Vertex(const XMFLOAT3& positionWS, const XMFLOAT4& color) : PositionWS(positionWS), Color(color) {}
     };
 
-    static int32_t g_PipelineInputDescId = GfxPipelineState::GetInvalidInputDescId();
-
-    static int32_t GetPipelineInputDescId()
-    {
-        if (g_PipelineInputDescId == GfxPipelineState::GetInvalidInputDescId())
+    static GfxInputDesc g_InputDesc(D3D_PRIMITIVE_TOPOLOGY_LINELIST,
         {
-            std::vector<PipelineInputElement> inputs{};
-            inputs.emplace_back(PipelineInputSematicName::Position, 0, DXGI_FORMAT_R32G32B32_FLOAT);
-            inputs.emplace_back(PipelineInputSematicName::Color, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
-            g_PipelineInputDescId = GfxPipelineState::CreateInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_LINELIST);
-        }
-
-        return g_PipelineInputDescId;
-    }
+            GfxInputElement(GfxSemantic::Position, DXGI_FORMAT_R32G32B32_FLOAT),
+            GfxInputElement(GfxSemantic::Color, DXGI_FORMAT_R32G32B32A32_FLOAT),
+        });
 
     // Gizmos 由一组 LineList 构成
     static std::vector<Vertex> g_LineListVertices{};
@@ -167,7 +158,7 @@ namespace march
             return XMFLOAT4(1, 1, 1, 1);
         }
 
-        return GfxHelpers::GetShaderColor(g_ColorStack.back());
+        return GfxUtils::GetShaderColor(g_ColorStack.back());
     }
 
     static ImU32 GetCurrentImGuiColor()
@@ -396,7 +387,7 @@ namespace march
                 }
 
                 MeshDesc& meshDesc = meshes.emplace_back();
-                meshDesc.InputDescId = GetPipelineInputDescId();
+                meshDesc.InputDesc = &g_InputDesc;
                 meshDesc.VertexBufferView = context.CreateTransientVertexBuffer(vertexCount, sizeof(Vertex), alignof(Vertex), g_LineListVertices.data() + vertexOffset);
                 meshDesc.IndexBufferView = context.CreateTransientIndexBuffer(vertexCount, indices.data());
                 vertexOffset = vertexEnd;

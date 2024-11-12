@@ -5,7 +5,7 @@
 #include "AssetManger.h"
 #include "Material.h"
 #include "Shader.h"
-#include "GfxHelpers.h"
+#include "GfxUtils.h"
 #include <vector>
 #include <memory>
 #include <stdint.h>
@@ -82,6 +82,7 @@ namespace march
         void ResolveMSAA(int32_t id, int32_t resolvedId);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId);
+        void DrawShadowCasters(int32_t targetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
         void PrepareTextureForImGui(int32_t id);

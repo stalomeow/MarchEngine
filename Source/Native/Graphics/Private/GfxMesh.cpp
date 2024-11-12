@@ -1,6 +1,6 @@
 #include "GfxMesh.h"
 #include "GfxDevice.h"
-#include "GfxCommandList.h"
+#include "GfxCommand.h"
 #include "GfxPipelineState.h"
 #include "DotNetRuntime.h"
 #include <Windows.h>
@@ -9,27 +9,13 @@ using namespace DirectX;
 
 namespace march
 {
-    static int32_t g_PipelineInputDescId = GfxPipelineState::GetInvalidInputDescId();
-
-    int32_t GfxMesh::GetPipelineInputDescId()
-    {
-        if (g_PipelineInputDescId == GfxPipelineState::GetInvalidInputDescId())
+    static GfxInputDesc g_InputDesc(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
         {
-            std::vector<PipelineInputElement> inputs{};
-            inputs.emplace_back(PipelineInputSematicName::Position, 0, DXGI_FORMAT_R32G32B32_FLOAT);
-            inputs.emplace_back(PipelineInputSematicName::Normal, 0, DXGI_FORMAT_R32G32B32_FLOAT);
-            inputs.emplace_back(PipelineInputSematicName::Tangent, 0, DXGI_FORMAT_R32G32B32A32_FLOAT);
-            inputs.emplace_back(PipelineInputSematicName::TexCoord, 0, DXGI_FORMAT_R32G32_FLOAT);
-            g_PipelineInputDescId = GfxPipelineState::CreateInputDesc(inputs, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        }
-
-        return g_PipelineInputDescId;
-    }
-
-    D3D12_PRIMITIVE_TOPOLOGY GfxMesh::GetPrimitiveTopology()
-    {
-        return GfxPipelineState::GetInputDescPrimitiveTopology(GetPipelineInputDescId());
-    }
+            GfxInputElement(GfxSemantic::Position, DXGI_FORMAT_R32G32B32_FLOAT),
+            GfxInputElement(GfxSemantic::Normal, DXGI_FORMAT_R32G32B32_FLOAT),
+            GfxInputElement(GfxSemantic::Tangent, DXGI_FORMAT_R32G32B32A32_FLOAT),
+            GfxInputElement(GfxSemantic::TexCoord0, DXGI_FORMAT_R32G32_FLOAT),
+        });
 
     GfxMesh* GfxMesh::GetGeometry(GfxMeshGeometry geometry)
     {
@@ -83,6 +69,11 @@ namespace march
         UpdateSubresources(cmdList->GetD3D12CommandList(), dest->GetD3D12Resource(),
             m.GetD3D12Resource(), static_cast<UINT64>(m.GetD3D12ResourceOffset(0)), 0, 1, &subResData);
         cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_GENERIC_READ);
+    }
+
+    const GfxInputDesc& GfxMesh::GetInputDesc()
+    {
+        return g_InputDesc;
     }
 
     void GfxMesh::GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv)

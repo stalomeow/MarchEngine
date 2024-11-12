@@ -1,7 +1,6 @@
 #include "Shader.h"
 #include "GfxDevice.h"
-#include "GfxExcept.h"
-#include "HashHelper.h"
+#include "HashUtils.h"
 #include "Debug.h"
 
 using namespace Microsoft::WRL;
@@ -114,7 +113,7 @@ namespace march
             throw GfxException("Invalid root signature data size");
         }
 
-        size_t hash = HashHelper::FNV1(static_cast<uint32_t*>(bufferPointer), bufferSize / 4);
+        size_t hash = HashUtils::FNV1(static_cast<uint32_t*>(bufferPointer), bufferSize / 4);
         ComPtr<ID3D12RootSignature>& result = g_RootSignatures[hash];
 
         if (result == nullptr)

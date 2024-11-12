@@ -1,6 +1,6 @@
 #include "EditorGUI.h"
 #include "GfxDevice.h"
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include "GfxTexture.h"
 #include <utility>
 #include <imgui_stdlib.h>

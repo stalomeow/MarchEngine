@@ -3,7 +3,7 @@
 #include "Application.h"
 #include <directx/d3dx12.h>
 #include "RenderPipeline.h"
-#include "GfxDescriptorHeap.h"
+#include "GfxDescriptor.h"
 #include <vector>
 #include <wrl.h>
 #include <memory>

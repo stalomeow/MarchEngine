@@ -10,7 +10,7 @@ namespace march
         Windows,
     };
 
-    namespace PathHelper
+    namespace PathUtils
     {
         // 路径最后没有斜杠
         std::wstring GetWorkingDirectoryUtf16(PathStyle style = PathStyle::Windows);

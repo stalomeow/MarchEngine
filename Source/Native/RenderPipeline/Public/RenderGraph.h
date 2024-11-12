@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GfxTexture.h"
-#include "GfxHelpers.h"
+#include "GfxUtils.h"
 #include "RenderGraphResource.h"
 #include "RenderGraphContext.h"
 #include <directx/d3d12.h>
@@ -171,7 +171,7 @@ namespace march
         void SetColorTarget(int32_t id, bool load);
         void SetColorTarget(int32_t id, int32_t index = 0, bool load = true);
         void SetDepthStencilTarget(int32_t id, bool load = true);
-        void ClearRenderTargets(ClearFlags flags = ClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxHelpers::GetFarClipPlaneDepth(), uint8_t stencil = 0);
+        void ClearRenderTargets(ClearFlags flags = ClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
         void SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
         void SetScissorRect(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
         void SetWireframe(bool value);

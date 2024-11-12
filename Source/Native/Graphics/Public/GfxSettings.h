@@ -10,7 +10,7 @@ namespace march
 
     struct GfxSettings final
     {
-        static constexpr bool UseReversedZBuffer() { return true; }
-        static constexpr GfxColorSpace GetColorSpace() { return GfxColorSpace::Linear; }
+        static constexpr bool UseReversedZBuffer = true;
+        static constexpr GfxColorSpace ColorSpace = GfxColorSpace::Linear;
     };
 }

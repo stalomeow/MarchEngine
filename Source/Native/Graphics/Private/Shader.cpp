@@ -1,8 +1,8 @@
 #include "Shader.h"
 #include "Debug.h"
-#include "GfxExcept.h"
+#include "GfxDevice.h"
 #include "GfxTexture.h"
-#include "PathHelper.h"
+#include "PathUtils.h"
 
 using namespace DirectX;
 
@@ -130,7 +130,7 @@ namespace march
         return ENGINE_SHADER_UNIX_PATH;
 #endif
 
-        return PathHelper::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
+        return PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
     }
 
     static std::unordered_map<std::string, int32_t> s_NameIdMap{};

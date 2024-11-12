@@ -1,7 +1,7 @@
 #include "Shader.h"
 #include "InteropServices.h"
 #include "Debug.h"
-#include "GfxExcept.h"
+#include "GfxDevice.h"
 #include <exception>
 
 struct CSharpShaderConstantBuffer

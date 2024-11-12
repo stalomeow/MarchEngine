@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace march::HashHelper
+namespace march::HashUtils
 {
     // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Hash.h
 

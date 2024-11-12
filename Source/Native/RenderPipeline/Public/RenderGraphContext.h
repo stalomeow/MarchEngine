@@ -37,7 +37,7 @@ namespace march
 
     struct MeshDesc
     {
-        int32_t InputDescId;
+        const GfxInputDesc* InputDesc;
         D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
         D3D12_INDEX_BUFFER_VIEW IndexBufferView;
     };
@@ -95,7 +95,7 @@ namespace march
         D3D12_VIEWPORT GetDefaultViewport() const;
         D3D12_RECT GetDefaultScissorRect() const;
 
-        ID3D12PipelineState* GetPipelineState(Material* material, int32_t passIndex, int32_t inputDescId);
+        ID3D12PipelineState* GetPipelineState(Material* material, int32_t passIndex, const GfxInputDesc& inputDesc);
         void SetPipelineStateAndRootSignature(ID3D12PipelineState* pso, ShaderPass* pass, Material* material);
         void BindResources(Material* material, int32_t shaderPassIndex, D3D12_GPU_VIRTUAL_ADDRESS perObjectConstantBufferAddress);
 
@@ -107,9 +107,7 @@ namespace march
         D3D12_VIEWPORT m_Viewport;
         D3D12_RECT m_ScissorRect;
 
-        PipelineStateDesc m_StateDesc;
-        size_t m_StateDescHash;
-        bool m_IsStateDescDirty;
+        GfxOutputDesc m_OutputDesc;
 
         ID3D12PipelineState* m_CurrentPipelineState;
         ID3D12RootSignature* m_CurrentRootSignature;

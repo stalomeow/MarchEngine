@@ -2,7 +2,7 @@
 
 #include "DotNetTypeTraits.h"
 #include "DotNetMarshal.h"
-#include "StringUtility.h"
+#include "StringUtils.h"
 #include "Debug.h"
 #include <DirectXMath.h>
 #include <stdint.h>
@@ -17,4 +17,4 @@ namespace march
 
 using namespace DirectX;
 using namespace march;
-using namespace march::StringUtility;
+using namespace march::StringUtils;

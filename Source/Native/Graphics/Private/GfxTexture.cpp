@@ -1,10 +1,9 @@
 #include "GfxTexture.h"
 #include "GfxDevice.h"
 #include "GfxBuffer.h"
-#include "GfxCommandList.h"
-#include "GfxExcept.h"
+#include "GfxCommand.h"
 #include "GfxSettings.h"
-#include "GfxHelpers.h"
+#include "GfxUtils.h"
 #include <stdexcept>
 #include <DirectXColors.h>
 
@@ -245,7 +244,7 @@ namespace march
         // it will force the resource format to not have the _*_SRGB version.
         CREATETEX_FLAGS createFlags;
 
-        if constexpr (GfxSettings::GetColorSpace() == GfxColorSpace::Linear)
+        if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Linear)
         {
             createFlags = m_IsSRGB ? CREATETEX_FORCE_SRGB : CREATETEX_IGNORE_SRGB;
         }
@@ -292,7 +291,7 @@ namespace march
         if (IsDepthStencilFormat(desc.Format))
         {
             clearValue.Format = desc.Format;
-            clearValue.DepthStencil.Depth = GfxHelpers::GetFarClipPlaneDepth();
+            clearValue.DepthStencil.Depth = GfxUtils::FarClipPlaneDepth;
             clearValue.DepthStencil.Stencil = 0;
 
             resourceFormat = GetDepthStencilResFormat(desc.Format);
@@ -482,7 +481,7 @@ namespace march
         // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
         // SwapChain 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
         D3D12_RENDER_TARGET_VIEW_DESC desc = {};
-        desc.Format = GfxHelpers::GetShaderColorTextureFormat(resource->GetDesc().Format);
+        desc.Format = GfxUtils::GetShaderColorTextureFormat(resource->GetDesc().Format);
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
         ID3D12Device4* d3d12Device = device->GetD3D12Device();
@@ -492,7 +491,7 @@ namespace march
     DXGI_FORMAT GfxRenderTextureSwapChain::GetFormat() const
     {
         D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
-        return GfxHelpers::GetShaderColorTextureFormat(desc.Format);
+        return GfxUtils::GetShaderColorTextureFormat(desc.Format);
     }
 
     GfxRenderTextureDesc GfxRenderTextureSwapChain::GetDesc() const
@@ -500,7 +499,7 @@ namespace march
         D3D12_RESOURCE_DESC desc = m_Resource->GetDesc();
 
         GfxRenderTextureDesc result = {};
-        result.Format = GfxHelpers::GetShaderColorTextureFormat(desc.Format);
+        result.Format = GfxUtils::GetShaderColorTextureFormat(desc.Format);
         result.Width = static_cast<uint32_t>(desc.Width);
         result.Height = static_cast<uint32_t>(desc.Height);
         result.SampleCount = static_cast<uint32_t>(desc.SampleDesc.Count);

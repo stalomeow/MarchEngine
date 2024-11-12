@@ -130,6 +130,6 @@ namespace march
 
     void Log::Message(LogLevel level, const std::wstring& message, std::vector<LogStackFrame>&& stackTrace)
     {
-        Message(level, StringUtility::Utf16ToUtf8(message), std::move(stackTrace));
+        Message(level, StringUtils::Utf16ToUtf8(message), std::move(stackTrace));
     }
 }
