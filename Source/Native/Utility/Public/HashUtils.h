@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <assert.h>
 
 namespace march::HashUtils
 {
@@ -16,10 +17,19 @@ namespace march::HashUtils
         return Hash;
     }
 
+    constexpr size_t DefaultHash = 2166136261U;
+
     template <typename T>
-    inline size_t FNV1(const T* Object, size_t Count = 1, size_t Hash = 2166136261U)
+    inline size_t FNV1(const T* Object, size_t Count = 1, size_t Hash = DefaultHash)
     {
         static_assert((sizeof(T) & 3) == 0 && alignof(T) >= 4, "Object is not word-aligned");
+        return FNV1Range(reinterpret_cast<const uint32_t*>(Object), reinterpret_cast<const uint32_t*>(Object + Count), Hash);
+    }
+
+    template <>
+    inline size_t FNV1<uint8_t>(const uint8_t* Object, size_t Count, size_t Hash)
+    {
+        assert((Count & 3) == 0); // Count must be a multiple of 4
         return FNV1Range(reinterpret_cast<const uint32_t*>(Object), reinterpret_cast<const uint32_t*>(Object + Count), Hash);
     }
 }

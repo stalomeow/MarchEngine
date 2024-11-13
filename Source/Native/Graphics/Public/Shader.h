@@ -20,29 +20,25 @@ namespace march
     class ShaderKeywordSet;
     class ShaderKeywordSpace;
 
-    struct GfxPipelineState;
-
     class ShaderKeywordSet
     {
-        friend ::std::hash<ShaderKeywordSet>;
-        friend GfxPipelineState;
-
     public:
+        using data_t = std::bitset<128>;
+
         ShaderKeywordSet();
 
         size_t GetEnabledKeywordCount() const;
         size_t GetMatchingKeywordCount(const ShaderKeywordSet& other) const;
         std::vector<std::string> GetEnabledKeywords(const ShaderKeywordSpace& space) const;
+        const data_t& GetData() const { return m_Keywords; }
 
         void SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value);
         void EnableKeyword(const ShaderKeywordSpace& space, const std::string& keyword);
         void DisableKeyword(const ShaderKeywordSpace& space, const std::string& keyword);
         void Clear();
 
-        bool operator ==(const ShaderKeywordSet& other) const;
-
     private:
-        std::bitset<128> m_Keywords;
+        data_t m_Keywords;
     };
 
     class ShaderKeywordSpace
@@ -70,23 +66,7 @@ namespace march
         std::unordered_map<std::string, uint8_t> m_KeywordIndexMap;
         uint8_t m_NextIndex; // 目前最多支持 128 个 Keyword
     };
-}
 
-namespace std
-{
-    template<>
-    struct hash<march::ShaderKeywordSet>
-    {
-        size_t operator ()(const march::ShaderKeywordSet& set) const
-        {
-            using t = decltype(set.m_Keywords);
-            return hash<t>()(set.m_Keywords);
-        }
-    };
-}
-
-namespace march
-{
     enum class CullMode
     {
         Off = 0,
@@ -194,6 +174,7 @@ namespace march
 
     public:
         using hash_t = uint8_t[16];
+        static constexpr int32_t NumTypes = static_cast<int32_t>(ShaderProgramType::NumTypes);
 
         ShaderProgram();
 
@@ -319,6 +300,7 @@ namespace march
         ShaderPassStencilState StencilState;
     };
 
+    struct GfxPipelineState;
     struct ShaderCompilationContext;
 
     class ShaderPass
@@ -334,7 +316,7 @@ namespace march
         const std::string& GetName() const;
         const std::unordered_map<std::string, std::string>& GetTags() const;
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
-        ShaderProgram* GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords) const;
+        ShaderProgram* GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords);
         ShaderProgram* GetProgram(ShaderProgramType type, int32_t index) const;
         int32_t GetProgramCount(ShaderProgramType type) const;
         const ShaderPassRenderState& GetRenderState() const;
@@ -342,6 +324,13 @@ namespace march
         ID3D12RootSignature* GetRootSignature(const ShaderKeywordSet& keywords);
 
     private:
+        struct ProgramMatch
+        {
+            int32_t Indices[ShaderProgram::NumTypes]; // -1 表示 nullptr
+            size_t Hash;
+        };
+
+        const ProgramMatch& GetProgramMatch(const ShaderKeywordSet& keywords);
         bool CompileRecursive(ShaderCompilationContext& context);
         bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
 
@@ -349,10 +338,11 @@ namespace march
         std::string m_Name;
         std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
-        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[static_cast<int32_t>(ShaderProgramType::NumTypes)];
+        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[ShaderProgram::NumTypes];
         ShaderPassRenderState m_RenderState;
 
-        std::unordered_map<ShaderKeywordSet, Microsoft::WRL::ComPtr<ID3D12RootSignature>> m_RootSignatures;
+        std::unordered_map<ShaderKeywordSet::data_t, ProgramMatch> m_ProgramMatches;
+        std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12RootSignature>> m_RootSignatures;
         std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_PipelineStates;
     };
 

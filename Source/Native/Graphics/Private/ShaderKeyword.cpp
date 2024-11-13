@@ -55,11 +55,6 @@ namespace march
         m_Keywords.reset();
     }
 
-    bool ShaderKeywordSet::operator ==(const ShaderKeywordSet& other) const
-    {
-        return m_Keywords == other.m_Keywords;
-    }
-
     ShaderKeywordSpace::ShaderKeywordSpace() : m_KeywordIndexMap{}, m_NextIndex(0)
     {
     }

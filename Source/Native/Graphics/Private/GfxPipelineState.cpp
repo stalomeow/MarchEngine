@@ -216,7 +216,7 @@ namespace march
         return hash;
     }
 
-    static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, const ShaderPass* pass, ShaderProgramType type, const ShaderKeywordSet& keywords)
+    static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, ShaderPass* pass, ShaderProgramType type, const ShaderKeywordSet& keywords)
     {
         ShaderProgram* program = pass->GetProgram(type, keywords);
 
@@ -259,23 +259,6 @@ namespace march
         }
     }
 
-    template<size_t Bits>
-    static size_t HashBitset(const std::bitset<Bits>& b, size_t hash)
-    {
-        using word_type = decltype(b._Getword(0));
-
-        constexpr size_t bitsPerWord = sizeof(word_type) * CHAR_BIT;
-        constexpr size_t wordCount = (Bits == 0) ? 0 : (Bits - 1) / bitsPerWord + 1;
-
-        for (size_t i = 0; i < wordCount; i++)
-        {
-            word_type word = b._Getword(i);
-            hash = HashUtils::FNV1(&word, 1, hash);
-        }
-
-        return hash;
-    }
-
     ID3D12PipelineState* GfxPipelineState::GetGraphicsPSO(Material* material, int32_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc)
     {
         Shader* shader = material->GetShader();
@@ -289,7 +272,8 @@ namespace march
 
         size_t hash = 0;
         const ShaderPassRenderState& rs = material->GetResolvedRenderState(passIndex, &hash);
-        hash = HashBitset(keywords.m_Keywords, hash);
+        size_t programsHash = pass->GetProgramMatch(keywords).Hash;
+        hash = HashUtils::FNV1(&programsHash, 1, hash);
         size_t inputDescHash = inputDesc.GetHash();
         hash = HashUtils::FNV1(&inputDescHash, 1, hash);
         size_t outputDescHash = outputDesc.GetHash();

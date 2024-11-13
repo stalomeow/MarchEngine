@@ -3,6 +3,7 @@
 #include "GfxSettings.h"
 #include "GfxUtils.h"
 #include "StringUtils.h"
+#include "HashUtils.h"
 #include <algorithm>
 #include <regex>
 #include <sstream>
@@ -79,41 +80,64 @@ namespace march
         return a > b ? a - b : b - a;
     }
 
-    ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords) const
+    const ShaderPass::ProgramMatch& ShaderPass::GetProgramMatch(const ShaderKeywordSet& keywords)
     {
-        const std::vector<std::unique_ptr<ShaderProgram>>& programs = m_Programs[static_cast<int32_t>(type)];
+        auto [it, isNew] = m_ProgramMatches.try_emplace(keywords.GetData());
 
-        ShaderProgram* result = nullptr;
-        size_t minDiff = std::numeric_limits<size_t>::max();
-        size_t targetKeywordCount = keywords.GetEnabledKeywordCount();
-
-        for (const std::unique_ptr<ShaderProgram>& program : programs)
+        if (isNew)
         {
-            const ShaderKeywordSet& ks = program->GetKeywords();
-            size_t matchingCount = ks.GetMatchingKeywordCount(keywords);
-            size_t enabledCount = ks.GetEnabledKeywordCount();
+            ProgramMatch& m = it->second;
+            m.Hash = HashUtils::DefaultHash;
 
-            // 没 match 的数量 + 多余的数量
-            size_t diff = absdiff(targetKeywordCount, matchingCount) + absdiff(enabledCount, matchingCount);
+            size_t targetKeywordCount = keywords.GetEnabledKeywordCount();
 
-            if (diff < minDiff)
+            for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
             {
-                result = program.get();
-                minDiff = diff;
+                size_t minDiff = std::numeric_limits<size_t>::max();
+                m.Indices[i] = -1;
+
+                for (size_t j = 0; j < m_Programs[i].size(); j++)
+                {
+                    const ShaderKeywordSet& ks = m_Programs[i][j]->GetKeywords();
+                    size_t matchingCount = ks.GetMatchingKeywordCount(keywords);
+                    size_t enabledCount = ks.GetEnabledKeywordCount();
+
+                    // 没 match 的数量 + 多余的数量
+                    size_t diff = absdiff(targetKeywordCount, matchingCount) + absdiff(enabledCount, matchingCount);
+
+                    if (diff < minDiff)
+                    {
+                        minDiff = diff;
+                        m.Indices[i] = static_cast<int32_t>(j);
+                    }
+                }
+
+                if (m.Indices[i] != -1)
+                {
+                    ShaderProgram* program = m_Programs[i][m.Indices[i]].get();
+                    m.Hash = HashUtils::FNV1(program->GetHash(), std::size(program->GetHash()), m.Hash);
+                }
             }
         }
 
-        return result;
+        return it->second;
+    }
+
+    ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords)
+    {
+        int32_t typeIndex = static_cast<int32_t>(type);
+        int32_t programIndex = GetProgramMatch(keywords).Indices[typeIndex];
+        return programIndex == -1 ? nullptr : m_Programs[typeIndex][static_cast<size_t>(programIndex)].get();
     }
 
     ShaderProgram* ShaderPass::GetProgram(ShaderProgramType type, int32_t index) const
     {
-        return m_Programs[static_cast<size_t>(type)][static_cast<size_t>(index)].get();
+        return m_Programs[static_cast<int32_t>(type)][static_cast<size_t>(index)].get();
     }
 
     int32_t ShaderPass::GetProgramCount(ShaderProgramType type) const
     {
-        return static_cast<int32_t>(m_Programs[static_cast<size_t>(type)].size());
+        return static_cast<int32_t>(m_Programs[static_cast<int32_t>(type)].size());
     }
 
     static ComPtr<IDxcUtils> g_Utils = nullptr;
@@ -168,7 +192,7 @@ namespace march
     {
         std::string ShaderModel;
         bool EnableDebugInfo;
-        std::string Entrypoints[static_cast<int32_t>(ShaderProgramType::NumTypes)];
+        std::string Entrypoints[ShaderProgram::NumTypes];
         std::vector<std::vector<std::string>> MultiCompile;
         ShaderKeywordSpace KeywordSpace; // 编译时使用的临时 KeywordSpace
 
@@ -259,7 +283,7 @@ namespace march
         std::wstring IncludePath;
         DxcBuffer Source;
 
-        std::unordered_set<ShaderKeywordSet> CompiledKeywordSets;
+        std::unordered_set<ShaderKeywordSet::data_t> CompiledKeywordSets;
         std::vector<std::string> Keywords;
         std::vector<std::string>& Warnings;
         std::string& Error;
@@ -293,7 +317,7 @@ namespace march
         }
 
         // 如果已经编译过了，就不再编译
-        return context.CompiledKeywordSets.insert(keywordSet).second;
+        return context.CompiledKeywordSets.insert(keywordSet.GetData()).second;
     }
 
     bool ShaderPass::CompileRecursive(ShaderCompilationContext& context)
@@ -324,7 +348,7 @@ namespace march
 
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
-        for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
+        for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
         {
             if (context.Config.Entrypoints[i].empty())
             {

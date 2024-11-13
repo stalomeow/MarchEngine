@@ -11,6 +11,24 @@ Shader "BlinnPhong"
         _CullMode("Cull Mode", Int) = 2
     }
 
+    HLSLINCLUDE
+    #include "Includes/Common.hlsl"
+
+    Texture2D _DiffuseMap;
+    SAMPLER(_DiffuseMap);
+    Texture2D _BumpMap;
+    SAMPLER(_BumpMap);
+
+    cbuffer cbMaterial
+    {
+        float4 _DiffuseAlbedo;
+        float3 _FresnelR0;
+        float _Roughness;
+        float _DitherAlpha;
+        float _Cutoff;
+    };
+    ENDHLSL
+
     Pass
     {
         Name "GBuffer"
@@ -45,22 +63,7 @@ Shader "BlinnPhong"
 
         #pragma multi_compile _ _ALPHATEST_ON
 
-        #include "Includes/Common.hlsl"
         #include "Includes/GBuffer.hlsl"
-
-        Texture2D _DiffuseMap;
-        SAMPLER(_DiffuseMap);
-        Texture2D _BumpMap;
-        SAMPLER(_BumpMap);
-
-        cbuffer cbMaterial
-        {
-            float4 _DiffuseAlbedo;
-            float3 _FresnelR0;
-            float _Roughness;
-            float _DitherAlpha;
-            float _Cutoff;
-        };
 
         struct Attributes
         {
@@ -106,7 +109,7 @@ Shader "BlinnPhong"
             float3 bumpedNomalWS = normalize(mul(normalTS, float3x3(T, B, N))); // float3x3() 是行主序矩阵
 
             GBufferData data;
-            data.albedo = (diffuse * _DiffuseAlbedo).xyz;
+            data.albedo = (diffuse * _DiffuseAlbedo).rgb;
             data.shininess = 1 - _Roughness;
             data.normalWS = bumpedNomalWS;
             data.depth = input.positionCS.z;
@@ -133,17 +136,20 @@ Shader "BlinnPhong"
         HLSLPROGRAM
         #pragma target 6.0
         #pragma vs vert
+        #pragma ps frag
 
-        #include "Includes/Common.hlsl"
+        #pragma multi_compile _ _ALPHATEST_ON
 
         struct Attributes
         {
             float3 positionOS : POSITION;
+            float2 uv : TEXCOORD0;
         };
 
         struct Varyings
         {
             float4 positionCS : SV_Position;
+            float2 uv : TEXCOORD0;
         };
 
         Varyings vert(Attributes input)
@@ -152,7 +158,17 @@ Shader "BlinnPhong"
 
             Varyings output;
             output.positionCS = TransformWorldToHClip(positionWS);
+            output.uv = input.uv;
             return output;
+        }
+
+        void frag(Varyings input)
+        {
+            float4 diffuse = _DiffuseMap.Sample(sampler_DiffuseMap, input.uv);
+
+            #ifdef _ALPHATEST_ON
+                clip(diffuse.a - _Cutoff);
+            #endif
         }
         ENDHLSL
     }

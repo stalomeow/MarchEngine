@@ -19,6 +19,7 @@
 #include "RenderGraph.h"
 #include "GfxUtils.h"
 #include "Gizmos.h"
+#include <DirectXCollision.h>
 
 using namespace DirectX;
 
@@ -236,25 +237,31 @@ namespace march
 
     void RenderPipeline::DrawShadowCasters(int32_t targetId)
     {
-        if (m_Lights.empty())
+        if (m_Lights.empty() || m_RenderObjects.empty())
         {
             return;
         }
 
-        float radius = 30.0f; // test
+        BoundingBox aabb = m_RenderObjects[0]->GetBounds();
+
+        BoundingSphere sphere = {};
+        BoundingSphere::CreateFromBoundingBox(sphere, aabb);
+
         XMVECTOR forward = m_Lights[0]->GetTransform()->LoadForward();
         XMVECTOR up = m_Lights[0]->GetTransform()->LoadUp();
-        XMVECTOR pos = m_Lights[0]->GetTransform()->LoadPosition();
 
-        XMFLOAT3 pos3 = {};
-        XMStoreFloat3(&pos3, pos);
+        XMVECTOR eyePos = XMLoadFloat3(&sphere.Center);
+        eyePos = XMVectorSubtract(eyePos, XMVectorScale(forward, sphere.Radius + 1));
+
+        XMFLOAT3 pos = {};
+        XMStoreFloat3(&pos, eyePos);
 
         XMFLOAT4X4 view = {};
-        XMStoreFloat4x4(&view, XMMatrixLookToLH(pos, forward, up));
+        XMStoreFloat4x4(&view, XMMatrixLookToLH(eyePos, forward, up));
 
         XMFLOAT4X4 proj = {};
-        XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(radius * 2, radius * 2, 100, 0.01f));
-        SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", pos3, view, proj);
+        XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(sphere.Radius * 2, sphere.Radius * 2, sphere.Radius * 2 + 1.0f, 1.0f));
+        SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", pos, view, proj);
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 

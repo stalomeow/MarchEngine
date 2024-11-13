@@ -133,7 +133,9 @@ namespace march
 
     ID3D12RootSignature* ShaderPass::GetRootSignature(const ShaderKeywordSet& keywords)
     {
-        if (auto it = m_RootSignatures.find(keywords); it != m_RootSignatures.end())
+        const ShaderPass::ProgramMatch& m = GetProgramMatch(keywords);
+
+        if (auto it = m_RootSignatures.find(m.Hash); it != m_RootSignatures.end())
         {
             return it->second.Get();
         }
@@ -143,15 +145,14 @@ namespace march
         std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges;
         std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
 
-        for (int32_t i = 0; i < static_cast<int32_t>(ShaderProgramType::NumTypes); i++)
+        for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
         {
-            ShaderProgram* program = GetProgram(static_cast<ShaderProgramType>(i), keywords);
-
-            if (program == nullptr)
+            if (m.Indices[i] == -1)
             {
                 continue;
             }
 
+            ShaderProgram* program = m_Programs[i][static_cast<size_t>(m.Indices[i])].get();
             size_t srvUavStartIndex = srvUavRanges.size();
             size_t samplerStartIndex = samplerRanges.size();
             D3D12_SHADER_VISIBILITY visibility = GetShaderVisibility(static_cast<ShaderProgramType>(i));
@@ -215,7 +216,7 @@ namespace march
         GFX_HR(hr);
 
         ID3D12RootSignature* result = CreateRootSignature(serializedData.Get());
-        m_RootSignatures[keywords] = result;
+        m_RootSignatures[m.Hash] = result;
         return result;
     }
 

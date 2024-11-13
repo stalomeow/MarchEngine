@@ -38,6 +38,7 @@ namespace march
         , m_PropertyLocations{}
         , m_Programs{}
         , m_RenderState{}
+        , m_ProgramMatches{}
         , m_RootSignatures{}
         , m_PipelineStates{}
     {
