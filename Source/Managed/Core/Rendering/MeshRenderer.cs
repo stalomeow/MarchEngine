@@ -3,16 +3,17 @@ using Newtonsoft.Json;
 
 namespace March.Core.Rendering
 {
+    [NativeTypeName("RenderObject")]
     public partial class MeshRenderer : Component
     {
         private Mesh? m_Mesh;
         private List<Material?> m_Materials = [];
 
-        public MeshRenderer() : base(RenderObject_New()) { }
+        public MeshRenderer() : base(New()) { }
 
         protected override void DisposeNative()
         {
-            RenderObject_Delete(NativePtr);
+            Delete();
             base.DisposeNative();
         }
 
@@ -23,7 +24,7 @@ namespace March.Core.Rendering
             set
             {
                 m_Mesh = value;
-                RenderObject_SetMesh(NativePtr, value?.NativePtr ?? nint.Zero);
+                SetMesh(value?.NativePtr ?? nint.Zero);
             }
         }
 
@@ -50,31 +51,25 @@ namespace March.Core.Rendering
                 materials[i] = m_Materials[i]?.NativePtr ?? nint.Zero;
             }
 
-            RenderObject_SetMaterials(NativePtr, materials.Data);
+            SetMaterials(materials.Data);
         }
 
         /// <summary>
         /// 获取世界空间 Bounds
         /// </summary>
-        public Bounds bounds => RenderObject_GetBounds(NativePtr);
+        [NativeProperty("Bounds")]
+        public partial Bounds bounds { get; }
 
-        #region Bindings
+        [NativeMethod]
+        private static partial nint New();
 
-        [NativeFunction]
-        private static partial nint RenderObject_New();
+        [NativeMethod]
+        private partial void Delete();
 
-        [NativeFunction]
-        private static partial void RenderObject_Delete(nint self);
+        [NativeMethod]
+        private partial void SetMesh(nint value);
 
-        [NativeFunction]
-        private static partial void RenderObject_SetMesh(nint self, nint value);
-
-        [NativeFunction]
-        private static partial void RenderObject_SetMaterials(nint self, nint materials);
-
-        [NativeFunction]
-        private static partial Bounds RenderObject_GetBounds(nint self);
-
-        #endregion
+        [NativeMethod]
+        private partial void SetMaterials(nint materials);
     }
 }

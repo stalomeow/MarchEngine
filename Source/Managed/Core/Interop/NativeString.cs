@@ -90,19 +90,19 @@ namespace March.Core.Interop
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint MarshalString(char* p, int len);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void UnmarshalString(nint s, byte** ppOutData, int* pOutLen);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SetStringData(nint s, int offset, char* p, int count);
 
-        [NativeFunction(Name = "NewString")]
+        [NativeMethod(Name = "NewString")]
         public static partial nint New(int length);
 
-        [NativeFunction(Name = "FreeString")]
+        [NativeMethod(Name = "FreeString")]
         public static partial void Free(nint s);
 
         #endregion

@@ -676,178 +676,178 @@ namespace March.Editor
 
         #region Native
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_PrefixLabel(nint label, nint tooltip);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_IntField(nint label, nint tooltip, int* v, float speed, int minValue, int maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_FloatField(nint label, nint tooltip, float* v, float speed, float minValue, float maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Vector2Field(nint label, nint tooltip, Vector2* v, float speed, float minValue, float maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Vector3Field(nint label, nint tooltip, Vector3* v, float speed, float minValue, float maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Vector4Field(nint label, nint tooltip, Vector4* v, float speed, float minValue, float maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_ColorField(nint label, nint tooltip, Color* v);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_FloatSliderField(nint label, nint tooltip, float* v, float minValue, float maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_CollapsingHeader(nint label, bool defaultOpen);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Combo(nint label, nint tooltip, int* currentItem, nint itemsSeparatedByZeros);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_CenterButton(nint label, float width);
 
-        [NativeFunction(Name = "EditorGUI_Space")]
+        [NativeMethod(Name = "EditorGUI_Space")]
         public static partial void Space();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_SeparatorText(nint label);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_TextField(nint label, nint tooltip, nint text, nint* outNewText, nint charBlacklist);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Checkbox(nint label, nint tooltip, bool* v);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_BeginDisabled(bool disabled);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_EndDisabled();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_LabelField(nint label1, nint tooltip, nint label2);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_PushIDString(nint id);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_PushIDInt(int id);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_PopID();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Foldout(nint label, nint tooltip, bool defaultOpen);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_FoldoutClosable(nint label, nint tooltip, bool* pVisible);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_Indent(uint count);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_Unindent(uint count);
 
-        [NativeFunction(Name = "EditorGUI_SameLine")]
+        [NativeMethod(Name = "EditorGUI_SameLine")]
         public static partial void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector2 EditorGUI_GetContentRegionAvail();
 
-        [NativeFunction(Name = "EditorGUI_SetNextItemWidth")]
+        [NativeMethod(Name = "EditorGUI_SetNextItemWidth")]
         public static partial void SetNextItemWidth(float width);
 
-        [NativeFunction(Name = "EditorGUI_Separator")]
+        [NativeMethod(Name = "EditorGUI_Separator")]
         public static partial void Separator();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_BeginPopup(nint id);
 
         /// <summary>
         /// only call EndPopup() if BeginPopupXXX() returns true!
         /// </summary>
-        [NativeFunction(Name = "EditorGUI_EndPopup")]
+        [NativeMethod(Name = "EditorGUI_EndPopup")]
         internal static partial void EndPopup();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_MenuItem(nint label, bool selected, bool enabled);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_BeginMenu(nint label, bool enabled);
 
         /// <summary>
         /// only call EndMenu() if BeginMenu() returns true!
         /// </summary>
-        [NativeFunction(Name = "EditorGUI_EndMenu")]
+        [NativeMethod(Name = "EditorGUI_EndMenu")]
         internal static partial void EndMenu();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_OpenPopup(nint id);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_FloatRangeField(nint label, nint tooltip, float* currentMin, float* currentMax, float speed, float minValue, float maxValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_BeginTreeNode(nint label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
 
         /// <summary>
         /// only call EndTreeNode() if BeginTreeNode() returns true!
         /// </summary>
-        [NativeFunction(Name = "EditorGUI_EndTreeNode")]
+        [NativeMethod(Name = "EditorGUI_EndTreeNode")]
         public static partial void EndTreeNode();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_IsTreeNodeOpen(nint id, bool defaultValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial ItemClickResult EditorGUI_IsItemClicked(int button, ItemClickOptions options);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_IsWindowClicked(int button, bool ignorePopup);
 
-        [NativeFunction(Name = "EditorGUI_BeginPopupContextWindow")]
+        [NativeMethod(Name = "EditorGUI_BeginPopupContextWindow")]
         internal static partial bool BeginPopupContextWindow();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_BeginPopupContextItem(nint id);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_DrawTexture(nint texture);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorGUI_Button(nint label);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_BeginGroup();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_EndGroup();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float EditorGUI_CalcButtonWidth(nint label);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector2 EditorGUI_GetItemSpacing();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float EditorGUI_GetCursorPosX();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorGUI_SetCursorPosX(float localX);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float EditorGUI_GetCollapsingHeaderOuterExtend();
 
-        [NativeFunction(Name = "EditorGUI_BeginMainMenuBar")]
+        [NativeMethod(Name = "EditorGUI_BeginMainMenuBar")]
         public static partial bool BeginMainMenuBar();
 
         /// <summary>
         /// only call EndMainMenuBar() if BeginMainMenuBar() returns true!
         /// </summary>
-        [NativeFunction(Name = "EditorGUI_EndMainMenuBar")]
+        [NativeMethod(Name = "EditorGUI_EndMainMenuBar")]
         public static partial void EndMainMenuBar();
 
         #endregion

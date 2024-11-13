@@ -15,10 +15,10 @@ namespace March.Editor.Windows
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint RenderGraphDebuggerWindow_New();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void RenderGraphDebuggerWindow_Delete(nint w);
 
         #endregion

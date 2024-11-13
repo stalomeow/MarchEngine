@@ -1,5 +1,5 @@
-using March.Core.Interop;
 using March.Core.IconFont;
+using March.Core.Interop;
 using March.Core.Serialization;
 using Newtonsoft.Json;
 using System.Numerics;
@@ -15,45 +15,33 @@ namespace March.Core.Rendering
 
     public partial class Light : Component
     {
-        public Light() : base(Light_New()) { }
+        public Light() : base(New()) { }
 
         protected override void DisposeNative()
         {
-            Light_Delete(NativePtr);
+            Delete();
             base.DisposeNative();
         }
 
         [JsonProperty]
         [Tooltip("The type of light.")]
-        public LightType Type
-        {
-            get => Light_GetType(NativePtr);
-            set => Light_SetType(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial LightType Type { get; set; }
 
         [JsonProperty]
-        public Color Color
-        {
-            get => Light_GetColor(NativePtr);
-            set => Light_SetColor(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Color Color { get; set; }
 
         [JsonProperty]
         [Tooltip("The range of the light's falloff.")]
         [Vector2Drawer(XNotGreaterThanY = true, Min = 0.1f)]
-        public Vector2 FalloffRange
-        {
-            get => Light_GetFalloffRange(NativePtr);
-            set => Light_SetFalloffRange(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Vector2 FalloffRange { get; set; }
 
         [JsonProperty]
         [FloatDrawer(Min = 0.1f)]
-        public float SpotPower
-        {
-            get => Light_GetSpotPower(NativePtr);
-            set => Light_SetSpotPower(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial float SpotPower { get; set; }
 
         protected override void OnDrawGizmos(bool isSelected)
         {
@@ -151,38 +139,10 @@ namespace March.Core.Rendering
             }
         }
 
-        #region Bindings
+        [NativeMethod]
+        private static partial nint New();
 
-        [NativeFunction]
-        private static partial nint Light_New();
-
-        [NativeFunction]
-        private static partial void Light_Delete(nint self);
-
-        [NativeFunction]
-        private static partial LightType Light_GetType(nint self);
-
-        [NativeFunction]
-        private static partial void Light_SetType(nint self, LightType value);
-
-        [NativeFunction]
-        private static partial Color Light_GetColor(nint self);
-
-        [NativeFunction]
-        private static partial void Light_SetColor(nint self, Color value);
-
-        [NativeFunction]
-        private static partial Vector2 Light_GetFalloffRange(nint self);
-
-        [NativeFunction]
-        private static partial void Light_SetFalloffRange(nint self, Vector2 value);
-
-        [NativeFunction]
-        private static partial float Light_GetSpotPower(nint self);
-
-        [NativeFunction]
-        private static partial void Light_SetSpotPower(nint self, float value);
-
-        #endregion
+        [NativeMethod]
+        private partial void Delete();
     }
 }

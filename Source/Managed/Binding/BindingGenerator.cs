@@ -1,9 +1,6 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace March.Binding
@@ -11,8 +8,6 @@ namespace March.Binding
     [Generator]
     public class BindingGenerator : ISourceGenerator
     {
-        private const string NativeFuncAttrName = "March.Core.Interop.NativeFunctionAttribute";
-
         public void Initialize(GeneratorInitializationContext context)
         {
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
@@ -25,192 +20,276 @@ namespace March.Binding
                 return;
             }
 
-            INamedTypeSymbol attrSymbol = context.Compilation.GetTypeByMetadataName(NativeFuncAttrName);
-
-            if (attrSymbol == null)
+            foreach (KeyValuePair<INamedTypeSymbol, MemberSymbolGroup> kv in receiver.Symbols)
             {
-                return;
-            }
-
-            foreach (var group in receiver.Methods.GroupBy<IMethodSymbol, INamedTypeSymbol>(f => f.ContainingType, SymbolEqualityComparer.Default))
-            {
-                string classSource = ProcessClass(context, attrSymbol, group.Key, group);
-                context.AddSource($"{group.Key.Name}.binding.cs", SourceText.From(classSource, Encoding.UTF8));
+                string source = ProcessType(context, kv.Key, kv.Value);
+                context.AddSource($"{kv.Key.Name}.binding.cs", SourceText.From(source, Encoding.UTF8));
             }
         }
 
-        private string ProcessClass(GeneratorExecutionContext context, INamedTypeSymbol attrSymbol, INamedTypeSymbol classSymbol, IEnumerable<IMethodSymbol> methods)
+        private string ProcessType(GeneratorExecutionContext context, INamedTypeSymbol typeSymbol, MemberSymbolGroup members)
         {
-            if (!classSymbol.ContainingSymbol.Equals(classSymbol.ContainingNamespace, SymbolEqualityComparer.Default))
+            CodeBuilder builder = new CodeBuilder(context.Compilation);
+
+            // Begin Namespace
+            if (typeSymbol.ContainingNamespace != null)
             {
-                return null; //TODO: issue a diagnostic that it must be top level
+                builder.AppendLine($"namespace {typeSymbol.ContainingNamespace.ToDisplayString()}");
+                builder.AppendLine("{");
+                builder.IndentLevel++;
             }
 
-            StringBuilder source = new StringBuilder();
-            source.Append($@"
-namespace {classSymbol.ContainingNamespace.ToDisplayString()}
-{{
-    unsafe partial {(classSymbol.IsReferenceType ? "class" : "struct")} {classSymbol.Name}");
+            // Begin Type
+            builder.AppendLine($"unsafe partial {(typeSymbol.IsReferenceType ? "class" : "struct")} {typeSymbol.Name}");
+            builder.AppendLine("{");
+            builder.IndentLevel++;
 
-            // 不再支持泛型
-            //if (classSymbol.TypeParameters.Length > 0)
-            //{
-            //    source.Append("<");
-            //    for (int i = 0; i < classSymbol.TypeParameters.Length; i++)
-            //    {
-            //        if (i > 0)
-            //        {
-            //            source.Append(", ");
-            //        }
+            string nativeTypeName = GetNativeTypeName(typeSymbol, builder.TypeNameAttributeSymbol);
 
-            //        source.Append(classSymbol.TypeParameters[i].Name);
-            //    }
-            //    source.Append(">");
-            //}
-
-            source.AppendLine("\n    {");
-
-            var paramWrapperTypes = new Dictionary<string, string>();
-
-            foreach (IMethodSymbol methodSymbol in methods)
+            foreach (IMethodSymbol methodSymbol in members.Methods)
             {
-                ProcessMethod(source, paramWrapperTypes, methodSymbol, attrSymbol);
+                ProcessMethod(builder, nativeTypeName, methodSymbol);
             }
 
-            GenerateParameterWrappers(source, paramWrapperTypes);
-            source.Append("} }");
-            return source.ToString();
+            foreach (IPropertySymbol propSymbol in members.Properties)
+            {
+                ProcessProperty(builder, nativeTypeName, propSymbol);
+            }
+
+            builder.AppendParameterWrapperTypes();
+
+            // End Type
+            builder.IndentLevel--;
+            builder.AppendLine("}");
+
+            // End Namespace
+            if (typeSymbol.ContainingNamespace != null)
+            {
+                builder.IndentLevel--;
+                builder.AppendLine("}");
+            }
+
+            return builder.ToString();
         }
 
-        private static SymbolDisplayFormat FullyQualifiedFormatIncludeGlobal { get; } =
-            SymbolDisplayFormat.FullyQualifiedFormat.WithGlobalNamespaceStyle(SymbolDisplayGlobalNamespaceStyle.Included);
-
-        private static string FullQualifiedNameIncludeGlobal(ITypeSymbol symbol)
+        private static string GetNativeTypeName(INamedTypeSymbol typeSymbol, INamedTypeSymbol attrSymbol)
         {
-            return symbol.ToDisplayString(NullableFlowState.NotNull, FullyQualifiedFormatIncludeGlobal);
-        }
+            AttributeData data = typeSymbol.GetAttributeData(attrSymbol);
 
-        private void ProcessMethod(StringBuilder source, Dictionary<string, string> paramWrapperTypes, IMethodSymbol methodSymbol, INamedTypeSymbol attrSymbol)
-        {
-            if (!methodSymbol.IsPartialDefinition || !methodSymbol.IsStatic || methodSymbol.IsAsync || methodSymbol.IsGenericMethod)
+            if (data != null && !data.ConstructorArguments.IsEmpty && !data.ConstructorArguments[0].IsNull)
             {
-                return; // TODO: issue a diagnostic that it must be static
+                return data.ConstructorArguments[0].Value.ToString();
             }
 
+            return typeSymbol.Name;
+        }
+
+        private static string GetNativeMethodOrPropertyName(ISymbol symbol, INamedTypeSymbol attrSymbol, out string thisName)
+        {
+            thisName = "NativePtr";
+            string memberName = symbol.Name;
+
+            AttributeData data = symbol.GetAttributeData(attrSymbol);
+
+            if (!data.ConstructorArguments.IsEmpty && !data.ConstructorArguments[0].IsNull)
+            {
+                memberName = data.ConstructorArguments[0].Value.ToString();
+            }
+
+            foreach (KeyValuePair<string, TypedConstant> arg in data.NamedArguments)
+            {
+                if (arg.Key == "This" && !arg.Value.IsNull)
+                {
+                    thisName = arg.Value.Value.ToString();
+                }
+            }
+
+            return memberName;
+        }
+
+        private static void AppendEntryPointInitializer(CodeBuilder builder, string fieldType, string fieldName, string entryPointName)
+        {
+            builder.AppendLine($"if ({fieldName} == null)");
+            builder.AppendLine("{");
+            builder.IndentLevel++;
+
+            builder.AppendLine("nint hModule = global::System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();");
+
+            builder.AppendLine($"if (!global::System.Runtime.InteropServices.NativeLibrary.TryGetExport(hModule, \"{entryPointName}\", out nint addr))");
+            builder.AppendLine("{");
+            builder.IndentLevel++;
+            builder.AppendLine("throw new global::System.EntryPointNotFoundException();");
+            builder.IndentLevel--;
+            builder.AppendLine("}");
+
+            builder.AppendLine($"{fieldName} = ({fieldType})addr;");
+
+            builder.IndentLevel--;
+            builder.AppendLine("}");
+        }
+
+        private void ProcessMethod(CodeBuilder builder, string nativeTypeName, IMethodSymbol methodSymbol)
+        {
+            string nativeName = GetNativeMethodOrPropertyName(methodSymbol, builder.MethodAttributeSymbol, out string thisName);
             string fieldName = $"__{methodSymbol.Name}_FunctionPointer";
-            string entryPointName = methodSymbol.Name;
+            string entryPointName = $"{nativeTypeName}_{nativeName}";
 
-            AttributeData attrData = methodSymbol.GetAttributes().First(a => a.AttributeClass.Equals(attrSymbol, SymbolEqualityComparer.Default));
-            foreach (KeyValuePair<string, TypedConstant> arg in attrData.NamedArguments)
+            string retType = methodSymbol.ReturnType.GetFullQualifiedNameIncludeGlobal();
+            var paramTypeSpaceNames = new List<string>();
+            var argNames = new List<string>();
+            var fieldTypeArgs = new List<string>();
+
+            if (!methodSymbol.IsStatic)
             {
-                if (arg.Key == "Name" && !arg.Value.IsNull)
-                {
-                    entryPointName = arg.Value.Value.ToString();
-                }
+                // Add this pointer
+                argNames.Add(thisName);
+                fieldTypeArgs.Add(builder.GetThisParameterWrapperTypeName());
             }
-
-            source.AppendLine();
-            source.AppendLine("        [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]");
-            source.AppendLine($"        private static nint {fieldName};");
-
-            source.AppendLine();
-            source.Append($"        {SyntaxFacts.GetText(methodSymbol.DeclaredAccessibility)} static partial {FullQualifiedNameIncludeGlobal(methodSymbol.ReturnType)} {methodSymbol.Name}(");
 
             for (int i = 0; i < methodSymbol.Parameters.Length; i++)
             {
-                if (i > 0)
-                {
-                    source.Append(", ");
-                }
-
                 IParameterSymbol parameter = methodSymbol.Parameters[i];
-                source.Append($"{FullQualifiedNameIncludeGlobal(parameter.Type)} {parameter.Name}");
+
+                paramTypeSpaceNames.Add($"{parameter.Type.GetFullQualifiedNameIncludeGlobal()} {parameter.Name}");
+                argNames.Add(parameter.Name);
+                fieldTypeArgs.Add(builder.GetParameterWrapperTypeName(parameter.Type));
             }
 
-            source.AppendLine(")");
-            source.AppendLine("        {");
+            fieldTypeArgs.Add(retType);
+            string fieldType = $"delegate* unmanaged[Stdcall]<{string.Join(", ", fieldTypeArgs)}>";
 
-            source.AppendLine($"            if ({fieldName} == nint.Zero)");
-            source.AppendLine($"            {{");
-            source.AppendLine($"                nint hModule = global::System.Runtime.InteropServices.NativeLibrary.GetMainProgramHandle();");
-            source.AppendLine($"                if (!global::System.Runtime.InteropServices.NativeLibrary.TryGetExport(hModule, \"{entryPointName}\", out {fieldName}))");
-            source.AppendLine($"                {{");
-            source.AppendLine($"                    throw new global::System.EntryPointNotFoundException();");
-            source.AppendLine($"                }}");
-            source.AppendLine($"            }}");
+            builder.AppendLineEditorBrowsableNever();
+            builder.AppendLine($"private static {fieldType} {fieldName};");
 
-            source.Append("            ");
+            builder.AppendLine();
+            builder.AppendLine($"{methodSymbol.GetAccessibilityAsText()}{(methodSymbol.IsStatic ? " static" : string.Empty)} partial {retType} {methodSymbol.Name}({string.Join(", ", paramTypeSpaceNames)})");
+            builder.AppendLine("{");
+            builder.IndentLevel++;
 
-            if (!methodSymbol.ReturnsVoid)
+            AppendEntryPointInitializer(builder, fieldType, fieldName, entryPointName);
+
+            if (methodSymbol.ReturnsVoid)
             {
-                source.Append("return ");
+                builder.AppendLine($"{fieldName}({string.Join(", ", argNames)});");
             }
-
-            source.Append($"((");
-
-            source.Append("delegate* unmanaged[Stdcall]<");
-
-            foreach (IParameterSymbol parameter in methodSymbol.Parameters)
+            else
             {
-                string paramType = FullQualifiedNameIncludeGlobal(parameter.Type);
-
-                if (!paramWrapperTypes.TryGetValue(paramType, out string wrapperType))
-                {
-                    wrapperType = $"__ParameterType{paramWrapperTypes.Count}_Wrapper";
-                    paramWrapperTypes.Add(paramType, wrapperType);
-                }
-
-                source.Append($"{wrapperType}, ");
+                builder.AppendLine($"return {fieldName}({string.Join(", ", argNames)});");
             }
 
-            source.Append($"{FullQualifiedNameIncludeGlobal(methodSymbol.ReturnType)}>){fieldName})(");
-
-            for (int i = 0; i < methodSymbol.Parameters.Length; i++)
-            {
-                if (i > 0)
-                {
-                    source.Append(", ");
-                }
-
-                source.Append(methodSymbol.Parameters[i].Name);
-            }
-
-            source.AppendLine(");");
-            source.AppendLine("        }");
+            builder.IndentLevel--;
+            builder.AppendLine("}");
+            builder.AppendLine();
         }
 
-        private void GenerateParameterWrappers(StringBuilder source, Dictionary<string, string> types)
+        private void ProcessProperty(CodeBuilder builder, string nativeTypeName, IPropertySymbol propSymbol)
         {
-            foreach (KeyValuePair<string, string> type in types)
-            {
-                source.AppendLine($"    [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]");
-                source.AppendLine($"    [global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]");
-                source.AppendLine($"    private unsafe ref struct {type.Value}");
-                source.AppendLine($"    {{");
-                source.AppendLine($"        public {type.Key} Data;");
-                source.AppendLine($"        public static implicit operator {type.Value}({type.Key} value) => new {type.Value} {{ Data = value }};");
-                source.AppendLine($"    }}");
-                source.AppendLine();
-            }
-        }
+            string nativeName = GetNativeMethodOrPropertyName(propSymbol, builder.PropertyAttributeSymbol, out string thisName);
+            string fieldNameGet = $"__{propSymbol.Name}_Getter_FunctionPointer";
+            string fieldNameSet = $"__{propSymbol.Name}_Setter_FunctionPointer";
+            string entryPointNameGet = $"{nativeTypeName}_Get{nativeName}";
+            string entryPointNameSet = $"{nativeTypeName}_Set{nativeName}";
+            string fieldTypeGet = null;
+            string fieldTypeSet = null;
+            string propType = propSymbol.Type.GetFullQualifiedNameIncludeGlobal();
 
-        internal class SyntaxReceiver : ISyntaxContextReceiver
-        {
-            public List<IMethodSymbol> Methods { get; } = new List<IMethodSymbol>();
-
-            public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
+            if (propSymbol.GetMethod != null)
             {
-                if (!(context.Node is MethodDeclarationSyntax methodDeclarationSyntax))
+                if (propSymbol.IsStatic)
                 {
-                    return;
+                    fieldTypeGet = $"delegate* unmanaged[Stdcall]<{propType}>";
+                }
+                else
+                {
+                    fieldTypeGet = $"delegate* unmanaged[Stdcall]<{builder.GetThisParameterWrapperTypeName()}, {propType}>";
                 }
 
-                var methodSymbol = context.SemanticModel.GetDeclaredSymbol(methodDeclarationSyntax) as IMethodSymbol;
-                if (methodSymbol.GetAttributes().Any(a => a.AttributeClass.ToDisplayString() == NativeFuncAttrName))
-                {
-                    Methods.Add(methodSymbol);
-                }
+                builder.AppendLineEditorBrowsableNever();
+                builder.AppendLine($"private static {fieldTypeGet} {fieldNameGet};");
             }
+
+            if (propSymbol.SetMethod != null)
+            {
+                if (propSymbol.IsStatic)
+                {
+                    fieldTypeSet = $"delegate* unmanaged[Stdcall]<{builder.GetParameterWrapperTypeName(propSymbol.Type)}, void>";
+                }
+                else
+                {
+                    fieldTypeSet = $"delegate* unmanaged[Stdcall]<{builder.GetThisParameterWrapperTypeName()}, {builder.GetParameterWrapperTypeName(propSymbol.Type)}, void>";
+                }
+
+                builder.AppendLineEditorBrowsableNever();
+                builder.AppendLine($"private static {fieldTypeSet} {fieldNameSet};");
+            }
+
+            builder.AppendLine();
+
+            builder.AppendLine($"{propSymbol.GetAccessibilityAsText()}{(propSymbol.IsStatic ? " static" : string.Empty)} partial {propType} {propSymbol.Name}");
+            builder.AppendLine("{");
+            builder.IndentLevel++;
+
+            if (propSymbol.GetMethod != null)
+            {
+                if (propSymbol.GetMethod.DeclaredAccessibility != propSymbol.DeclaredAccessibility)
+                {
+                    builder.AppendLine($"{propSymbol.GetMethod.GetAccessibilityAsText()} get");
+                }
+                else
+                {
+                    builder.AppendLine("get");
+                }
+
+                builder.AppendLine("{");
+                builder.IndentLevel++;
+
+                AppendEntryPointInitializer(builder, fieldTypeGet, fieldNameGet, entryPointNameGet);
+
+                if (propSymbol.IsStatic)
+                {
+                    builder.AppendLine($"return {fieldNameGet}();");
+                }
+                else
+                {
+                    builder.AppendLine($"return {fieldNameGet}({thisName});");
+                }
+
+                builder.IndentLevel--;
+                builder.AppendLine("}");
+            }
+
+            if (propSymbol.SetMethod != null)
+            {
+                if (propSymbol.SetMethod.DeclaredAccessibility != propSymbol.DeclaredAccessibility)
+                {
+                    builder.AppendLine($"{propSymbol.SetMethod.GetAccessibilityAsText()} set");
+                }
+                else
+                {
+                    builder.AppendLine("set");
+                }
+
+                builder.AppendLine("{");
+                builder.IndentLevel++;
+
+                AppendEntryPointInitializer(builder, fieldTypeSet, fieldNameSet, entryPointNameSet);
+
+                if (propSymbol.IsStatic)
+                {
+                    builder.AppendLine($"{fieldNameSet}(value);");
+                }
+                else
+                {
+                    builder.AppendLine($"{fieldNameSet}({thisName}, value);");
+                }
+
+                builder.IndentLevel--;
+                builder.AppendLine("}");
+            }
+
+            builder.IndentLevel--;
+            builder.AppendLine("}");
+            builder.AppendLine();
         }
     }
 }

@@ -370,73 +370,73 @@ namespace March.Core.Rendering
 
         #region Native
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_New();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_Delete(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_Reset(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetShader(nint pMaterial, nint pShader);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetInt(nint pMaterial, nint name, int value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetFloat(nint pMaterial, nint name, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetVector(nint pMaterial, nint name, Vector4 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetColor(nint pMaterial, nint name, Color value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetTexture(nint pMaterial, nint name, nint pTexture);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Material_GetInt(nint pMaterial, nint name, int* outValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Material_GetFloat(nint pMaterial, nint name, float* outValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Material_GetVector(nint pMaterial, nint name, Vector4* outValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Material_GetColor(nint pMaterial, nint name, Color* outValue);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Material_HasTextureProperty(nint pMaterial, nint name);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_GetAllInts(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_GetAllFloats(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_GetAllVectors(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_GetAllColors(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_GetAllTextures(nint pMaterial);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_EnableKeyword(nint pMaterial, nint keyword);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_DisableKeyword(nint pMaterial, nint keyword);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Material_SetKeyword(nint pMaterial, nint keyword, bool value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Material_GetAllKeywords(nint pMaterial);
 
         #endregion

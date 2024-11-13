@@ -26,28 +26,27 @@ namespace March.Core.Rendering
         public uint IndexCount;
     }
 
+    [NativeTypeName("GfxMesh")]
     public partial class Mesh : NativeMarchObject
     {
-        public Mesh() : base(GfxMesh_New()) { }
+        public Mesh() : base(New()) { }
 
         protected override void Dispose(bool disposing)
         {
-            GfxMesh_Delete(NativePtr);
+            Delete();
         }
 
-        public int SubMeshCount => GfxMesh_GetSubMeshCount(NativePtr);
+        [NativeProperty]
+        public partial int SubMeshCount { get; }
 
-        public SubMesh GetSubMesh(int index)
-        {
-            return GfxMesh_GetSubMesh(NativePtr, index);
-        }
+        [NativeMethod]
+        public partial SubMesh GetSubMesh(int index);
 
-        public void ClearSubMeshes()
-        {
-            GfxMesh_ClearSubMeshes(NativePtr);
-        }
+        [NativeMethod]
+        public partial void ClearSubMeshes();
 
-        public Bounds bounds => GfxMesh_GetBounds(NativePtr);
+        [NativeProperty("Bounds")]
+        public partial Bounds bounds { get; private set; }
 
         public void AddSubMesh(List<MeshVertex> vertices, List<ushort> indices)
         {
@@ -59,26 +58,20 @@ namespace March.Core.Rendering
             using NativeArray<MeshVertex> v = vertices;
             using NativeArray<ushort> i = indices;
 
-            GfxMesh_AddSubMesh(NativePtr, v.Data, i.Data);
+            AddSubMesh(v.Data, i.Data);
         }
 
-        public void RecalculateNormals()
-        {
-            GfxMesh_RecalculateNormals(NativePtr);
-        }
+        [NativeMethod]
+        public partial void RecalculateNormals();
 
         /// <summary>
         /// 注意：计算 Tangent 需要使用 Normal
         /// </summary>
-        public void RecalculateTangents()
-        {
-            GfxMesh_RecalculateTangents(NativePtr);
-        }
+        [NativeMethod]
+        public partial void RecalculateTangents();
 
-        public void RecalculateBounds()
-        {
-            GfxMesh_RecalculateBounds(NativePtr);
-        }
+        [NativeMethod]
+        public partial void RecalculateBounds();
 
         #region Serialization
 
@@ -90,9 +83,9 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var subMeshes = (NativeArray<SubMesh>)GfxMesh_GetSubMeshes(NativePtr);
-                using var vertices = (NativeArray<MeshVertex>)GfxMesh_GetVertices(NativePtr);
-                using var indices = (NativeArray<ushort>)GfxMesh_GetIndices(NativePtr);
+                using var subMeshes = (NativeArray<SubMesh>)SubMeshes;
+                using var vertices = (NativeArray<MeshVertex>)Vertices;
+                using var indices = (NativeArray<ushort>)Indices;
 
                 using var ms = new MemoryStream();
                 using var writer = new BinaryWriter(ms);
@@ -132,7 +125,7 @@ namespace March.Core.Rendering
             {
                 using var reader = new BinaryReader(new MemoryStream(value, writable: false));
 
-                GfxMesh_SetBounds(NativePtr, reader.ReadBounds());
+                bounds = reader.ReadBounds();
 
                 using var subMeshes = new NativeArray<SubMesh>(reader.ReadInt32());
                 using var vertices = new NativeArray<MeshVertex>(reader.ReadInt32());
@@ -160,9 +153,9 @@ namespace March.Core.Rendering
                     indices[i] = reader.ReadUInt16();
                 }
 
-                GfxMesh_SetSubMeshes(NativePtr, subMeshes.Data);
-                GfxMesh_SetVertices(NativePtr, vertices.Data);
-                GfxMesh_SetIndices(NativePtr, indices.Data);
+                SubMeshes = subMeshes.Data;
+                Vertices = vertices.Data;
+                Indices = indices.Data;
             }
         }
 
@@ -170,56 +163,23 @@ namespace March.Core.Rendering
 
         #region Bindings
 
-        [NativeFunction]
-        private static partial nint GfxMesh_New();
+        [NativeProperty]
+        private nint SubMeshes { get; set; }
 
-        [NativeFunction]
-        private static partial void GfxMesh_Delete(nint self);
+        [NativeProperty]
+        private nint Vertices { get; set; }
 
-        [NativeFunction]
-        private static partial int GfxMesh_GetSubMeshCount(nint self);
+        [NativeProperty]
+        private nint Indices { get; set; }
 
-        [NativeFunction]
-        private static partial SubMesh GfxMesh_GetSubMesh(nint self, int index);
+        [NativeMethod]
+        private static partial nint New();
 
-        [NativeFunction]
-        private static partial nint GfxMesh_GetSubMeshes(nint self);
+        [NativeMethod]
+        private partial void Delete();
 
-        [NativeFunction]
-        private static partial void GfxMesh_SetSubMeshes(nint self, nint subMeshes);
-
-        [NativeFunction]
-        private static partial void GfxMesh_ClearSubMeshes(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_RecalculateNormals(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_RecalculateTangents(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_AddSubMesh(nint self, nint vertices, nint indices);
-
-        [NativeFunction]
-        private static partial nint GfxMesh_GetVertices(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_SetVertices(nint self, nint vertices);
-
-        [NativeFunction]
-        private static partial nint GfxMesh_GetIndices(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_SetIndices(nint self, nint indices);
-
-        [NativeFunction]
-        private static partial void GfxMesh_RecalculateBounds(nint self);
-
-        [NativeFunction]
-        private static partial Bounds GfxMesh_GetBounds(nint self);
-
-        [NativeFunction]
-        private static partial void GfxMesh_SetBounds(nint self, Bounds bounds);
+        [NativeMethod]
+        private partial void AddSubMesh(nint vertices, nint indices);
 
         #endregion
     }

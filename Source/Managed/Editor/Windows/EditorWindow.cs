@@ -161,49 +161,49 @@ namespace March.Editor.Windows
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint EditorWindow_CreateDefault();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_DeleteDefault(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint EditorWindow_GetTitle(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_SetTitle(nint w, nint title);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint EditorWindow_GetId(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_SetId(nint w, nint id);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector2 EditorWindow_GetDefaultSize(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_SetDefaultSize(nint w, Vector2 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorWindow_GetIsOpen(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_SetIsOpen(nint w, bool value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool EditorWindow_Begin(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_End(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_OnOpen(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_OnClose(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void EditorWindow_OnDraw(nint w);
 
         #endregion

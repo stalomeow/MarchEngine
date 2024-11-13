@@ -15,10 +15,10 @@ namespace March.Editor.Windows
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint DescriptorHeapDebuggerWindow_New();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void DescriptorHeapDebuggerWindow_Delete(nint w);
 
         #endregion

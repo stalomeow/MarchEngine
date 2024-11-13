@@ -11,13 +11,16 @@ namespace March.Core.Diagnostics
 {
     public static unsafe partial class Log
     {
-        public static LogLevel MinimumLevel
-        {
-            get => Log_GetMinimumLevel();
-            set => Log_SetMinimumLevel(value);
-        }
-
         public static bool EnableFullStackTrace { get; set; } = true;
+
+        [NativeProperty]
+        public static partial LogLevel MinimumLevel { get; set; }
+
+        [NativeMethod]
+        public static partial int GetCount(LogLevel level);
+
+        [NativeMethod]
+        public static partial void Clear();
 
         public static void Message(LogLevel level, StringLike message,
             [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
@@ -132,7 +135,7 @@ namespace March.Core.Diagnostics
 
                     fixed (LogStackFrame* pFrames = CollectionsMarshal.AsSpan(frames.Value))
                     {
-                        Log_Message(Level, message.Data, pFrames, frames.Value.Count);
+                        Message(Level, message.Data, pFrames, frames.Value.Count);
                     }
                 }
                 finally
@@ -255,23 +258,7 @@ namespace March.Core.Diagnostics
             #endregion
         }
 
-        #region Bindings
-
-        [NativeFunction]
-        private static partial LogLevel Log_GetMinimumLevel();
-
-        [NativeFunction]
-        private static partial void Log_SetMinimumLevel(LogLevel value);
-
-        [NativeFunction(Name = "Log_GetCount")]
-        public static partial int GetCount(LogLevel level);
-
-        [NativeFunction(Name = "Log_Clear")]
-        public static partial void Clear();
-
-        [NativeFunction]
-        private static partial void Log_Message(LogLevel level, nint message, LogStackFrame* pFrames, int frameCount);
-
-        #endregion
+        [NativeMethod]
+        private static partial void Message(LogLevel level, nint message, LogStackFrame* pFrames, int frameCount);
     }
 }

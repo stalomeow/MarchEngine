@@ -158,40 +158,40 @@ namespace March.Core
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Component_CreateDefault();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_DeleteDefault(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Component_GetIsActiveAndEnabled(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_SetIsActiveAndEnabled(nint component, bool value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_SetTransform(nint component, nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnMount(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnUnmount(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnEnable(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnDisable(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnUpdate(nint component);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnDrawGizmos(nint component, bool isSelected);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Component_OnDrawGizmosGUI(nint component, bool isSelected);
 
         #endregion

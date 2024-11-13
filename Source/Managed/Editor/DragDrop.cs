@@ -75,25 +75,25 @@ namespace March.Editor
 
         #region Bindings
 
-        [NativeFunction(Name = "DragDrop_BeginSource")]
+        [NativeMethod(Name = "DragDrop_BeginSource")]
         public static partial bool BeginSource();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void DragDrop_EndSource(nint tooltip);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool DragDrop_BeginTarget(bool useWindow);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool DragDrop_CheckPayload(bool* outIsDelivery);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void DragDrop_AcceptTarget(bool accept);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void DragDrop_EndTarget();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool DragDrop_IsActive();
 
         #endregion

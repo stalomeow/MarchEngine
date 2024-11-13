@@ -60,10 +60,10 @@ namespace March.Core
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Application_GetDataPath();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Application_SaveFilePanelInProject(nint title, nint defaultName, nint extension, nint path);
 
         #endregion

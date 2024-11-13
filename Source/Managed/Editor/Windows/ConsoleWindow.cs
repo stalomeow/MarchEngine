@@ -35,22 +35,22 @@ namespace March.Editor.Windows
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint ConsoleWindow_New();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void ConsoleWindow_Delete(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial int ConsoleWindow_GetLogTypeFilter(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void ConsoleWindow_SetLogTypeFilter(nint w, int value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool ConsoleWindow_GetAutoScroll(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void ConsoleWindow_SetAutoScroll(nint w, bool value);
 
         #endregion

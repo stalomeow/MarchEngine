@@ -128,16 +128,16 @@ namespace March.Core.Interop
 
     internal static unsafe partial class NativeArrayBindings
     {
-        [NativeFunction]
+        [NativeMethod]
         public static partial nint NewArray(int byteCount);
 
-        [NativeFunction]
+        [NativeMethod]
         public static partial nint MarshalArray(byte* p, int byteCount);
 
-        [NativeFunction]
+        [NativeMethod]
         public static partial void UnmarshalArray(nint self, byte** ppOutData, int* pOutByteCount);
 
-        [NativeFunction]
+        [NativeMethod]
         public static partial void FreeArray(nint data);
     }
 

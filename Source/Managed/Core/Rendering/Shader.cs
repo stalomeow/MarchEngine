@@ -782,40 +782,40 @@ namespace March.Core.Rendering
 
         #region Native
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Shader_New();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Shader_Delete(nint pShader);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Shader_GetName(nint pShader);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Shader_SetName(nint pShader, nint name);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Shader_ClearProperties(nint pShader);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Shader_SetProperty(nint pShader, ShaderProperty.Native* prop);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Shader_GetPasses(nint pShader, nint* passes);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Shader_SetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool Shader_CompilePass(nint pShader, int passIndex, nint filename, nint source, nint* warnings, nint* error);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Shader_GetEngineShaderPathUnixStyle();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial int Shader_GetNameId(nint name);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Shader_GetIdName(int id);
 
         #endregion

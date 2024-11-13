@@ -36,31 +36,22 @@ namespace March.Core.Rendering
         internal Texture2DSourceType SourceType { get; set; }
 
         [JsonProperty]
-        public bool IsSRGB
-        {
-            get => Texture_GetIsSRGB(NativePtr);
-            set => Texture_SetIsSRGB(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial bool IsSRGB { get; set; }
 
         [JsonProperty]
-        public FilterMode Filter
-        {
-            get => Texture_GetFilterMode(NativePtr);
-            set => Texture_SetFilterMode(NativePtr, value);
-        }
+        [NativeProperty("FilterMode")]
+        public partial FilterMode Filter { get; set; }
 
         [JsonProperty]
-        public WrapMode Wrap
-        {
-            get => Texture_GetWrapMode(NativePtr);
-            set => Texture_SetWrapMode(NativePtr, value);
-        }
+        [NativeProperty("WrapMode")]
+        public partial WrapMode Wrap { get; set; }
 
-        public Texture() : base(Texture_New()) { }
+        public Texture() : base(New()) { }
 
         protected override void Dispose(bool disposing)
         {
-            Texture_Delete(NativePtr);
+            Delete();
         }
 
         public unsafe void LoadFromSource(string name, byte[] source)
@@ -69,7 +60,7 @@ namespace March.Core.Rendering
 
             fixed (byte* p = source)
             {
-                Texture_LoadFromSource(NativePtr, n.Data, SourceType, (nint)p, source.Length);
+                LoadFromSource(n.Data, SourceType, (nint)p, source.Length);
             }
         }
 
@@ -86,35 +77,13 @@ namespace March.Core.Rendering
             SetSerializationData(string.Empty, []);
         }
 
-        #region Native
+        [NativeMethod]
+        private static partial nint New();
 
-        [NativeFunction]
-        private static partial nint Texture_New();
+        [NativeMethod]
+        private partial void Delete();
 
-        [NativeFunction]
-        private static partial void Texture_Delete(nint pTexture);
-
-        [NativeFunction]
-        private static partial void Texture_LoadFromSource(nint pTexture, nint name, Texture2DSourceType sourceType, nint pSource, int size);
-
-        [NativeFunction]
-        private static partial void Texture_SetFilterMode(nint pTexture, FilterMode filterMode);
-
-        [NativeFunction]
-        private static partial void Texture_SetWrapMode(nint pTexture, WrapMode wrapMode);
-
-        [NativeFunction]
-        private static partial FilterMode Texture_GetFilterMode(nint pTexture);
-
-        [NativeFunction]
-        private static partial WrapMode Texture_GetWrapMode(nint pTexture);
-
-        [NativeFunction]
-        private static partial bool Texture_GetIsSRGB(nint pTexture);
-
-        [NativeFunction]
-        private static partial void Texture_SetIsSRGB(nint pTexture, bool sRGB);
-
-        #endregion
+        [NativeMethod]
+        private partial void LoadFromSource(nint name, Texture2DSourceType sourceType, nint pSource, int size);
     }
 }

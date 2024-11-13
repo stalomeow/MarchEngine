@@ -12,13 +12,13 @@ namespace March.Core
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float Application_GetDeltaTime();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float Application_GetElapsedTime();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial ulong Application_GetFrameCount();
 
         #endregion

@@ -352,118 +352,118 @@ namespace March.Editor.Windows
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint SceneWindow_New();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_Delete(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_DrawMenuBar(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint SceneWindow_UpdateDisplay(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_DrawSceneView(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_TravelScene(nint w, Vector3* cameraPosition, Quaternion* cameraRotation);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool SceneWindow_ManipulateTransform(nint w, nint camera, Matrix4x4* transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_BeginGizmosGUI(nint w, nint camera);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_EndGizmosGUI(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_DrawWindowSettings(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool SceneWindow_GetEnableMSAA(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetEnableMSAA(nint w, bool value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetMouseSensitivity(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetMouseSensitivity(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetRotateDegSpeed(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetRotateDegSpeed(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetNormalMoveSpeed(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetNormalMoveSpeed(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetFastMoveSpeed(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetFastMoveSpeed(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetPanSpeed(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetPanSpeed(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetZoomSpeed(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetZoomSpeed(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial SceneGizmoOperation SceneWindow_GetGizmoOperation(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetGizmoOperation(nint w, SceneGizmoOperation value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial SceneGizmoMode SceneWindow_GetGizmoMode(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetGizmoMode(nint w, SceneGizmoMode value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial bool SceneWindow_GetGizmoSnap(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetGizmoSnap(nint w, bool value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial SceneWindowMode SceneWindow_GetWindowMode(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 SceneWindow_GetGizmoTranslationSnapValue(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetGizmoTranslationSnapValue(nint w, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetGizmoRotationSnapValue(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetGizmoRotationSnapValue(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial float SceneWindow_GetGizmoScaleSnapValue(nint w);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetGizmoScaleSnapValue(nint w, float value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void SceneWindow_SetWindowMode(nint w, SceneWindowMode value);
 
         #endregion

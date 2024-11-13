@@ -8,20 +8,13 @@ namespace March.Core.Rendering
         Gamma,
     }
 
+    [NativeTypeName("GfxSettings")]
     public static partial class GraphicsSettings
     {
-        public static bool UseReversedZBuffer => GfxSettings_UseReversedZBuffer();
+        [NativeProperty]
+        public static partial bool UseReversedZBuffer { get; }
 
-        public static GraphicsColorSpace ColorSpace => GfxSettings_GetColorSpace();
-
-        #region Bindings
-
-        [NativeFunction]
-        private static partial bool GfxSettings_UseReversedZBuffer();
-
-        [NativeFunction]
-        private static partial GraphicsColorSpace GfxSettings_GetColorSpace();
-
-        #endregion
+        [NativeProperty]
+        public static partial GraphicsColorSpace ColorSpace { get; }
     }
 }

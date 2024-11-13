@@ -36,22 +36,22 @@ namespace March.Core.Rendering
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Application_GetRenderPipeline();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void RenderPipeline_AddRenderObject(nint self, nint renderObject);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void RenderPipeline_RemoveRenderObject(nint self, nint renderObject);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void RenderPipeline_AddLight(nint self, nint light);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void RenderPipeline_RemoveLight(nint self, nint light);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void RenderPipeline_Render(nint self, nint camera, nint gridGizmoMaterial);
 
         #endregion

@@ -198,103 +198,103 @@ namespace March.Core
 
         #region Bindings
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial nint Transform_Create();
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_Delete(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetParent(nint transform, nint parent);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetLocalPosition(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalPosition(nint transform, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Quaternion Transform_GetLocalRotation(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalRotation(nint transform, Quaternion value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalRotationWithoutSyncEulerAngles(nint transform, Quaternion value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetLocalEulerAngles(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalEulerAngles(nint transform, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalEulerAnglesWithoutSyncRotation(nint transform, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetLocalScale(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalScale(nint transform, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetPosition(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetPosition(nint transform, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Quaternion Transform_GetRotation(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetRotation(nint transform, Quaternion value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetEulerAngles(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetEulerAngles(nint transform, Vector3 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetLossyScale(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Matrix4x4 Transform_GetLocalToWorldMatrix(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetLocalToWorldMatrix(nint transform, Matrix4x4 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Matrix4x4 Transform_GetWorldToLocalMatrix(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial void Transform_SetWorldToLocalMatrix(nint transform, Matrix4x4 value);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetForward(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetRight(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_GetUp(nint transform);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_TransformVector(nint transform, Vector3 vector);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_TransformDirection(nint transform, Vector3 direction);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_TransformPoint(nint transform, Vector3 point);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_InverseTransformVector(nint transform, Vector3 vector);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_InverseTransformDirection(nint transform, Vector3 direction);
 
-        [NativeFunction]
+        [NativeMethod]
         private static partial Vector3 Transform_InverseTransformPoint(nint transform, Vector3 point);
 
         #endregion
