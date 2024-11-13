@@ -39,7 +39,7 @@ namespace march
     static std::wstring GetHostfxrPath()
     {
         std::wstring dir = PathUtils::GetWorkingDirectoryUtf16();
-        return dir + L"\\Runtime\\host\\fxr\\8.0.8\\hostfxr.dll";
+        return dir + L"\\Runtime\\host\\fxr\\9.0.0\\hostfxr.dll";
     }
 
     static std::wstring GetManagedFilePath(const LPCWSTR fileName)

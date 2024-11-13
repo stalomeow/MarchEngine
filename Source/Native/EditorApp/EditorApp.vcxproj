@@ -69,14 +69,14 @@
     <CustomBuildStep>
       <Message>Copy Files</Message>
       <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.dll" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Core.pdb" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net8.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.dll" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\March.Editor.pdb" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
-xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net8.0\glTFLoader.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\March.Core.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\March.Core.pdb" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Core\$(Configuration)\net9.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\Newtonsoft.Json.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\March.Editor.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\March.Editor.pdb" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
+xcopy /y /d "$(SolutionDir)Build\ManagedOutput\Editor\$(Configuration)\net9.0\glTFLoader.dll" "$(TargetDir)Managed\"
 xcopy /y /d /e "$(SolutionDir)Resources\" "$(TargetDir)Resources\"
 xcopy /y /d /e "$(SolutionDir)Source\Shaders\Public\" "$(TargetDir)Shaders\"
 xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
