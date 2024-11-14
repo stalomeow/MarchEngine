@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace March.Binding
@@ -22,6 +23,11 @@ namespace March.Binding
 
             foreach (KeyValuePair<INamedTypeSymbol, MemberSymbolGroup> kv in receiver.Symbols)
             {
+                if (!DiagnosticUtility.CheckType(context, kv.Key))
+                {
+                    continue;
+                }
+
                 string source = ProcessType(context, kv.Key, kv.Value);
                 context.AddSource($"{kv.Key.Name}.binding.cs", SourceText.From(source, Encoding.UTF8));
             }
@@ -29,7 +35,7 @@ namespace March.Binding
 
         private string ProcessType(GeneratorExecutionContext context, INamedTypeSymbol typeSymbol, MemberSymbolGroup members)
         {
-            CodeBuilder builder = new CodeBuilder(context.Compilation);
+            CodeBuilder builder = new CodeBuilder(context);
 
             // Begin Namespace
             if (typeSymbol.ContainingNamespace != null)
@@ -48,11 +54,21 @@ namespace March.Binding
 
             foreach (IMethodSymbol methodSymbol in members.Methods)
             {
+                if (!DiagnosticUtility.CheckMethod(context, methodSymbol))
+                {
+                    continue;
+                }
+
                 ProcessMethod(builder, nativeTypeName, methodSymbol);
             }
 
             foreach (IPropertySymbol propSymbol in members.Properties)
             {
+                if (!DiagnosticUtility.CheckProperty(context, propSymbol))
+                {
+                    continue;
+                }
+
                 ProcessProperty(builder, nativeTypeName, propSymbol);
             }
 
@@ -107,6 +123,62 @@ namespace March.Binding
             return memberName;
         }
 
+        private static bool AppendFunctionPointerField(CodeBuilder builder, IMethodSymbol methodSymbol, List<string> paramNames, List<IMarshal> marshals, string thisName, string fieldName, out string fieldType)
+        {
+            if (!methodSymbol.IsStatic)
+            {
+                // Add this pointer
+                paramNames.Add(thisName);
+                marshals.Add(SymbolUtility.GetMarshal(builder.ThisTypeSymbol, RefKind.None));
+            }
+
+            for (int i = 0; i < methodSymbol.Parameters.Length; i++)
+            {
+                IParameterSymbol parameter = methodSymbol.Parameters[i];
+                paramNames.Add(parameter.Name);
+                marshals.Add(SymbolUtility.GetMarshal(parameter.Type, parameter.RefKind));
+            }
+
+            // Add return value
+            marshals.Add(SymbolUtility.GetMarshal(methodSymbol.ReturnType, methodSymbol.RefKind));
+
+            for (int i = 0; i < marshals.Count; i++)
+            {
+                Location location;
+                bool isReturnType = (i == marshals.Count - 1);
+
+                if (isReturnType || (!methodSymbol.IsStatic && i == 0))
+                {
+                    location = methodSymbol.Locations.FirstOrDefault();
+                }
+                else
+                {
+                    int paramIndex = methodSymbol.IsStatic ? i : i - 1;
+                    location = methodSymbol.Parameters[paramIndex].Locations.FirstOrDefault();
+                }
+
+                if (!marshals[i].IsAllowed(builder.Context, isReturnType, location))
+                {
+                    fieldType = null;
+                    return false;
+                }
+            }
+
+            string funcPtrTypeArgs = string.Join(", ", marshals.Select((m, i) =>
+            {
+                ITypeSymbol s = m.GetNativeType(builder.Context);
+
+                // 最后一个是返回值，不用 wrap
+                return i == marshals.Count - 1 ? s.GetFullQualifiedNameIncludeGlobal() : builder.GetParameterWrapperTypeName(s);
+            }));
+            fieldType = $"delegate* unmanaged[Stdcall]<{funcPtrTypeArgs}>";
+
+            builder.AppendLineEditorBrowsableNever();
+            builder.AppendLine($"private static {fieldType} {fieldName};");
+
+            return true;
+        }
+
         private static void AppendEntryPointInitializer(CodeBuilder builder, string fieldType, string fieldName, string entryPointName)
         {
             builder.AppendLine($"if ({fieldName} == null)");
@@ -118,7 +190,7 @@ namespace March.Binding
             builder.AppendLine($"if (!global::System.Runtime.InteropServices.NativeLibrary.TryGetExport(hModule, \"{entryPointName}\", out nint addr))");
             builder.AppendLine("{");
             builder.IndentLevel++;
-            builder.AppendLine("throw new global::System.EntryPointNotFoundException();");
+            builder.AppendLine($"throw new global::System.EntryPointNotFoundException(\"Can not find native entry point: {entryPointName}\");");
             builder.IndentLevel--;
             builder.AppendLine("}");
 
@@ -128,104 +200,103 @@ namespace March.Binding
             builder.AppendLine("}");
         }
 
-        private void ProcessMethod(CodeBuilder builder, string nativeTypeName, IMethodSymbol methodSymbol)
+        private static void AppendMethodInvocation(CodeBuilder builder, IMethodSymbol methodSymbol, List<string> paramNames, List<IMarshal> marshals, string fieldType, string fieldName, string entryPointName)
         {
-            string nativeName = GetNativeMethodOrPropertyName(methodSymbol, builder.MethodAttributeSymbol, out string thisName);
-            string fieldName = $"__{methodSymbol.Name}_FunctionPointer";
-            string entryPointName = $"{nativeTypeName}_{nativeName}";
-
-            string retType = methodSymbol.ReturnType.GetFullQualifiedNameIncludeGlobal();
-            var paramTypeSpaceNames = new List<string>();
-            var argNames = new List<string>();
-            var fieldTypeArgs = new List<string>();
-
-            if (!methodSymbol.IsStatic)
-            {
-                // Add this pointer
-                argNames.Add(thisName);
-                fieldTypeArgs.Add(builder.GetThisParameterWrapperTypeName());
-            }
-
-            for (int i = 0; i < methodSymbol.Parameters.Length; i++)
-            {
-                IParameterSymbol parameter = methodSymbol.Parameters[i];
-
-                paramTypeSpaceNames.Add($"{parameter.Type.GetFullQualifiedNameIncludeGlobal()} {parameter.Name}");
-                argNames.Add(parameter.Name);
-                fieldTypeArgs.Add(builder.GetParameterWrapperTypeName(parameter.Type));
-            }
-
-            fieldTypeArgs.Add(retType);
-            string fieldType = $"delegate* unmanaged[Stdcall]<{string.Join(", ", fieldTypeArgs)}>";
-
-            builder.AppendLineEditorBrowsableNever();
-            builder.AppendLine($"private static {fieldType} {fieldName};");
+            AppendEntryPointInitializer(builder, fieldType, fieldName, entryPointName);
 
             builder.AppendLine();
-            builder.AppendLine($"{methodSymbol.GetAccessibilityAsText()}{(methodSymbol.IsStatic ? " static" : string.Empty)} partial {retType} {methodSymbol.Name}({string.Join(", ", paramTypeSpaceNames)})");
-            builder.AppendLine("{");
-            builder.IndentLevel++;
 
-            AppendEntryPointInitializer(builder, fieldType, fieldName, entryPointName);
+            var argNames = new List<string>();
+
+            for (int i = 0; i < marshals.Count - 1; i++)
+            {
+                argNames.Add(marshals[i].BeginMarshalArgument(builder, paramNames[i]));
+            }
+
+            string invoke = $"{fieldName}({string.Join(", ", argNames)})";
 
             if (methodSymbol.ReturnsVoid)
             {
-                builder.AppendLine($"{fieldName}({string.Join(", ", argNames)});");
+                builder.AppendLine($"{invoke};");
             }
             else
             {
-                builder.AppendLine($"return {fieldName}({string.Join(", ", argNames)});");
+                invoke = marshals[marshals.Count - 1].UnmarshalReturnValue(builder, invoke);
+                builder.AppendLine($"return {invoke};");
             }
+
+            for (int i = 0; i < marshals.Count - 1; i++)
+            {
+                marshals[i].EndMarshalArgument(builder, paramNames[i]);
+            }
+        }
+
+        private bool ProcessMethod(CodeBuilder builder, string nativeTypeName, IMethodSymbol methodSymbol)
+        {
+            string nativeName = GetNativeMethodOrPropertyName(methodSymbol, builder.MethodAttributeSymbol, out string thisName);
+            string fieldName = builder.GetUniqueName($"__{methodSymbol.Name}_FunctionPointer");
+            string entryPointName = $"{nativeTypeName}_{nativeName}";
+
+            var paramNames = new List<string>();
+            var marshals = new List<IMarshal>();
+
+            if (!AppendFunctionPointerField(builder, methodSymbol, paramNames, marshals, thisName, fieldName, out string fieldType))
+            {
+                return false;
+            }
+
+            builder.AppendLine();
+
+            builder.AppendLineDebuggerHidden();
+            builder.AppendLine(methodSymbol.GetFullQualifiedNameIncludeGlobal());
+            builder.AppendLine("{");
+            builder.IndentLevel++;
+
+            AppendMethodInvocation(builder, methodSymbol, paramNames, marshals, fieldType, fieldName, entryPointName);
 
             builder.IndentLevel--;
             builder.AppendLine("}");
             builder.AppendLine();
+
+            return true;
         }
 
-        private void ProcessProperty(CodeBuilder builder, string nativeTypeName, IPropertySymbol propSymbol)
+        private bool ProcessProperty(CodeBuilder builder, string nativeTypeName, IPropertySymbol propSymbol)
         {
             string nativeName = GetNativeMethodOrPropertyName(propSymbol, builder.PropertyAttributeSymbol, out string thisName);
-            string fieldNameGet = $"__{propSymbol.Name}_Getter_FunctionPointer";
-            string fieldNameSet = $"__{propSymbol.Name}_Setter_FunctionPointer";
+
+            string fieldNameGet = builder.GetUniqueName($"__{propSymbol.Name}_Getter_FunctionPointer");
             string entryPointNameGet = $"{nativeTypeName}_Get{nativeName}";
-            string entryPointNameSet = $"{nativeTypeName}_Set{nativeName}";
             string fieldTypeGet = null;
+            var paramNamesGet = new List<string>();
+            var marshalsGet = new List<IMarshal>();
+
+            string fieldNameSet = builder.GetUniqueName($"__{propSymbol.Name}_Setter_FunctionPointer");
+            string entryPointNameSet = $"{nativeTypeName}_Set{nativeName}";
             string fieldTypeSet = null;
-            string propType = propSymbol.Type.GetFullQualifiedNameIncludeGlobal();
+            var paramNamesSet = new List<string>();
+            var marshalsSet = new List<IMarshal>();
 
             if (propSymbol.GetMethod != null)
             {
-                if (propSymbol.IsStatic)
+                if (!AppendFunctionPointerField(builder, propSymbol.GetMethod, paramNamesGet, marshalsGet, thisName, fieldNameGet, out fieldTypeGet))
                 {
-                    fieldTypeGet = $"delegate* unmanaged[Stdcall]<{propType}>";
+                    return false;
                 }
-                else
-                {
-                    fieldTypeGet = $"delegate* unmanaged[Stdcall]<{builder.GetThisParameterWrapperTypeName()}, {propType}>";
-                }
-
-                builder.AppendLineEditorBrowsableNever();
-                builder.AppendLine($"private static {fieldTypeGet} {fieldNameGet};");
             }
 
             if (propSymbol.SetMethod != null)
             {
-                if (propSymbol.IsStatic)
+                if (!AppendFunctionPointerField(builder, propSymbol.SetMethod, paramNamesSet, marshalsSet, thisName, fieldNameSet, out fieldTypeSet))
                 {
-                    fieldTypeSet = $"delegate* unmanaged[Stdcall]<{builder.GetParameterWrapperTypeName(propSymbol.Type)}, void>";
+                    return false;
                 }
-                else
-                {
-                    fieldTypeSet = $"delegate* unmanaged[Stdcall]<{builder.GetThisParameterWrapperTypeName()}, {builder.GetParameterWrapperTypeName(propSymbol.Type)}, void>";
-                }
-
-                builder.AppendLineEditorBrowsableNever();
-                builder.AppendLine($"private static {fieldTypeSet} {fieldNameSet};");
             }
 
             builder.AppendLine();
 
-            builder.AppendLine($"{propSymbol.GetAccessibilityAsText()}{(propSymbol.IsStatic ? " static" : string.Empty)} partial {propType} {propSymbol.Name}");
+            builder.AppendLineDebuggerHidden();
+            builder.AppendLine(propSymbol.GetFullQualifiedNameIncludeGlobal());
             builder.AppendLine("{");
             builder.IndentLevel++;
 
@@ -243,16 +314,7 @@ namespace March.Binding
                 builder.AppendLine("{");
                 builder.IndentLevel++;
 
-                AppendEntryPointInitializer(builder, fieldTypeGet, fieldNameGet, entryPointNameGet);
-
-                if (propSymbol.IsStatic)
-                {
-                    builder.AppendLine($"return {fieldNameGet}();");
-                }
-                else
-                {
-                    builder.AppendLine($"return {fieldNameGet}({thisName});");
-                }
+                AppendMethodInvocation(builder, propSymbol.GetMethod, paramNamesGet, marshalsGet, fieldTypeGet, fieldNameGet, entryPointNameGet);
 
                 builder.IndentLevel--;
                 builder.AppendLine("}");
@@ -272,16 +334,7 @@ namespace March.Binding
                 builder.AppendLine("{");
                 builder.IndentLevel++;
 
-                AppendEntryPointInitializer(builder, fieldTypeSet, fieldNameSet, entryPointNameSet);
-
-                if (propSymbol.IsStatic)
-                {
-                    builder.AppendLine($"{fieldNameSet}(value);");
-                }
-                else
-                {
-                    builder.AppendLine($"{fieldNameSet}({thisName}, value);");
-                }
+                AppendMethodInvocation(builder, propSymbol.SetMethod, paramNamesSet, marshalsSet, fieldTypeSet, fieldNameSet, entryPointNameSet);
 
                 builder.IndentLevel--;
                 builder.AppendLine("}");
@@ -290,6 +343,8 @@ namespace March.Binding
             builder.IndentLevel--;
             builder.AppendLine("}");
             builder.AppendLine();
+
+            return true;
         }
     }
 }

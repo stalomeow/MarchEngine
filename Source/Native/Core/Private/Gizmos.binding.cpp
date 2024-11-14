@@ -1,7 +1,7 @@
 #include "Gizmos.h"
 #include "InteropServices.h"
 
-NATIVE_EXPORT_AUTO Gizmos_IsGUIMode()
+NATIVE_EXPORT_AUTO Gizmos_GetIsGUIMode()
 {
     retcs Gizmos::IsGUIMode();
 }

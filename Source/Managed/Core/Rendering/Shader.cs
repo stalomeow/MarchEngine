@@ -603,20 +603,8 @@ namespace March.Core.Rendering
         private ShaderProperty[] m_Properties = [];
 
         [JsonProperty]
-        public string Name
-        {
-            get
-            {
-                nint name = Shader_GetName(NativePtr);
-                return NativeString.GetAndFree(name);
-            }
-
-            internal set
-            {
-                using NativeString v = value;
-                Shader_SetName(NativePtr, v.Data);
-            }
-        }
+        [NativeProperty]
+        public partial string Name { get; set; }
 
         [JsonProperty]
         public ImmutableArray<string> Warnings { get; private set; } = [];
@@ -632,7 +620,7 @@ namespace March.Core.Rendering
             set
             {
                 m_Properties = value;
-                Shader_ClearProperties(NativePtr);
+                ClearProperties();
 
                 foreach (ShaderProperty prop in value)
                 {
@@ -640,7 +628,7 @@ namespace March.Core.Rendering
 
                     try
                     {
-                        Shader_SetProperty(NativePtr, &native);
+                        SetProperty(&native);
                     }
                     finally
                     {
@@ -655,23 +643,22 @@ namespace March.Core.Rendering
         {
             get
             {
-                nint passes = nint.Zero;
-                Shader_GetPasses(NativePtr, &passes);
+                GetPasses(out nint passes);
                 return NativeArrayMarshal<ShaderPass>.GetAndFree(passes);
             }
 
             set
             {
                 using NativeArrayMarshal<ShaderPass> passes = value;
-                Shader_SetPasses(NativePtr, passes);
+                SetPasses(passes);
             }
         }
 
-        public Shader() : base(Shader_New()) { }
+        public Shader() : base(New()) { }
 
         protected override void Dispose(bool disposing)
         {
-            Shader_Delete(NativePtr);
+            Delete();
         }
 
         public bool HasWarningOrError => !Warnings.IsEmpty || !Errors.IsEmpty;
@@ -706,12 +693,9 @@ namespace March.Core.Rendering
 
         internal bool CompilePass(int passIndex, string filename, string source)
         {
-            using NativeString f = filename;
-            using NativeString s = source;
-
             nint nativeWarnings = nint.Zero;
             nint nativeError = nint.Zero;
-            bool success = Shader_CompilePass(NativePtr, passIndex, f.Data, s.Data, &nativeWarnings, &nativeError);
+            bool success = CompilePass(passIndex, filename, source, &nativeWarnings, &nativeError);
 
             if (nativeWarnings != nint.Zero)
             {
@@ -748,76 +732,38 @@ namespace March.Core.Rendering
         /// <summary>
         /// 引擎内置 Shader 的路径 (Unix Style)
         /// </summary>
-        public static string EngineShaderPath
-        {
-            get
-            {
-                if (s_CachedEngineShaderPath == null)
-                {
-                    nint s = Shader_GetEngineShaderPathUnixStyle();
-                    s_CachedEngineShaderPath = NativeString.GetAndFree(s);
-                }
+        public static string EngineShaderPath => s_CachedEngineShaderPath ??= GetEngineShaderPathUnixStyle();
 
-                return s_CachedEngineShaderPath;
-            }
-        }
+        [NativeMethod]
+        private static partial string GetEngineShaderPathUnixStyle();
 
         #endregion
 
-        #region Id Name Conversion
-
-        public static int GetNameId(StringLike name)
-        {
-            using NativeString n = name;
-            return Shader_GetNameId(n.Data);
-        }
-
-        public static string GetIdName(int id)
-        {
-            nint n = Shader_GetIdName(id);
-            return NativeString.GetAndFree(n);
-        }
-
-        #endregion
-
-        #region Native
+        [NativeMethod]
+        public static partial int GetNameId(StringLike name);
 
         [NativeMethod]
-        private static partial nint Shader_New();
+        public static partial string GetIdName(int id);
 
         [NativeMethod]
-        private static partial void Shader_Delete(nint pShader);
+        private static partial nint New();
 
         [NativeMethod]
-        private static partial nint Shader_GetName(nint pShader);
+        private partial void Delete();
 
         [NativeMethod]
-        private static partial void Shader_SetName(nint pShader, nint name);
+        private partial void ClearProperties();
 
         [NativeMethod]
-        private static partial void Shader_ClearProperties(nint pShader);
+        private partial void SetProperty(ShaderProperty.Native* prop);
 
         [NativeMethod]
-        private static partial void Shader_SetProperty(nint pShader, ShaderProperty.Native* prop);
+        private partial void GetPasses(out nint passes);
 
         [NativeMethod]
-        private static partial void Shader_GetPasses(nint pShader, nint* passes);
+        private partial void SetPasses(NativeArrayMarshal<ShaderPass> passes);
 
         [NativeMethod]
-        private static partial void Shader_SetPasses(nint pShader, NativeArrayMarshal<ShaderPass> passes);
-
-        [NativeMethod]
-        private static partial bool Shader_CompilePass(nint pShader, int passIndex, nint filename, nint source, nint* warnings, nint* error);
-
-        [NativeMethod]
-        private static partial nint Shader_GetEngineShaderPathUnixStyle();
-
-        [NativeMethod]
-        private static partial int Shader_GetNameId(nint name);
-
-        [NativeMethod]
-        private static partial nint Shader_GetIdName(int id);
-
-        #endregion
+        private partial bool CompilePass(int passIndex, string filename, string source, nint* warnings, nint* error);
     }
 }

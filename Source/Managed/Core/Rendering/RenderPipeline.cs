@@ -4,56 +4,19 @@ namespace March.Core.Rendering
 {
     public static partial class RenderPipeline
     {
-        internal static void AddRenderObject(nint renderObject)
-        {
-            RenderPipeline_AddRenderObject(GetInstance(), renderObject);
-        }
+        [NativeMethod("AddRenderObject")]
+        public static partial void Add(MeshRenderer renderer);
 
-        internal static void RemoveRenderObject(nint renderObject)
-        {
-            RenderPipeline_RemoveRenderObject(GetInstance(), renderObject);
-        }
+        [NativeMethod("RemoveRenderObject")]
+        public static partial void Remove(MeshRenderer renderer);
 
-        internal static void AddLight(nint light)
-        {
-            RenderPipeline_AddLight(GetInstance(), light);
-        }
+        [NativeMethod("AddLight")]
+        public static partial void Add(Light light);
 
-        internal static void RemoveLight(nint light)
-        {
-            RenderPipeline_RemoveLight(GetInstance(), light);
-        }
-
-        public static void Render(Camera camera, Material? gridGizmoMaterial)
-        {
-            RenderPipeline_Render(GetInstance(), camera.NativePtr, gridGizmoMaterial?.NativePtr ?? nint.Zero);
-        }
-
-        private static nint GetInstance()
-        {
-            return Application_GetRenderPipeline();
-        }
-
-        #region Bindings
+        [NativeMethod("RemoveLight")]
+        public static partial void Remove(Light light);
 
         [NativeMethod]
-        private static partial nint Application_GetRenderPipeline();
-
-        [NativeMethod]
-        private static partial void RenderPipeline_AddRenderObject(nint self, nint renderObject);
-
-        [NativeMethod]
-        private static partial void RenderPipeline_RemoveRenderObject(nint self, nint renderObject);
-
-        [NativeMethod]
-        private static partial void RenderPipeline_AddLight(nint self, nint light);
-
-        [NativeMethod]
-        private static partial void RenderPipeline_RemoveLight(nint self, nint light);
-
-        [NativeMethod]
-        private static partial void RenderPipeline_Render(nint self, nint camera, nint gridGizmoMaterial);
-
-        #endregion
+        public static partial void Render(Camera camera, Material? gridGizmoMaterial);
     }
 }

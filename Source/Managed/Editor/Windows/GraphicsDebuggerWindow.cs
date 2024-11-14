@@ -5,22 +5,18 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/Analysis/Graphics Debugger")]
     internal partial class GraphicsDebuggerWindow : EditorWindow
     {
-        public GraphicsDebuggerWindow() : base(GraphicsDebuggerWindow_New(), "Graphics Debugger") { }
+        public GraphicsDebuggerWindow() : base(New(), "Graphics Debugger") { }
 
         protected override void OnDispose(bool disposing)
         {
-            GraphicsDebuggerWindow_Delete(NativePtr);
+            Delete();
             base.OnDispose(disposing);
         }
 
-        #region Bindings
+        [NativeMethod]
+        private static partial nint New();
 
         [NativeMethod]
-        private static partial nint GraphicsDebuggerWindow_New();
-
-        [NativeMethod]
-        private static partial void GraphicsDebuggerWindow_Delete(nint w);
-
-        #endregion
+        private partial void Delete();
     }
 }

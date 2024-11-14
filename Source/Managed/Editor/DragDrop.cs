@@ -16,36 +16,37 @@ namespace March.Editor
         Reject = 1,
     }
 
-    public static unsafe partial class DragDrop
+    public static partial class DragDrop
     {
         private static MarchObject? s_Payload;
 
+        [NativeMethod]
+        public static partial bool BeginSource();
+
         public static void EndSource(StringLike tooltip, MarchObject payload)
         {
-            using NativeString t = tooltip;
-            DragDrop_EndSource(t.Data);
-
+            EndSourceNative(tooltip);
             s_Payload = payload;
         }
 
+        [NativeMethod("EndSource")]
+        private static partial void EndSourceNative(StringLike tooltip);
+
         public static bool BeginTarget(DragDropArea area, [NotNullWhen(true)] out MarchObject? payload, out bool isDelivery)
         {
-            if (!DragDrop_BeginTarget(area == DragDropArea.Window))
+            if (!BeginTargetNative(area == DragDropArea.Window))
             {
                 payload = null;
                 isDelivery = false;
                 return false;
             }
 
-            fixed (bool* pIsDelivery = &isDelivery)
+            if (!CheckPayloadNative(out isDelivery))
             {
-                if (!DragDrop_CheckPayload(pIsDelivery))
-                {
-                    DragDrop_EndTarget();
+                EndTargetNative();
 
-                    payload = null;
-                    return false;
-                }
+                payload = null;
+                return false;
             }
 
             if ((payload = s_Payload) == null)
@@ -59,11 +60,24 @@ namespace March.Editor
 
         public static void EndTarget(DragDropResult result)
         {
-            DragDrop_AcceptTarget(result == DragDropResult.Accept);
-            DragDrop_EndTarget();
+            AcceptTargetNative(result == DragDropResult.Accept);
+            EndTargetNative();
         }
 
-        public static bool IsActive => DragDrop_IsActive();
+        [NativeMethod("BeginTarget")]
+        private static partial bool BeginTargetNative(bool useWindow);
+
+        [NativeMethod("CheckPayload")]
+        private static partial bool CheckPayloadNative(out bool isDelivery);
+
+        [NativeMethod("AcceptTarget")]
+        private static partial void AcceptTargetNative(bool accept);
+
+        [NativeMethod("EndTarget")]
+        private static partial void EndTargetNative();
+
+        [NativeProperty]
+        public static partial bool IsActive { get; }
 
         internal static void Update()
         {
@@ -72,30 +86,5 @@ namespace March.Editor
                 s_Payload = null;
             }
         }
-
-        #region Bindings
-
-        [NativeMethod(Name = "DragDrop_BeginSource")]
-        public static partial bool BeginSource();
-
-        [NativeMethod]
-        private static partial void DragDrop_EndSource(nint tooltip);
-
-        [NativeMethod]
-        private static partial bool DragDrop_BeginTarget(bool useWindow);
-
-        [NativeMethod]
-        private static partial bool DragDrop_CheckPayload(bool* outIsDelivery);
-
-        [NativeMethod]
-        private static partial void DragDrop_AcceptTarget(bool accept);
-
-        [NativeMethod]
-        private static partial void DragDrop_EndTarget();
-
-        [NativeMethod]
-        private static partial bool DragDrop_IsActive();
-
-        #endregion
     }
 }

@@ -35,95 +35,37 @@ namespace March.Editor
             True = 2,
         }
 
-        public static void PrefixLabel(StringLike label, StringLike tooltip)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
-            EditorGUI_PrefixLabel(l.Data, t.Data);
-        }
+        [NativeMethod]
+        public static partial void PrefixLabel(StringLike label, StringLike tooltip);
 
-        public static bool IntField(StringLike label, StringLike tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        [NativeMethod]
+        public static partial bool IntField(StringLike label, StringLike tooltip, ref int value, int speed = 1, int minValue = 0, int maxValue = 0);
 
-            fixed (int* v = &value)
-            {
-                return EditorGUI_IntField(l.Data, t.Data, v, (float)speed, minValue, maxValue);
-            }
-        }
+        [NativeMethod]
+        public static partial bool FloatField(StringLike label, StringLike tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
-        public static bool FloatField(StringLike label, StringLike tooltip, ref float value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        [NativeMethod]
+        public static partial bool Vector2Field(StringLike label, StringLike tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
-            fixed (float* v = &value)
-            {
-                return EditorGUI_FloatField(l.Data, t.Data, v, speed, minValue, maxValue);
-            }
-        }
+        [NativeMethod]
+        public static partial bool Vector3Field(StringLike label, StringLike tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
-        public static bool Vector2Field(StringLike label, StringLike tooltip, ref Vector2 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        [NativeMethod]
+        public static partial bool Vector4Field(StringLike label, StringLike tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
-            fixed (Vector2* v = &value)
-            {
-                return EditorGUI_Vector2Field(l.Data, t.Data, v, speed, minValue, maxValue);
-            }
-        }
+        [NativeMethod]
+        public static partial bool ColorField(StringLike label, StringLike tooltip, ref Color value);
 
-        public static bool Vector3Field(StringLike label, StringLike tooltip, ref Vector3 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        [NativeMethod]
+        public static partial bool FloatSliderField(StringLike label, StringLike tooltip, ref float value, float minValue, float maxValue);
 
-            fixed (Vector3* v = &value)
-            {
-                return EditorGUI_Vector3Field(l.Data, t.Data, v, speed, minValue, maxValue);
-            }
-        }
+        [NativeMethod]
+        public static partial bool CollapsingHeader(StringLike label, bool defaultOpen = false);
 
-        public static bool Vector4Field(StringLike label, StringLike tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        #region Enum
 
-            fixed (Vector4* v = &value)
-            {
-                return EditorGUI_Vector4Field(l.Data, t.Data, v, speed, minValue, maxValue);
-            }
-        }
-
-        public static bool ColorField(StringLike label, StringLike tooltip, ref Color value)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
-
-            fixed (Color* v = &value)
-            {
-                return EditorGUI_ColorField(l.Data, t.Data, v);
-            }
-        }
-
-        public static bool FloatSliderField(StringLike label, StringLike tooltip, ref float value, float minValue, float maxValue)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
-
-            fixed (float* v = &value)
-            {
-                return EditorGUI_FloatSliderField(l.Data, t.Data, v, minValue, maxValue);
-            }
-        }
-
-        public static bool CollapsingHeader(StringLike label, bool defaultOpen = false)
-        {
-            using NativeString l = label;
-            return EditorGUI_CollapsingHeader(l.Data, defaultOpen);
-        }
+        [NativeMethod]
+        private static partial bool Combo(StringLike label, StringLike tooltip, ref int currentItem, StringLike itemsSeparatedByZeros);
 
         private static void AppendEnumNames(StringBuilder builder, ReadOnlySpan<string> names)
         {
@@ -158,11 +100,7 @@ namespace March.Editor
             using var itemsBuilder = StringBuilderPool.Get();
             AppendEnumNames(itemsBuilder, names);
 
-            using NativeString l = label;
-            using NativeString t = tooltip;
-            using NativeString items = itemsBuilder;
-
-            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data) && index >= 0 && index < values.Length)
+            if (Combo(label, tooltip, ref index, itemsBuilder) && index >= 0 && index < values.Length)
             {
                 value = values[index];
                 return true;
@@ -189,11 +127,7 @@ namespace March.Editor
             using var itemsBuilder = StringBuilderPool.Get();
             AppendEnumNames(itemsBuilder, names);
 
-            using NativeString l = label;
-            using NativeString t = tooltip;
-            using NativeString items = itemsBuilder;
-
-            if (EditorGUI_Combo(l.Data, t.Data, &index, items.Data) && index >= 0 && index < values.Length)
+            if (Combo(label, tooltip, ref index, itemsBuilder) && index >= 0 && index < values.Length)
             {
                 value = values[index];
                 return true;
@@ -202,17 +136,30 @@ namespace March.Editor
             return false;
         }
 
-        public static bool CenterButton(StringLike label, float width)
-        {
-            using NativeString l = label;
-            return EditorGUI_CenterButton(l.Data, width);
-        }
+        #endregion
 
-        public static void SeparatorText(StringLike label)
-        {
-            using NativeString l = label;
-            EditorGUI_SeparatorText(l.Data);
-        }
+        [NativeMethod]
+        public static partial bool CenterButton(StringLike label, float width);
+
+        [NativeMethod]
+        public static partial void Space();
+
+        [NativeMethod]
+        public static partial void SeparatorText(StringLike label);
+
+        [NativeMethod]
+        public static partial void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
+
+        [NativeMethod]
+        public static partial void SetNextItemWidth(float width);
+
+        [NativeMethod]
+        public static partial void Separator();
+
+        #region Text
+
+        [NativeMethod]
+        private static partial bool TextField(StringLike label, StringLike tooltip, StringLike text, ref nint newText, StringLike charBlacklist);
 
         public static bool TextField(StringLike label, StringLike tooltip, ref string text)
         {
@@ -221,13 +168,9 @@ namespace March.Editor
 
         public static bool TextField(StringLike label, StringLike tooltip, ref string text, StringLike charBlacklist)
         {
-            using NativeString l = label;
-            using NativeString tp = tooltip;
-            using NativeString te = text;
-            using NativeString cb = charBlacklist;
             nint newText = nint.Zero;
 
-            if (EditorGUI_TextField(l.Data, tp.Data, te.Data, &newText, cb.Data))
+            if (TextField(label, tooltip, text, ref newText, charBlacklist))
             {
                 text = NativeString.GetAndFree(newText);
                 return true;
@@ -236,95 +179,61 @@ namespace March.Editor
             return false;
         }
 
-        public static bool Checkbox(StringLike label, StringLike tooltip, ref bool value)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        #endregion
 
-            fixed (bool* v = &value)
-            {
-                return EditorGUI_Checkbox(l.Data, t.Data, v);
-            }
-        }
+        [NativeMethod]
+        public static partial bool Checkbox(StringLike label, StringLike tooltip, ref bool value);
 
-        public static void LabelField(StringLike label1, StringLike tooltip, StringLike label2)
-        {
-            using NativeString l1 = label1;
-            using NativeString l2 = label2;
-            using NativeString t = tooltip;
-            EditorGUI_LabelField(l1.Data, t.Data, l2.Data);
-        }
+        [NativeMethod]
+        public static partial void LabelField(StringLike label1, StringLike tooltip, StringLike label2);
 
-        public static bool Foldout(StringLike label, StringLike tooltip, bool defaultOpen = false)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
-            return EditorGUI_Foldout(l.Data, t.Data, defaultOpen);
-        }
+        [NativeMethod]
+        public static partial bool Foldout(StringLike label, StringLike tooltip, bool defaultOpen = false);
 
-        public static bool FoldoutClosable(StringLike label, StringLike tooltip, ref bool visible)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        [NativeMethod]
+        public static partial bool FoldoutClosable(StringLike label, StringLike tooltip, ref bool visible);
 
-            fixed (bool* v = &visible)
-            {
-                return EditorGUI_FoldoutClosable(l.Data, t.Data, v);
-            }
-        }
+        [NativeMethod]
+        internal static partial bool BeginPopup(StringLike id);
 
-        internal static bool BeginPopup(StringLike id)
-        {
-            using NativeString i = id;
-            return EditorGUI_BeginPopup(i.Data);
-        }
+        /// <summary>
+        /// only call EndPopup() if BeginPopupXXX() returns true!
+        /// </summary>
+        [NativeMethod]
+        internal static partial void EndPopup();
 
-        internal static bool MenuItem(StringLike label, bool selected = false, bool enabled = true)
-        {
-            using NativeString l = label;
-            return EditorGUI_MenuItem(l.Data, selected, enabled);
-        }
+        [NativeMethod]
+        internal static partial bool MenuItem(StringLike label, bool selected = false, bool enabled = true);
 
-        internal static bool BeginMenu(StringLike label, bool enabled = true)
-        {
-            using NativeString l = label;
-            return EditorGUI_BeginMenu(l.Data, enabled);
-        }
+        [NativeMethod]
+        internal static partial bool BeginMenu(StringLike label, bool enabled = true);
 
-        internal static void OpenPopup(StringLike id)
-        {
-            using NativeString i = id;
-            EditorGUI_OpenPopup(i.Data);
-        }
+        /// <summary>
+        /// only call EndMenu() if BeginMenu() returns true!
+        /// </summary>
+        [NativeMethod]
+        internal static partial void EndMenu();
 
-        public static bool FloatRangeField(StringLike label, StringLike tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f)
-        {
-            using NativeString l = label;
-            using NativeString t = tooltip;
+        [NativeMethod]
+        internal static partial void OpenPopup(StringLike id);
 
-            fixed (float* min = &currentMin)
-            fixed (float* max = &currentMax)
-            {
-                return EditorGUI_FloatRangeField(l.Data, t.Data, min, max, speed, minValue, maxValue);
-            }
-        }
+        [NativeMethod]
+        public static partial bool FloatRangeField(StringLike label, StringLike tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
-        public static bool BeginTreeNode(StringLike label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true)
-        {
-            using NativeString l = label;
-            return EditorGUI_BeginTreeNode(l.Data, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
-        }
+        [NativeMethod]
+        public static partial bool BeginTreeNode(StringLike label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
 
-        public static bool IsTreeNodeOpen(StringLike id, bool defaultValue)
-        {
-            using NativeString i = id;
-            return EditorGUI_IsTreeNodeOpen(i.Data, defaultValue);
-        }
+        /// <summary>
+        /// only call EndTreeNode() if BeginTreeNode() returns true!
+        /// </summary>
+        [NativeMethod]
+        public static partial void EndTreeNode();
 
-        public static ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options)
-        {
-            return EditorGUI_IsItemClicked((int)button, options);
-        }
+        [NativeMethod]
+        public static partial bool IsTreeNodeOpen(StringLike id, bool defaultValue);
+
+        [NativeMethod]
+        public static partial ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options);
 
         public static ItemClickResult IsTreeNodeClicked(bool isOpen, bool isLeaf)
         {
@@ -337,10 +246,8 @@ namespace March.Editor
             return (ItemClickResult)Math.Max((int)result1, (int)result2);
         }
 
-        public static bool IsWindowClicked(MouseButton button, bool ignorePopup)
-        {
-            return EditorGUI_IsWindowClicked((int)button, ignorePopup);
-        }
+        [NativeMethod]
+        public static partial bool IsWindowClicked(MouseButton button, bool ignorePopup);
 
         public static bool IsWindowClicked()
         {
@@ -353,49 +260,51 @@ namespace March.Editor
             return BeginPopupContextItem(string.Empty);
         }
 
-        internal static bool BeginPopupContextItem(StringLike id)
-        {
-            using NativeString i = id;
-            return EditorGUI_BeginPopupContextItem(i.Data);
-        }
+        [NativeMethod]
+        internal static partial bool BeginPopupContextItem(StringLike id);
 
-        public static void DrawTexture(Texture texture)
-        {
-            EditorGUI_DrawTexture(texture.NativePtr);
-        }
+        [NativeMethod]
+        internal static partial bool BeginPopupContextWindow();
 
-        public static bool Button(StringLike label)
-        {
-            using NativeString l = label;
-            return EditorGUI_Button(l.Data);
-        }
+        [NativeMethod]
+        internal static partial bool BeginMainMenuBar();
+
+        /// <summary>
+        /// only call EndMainMenuBar() if BeginMainMenuBar() returns true!
+        /// </summary>
+        [NativeMethod]
+        internal static partial void EndMainMenuBar();
+
+        [NativeMethod]
+        public static partial void DrawTexture(Texture texture);
+
+        [NativeMethod]
+        public static partial bool Button(StringLike label);
+
+        [NativeMethod]
+        public static partial float CalcButtonWidth(StringLike label);
+
+        [NativeProperty("ContentRegionAvail")]
+        public static partial Vector2 ContentRegionAvailable { get; }
+
+        [NativeProperty]
+        public static partial Vector2 ItemSpacing { get; }
+
+        [NativeProperty]
+        public static partial float CursorPosX { get; set; }
+
+        [NativeProperty]
+        public static partial float CollapsingHeaderOuterExtend { get; }
 
         public static bool ButtonRight(StringLike label)
         {
-            using NativeString l = label;
-
             // https://github.com/ocornut/imgui/issues/4157
 
-            float width = EditorGUI_CalcButtonWidth(l.Data);
-            EditorGUI_SetCursorPosX(EditorGUI_GetCursorPosX() + EditorGUI_GetContentRegionAvail().X - width);
-            return EditorGUI_Button(l.Data);
+            CursorPosX += ContentRegionAvailable.X - CalcButtonWidth(label);
+            return Button(label);
         }
 
-        public static float CalcButtonWidth(StringLike label)
-        {
-            using NativeString l = label;
-            return EditorGUI_CalcButtonWidth(l.Data);
-        }
-
-        public static Vector2 ContentRegionAvailable => EditorGUI_GetContentRegionAvail();
-
-        public static Vector2 ItemSpacing => EditorGUI_GetItemSpacing();
-
-        public static float CursorPosX
-        {
-            get => EditorGUI_GetCursorPosX();
-            set => EditorGUI_SetCursorPosX(value);
-        }
+        #region Object
 
         public static bool MarchObjectField<T>(StringLike label, StringLike tooltip, ref T? asset) where T : MarchObject
         {
@@ -453,9 +362,9 @@ namespace March.Editor
             return isChanged;
         }
 
-        public static float CollapsingHeaderOuterExtend => EditorGUI_GetCollapsingHeaderOuterExtend();
+        #endregion
 
-        #region PropertyField
+        #region Property
 
         private static readonly DrawerCache<IPropertyDrawer> s_PropertyDrawerCache = new(typeof(IPropertyDrawerFor<>));
 
@@ -608,38 +517,37 @@ namespace March.Editor
         {
             public DisabledScope() : this(true) { }
 
-            public DisabledScope(bool disabled)
-            {
-                EditorGUI_BeginDisabled(disabled);
-            }
+            public DisabledScope(bool disabled) => BeginDisabled(disabled);
 
-            public void Dispose()
-            {
-                EditorGUI_EndDisabled();
-            }
+            public void Dispose() => EndDisabled();
         }
+
+        [NativeMethod]
+        private static partial void BeginDisabled(bool disabled);
+
+        [NativeMethod]
+        private static partial void EndDisabled();
 
         public readonly ref struct IDScope
         {
             [Obsolete("Use other constructors", error: true)]
             public IDScope() { }
 
-            public IDScope(StringLike id)
-            {
-                using NativeString i = id;
-                EditorGUI_PushIDString(i.Data);
-            }
+            public IDScope(StringLike id) => PushIDString(id);
 
-            public IDScope(int id)
-            {
-                EditorGUI_PushIDInt(id);
-            }
+            public IDScope(int id) => PushIDInt(id);
 
-            public void Dispose()
-            {
-                EditorGUI_PopID();
-            }
+            public void Dispose() => PopID();
         }
+
+        [NativeMethod]
+        private static partial void PushIDString(StringLike id);
+
+        [NativeMethod]
+        private static partial void PushIDInt(int id);
+
+        [NativeMethod]
+        private static partial void PopID();
 
         public readonly ref struct IndentedScope
         {
@@ -647,208 +555,29 @@ namespace March.Editor
 
             public IndentedScope() : this(1) { }
 
-            public IndentedScope(uint count)
-            {
-                m_IndentCount = count;
-                EditorGUI_Indent(count);
-            }
+            public IndentedScope(uint count) => Indent(m_IndentCount = count);
 
-            public void Dispose()
-            {
-                EditorGUI_Unindent(m_IndentCount);
-            }
+            public void Dispose() => Unindent(m_IndentCount);
         }
+
+        [NativeMethod]
+        private static partial void Indent(uint count);
+
+        [NativeMethod]
+        private static partial void Unindent(uint count);
 
         public readonly ref struct GroupScope
         {
-            public GroupScope()
-            {
-                EditorGUI_BeginGroup();
-            }
+            public GroupScope() => BeginGroup();
 
-            public void Dispose()
-            {
-                EditorGUI_EndGroup();
-            }
+            public void Dispose() => EndGroup();
         }
 
-        #endregion
-
-        #region Native
+        [NativeMethod]
+        private static partial void BeginGroup();
 
         [NativeMethod]
-        private static partial void EditorGUI_PrefixLabel(nint label, nint tooltip);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_IntField(nint label, nint tooltip, int* v, float speed, int minValue, int maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_FloatField(nint label, nint tooltip, float* v, float speed, float minValue, float maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Vector2Field(nint label, nint tooltip, Vector2* v, float speed, float minValue, float maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Vector3Field(nint label, nint tooltip, Vector3* v, float speed, float minValue, float maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Vector4Field(nint label, nint tooltip, Vector4* v, float speed, float minValue, float maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_ColorField(nint label, nint tooltip, Color* v);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_FloatSliderField(nint label, nint tooltip, float* v, float minValue, float maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_CollapsingHeader(nint label, bool defaultOpen);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Combo(nint label, nint tooltip, int* currentItem, nint itemsSeparatedByZeros);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_CenterButton(nint label, float width);
-
-        [NativeMethod(Name = "EditorGUI_Space")]
-        public static partial void Space();
-
-        [NativeMethod]
-        private static partial void EditorGUI_SeparatorText(nint label);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_TextField(nint label, nint tooltip, nint text, nint* outNewText, nint charBlacklist);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Checkbox(nint label, nint tooltip, bool* v);
-
-        [NativeMethod]
-        private static partial void EditorGUI_BeginDisabled(bool disabled);
-
-        [NativeMethod]
-        private static partial void EditorGUI_EndDisabled();
-
-        [NativeMethod]
-        private static partial void EditorGUI_LabelField(nint label1, nint tooltip, nint label2);
-
-        [NativeMethod]
-        private static partial void EditorGUI_PushIDString(nint id);
-
-        [NativeMethod]
-        private static partial void EditorGUI_PushIDInt(int id);
-
-        [NativeMethod]
-        private static partial void EditorGUI_PopID();
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Foldout(nint label, nint tooltip, bool defaultOpen);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_FoldoutClosable(nint label, nint tooltip, bool* pVisible);
-
-        [NativeMethod]
-        private static partial void EditorGUI_Indent(uint count);
-
-        [NativeMethod]
-        private static partial void EditorGUI_Unindent(uint count);
-
-        [NativeMethod(Name = "EditorGUI_SameLine")]
-        public static partial void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f);
-
-        [NativeMethod]
-        private static partial Vector2 EditorGUI_GetContentRegionAvail();
-
-        [NativeMethod(Name = "EditorGUI_SetNextItemWidth")]
-        public static partial void SetNextItemWidth(float width);
-
-        [NativeMethod(Name = "EditorGUI_Separator")]
-        public static partial void Separator();
-
-        [NativeMethod]
-        private static partial bool EditorGUI_BeginPopup(nint id);
-
-        /// <summary>
-        /// only call EndPopup() if BeginPopupXXX() returns true!
-        /// </summary>
-        [NativeMethod(Name = "EditorGUI_EndPopup")]
-        internal static partial void EndPopup();
-
-        [NativeMethod]
-        private static partial bool EditorGUI_MenuItem(nint label, bool selected, bool enabled);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_BeginMenu(nint label, bool enabled);
-
-        /// <summary>
-        /// only call EndMenu() if BeginMenu() returns true!
-        /// </summary>
-        [NativeMethod(Name = "EditorGUI_EndMenu")]
-        internal static partial void EndMenu();
-
-        [NativeMethod]
-        private static partial void EditorGUI_OpenPopup(nint id);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_FloatRangeField(nint label, nint tooltip, float* currentMin, float* currentMax, float speed, float minValue, float maxValue);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_BeginTreeNode(nint label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
-
-        /// <summary>
-        /// only call EndTreeNode() if BeginTreeNode() returns true!
-        /// </summary>
-        [NativeMethod(Name = "EditorGUI_EndTreeNode")]
-        public static partial void EndTreeNode();
-
-        [NativeMethod]
-        private static partial bool EditorGUI_IsTreeNodeOpen(nint id, bool defaultValue);
-
-        [NativeMethod]
-        private static partial ItemClickResult EditorGUI_IsItemClicked(int button, ItemClickOptions options);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_IsWindowClicked(int button, bool ignorePopup);
-
-        [NativeMethod(Name = "EditorGUI_BeginPopupContextWindow")]
-        internal static partial bool BeginPopupContextWindow();
-
-        [NativeMethod]
-        private static partial bool EditorGUI_BeginPopupContextItem(nint id);
-
-        [NativeMethod]
-        private static partial void EditorGUI_DrawTexture(nint texture);
-
-        [NativeMethod]
-        private static partial bool EditorGUI_Button(nint label);
-
-        [NativeMethod]
-        private static partial void EditorGUI_BeginGroup();
-
-        [NativeMethod]
-        private static partial void EditorGUI_EndGroup();
-
-        [NativeMethod]
-        private static partial float EditorGUI_CalcButtonWidth(nint label);
-
-        [NativeMethod]
-        private static partial Vector2 EditorGUI_GetItemSpacing();
-
-        [NativeMethod]
-        private static partial float EditorGUI_GetCursorPosX();
-
-        [NativeMethod]
-        private static partial void EditorGUI_SetCursorPosX(float localX);
-
-        [NativeMethod]
-        private static partial float EditorGUI_GetCollapsingHeaderOuterExtend();
-
-        [NativeMethod(Name = "EditorGUI_BeginMainMenuBar")]
-        public static partial bool BeginMainMenuBar();
-
-        /// <summary>
-        /// only call EndMainMenuBar() if BeginMainMenuBar() returns true!
-        /// </summary>
-        [NativeMethod(Name = "EditorGUI_EndMainMenuBar")]
-        public static partial void EndMainMenuBar();
+        private static partial void EndGroup();
 
         #endregion
     }

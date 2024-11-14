@@ -56,11 +56,9 @@ namespace March.Core.Rendering
 
         public unsafe void LoadFromSource(string name, byte[] source)
         {
-            using NativeString n = name;
-
             fixed (byte* p = source)
             {
-                LoadFromSource(n.Data, SourceType, (nint)p, source.Length);
+                LoadFromSource(name, SourceType, (nint)p, source.Length);
             }
         }
 
@@ -84,6 +82,6 @@ namespace March.Core.Rendering
         private partial void Delete();
 
         [NativeMethod]
-        private partial void LoadFromSource(nint name, Texture2DSourceType sourceType, nint pSource, int size);
+        private partial void LoadFromSource(string name, Texture2DSourceType sourceType, nint pSource, int size);
     }
 }

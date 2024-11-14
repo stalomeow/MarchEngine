@@ -17,7 +17,7 @@ namespace March.Core
         [HideInInspector]
         private bool m_IsEnabled = true;
 
-        protected Component() : base(Component_CreateDefault()) => m_IsDefaultNativeComponent = true;
+        protected Component() : base(CreateDefault()) => m_IsDefaultNativeComponent = true;
 
         /// <summary>
         /// 初始化一个自定义的 Native Component
@@ -43,7 +43,7 @@ namespace March.Core
         {
             if (m_IsDefaultNativeComponent)
             {
-                Component_DeleteDefault(NativePtr);
+                DeleteDefault();
             }
         }
 
@@ -57,7 +57,8 @@ namespace March.Core
             }
         }
 
-        public bool IsActiveAndEnabled => Component_GetIsActiveAndEnabled(NativePtr);
+        [NativeProperty]
+        public partial bool IsActiveAndEnabled { get; private set; }
 
         public GameObject gameObject => m_GameObject!;
 
@@ -72,7 +73,7 @@ namespace March.Core
             m_GameObject = go;
             m_IsMounted = false;
 
-            Component_SetTransform(NativePtr, go.transform.NativePtr);
+            SetNativeTransform(go.transform);
         }
 
         internal void TryMount()
@@ -95,7 +96,7 @@ namespace March.Core
 
             if (willActiveAndEnabled != IsActiveAndEnabled)
             {
-                Component_SetIsActiveAndEnabled(NativePtr, willActiveAndEnabled);
+                IsActiveAndEnabled = willActiveAndEnabled;
 
                 if (willActiveAndEnabled)
                 {
@@ -137,63 +138,39 @@ namespace March.Core
         /// 即使 <see cref="Component"/> 没有被启用，这个方法也会被调用
         /// </summary>
         /// <remarks>这个方法在 <see cref="OnEnable"/> 前被调用，可以当成构造方法使用</remarks>
-        protected virtual void OnMount() => Component_OnMount(NativePtr);
+        [NativeMethod]
+        protected virtual partial void OnMount();
 
         /// <summary>
         /// 在组件被移除时调用；如果 <see cref="OnMount"/> 没有被调用过，这个方法也不会被调用；
         /// 即使 <see cref="GameObject"/> 没有被激活、<see cref="Component"/> 没有被启用，这个方法也会被调用
         /// </summary>
         /// <remarks>这个方法在 <see cref="OnDisable"/> 后被调用，可以当成析构方法使用</remarks>
-        protected virtual void OnUnmount() => Component_OnUnmount(NativePtr);
-
-        protected virtual void OnEnable() => Component_OnEnable(NativePtr);
-
-        protected virtual void OnDisable() => Component_OnDisable(NativePtr);
-
-        protected virtual void OnUpdate() => Component_OnUpdate(NativePtr);
-
-        protected virtual void OnDrawGizmos(bool isSelected) => Component_OnDrawGizmos(NativePtr, isSelected);
-
-        protected virtual void OnDrawGizmosGUI(bool isSelected) => Component_OnDrawGizmosGUI(NativePtr, isSelected);
-
-        #region Bindings
+        [NativeMethod]
+        protected virtual partial void OnUnmount();
 
         [NativeMethod]
-        private static partial nint Component_CreateDefault();
+        protected virtual partial void OnEnable();
 
         [NativeMethod]
-        private static partial void Component_DeleteDefault(nint component);
+        protected virtual partial void OnDisable();
 
         [NativeMethod]
-        private static partial bool Component_GetIsActiveAndEnabled(nint component);
+        protected virtual partial void OnUpdate();
 
         [NativeMethod]
-        private static partial void Component_SetIsActiveAndEnabled(nint component, bool value);
+        protected virtual partial void OnDrawGizmos(bool isSelected);
 
         [NativeMethod]
-        private static partial void Component_SetTransform(nint component, nint transform);
+        protected virtual partial void OnDrawGizmosGUI(bool isSelected);
 
         [NativeMethod]
-        private static partial void Component_OnMount(nint component);
+        private static partial nint CreateDefault();
 
         [NativeMethod]
-        private static partial void Component_OnUnmount(nint component);
+        private partial void DeleteDefault();
 
-        [NativeMethod]
-        private static partial void Component_OnEnable(nint component);
-
-        [NativeMethod]
-        private static partial void Component_OnDisable(nint component);
-
-        [NativeMethod]
-        private static partial void Component_OnUpdate(nint component);
-
-        [NativeMethod]
-        private static partial void Component_OnDrawGizmos(nint component, bool isSelected);
-
-        [NativeMethod]
-        private static partial void Component_OnDrawGizmosGUI(nint component, bool isSelected);
-
-        #endregion
+        [NativeMethod("SetTransform")]
+        private partial void SetNativeTransform(Transform transform);
     }
 }

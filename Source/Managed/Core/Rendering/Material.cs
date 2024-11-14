@@ -18,15 +18,15 @@ namespace March.Core.Rendering
             set
             {
                 m_Shader = value;
-                Material_SetShader(NativePtr, value?.NativePtr ?? nint.Zero);
+                SetNativeShader(value);
             }
         }
 
-        public Material() : base(Material_New()) { }
+        public Material() : base(New()) { }
 
         protected override void Dispose(bool disposing)
         {
-            Material_Delete(NativePtr);
+            Delete();
         }
 
         [OnDeserializing]
@@ -40,32 +40,23 @@ namespace March.Core.Rendering
         {
             m_Shader = null;
             m_NonNullTextures.Clear();
-            Material_Reset(NativePtr);
+            ResetNative();
         }
 
-        public void SetInt(string name, int value)
-        {
-            using NativeString n = name;
-            Material_SetInt(NativePtr, n.Data, value);
-        }
+        [NativeMethod]
+        public partial void SetInt(string name, int value);
 
-        public void SetFloat(string name, float value)
-        {
-            using NativeString n = name;
-            Material_SetFloat(NativePtr, n.Data, value);
-        }
+        [NativeMethod]
+        public partial void SetFloat(string name, float value);
 
-        public void SetVector(string name, Vector4 value)
-        {
-            using NativeString n = name;
-            Material_SetVector(NativePtr, n.Data, value);
-        }
+        [NativeMethod]
+        public partial void SetVector(string name, Vector4 value);
 
-        public void SetColor(string name, Color value)
-        {
-            using NativeString n = name;
-            Material_SetColor(NativePtr, n.Data, value);
-        }
+        [NativeMethod]
+        public partial void SetColor(string name, Color value);
+
+        [NativeMethod("SetTexture")]
+        private partial void SetNativeTexture(string name, Texture? texture);
 
         public void SetTexture(string name, Texture? value)
         {
@@ -78,49 +69,23 @@ namespace March.Core.Rendering
                 m_NonNullTextures[name] = value;
             }
 
-            using NativeString n = name;
-            Material_SetTexture(NativePtr, n.Data, value?.NativePtr ?? nint.Zero);
+            SetNativeTexture(name, value);
         }
 
-        public bool TryGetInt(string name, out int value)
-        {
-            using NativeString n = name;
+        [NativeMethod("GetInt")]
+        public partial bool TryGetInt(string name, out int value);
 
-            int v = default;
-            bool ret = Material_GetInt(NativePtr, n.Data, &v);
-            value = v;
-            return ret;
-        }
+        [NativeMethod("GetFloat")]
+        public partial bool TryGetFloat(string name, out float value);
 
-        public bool TryGetFloat(string name, out float value)
-        {
-            using NativeString n = name;
+        [NativeMethod("GetVector")]
+        public partial bool TryGetVector(string name, out Vector4 value);
 
-            float v = default;
-            bool ret = Material_GetFloat(NativePtr, n.Data, &v);
-            value = v;
-            return ret;
-        }
+        [NativeMethod("GetColor")]
+        public partial bool TryGetColor(string name, out Color value);
 
-        public bool TryGetVector(string name, out Vector4 value)
-        {
-            using NativeString n = name;
-
-            Vector4 v = default;
-            bool ret = Material_GetVector(NativePtr, n.Data, &v);
-            value = v;
-            return ret;
-        }
-
-        public bool TryGetColor(string name, out Color value)
-        {
-            using NativeString n = name;
-
-            Color v = default;
-            bool ret = Material_GetColor(NativePtr, n.Data, &v);
-            value = v;
-            return ret;
-        }
+        [NativeMethod]
+        private partial bool HasTextureProperty(string name);
 
         /// <summary>
         /// 
@@ -136,8 +101,7 @@ namespace March.Core.Rendering
             }
 
             value = null;
-            using NativeString n = name;
-            return Material_HasTextureProperty(NativePtr, n.Data);
+            return HasTextureProperty(name);
         }
 
         public int GetIntOrDefault(string name, int defaultValue = default)
@@ -190,23 +154,14 @@ namespace March.Core.Rendering
             return TryGetTexture(name, out Texture? value) ? value : throw new KeyNotFoundException("Material property not found: " + name);
         }
 
-        public void EnableKeyword(string keyword)
-        {
-            using NativeString k = keyword;
-            Material_EnableKeyword(NativePtr, k.Data);
-        }
+        [NativeMethod]
+        public partial void EnableKeyword(string keyword);
 
-        public void DisableKeyword(string keyword)
-        {
-            using NativeString k = keyword;
-            Material_DisableKeyword(NativePtr, k.Data);
-        }
+        [NativeMethod]
+        public partial void DisableKeyword(string keyword);
 
-        public void SetKeyword(string keyword, bool value)
-        {
-            using NativeString k = keyword;
-            Material_SetKeyword(NativePtr, k.Data, value);
-        }
+        [NativeMethod]
+        public partial void SetKeyword(string keyword, bool value);
 
         #region Serialization
 
@@ -222,7 +177,7 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var props = (NativeArray<NativeProperty<int>>)Material_GetAllInts(NativePtr);
+                using var props = (NativeArray<NativeProperty<int>>)GetAllInts();
                 var result = new Dictionary<string, int>();
 
                 for (int i = 0; i < props.Length; i++)
@@ -248,7 +203,7 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var props = (NativeArray<NativeProperty<float>>)Material_GetAllFloats(NativePtr);
+                using var props = (NativeArray<NativeProperty<float>>)GetAllFloats();
                 var result = new Dictionary<string, float>();
 
                 for (int i = 0; i < props.Length; i++)
@@ -274,7 +229,7 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var props = (NativeArray<NativeProperty<Vector4>>)Material_GetAllVectors(NativePtr);
+                using var props = (NativeArray<NativeProperty<Vector4>>)GetAllVectors();
                 var result = new Dictionary<string, Vector4>();
 
                 for (int i = 0; i < props.Length; i++)
@@ -300,7 +255,7 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var props = (NativeArray<NativeProperty<Color>>)Material_GetAllColors(NativePtr);
+                using var props = (NativeArray<NativeProperty<Color>>)GetAllColors();
                 var result = new Dictionary<string, Color>();
 
                 for (int i = 0; i < props.Length; i++)
@@ -326,7 +281,7 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var props = (NativeArray<NativeProperty<nint>>)Material_GetAllTextures(NativePtr);
+                using var props = (NativeArray<NativeProperty<nint>>)GetAllTextures();
                 var result = new Dictionary<string, Texture?>();
 
                 for (int i = 0; i < props.Length; i++)
@@ -353,7 +308,7 @@ namespace March.Core.Rendering
         {
             get
             {
-                using var ks = (NativeArray<nint>)Material_GetAllKeywords(NativePtr);
+                using var ks = (NativeArray<nint>)GetAllKeywords();
                 return ks.ConvertValue((in nint s) => NativeString.GetAndFree(s));
             }
 
@@ -368,77 +323,34 @@ namespace March.Core.Rendering
 
         #endregion
 
-        #region Native
+        [NativeMethod]
+        private static partial nint New();
 
         [NativeMethod]
-        private static partial nint Material_New();
+        private partial void Delete();
+
+        [NativeMethod("Reset")]
+        private partial void ResetNative();
+
+        [NativeMethod("SetShader")]
+        private partial void SetNativeShader(Shader? shader);
 
         [NativeMethod]
-        private static partial void Material_Delete(nint pMaterial);
+        private partial nint GetAllInts();
 
         [NativeMethod]
-        private static partial void Material_Reset(nint pMaterial);
+        private partial nint GetAllFloats();
 
         [NativeMethod]
-        private static partial void Material_SetShader(nint pMaterial, nint pShader);
+        private partial nint GetAllVectors();
 
         [NativeMethod]
-        private static partial void Material_SetInt(nint pMaterial, nint name, int value);
+        private partial nint GetAllColors();
 
         [NativeMethod]
-        private static partial void Material_SetFloat(nint pMaterial, nint name, float value);
+        private partial nint GetAllTextures();
 
         [NativeMethod]
-        private static partial void Material_SetVector(nint pMaterial, nint name, Vector4 value);
-
-        [NativeMethod]
-        private static partial void Material_SetColor(nint pMaterial, nint name, Color value);
-
-        [NativeMethod]
-        private static partial void Material_SetTexture(nint pMaterial, nint name, nint pTexture);
-
-        [NativeMethod]
-        private static partial bool Material_GetInt(nint pMaterial, nint name, int* outValue);
-
-        [NativeMethod]
-        private static partial bool Material_GetFloat(nint pMaterial, nint name, float* outValue);
-
-        [NativeMethod]
-        private static partial bool Material_GetVector(nint pMaterial, nint name, Vector4* outValue);
-
-        [NativeMethod]
-        private static partial bool Material_GetColor(nint pMaterial, nint name, Color* outValue);
-
-        [NativeMethod]
-        private static partial bool Material_HasTextureProperty(nint pMaterial, nint name);
-
-        [NativeMethod]
-        private static partial nint Material_GetAllInts(nint pMaterial);
-
-        [NativeMethod]
-        private static partial nint Material_GetAllFloats(nint pMaterial);
-
-        [NativeMethod]
-        private static partial nint Material_GetAllVectors(nint pMaterial);
-
-        [NativeMethod]
-        private static partial nint Material_GetAllColors(nint pMaterial);
-
-        [NativeMethod]
-        private static partial nint Material_GetAllTextures(nint pMaterial);
-
-        [NativeMethod]
-        private static partial void Material_EnableKeyword(nint pMaterial, nint keyword);
-
-        [NativeMethod]
-        private static partial void Material_DisableKeyword(nint pMaterial, nint keyword);
-
-        [NativeMethod]
-        private static partial void Material_SetKeyword(nint pMaterial, nint keyword, bool value);
-
-        [NativeMethod]
-        private static partial nint Material_GetAllKeywords(nint pMaterial);
-
-        #endregion
+        private partial nint GetAllKeywords();
     }
 }

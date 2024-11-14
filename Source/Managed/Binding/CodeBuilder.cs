@@ -8,8 +8,11 @@ namespace March.Binding
     {
         private readonly StringBuilder m_Builder;
         private readonly Dictionary<string, string> m_ParamWrapperTypes;
+        private readonly Dictionary<string, int> m_NameCollisionCounts;
 
         public int IndentLevel { get; set; }
+
+        public GeneratorExecutionContext Context { get; }
 
         public INamedTypeSymbol MethodAttributeSymbol { get; }
 
@@ -19,17 +22,19 @@ namespace March.Binding
 
         public INamedTypeSymbol ThisTypeSymbol { get; }
 
-        public CodeBuilder(Compilation compilation)
+        public CodeBuilder(GeneratorExecutionContext context)
         {
             m_Builder = new StringBuilder();
             m_ParamWrapperTypes = new Dictionary<string, string>();
+            m_NameCollisionCounts = new Dictionary<string, int>();
 
             IndentLevel = 0;
 
-            MethodAttributeSymbol = SymbolUtility.GetMethodAttributeSymbol(compilation);
-            PropertyAttributeSymbol = SymbolUtility.GetPropertyAttributeSymbol(compilation);
-            TypeNameAttributeSymbol = SymbolUtility.GetTypeNameAttributeSymbol(compilation);
-            ThisTypeSymbol = SymbolUtility.GetThisTypeSymbol(compilation);
+            Context = context;
+            MethodAttributeSymbol = SymbolUtility.GetMethodAttributeSymbol(context.Compilation);
+            PropertyAttributeSymbol = SymbolUtility.GetPropertyAttributeSymbol(context.Compilation);
+            TypeNameAttributeSymbol = SymbolUtility.GetTypeNameAttributeSymbol(context.Compilation);
+            ThisTypeSymbol = SymbolUtility.GetThisTypeSymbol(context.Compilation);
         }
 
         public override string ToString()
@@ -64,6 +69,11 @@ namespace March.Binding
         public void AppendLineStructLayoutSequential()
         {
             AppendLine("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]");
+        }
+
+        public void AppendLineDebuggerHidden()
+        {
+            AppendLine("[global::System.Diagnostics.DebuggerHidden]");
         }
 
         public string GetParameterWrapperTypeName(ITypeSymbol type)
@@ -104,6 +114,18 @@ namespace March.Binding
                 AppendLine("}");
                 AppendLine();
             }
+        }
+
+        public string GetUniqueName(string name)
+        {
+            if (!m_NameCollisionCounts.TryGetValue(name, out int count))
+            {
+                m_NameCollisionCounts[name] = 1;
+                return name;
+            }
+
+            m_NameCollisionCounts[name] = count + 1;
+            return $"{name}{count}";
         }
     }
 }

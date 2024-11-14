@@ -101,7 +101,6 @@ namespace March.Core.Diagnostics
                     return;
                 }
 
-                using NativeString message = Builder;
                 using var frames = ListPool<LogStackFrame>.Get();
 
                 try
@@ -135,7 +134,7 @@ namespace March.Core.Diagnostics
 
                     fixed (LogStackFrame* pFrames = CollectionsMarshal.AsSpan(frames.Value))
                     {
-                        Message(Level, message.Data, pFrames, frames.Value.Count);
+                        Message(Level, Builder, pFrames, frames.Value.Count);
                     }
                 }
                 finally
@@ -259,6 +258,6 @@ namespace March.Core.Diagnostics
         }
 
         [NativeMethod]
-        private static partial void Message(LogLevel level, nint message, LogStackFrame* pFrames, int frameCount);
+        private static partial void Message(LogLevel level, StringBuilder message, LogStackFrame* pFrames, int frameCount);
     }
 }

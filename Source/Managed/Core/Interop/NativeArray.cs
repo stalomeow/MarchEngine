@@ -10,7 +10,7 @@ namespace March.Core.Interop
 
         public NativeArray(int length)
         {
-            Data = NativeArrayBindings.NewArray(length * sizeof(T));
+            Data = NativeArrayBindings.New(length * sizeof(T));
         }
 
         public void Dispose()
@@ -32,9 +32,7 @@ namespace March.Core.Interop
         {
             get
             {
-                byte* pData = null;
-                int byteCount = 0;
-                NativeArrayBindings.UnmarshalArray(Data, &pData, &byteCount);
+                NativeArrayBindings.Unmarshal(Data, out byte* pData, out int byteCount);
                 return byteCount / sizeof(T);
             }
         }
@@ -43,9 +41,7 @@ namespace March.Core.Interop
         {
             get
             {
-                byte* pData = null;
-                int byteCount = 0;
-                NativeArrayBindings.UnmarshalArray(Data, &pData, &byteCount);
+                NativeArrayBindings.Unmarshal(Data, out byte* pData, out int byteCount);
 
                 int byteIndex = index * sizeof(T);
                 if (byteIndex < 0 || byteIndex >= byteCount)
@@ -83,7 +79,7 @@ namespace March.Core.Interop
         {
             fixed (T* p = span)
             {
-                return NativeArrayBindings.MarshalArray((byte*)p, span.Length * sizeof(T));
+                return NativeArrayBindings.Marshal((byte*)p, span.Length * sizeof(T));
             }
         }
 
@@ -99,9 +95,7 @@ namespace March.Core.Interop
 
         public static T[] Get(nint data)
         {
-            byte* pData = null;
-            int byteCount = 0;
-            NativeArrayBindings.UnmarshalArray(data, &pData, &byteCount);
+            NativeArrayBindings.Unmarshal(data, out byte* pData, out int byteCount);
 
             if (byteCount == 0)
             {
@@ -123,22 +117,23 @@ namespace March.Core.Interop
             return result;
         }
 
-        public static void Free(nint data) => NativeArrayBindings.FreeArray(data);
+        public static void Free(nint data) => NativeArrayBindings.Free(data);
     }
 
+    [NativeTypeName("NativeArray")]
     internal static unsafe partial class NativeArrayBindings
     {
         [NativeMethod]
-        public static partial nint NewArray(int byteCount);
+        public static partial nint New(int byteCount);
 
         [NativeMethod]
-        public static partial nint MarshalArray(byte* p, int byteCount);
+        public static partial nint Marshal(byte* p, int byteCount);
 
         [NativeMethod]
-        public static partial void UnmarshalArray(nint self, byte** ppOutData, int* pOutByteCount);
+        public static partial void Unmarshal(nint self, out byte* data, out int byteCount);
 
         [NativeMethod]
-        public static partial void FreeArray(nint data);
+        public static partial void Free(nint data);
     }
 
     public interface INativeMarshal<T> where T : INativeMarshal<T>
@@ -190,7 +185,7 @@ namespace March.Core.Interop
 
         public NativeArrayMarshal(int length)
         {
-            Data = NativeArrayBindings.NewArray(length * T.SizeOfNative());
+            Data = NativeArrayBindings.New(length * T.SizeOfNative());
         }
 
         public void Dispose()

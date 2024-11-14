@@ -62,7 +62,7 @@ NATIVE_EXPORT_AUTO DragDrop_EndTarget()
     ImGui::EndDragDropTarget();
 }
 
-NATIVE_EXPORT_AUTO DragDrop_IsActive()
+NATIVE_EXPORT_AUTO DragDrop_GetIsActive()
 {
     retcs ImGui::IsDragDropActive();
 }

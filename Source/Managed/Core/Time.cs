@@ -2,25 +2,16 @@ using March.Core.Interop;
 
 namespace March.Core
 {
+    [NativeTypeName("Application")]
     public static partial class Time
     {
-        public static float Delta => Application_GetDeltaTime();
+        [NativeProperty("DeltaTime")]
+        public static partial float Delta { get; }
 
-        public static float Elapsed => Application_GetElapsedTime();
+        [NativeProperty("ElapsedTime")]
+        public static partial float Elapsed { get; }
 
-        public static ulong FrameCount => Application_GetFrameCount();
-
-        #region Bindings
-
-        [NativeMethod]
-        private static partial float Application_GetDeltaTime();
-
-        [NativeMethod]
-        private static partial float Application_GetElapsedTime();
-
-        [NativeMethod]
-        private static partial ulong Application_GetFrameCount();
-
-        #endregion
+        [NativeProperty]
+        public static partial ulong FrameCount { get; }
     }
 }

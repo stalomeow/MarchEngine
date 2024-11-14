@@ -5,22 +5,18 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/Analysis/Render Graph Debugger")]
     internal partial class RenderGraphDebuggerWindow : EditorWindow
     {
-        public RenderGraphDebuggerWindow() : base(RenderGraphDebuggerWindow_New(), "Render Graph Debugger") { }
+        public RenderGraphDebuggerWindow() : base(New(), "Render Graph Debugger") { }
 
         protected override void OnDispose(bool disposing)
         {
-            RenderGraphDebuggerWindow_Delete(NativePtr);
+            Delete();
             base.OnDispose(disposing);
         }
 
-        #region Bindings
+        [NativeMethod]
+        private static partial nint New();
 
         [NativeMethod]
-        private static partial nint RenderGraphDebuggerWindow_New();
-
-        [NativeMethod]
-        private static partial void RenderGraphDebuggerWindow_Delete(nint w);
-
-        #endregion
+        private partial void Delete();
     }
 }

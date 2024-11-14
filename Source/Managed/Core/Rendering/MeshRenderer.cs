@@ -24,7 +24,7 @@ namespace March.Core.Rendering
             set
             {
                 m_Mesh = value;
-                SetMesh(value?.NativePtr ?? nint.Zero);
+                SetNativeMesh(value);
             }
         }
 
@@ -51,7 +51,7 @@ namespace March.Core.Rendering
                 materials[i] = m_Materials[i]?.NativePtr ?? nint.Zero;
             }
 
-            SetMaterials(materials.Data);
+            SetNativeMaterials(materials.Data);
         }
 
         /// <summary>
@@ -66,10 +66,10 @@ namespace March.Core.Rendering
         [NativeMethod]
         private partial void Delete();
 
-        [NativeMethod]
-        private partial void SetMesh(nint value);
+        [NativeMethod("SetMesh")]
+        private partial void SetNativeMesh(Mesh? mesh);
 
-        [NativeMethod]
-        private partial void SetMaterials(nint materials);
+        [NativeMethod("SetMaterials")]
+        private partial void SetNativeMaterials(nint materials);
     }
 }

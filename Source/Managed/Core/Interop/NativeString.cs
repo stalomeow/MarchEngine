@@ -19,6 +19,10 @@ namespace March.Core.Interop
 
         public static implicit operator NativeString(string value) => new() { Data = New(value) };
 
+        public static implicit operator NativeString(Span<char> value) => new() { Data = New(value) };
+
+        public static implicit operator NativeString(ReadOnlySpan<char> value) => new() { Data = New(value) };
+
         public static implicit operator NativeString(StringBuilder value) => new() { Data = New(value) };
 
         public static implicit operator NativeString(PooledObject<StringBuilder> value) => new() { Data = New(value) };
@@ -29,9 +33,19 @@ namespace March.Core.Interop
 
         public static nint New(string s)
         {
+            return New(s.AsSpan());
+        }
+
+        public static nint New(Span<char> s)
+        {
+            return New((ReadOnlySpan<char>)s);
+        }
+
+        public static nint New(ReadOnlySpan<char> s)
+        {
             fixed (char* p = s)
             {
-                return MarshalString(p, s.Length);
+                return Marshal(p, s.Length);
             }
         }
 
@@ -49,7 +63,7 @@ namespace March.Core.Interop
 
                 fixed (char* p = chunk.Span)
                 {
-                    SetStringData(result, offset, p, chunk.Length);
+                    SetData(result, offset, p, chunk.Length);
                 }
 
                 offset += chunk.Length;
@@ -75,9 +89,7 @@ namespace March.Core.Interop
 
         public static string Get(nint s)
         {
-            byte* pData;
-            int len;
-            UnmarshalString(s, &pData, &len);
+            Unmarshal(s, out byte* pData, out int len);
             return len == 0 ? string.Empty : Encoding.UTF8.GetString(pData, len);
         }
 
@@ -88,23 +100,19 @@ namespace March.Core.Interop
             return result;
         }
 
-        #region Bindings
+        [NativeMethod]
+        private static partial nint Marshal(char* p, int len);
 
         [NativeMethod]
-        private static partial nint MarshalString(char* p, int len);
+        private static partial void Unmarshal(nint s, out byte* data, out int len);
 
         [NativeMethod]
-        private static partial void UnmarshalString(nint s, byte** ppOutData, int* pOutLen);
+        private static partial void SetData(nint s, int offset, char* p, int count);
 
         [NativeMethod]
-        private static partial void SetStringData(nint s, int offset, char* p, int count);
-
-        [NativeMethod(Name = "NewString")]
         public static partial nint New(int length);
 
-        [NativeMethod(Name = "FreeString")]
+        [NativeMethod]
         public static partial void Free(nint s);
-
-        #endregion
     }
 }

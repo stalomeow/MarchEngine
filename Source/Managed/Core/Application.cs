@@ -6,22 +6,6 @@ namespace March.Core
 {
     public static partial class Application
     {
-        private static string? s_CachedDataPath;
-
-        public static string DataPath
-        {
-            get
-            {
-                if (s_CachedDataPath == null)
-                {
-                    nint path = Application_GetDataPath();
-                    s_CachedDataPath = NativeString.GetAndFree(path);
-                }
-
-                return s_CachedDataPath;
-            }
-        }
-
         [UnmanagedCallersOnly]
         private static void OnStart()
         {
@@ -47,25 +31,14 @@ namespace March.Core
             GC.WaitForPendingFinalizers();
         }
 
-        public static string SaveFilePanelInProject(string title, string defaultName, string extension, string path = "Assets")
-        {
-            using NativeString t = title;
-            using NativeString d = defaultName;
-            using NativeString e = extension;
-            using NativeString p = path;
+        private static string? s_CachedDataPath;
 
-            nint result = Application_SaveFilePanelInProject(t.Data, d.Data, e.Data, p.Data);
-            return NativeString.GetAndFree(result);
-        }
-
-        #region Bindings
+        public static string DataPath => s_CachedDataPath ??= GetDataPath();
 
         [NativeMethod]
-        private static partial nint Application_GetDataPath();
+        private static partial string GetDataPath();
 
         [NativeMethod]
-        private static partial nint Application_SaveFilePanelInProject(nint title, nint defaultName, nint extension, nint path);
-
-        #endregion
+        public static partial string SaveFilePanelInProject(string title, string defaultName, string extension, string path = "Assets");
     }
 }

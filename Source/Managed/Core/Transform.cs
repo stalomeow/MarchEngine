@@ -14,135 +14,102 @@ namespace March.Core
         private List<Transform> m_Children = [];
         private Transform? m_Parent = null;
 
-        public Transform() : base(Transform_Create()) { }
+        public Transform() : base(Create()) { }
 
         protected override void DisposeNative()
         {
-            Transform_Delete(NativePtr);
+            Delete();
             base.DisposeNative();
         }
 
         [JsonProperty]
-        public Vector3 LocalPosition
-        {
-            get => Transform_GetLocalPosition(NativePtr);
-            set => Transform_SetLocalPosition(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Vector3 LocalPosition { get; set; }
 
-        [JsonProperty(nameof(LocalRotation))]
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        private Quaternion LocalRotationSerializationOnly
-        {
-            get => Transform_GetLocalRotation(NativePtr);
-            set => Transform_SetLocalRotationWithoutSyncEulerAngles(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Quaternion LocalRotation { get; set; }
 
-        public Quaternion LocalRotation
-        {
-            get => Transform_GetLocalRotation(NativePtr);
-            set => Transform_SetLocalRotation(NativePtr, value);
-        }
-
-        [JsonProperty(nameof(LocalEulerAngles))]
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        private Vector3 LocalEulerAnglesSerializationOnly
-        {
-            get => Transform_GetLocalEulerAngles(NativePtr);
-            set => Transform_SetLocalEulerAnglesWithoutSyncRotation(NativePtr, value);
-        }
-
-        public Vector3 LocalEulerAngles
-        {
-            get => Transform_GetLocalEulerAngles(NativePtr);
-            set => Transform_SetLocalEulerAngles(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Vector3 LocalEulerAngles { get; set; }
 
         [JsonProperty]
-        public Vector3 LocalScale
-        {
-            get => Transform_GetLocalScale(NativePtr);
-            set => Transform_SetLocalScale(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Vector3 LocalScale { get; set; }
 
-        public Vector3 Position
-        {
-            get => Transform_GetPosition(NativePtr);
-            set => Transform_SetPosition(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Vector3 Position { get; set; }
 
-        public Quaternion Rotation
-        {
-            get => Transform_GetRotation(NativePtr);
-            set => Transform_SetRotation(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Quaternion Rotation { get; set; }
 
-        public Vector3 EulerAngles
-        {
-            get => Transform_GetEulerAngles(NativePtr);
-            set => Transform_SetEulerAngles(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Vector3 EulerAngles { get; set; }
 
-        public Vector3 LossyScale => Transform_GetLossyScale(NativePtr);
+        [NativeProperty]
+        public partial Vector3 LossyScale { get; }
 
-        public Matrix4x4 LocalToWorldMatrix
-        {
-            get => Transform_GetLocalToWorldMatrix(NativePtr);
-            set => Transform_SetLocalToWorldMatrix(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Matrix4x4 LocalToWorldMatrix { get; set; }
 
-        public Matrix4x4 WorldToLocalMatrix
-        {
-            get => Transform_GetWorldToLocalMatrix(NativePtr);
-            set => Transform_SetWorldToLocalMatrix(NativePtr, value);
-        }
+        [NativeProperty]
+        public partial Matrix4x4 WorldToLocalMatrix { get; set; }
 
-        public Vector3 Forward => Transform_GetForward(NativePtr);
+        [NativeProperty]
+        public partial Vector3 Forward { get; }
 
-        public Vector3 Right => Transform_GetRight(NativePtr);
+        [NativeProperty]
+        public partial Vector3 Right { get; }
 
-        public Vector3 Up => Transform_GetUp(NativePtr);
+        [NativeProperty]
+        public partial Vector3 Up { get; }
 
         /// <summary>
         /// 变换一个向量，受 rotation 和 scale 影响
         /// </summary>
         /// <param name="vector"></param>
         /// <returns></returns>
-        public Vector3 TransformVector(Vector3 vector) => Transform_TransformVector(NativePtr, vector);
+        [NativeMethod]
+        public partial Vector3 TransformVector(Vector3 vector);
 
         /// <summary>
         /// 变换一个方向，只受 rotation 影响
         /// </summary>
         /// <param name="direction"></param>
         /// <returns></returns>
-        public Vector3 TransformDirection(Vector3 direction) => Transform_TransformDirection(NativePtr, direction);
+        [NativeMethod]
+        public partial Vector3 TransformDirection(Vector3 direction);
 
         /// <summary>
         /// 变换一个点，受 rotation、scale 和 position 影响
         /// </summary>
         /// <param name="point"></param>
         /// <returns></returns>
-        public Vector3 TransformPoint(Vector3 point) => Transform_TransformPoint(NativePtr, point);
+        [NativeMethod]
+        public partial Vector3 TransformPoint(Vector3 point);
 
         /// <summary>
         /// 逆变换一个向量，受 rotation 和 scale 影响
         /// </summary>
         /// <param name="vector"></param>
         /// <returns></returns>
-        public Vector3 InverseTransformVector(Vector3 vector) => Transform_InverseTransformVector(NativePtr, vector);
+        [NativeMethod]
+        public partial Vector3 InverseTransformVector(Vector3 vector);
 
         /// <summary>
         /// 逆变换一个方向，只受 rotation 影响
         /// </summary>
         /// <param name="direction"></param>
         /// <returns></returns>
-        public Vector3 InverseTransformDirection(Vector3 direction) => Transform_InverseTransformDirection(NativePtr, direction);
+        [NativeMethod]
+        public partial Vector3 InverseTransformDirection(Vector3 direction);
 
         /// <summary>
         /// 逆变换一个点，受 rotation、scale 和 position 影响
         /// </summary>
         /// <param name="point"></param>
         /// <returns></returns>
-        public Vector3 InverseTransformPoint(Vector3 point) => Transform_InverseTransformPoint(NativePtr, point);
+        [NativeMethod]
+        public partial Vector3 InverseTransformPoint(Vector3 point);
 
         public Transform? Parent => m_Parent;
 
@@ -159,7 +126,7 @@ namespace March.Core
 
             m_Children.Add(child);
             child.m_Parent = this;
-            Transform_SetParent(child.NativePtr, NativePtr);
+            child.SetNativeParent(this);
         }
 
         public void InsertChild(int index, Transform child)
@@ -171,7 +138,7 @@ namespace March.Core
 
             m_Children.Insert(index, child);
             child.m_Parent = this;
-            Transform_SetParent(child.NativePtr, NativePtr);
+            child.SetNativeParent(this);
         }
 
         public void Detach()
@@ -183,7 +150,7 @@ namespace March.Core
 
             m_Parent.m_Children.Remove(this);
             m_Parent = null;
-            Transform_SetParent(NativePtr, nint.Zero);
+            SetNativeParent(null);
         }
 
         [OnDeserialized]
@@ -192,111 +159,39 @@ namespace March.Core
             foreach (Transform child in m_Children)
             {
                 child.m_Parent = this;
-                Transform_SetParent(child.NativePtr, NativePtr);
+                child.SetNativeParent(this);
             }
         }
 
-        #region Bindings
+        [JsonProperty(nameof(LocalRotation))]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private Quaternion LocalRotationSerializationOnly
+        {
+            get => LocalRotation;
+            set => SetLocalRotationWithoutSyncEulerAngles(value);
+        }
+
+        [JsonProperty(nameof(LocalEulerAngles))]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        private Vector3 LocalEulerAnglesSerializationOnly
+        {
+            get => LocalEulerAngles;
+            set => SetLocalEulerAnglesWithoutSyncRotation(value);
+        }
 
         [NativeMethod]
-        private static partial nint Transform_Create();
+        private static partial nint Create();
 
         [NativeMethod]
-        private static partial void Transform_Delete(nint transform);
+        private partial void Delete();
+
+        [NativeMethod("SetParent")]
+        private partial void SetNativeParent(Transform? parent);
 
         [NativeMethod]
-        private static partial void Transform_SetParent(nint transform, nint parent);
+        private partial void SetLocalRotationWithoutSyncEulerAngles(Quaternion value);
 
         [NativeMethod]
-        private static partial Vector3 Transform_GetLocalPosition(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalPosition(nint transform, Vector3 value);
-
-        [NativeMethod]
-        private static partial Quaternion Transform_GetLocalRotation(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalRotation(nint transform, Quaternion value);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalRotationWithoutSyncEulerAngles(nint transform, Quaternion value);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetLocalEulerAngles(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalEulerAngles(nint transform, Vector3 value);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalEulerAnglesWithoutSyncRotation(nint transform, Vector3 value);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetLocalScale(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalScale(nint transform, Vector3 value);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetPosition(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetPosition(nint transform, Vector3 value);
-
-        [NativeMethod]
-        private static partial Quaternion Transform_GetRotation(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetRotation(nint transform, Quaternion value);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetEulerAngles(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetEulerAngles(nint transform, Vector3 value);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetLossyScale(nint transform);
-
-        [NativeMethod]
-        private static partial Matrix4x4 Transform_GetLocalToWorldMatrix(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetLocalToWorldMatrix(nint transform, Matrix4x4 value);
-
-        [NativeMethod]
-        private static partial Matrix4x4 Transform_GetWorldToLocalMatrix(nint transform);
-
-        [NativeMethod]
-        private static partial void Transform_SetWorldToLocalMatrix(nint transform, Matrix4x4 value);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetForward(nint transform);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetRight(nint transform);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_GetUp(nint transform);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_TransformVector(nint transform, Vector3 vector);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_TransformDirection(nint transform, Vector3 direction);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_TransformPoint(nint transform, Vector3 point);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_InverseTransformVector(nint transform, Vector3 vector);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_InverseTransformDirection(nint transform, Vector3 direction);
-
-        [NativeMethod]
-        private static partial Vector3 Transform_InverseTransformPoint(nint transform, Vector3 point);
-
-        #endregion
+        private partial void SetLocalEulerAnglesWithoutSyncRotation(Vector3 value);
     }
 }

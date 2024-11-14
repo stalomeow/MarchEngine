@@ -1,28 +1,29 @@
 #include "RenderPipeline.h"
 #include "Material.h"
+#include "Application.h"
 #include "InteropServices.h"
 
-NATIVE_EXPORT_AUTO RenderPipeline_AddRenderObject(cs<RenderPipeline*> pPipeline, cs<RenderObject*> pObject)
+NATIVE_EXPORT_AUTO RenderPipeline_AddRenderObject(cs<RenderObject*> pObject)
 {
-    pPipeline->AddRenderObject(pObject);
+    GetApp()->GetRenderPipeline()->AddRenderObject(pObject);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_RemoveRenderObject(cs<RenderPipeline*> pPipeline, cs<RenderObject*> pObject)
+NATIVE_EXPORT_AUTO RenderPipeline_RemoveRenderObject(cs<RenderObject*> pObject)
 {
-    pPipeline->RemoveRenderObject(pObject);
+    GetApp()->GetRenderPipeline()->RemoveRenderObject(pObject);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_AddLight(cs<RenderPipeline*> pPipeline, cs<Light*> pLight)
+NATIVE_EXPORT_AUTO RenderPipeline_AddLight(cs<Light*> pLight)
 {
-    pPipeline->AddLight(pLight);
+    GetApp()->GetRenderPipeline()->AddLight(pLight);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_RemoveLight(cs<RenderPipeline*> pPipeline, cs<Light*> pLight)
+NATIVE_EXPORT_AUTO RenderPipeline_RemoveLight(cs<Light*> pLight)
 {
-    pPipeline->RemoveLight(pLight);
+    GetApp()->GetRenderPipeline()->RemoveLight(pLight);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_Render(cs<RenderPipeline*> pPipeline, cs<Camera*> camera, cs<Material*> gridGizmoMaterial)
+NATIVE_EXPORT_AUTO RenderPipeline_Render(cs<Camera*> camera, cs<Material*> gridGizmoMaterial)
 {
-    pPipeline->Render(camera, gridGizmoMaterial);
+    GetApp()->GetRenderPipeline()->Render(camera, gridGizmoMaterial);
 }

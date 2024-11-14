@@ -161,16 +161,14 @@ namespace March.Core.Rendering
 
         #endregion
 
-        #region Bindings
+        [NativeProperty]
+        private partial nint SubMeshes { get; set; }
 
         [NativeProperty]
-        private nint SubMeshes { get; set; }
+        private partial nint Vertices { get; set; }
 
         [NativeProperty]
-        private nint Vertices { get; set; }
-
-        [NativeProperty]
-        private nint Indices { get; set; }
+        private partial nint Indices { get; set; }
 
         [NativeMethod]
         private static partial nint New();
@@ -180,7 +178,5 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private partial void AddSubMesh(nint vertices, nint indices);
-
-        #endregion
     }
 }

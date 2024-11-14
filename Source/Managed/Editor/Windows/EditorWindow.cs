@@ -30,11 +30,11 @@ namespace March.Editor.Windows
             SetId(id);
         }
 
-        protected EditorWindow(string titleIcon, string titleContent) : this(EditorWindow_CreateDefault(), true, titleIcon, titleContent) { }
+        protected EditorWindow(string titleIcon, string titleContent) : this(CreateDefault(), true, titleIcon, titleContent) { }
 
-        protected EditorWindow(string title) : this(EditorWindow_CreateDefault(), true, null, title) { }
+        protected EditorWindow(string title) : this(CreateDefault(), true, null, title) { }
 
-        protected EditorWindow() : this(EditorWindow_CreateDefault(), true, null, null) { }
+        protected EditorWindow() : this(CreateDefault(), true, null, null) { }
 
         protected EditorWindow(nint nativePtr, string titleIcon, string titleContent) : this(nativePtr, false, titleIcon, titleContent) { }
 
@@ -57,42 +57,22 @@ namespace March.Editor.Windows
         {
             if (m_IsDefaultNativeWindow)
             {
-                EditorWindow_DeleteDefault(NativePtr);
+                DeleteDefault();
             }
         }
 
-        public string Title
-        {
-            get
-            {
-                nint title = EditorWindow_GetTitle(NativePtr);
-                return NativeString.GetAndFree(title);
-            }
-        }
+        [NativeProperty]
+        public partial string Title { get; }
 
         [JsonProperty]
-        public string Id
-        {
-            get
-            {
-                nint id = EditorWindow_GetId(NativePtr);
-                return NativeString.GetAndFree(id);
-            }
+        [NativeProperty]
+        public partial string Id { get; protected internal set; }
 
-            protected internal set => SetId(value);
-        }
+        [NativeProperty]
+        public partial Vector2 DefaultSize { get; protected set; }
 
-        public Vector2 DefaultSize
-        {
-            get => EditorWindow_GetDefaultSize(NativePtr);
-            protected set => EditorWindow_SetDefaultSize(NativePtr, value);
-        }
-
-        internal bool IsOpen
-        {
-            get => EditorWindow_GetIsOpen(NativePtr);
-            private set => EditorWindow_SetIsOpen(NativePtr, value);
-        }
+        [NativeProperty]
+        internal partial bool IsOpen { get; private set; }
 
         protected void SetTitle(StringLike icon, StringLike content)
         {
@@ -101,17 +81,11 @@ namespace March.Editor.Windows
             SetTitle(title);
         }
 
-        protected void SetTitle(StringLike value)
-        {
-            using NativeString v = value;
-            EditorWindow_SetTitle(NativePtr, v.Data);
-        }
+        [NativeMethod]
+        protected partial void SetTitle(StringLike value);
 
-        protected internal void SetId(StringLike value)
-        {
-            using NativeString v = value;
-            EditorWindow_SetId(NativePtr, v.Data);
-        }
+        [NativeMethod]
+        protected internal partial void SetId(StringLike value);
 
         internal void Draw()
         {
@@ -128,14 +102,14 @@ namespace March.Editor.Windows
 
             try
             {
-                if (EditorWindow_Begin(NativePtr))
+                if (Begin())
                 {
                     OnDraw();
                 }
             }
             finally
             {
-                EditorWindow_End(NativePtr);
+                End();
 
                 if (!IsOpen)
                 {
@@ -144,68 +118,25 @@ namespace March.Editor.Windows
             }
         }
 
-        protected virtual void OnOpen()
-        {
-            EditorWindow_OnOpen(NativePtr);
-        }
-
-        protected virtual void OnClose()
-        {
-            EditorWindow_OnClose(NativePtr);
-        }
-
-        protected virtual void OnDraw()
-        {
-            EditorWindow_OnDraw(NativePtr);
-        }
-
-        #region Bindings
+        [NativeMethod]
+        protected virtual partial void OnOpen();
 
         [NativeMethod]
-        private static partial nint EditorWindow_CreateDefault();
+        protected virtual partial void OnClose();
 
         [NativeMethod]
-        private static partial void EditorWindow_DeleteDefault(nint w);
+        protected virtual partial void OnDraw();
 
         [NativeMethod]
-        private static partial nint EditorWindow_GetTitle(nint w);
+        private static partial nint CreateDefault();
 
         [NativeMethod]
-        private static partial void EditorWindow_SetTitle(nint w, nint title);
+        private partial void DeleteDefault();
 
         [NativeMethod]
-        private static partial nint EditorWindow_GetId(nint w);
+        private partial bool Begin();
 
         [NativeMethod]
-        private static partial void EditorWindow_SetId(nint w, nint id);
-
-        [NativeMethod]
-        private static partial Vector2 EditorWindow_GetDefaultSize(nint w);
-
-        [NativeMethod]
-        private static partial void EditorWindow_SetDefaultSize(nint w, Vector2 value);
-
-        [NativeMethod]
-        private static partial bool EditorWindow_GetIsOpen(nint w);
-
-        [NativeMethod]
-        private static partial void EditorWindow_SetIsOpen(nint w, bool value);
-
-        [NativeMethod]
-        private static partial bool EditorWindow_Begin(nint w);
-
-        [NativeMethod]
-        private static partial void EditorWindow_End(nint w);
-
-        [NativeMethod]
-        private static partial void EditorWindow_OnOpen(nint w);
-
-        [NativeMethod]
-        private static partial void EditorWindow_OnClose(nint w);
-
-        [NativeMethod]
-        private static partial void EditorWindow_OnDraw(nint w);
-
-        #endregion
+        private partial void End();
     }
 }

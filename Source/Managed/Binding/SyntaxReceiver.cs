@@ -18,11 +18,6 @@ namespace March.Binding
         {
             INamedTypeSymbol type = symbol.ContainingType;
 
-            if (!SymbolUtility.ShouldProcess(type))
-            {
-                return null;
-            }
-
             if (!Symbols.TryGetValue(type, out MemberSymbolGroup group))
             {
                 group = new MemberSymbolGroup();
@@ -38,18 +33,18 @@ namespace March.Binding
             {
                 IMethodSymbol methodSymbol = context.SemanticModel.GetDeclaredSymbol(mds);
 
-                if (SymbolUtility.ShouldProcess(methodSymbol))
+                if (SymbolUtility.HasMethodAttribute(methodSymbol))
                 {
-                    GetMemberSymbolGroup(methodSymbol)?.Methods.Add(methodSymbol);
+                    GetMemberSymbolGroup(methodSymbol).Methods.Add(methodSymbol);
                 }
             }
             else if (context.Node is PropertyDeclarationSyntax pds)
             {
                 IPropertySymbol propertySymbol = context.SemanticModel.GetDeclaredSymbol(pds);
 
-                if (SymbolUtility.ShouldProcess(propertySymbol))
+                if (SymbolUtility.HasPropertyAttribute(propertySymbol))
                 {
-                    GetMemberSymbolGroup(propertySymbol)?.Properties.Add(propertySymbol);
+                    GetMemberSymbolGroup(propertySymbol).Properties.Add(propertySymbol);
                 }
             }
         }

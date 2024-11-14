@@ -6,9 +6,9 @@ NATIVE_EXPORT_AUTO EditorGUI_PrefixLabel(cs_string label, cs_string tooltip)
     EditorGUI::PrefixLabel(label, tooltip);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_IntField(cs_string label, cs_string tooltip, cs<cs_int_t*> v, cs_float speed, cs_int minValue, cs_int maxValue)
+NATIVE_EXPORT_AUTO EditorGUI_IntField(cs_string label, cs_string tooltip, cs<cs_int_t*> v, cs_int speed, cs_int minValue, cs_int maxValue)
 {
-    retcs EditorGUI::IntField(label, tooltip, v, speed, minValue, maxValue);
+    retcs EditorGUI::IntField(label, tooltip, v, static_cast<float>(speed.data), minValue, maxValue);
 }
 
 NATIVE_EXPORT_AUTO EditorGUI_FloatField(cs_string label, cs_string tooltip, cs<cs_float_t*> v, cs_float speed, cs_float minValue, cs_float maxValue)
