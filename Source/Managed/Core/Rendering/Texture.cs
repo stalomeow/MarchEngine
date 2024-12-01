@@ -4,14 +4,14 @@ using System.Runtime.Serialization;
 
 namespace March.Core.Rendering
 {
-    public enum FilterMode : int
+    public enum FilterMode
     {
         Point = 0,
         Bilinear = 1,
         Trilinear = 2,
     }
 
-    public enum WrapMode : int
+    public enum WrapMode
     {
         Repeat = 0,
         Clamp = 1,
@@ -22,6 +22,16 @@ namespace March.Core.Rendering
     {
         DDS = 0,
         WIC = 1,
+    }
+
+    public enum TextureDimension
+    {
+        Unknown,
+        _2D,
+        _2DArray,
+        _3D,
+        Cube,
+        CubeArray,
     }
 
     public partial class Texture : NativeMarchObject

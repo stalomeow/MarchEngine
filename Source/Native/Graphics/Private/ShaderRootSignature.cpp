@@ -8,7 +8,7 @@ using namespace Microsoft::WRL;
 namespace march
 {
     // RootSignature 根据 Hash 复用
-    static std::unordered_map<size_t, ComPtr<ID3D12RootSignature>> g_RootSignatures{};
+    static std::unordered_map<size_t, ComPtr<ID3D12RootSignature>> g_GlobalRootSignaturePool{};
 
     static D3D12_SHADER_VISIBILITY GetShaderVisibility(ShaderProgramType type)
     {
@@ -114,7 +114,7 @@ namespace march
         }
 
         size_t hash = HashUtils::FNV1(static_cast<uint32_t*>(bufferPointer), bufferSize / 4);
-        ComPtr<ID3D12RootSignature>& result = g_RootSignatures[hash];
+        ComPtr<ID3D12RootSignature>& result = g_GlobalRootSignaturePool[hash];
 
         if (result == nullptr)
         {
@@ -222,6 +222,6 @@ namespace march
 
     void Shader::ClearRootSignatureCache()
     {
-        g_RootSignatures.clear();
+        g_GlobalRootSignaturePool.clear();
     }
 }

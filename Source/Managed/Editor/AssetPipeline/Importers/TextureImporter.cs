@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 5)]
+    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 6)]
     internal class TextureImporter : AssetImporter
     {
         [JsonProperty]

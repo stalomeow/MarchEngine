@@ -44,15 +44,15 @@ namespace march
 
     void RenderPipeline::Render(Camera* camera, Material* gridGizmoMaterial)
     {
-        if (!camera->GetIsActiveAndEnabled())
-        {
-            return;
-        }
-
-        Display* display = camera->GetTargetDisplay();
-
         try
         {
+            if (!camera->GetIsActiveAndEnabled())
+            {
+                return;
+            }
+
+            Display* display = camera->GetTargetDisplay();
+
             int32_t colorTargetId = Shader::GetNameId("_CameraColorTarget");
             int32_t colorTargetResolvedId = Shader::GetNameId("_CameraColorTargetResolved");
             int32_t depthStencilTargetId = Shader::GetNameId("_CameraDepthStencilTarget");
@@ -92,7 +92,7 @@ namespace march
 
             m_RenderGraph->CompileAndExecute();
         }
-        catch (std::exception& e)
+        catch (const std::exception& e)
         {
             LOG_ERROR("error: %s", e.what());
         }

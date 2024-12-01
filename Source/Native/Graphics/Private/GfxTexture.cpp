@@ -227,13 +227,40 @@ namespace march
         switch (sourceType)
         {
         case GfxTexture2DSourceType::DDS:
-            GFX_HR(LoadFromDDSMemory(pSource, static_cast<size_t>(size), DDS_FLAGS_NONE, &m_MetaData, image));
+            GFX_HR(LoadFromDDSMemory(pSource, static_cast<size_t>(size), DDS_FLAGS_NONE, nullptr, image));
             break;
 
         case GfxTexture2DSourceType::WIC:
-            GFX_HR(LoadFromWICMemory(pSource, static_cast<size_t>(size), WIC_FLAGS_NONE, &m_MetaData, image));
+            GFX_HR(LoadFromWICMemory(pSource, static_cast<size_t>(size), WIC_FLAGS_NONE, nullptr, image));
             break;
         }
+
+        ScratchImage mipChain;
+
+        if (image.GetMetadata().width == 1 || image.GetMetadata().height == 1)
+        {
+            mipChain = std::move(image);
+        }
+        else
+        {
+            if (IsCompressed(image.GetMetadata().format))
+            {
+                ScratchImage decompressedImage;
+                GFX_HR(Decompress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DXGI_FORMAT_UNKNOWN, decompressedImage));
+                GFX_HR(GenerateMipMaps(decompressedImage.GetImages(), decompressedImage.GetImageCount(), decompressedImage.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+            }
+            else
+            {
+                GFX_HR(GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+            }
+        }
+
+        //ScratchImage compressedMipChain;
+        //GFX_HR(Compress(mipChain.GetImages(), mipChain.GetImageCount(), mipChain.GetMetadata(), DXGI_FORMAT_BC3_UNORM, TEX_COMPRESS_DEFAULT, TEX_THRESHOLD_DEFAULT, compressedMipChain));
+
+        //m_MetaData = compressedMipChain.GetMetadata();
+
+        m_MetaData = mipChain.GetMetadata();
 
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture
         // The CREATETEX_SRGB flag provides an option for working around gamma issues with content
@@ -260,7 +287,7 @@ namespace march
         SetD3D12ResourceName(name);
 
         std::vector<D3D12_SUBRESOURCE_DATA> subresources;
-        GFX_HR(PrepareUpload(device, image.GetImages(), image.GetImageCount(), m_MetaData, subresources));
+        GFX_HR(PrepareUpload(device, mipChain.GetImages(), mipChain.GetImageCount(), m_MetaData, subresources));
 
         // upload is implemented by application developer. Here's one solution using <d3dx12.h>
         const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_Resource, 0, static_cast<UINT>(subresources.size()));
