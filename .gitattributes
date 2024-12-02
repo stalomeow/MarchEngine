@@ -2,6 +2,8 @@
 Source/Managed/Editor/ShaderLab/Internal/** linguist-generated
 Runtime/** linguist-vendored
 
+vcpkg.json   text eol=lf
+
 # https://github.com/gitattributes/gitattributes/blob/master/Global/VisualStudio.gitattributes
 
 *.sln        text eol=crlf
