@@ -14,90 +14,195 @@ using namespace DirectX;
 
 namespace march
 {
-    GfxTexture::GfxTexture(GfxDevice* device)
+    GfxTexture::GfxTexture(GfxDevice* device, const GfxTextureDesc& desc)
         : GfxResource(device, D3D12_RESOURCE_STATE_COMMON)
-        , m_FilterMode(GfxFilterMode::Point)
-        , m_WrapMode(GfxWrapMode::Repeat)
+        , m_Desc(desc)
+        , m_SrvHandles{}
+        , m_UavHandles{}
+        , m_RtvDsvHandles{}
+        , m_SamplerHandle{}
     {
-        m_SrvDescriptorHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        m_SamplerDescriptorHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-
-        UpdateSampler();
     }
 
     GfxTexture::~GfxTexture()
     {
-        m_Device->FreeDescriptor(m_SrvDescriptorHandle);
-        m_Device->FreeDescriptor(m_SamplerDescriptorHandle);
-    }
-
-    void GfxTexture::SetFilterMode(GfxFilterMode mode)
-    {
-        m_FilterMode = mode;
-        UpdateSampler();
-    }
-
-    void GfxTexture::SetWrapMode(GfxWrapMode mode)
-    {
-        m_WrapMode = mode;
-        UpdateSampler();
-    }
-
-    void GfxTexture::SetFilterAndWrapMode(GfxFilterMode filterMode, GfxWrapMode wrapMode)
-    {
-        m_FilterMode = filterMode;
-        m_WrapMode = wrapMode;
-        UpdateSampler();
-    }
-
-    void GfxTexture::UpdateSampler() const
-    {
-        D3D12_SAMPLER_DESC samplerDesc = {};
-
-        switch (m_FilterMode)
+        for (size_t i = 0; i < std::size(m_SrvHandles); i++)
         {
-        case GfxFilterMode::Point:
-            samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-            break;
-        case GfxFilterMode::Bilinear:
-            samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-            break;
-        case GfxFilterMode::Trilinear:
-            samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-            break;
-        default:
-            throw std::invalid_argument("Invalid filter mode");
+            if (m_SrvHandles[i].second)
+                m_Device->FreeDescriptor(m_SrvHandles[i].first);
         }
 
-        switch (m_WrapMode)
+        for (size_t i = 0; i < std::size(m_UavHandles); i++)
         {
-        case GfxWrapMode::Repeat:
-            samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-            samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-            samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-            break;
-        case GfxWrapMode::Clamp:
-            samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-            samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-            samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-            break;
-        case GfxWrapMode::Mirror:
-            samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-            samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-            samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-            break;
-        default:
-            throw std::invalid_argument("Invalid wrap mode");
+            if (m_UavHandles[i].second)
+                m_Device->FreeDescriptor(m_UavHandles[i].first);
         }
 
-        samplerDesc.MipLODBias = 0;
-        samplerDesc.MaxAnisotropy = 1;
-        samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-        samplerDesc.MinLOD = 0;
-        samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+        for (auto& kv : m_RtvDsvHandles)
+        {
+            m_Device->FreeDescriptor(kv.second);
+        }
 
-        ID3D12Device* device = m_Device->GetD3D12Device();
-        device->CreateSampler(&samplerDesc, m_SamplerDescriptorHandle.GetCpuHandle());
+        if (m_SamplerHandle.second)
+            m_Device->FreeDescriptor(m_SamplerHandle.first);
+    }
+
+    static constexpr bool IsDepthStencilFormat(GfxTextureFormat format)
+    {
+        switch (format)
+        {
+        case GfxTextureFormat::D32_Float_S8_UInt:
+        case GfxTextureFormat::D32_Float:
+        case GfxTextureFormat::D24_UNorm_S8_UInt:
+        case GfxTextureFormat::D16_UNorm:
+            return true;
+
+        default:
+            return false;
+        }
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
+    {
+        RtvDsvQuery query = { wOrArraySize, wOrArraySize, mipSlice };
+
+        if (!m_RtvDsvHandles.second)
+        {
+            bool depthStencil = IsDepthStencilFormat(m_Desc.Format);
+            m_RtvDsvHandle.first = m_Device->AllocateDescriptor(depthStencil ? D3D12_DESCRIPTOR_HEAP_TYPE_DSV : D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            m_RtvDsvHandle.second = true;
+
+            if (depthStencil)
+            {
+                D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+
+                switch (m_Desc.Format)
+                {
+                case GfxTextureFormat::D32_Float_S8_UInt:
+                    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+                    break;
+                case GfxTextureFormat::D32_Float:
+                    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+                    break;
+                case GfxTextureFormat::D24_UNorm_S8_UInt:
+                    dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+                    break;
+                case GfxTextureFormat::D16_UNorm:
+                    dsvDesc.Format = DXGI_FORMAT_D16_UNORM;
+                    break;
+                default:
+                    dsvDesc.Format = DXGI_FORMAT_UNKNOWN;
+                    break;
+                }
+
+                dsvDesc.ViewDimension = m_Desc.MSAASamples > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS : D3D12_DSV_DIMENSION_TEXTURE2D;
+                dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+                dsvDesc.Texture2D.MipSlice = 0;
+
+                d3d12Device->CreateDepthStencilView(m_Resource, &dsvDesc, GetRtvDsvCpuDescriptorHandle());
+            }
+            else
+            {
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+
+                d3d12Device->CreateRenderTargetView(m_Resource, nullptr, GetRtvDsvCpuDescriptorHandle());
+                d3d12Device->CreateShaderResourceView(m_Resource, nullptr, GetSrvCpuDescriptorHandle());
+            }
+        }
+
+        return m_RtvDsvHandle.first.GetCpuHandle();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(CubemapFace face, uint32_t faceCount, uint32_t arraySlice, uint32_t mipSlice)
+    {
+
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSampler()
+    {
+        if (!m_SamplerHandle.second)
+        {
+            m_SamplerHandle.first = m_Device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+            m_SamplerHandle.second = true;
+
+            D3D12_SAMPLER_DESC samplerDesc = {};
+            samplerDesc.MipLODBias = m_Desc.MipMapBias;
+            samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+            samplerDesc.MinLOD = 0;
+            samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+
+            if (m_Desc.Filter >= GfxFilterMode::AnisotropicMin && m_Desc.Filter <= GfxFilterMode::AnisotropicMax)
+            {
+                samplerDesc.MaxAnisotropy = static_cast<UINT>(m_Desc.Filter) - static_cast<UINT>(GfxFilterMode::AnisotropicMin) + 1;
+                samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
+            }
+            else
+            {
+                samplerDesc.MaxAnisotropy = 1;
+
+                // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_filter
+                // Note  If you use different filter types for min versus mag filter,
+                // undefined behavior occurs in certain cases where the choice between whether magnification or minification happens is ambiguous.
+                // To prevent this undefined behavior, use filter modes that use similar filter operations for both min and mag
+                // (or use anisotropic filtering, which avoids the issue as well).
+                switch (m_Desc.Filter)
+                {
+                case GfxFilterMode::Point:
+                    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                    break;
+
+                case GfxFilterMode::Bilinear:
+                    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+                    break;
+
+                case GfxFilterMode::Trilinear:
+                    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+                    break;
+
+                case GfxFilterMode::Shadow:
+                    samplerDesc.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+                    samplerDesc.ComparisonFunc = GfxSettings::UseReversedZBuffer ? D3D12_COMPARISON_FUNC_GREATER_EQUAL : D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                    break;
+
+                default:
+                    throw std::invalid_argument("Invalid filter mode");
+                }
+            }
+
+            switch (m_Desc.Wrap)
+            {
+            case GfxWrapMode::Repeat:
+                samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                break;
+
+            case GfxWrapMode::Clamp:
+                samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                break;
+
+            case GfxWrapMode::Mirror:
+                samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+                samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+                samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+                break;
+
+            case GfxWrapMode::MirrorOnce:
+                samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+                samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+                samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+                break;
+
+            default:
+                throw std::invalid_argument("Invalid wrap mode");
+            }
+
+            m_Device->GetD3D12Device()->CreateSampler(&samplerDesc, m_SamplerHandle.first.GetCpuHandle());
+        }
+
+        return m_SamplerHandle.first.GetCpuHandle();
     }
 
     static std::unique_ptr<GfxTexture2D> g_pBlackTexture = nullptr;
