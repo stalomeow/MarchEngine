@@ -3,6 +3,7 @@ using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
@@ -81,19 +82,58 @@ namespace March.Editor.AssetPipeline.Importers
             if (EditorGUI.Foldout("Preview", string.Empty, defaultOpen: true))
             {
                 var texture = (ExternalTexture)Target.MainAsset;
-                EditorGUI.DrawTexture(texture);
-
-                using var info = StringBuilderPool.Get();
                 TextureDesc desc = texture.Desc;
 
-                // Display Format
+                if (desc.Dimension == TextureDimension.Tex2D)
+                {
+                    EditorGUI.DrawTexture(texture);
+                }
+
+                using var info = StringBuilderPool.Get();
+
+                // Display Format And Dimension
                 info.Value.Append(desc.Format.ToString());
+                info.Value.Append(",  ");
+                AppendTextureDimension(info.Value, desc.Dimension);
                 EditorGUI.CenterText(info);
 
                 // Display Resolution And Size
                 info.Value.Clear();
-                info.Value.Append(desc.Width).Append('x').Append(desc.Height).Append(' ').AppendSize(texture.PixelsSize);
+                info.Value.Append(desc.Width).Append('x').Append(desc.Height);
+
+                if (desc.Dimension is (TextureDimension.Tex3D or TextureDimension.Tex2DArray or TextureDimension.CubeArray))
+                {
+                    info.Value.Append('x').Append(desc.DepthOrArraySize);
+                }
+
+                info.Value.Append(",  ");
+                info.Value.AppendSize(texture.PixelsSize);
                 EditorGUI.CenterText(info);
+            }
+        }
+
+        private static void AppendTextureDimension(StringBuilder builder, TextureDimension dimension)
+        {
+            switch (dimension)
+            {
+                case TextureDimension.Tex2D:
+                    builder.Append("2D");
+                    break;
+                case TextureDimension.Tex3D:
+                    builder.Append("3D");
+                    break;
+                case TextureDimension.Cube:
+                    builder.Append("Cubemap");
+                    break;
+                case TextureDimension.Tex2DArray:
+                    builder.Append("2D Array");
+                    break;
+                case TextureDimension.CubeArray:
+                    builder.Append("Cubemap Array");
+                    break;
+                default:
+                    builder.Append("Unknown");
+                    break;
             }
         }
     }
