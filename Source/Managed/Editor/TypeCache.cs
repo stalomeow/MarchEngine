@@ -1,4 +1,5 @@
 using March.Core.Pool;
+using March.Core.Serialization;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -76,31 +77,58 @@ namespace March.Editor
             return GetTypesDerivedFrom(typeof(T));
         }
 
-        public static void GetEnumData(Type type, out ReadOnlySpan<string> names, out ReadOnlySpan<Enum> values)
+        public static void GetInspectorEnumData(Type type, out ReadOnlySpan<string> names, out ReadOnlySpan<Enum> values)
         {
-            EnumData data = GetEnumData(type);
+            EnumData data = GetInspectorEnumData(type);
             names = data.Names;
             values = data.BoxedValues;
         }
 
-        public static void GetEnumData<T>(out ReadOnlySpan<string> names, out ReadOnlySpan<T> values) where T : struct, Enum
+        public static void GetInspectorEnumData<T>(out ReadOnlySpan<string> names, out ReadOnlySpan<T> values) where T : struct, Enum
         {
-            EnumData data = GetEnumData(typeof(T));
+            EnumData data = GetInspectorEnumData(typeof(T));
             names = data.Names;
             values = (T[])data.Values;
         }
 
-        private static EnumData GetEnumData(Type type)
+        private static EnumData GetInspectorEnumData(Type type)
         {
             if (!s_EnumCache.TryGetValue(type, out EnumData? data))
             {
-                string[] names = type.GetEnumNames();
-                Array values = type.GetEnumValues();
-                Enum[] boxedValues = new Enum[values.Length];
+                string[] allNames = type.GetEnumNames();
+                Array allValues = type.GetEnumValues();
+                using var indices = ListPool<int>.Get();
 
-                for (int i = 0; i < values.Length; i++)
+                for (int i = 0; i < allNames.Length; i++)
                 {
-                    boxedValues[i] = (Enum)values.GetValue(i)!;
+                    FieldInfo field = type.GetField(allNames[i], BindingFlags.Public | BindingFlags.Static)!;
+
+                    if (field.GetCustomAttribute<HideInInspectorAttribute>() != null)
+                    {
+                        continue;
+                    }
+
+                    indices.Value.Add(i);
+
+                    var nameAttr = field.GetCustomAttribute<InspectorNameAttribute>();
+                    if (nameAttr != null)
+                    {
+                        allNames[i] = nameAttr.Name;
+                    }
+                }
+
+                int filteredCount = indices.Value.Count;
+                string[] names = new string[filteredCount];
+                Array values = Array.CreateInstanceFromArrayType(allValues.GetType(), filteredCount);
+                Enum[] boxedValues = new Enum[filteredCount];
+
+                for (int i = 0; i < filteredCount; i++)
+                {
+                    names[i] = allNames[indices.Value[i]];
+
+                    object v = allValues.GetValue(indices.Value[i])!;
+                    values.SetValue(v, i);
+                    boxedValues[i] = (Enum)v;
                 }
 
                 data = new EnumData(names, values, boxedValues);

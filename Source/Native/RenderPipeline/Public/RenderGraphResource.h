@@ -24,10 +24,7 @@ namespace march
         AllShader = PixelShader | NonPixelShader,
     };
 
-    RenderGraphResourceReadFlags operator|(RenderGraphResourceReadFlags lhs, RenderGraphResourceReadFlags rhs);
-    RenderGraphResourceReadFlags& operator|=(RenderGraphResourceReadFlags& lhs, RenderGraphResourceReadFlags rhs);
-    RenderGraphResourceReadFlags operator&(RenderGraphResourceReadFlags lhs, RenderGraphResourceReadFlags rhs);
-    RenderGraphResourceReadFlags& operator&=(RenderGraphResourceReadFlags& lhs, RenderGraphResourceReadFlags rhs);
+    DEFINE_ENUM_FLAG_OPERATORS(RenderGraphResourceReadFlags);
 
     enum class RenderGraphResourceWriteFlags
     {
@@ -36,10 +33,7 @@ namespace march
         Resolve = 1 << 1,
     };
 
-    RenderGraphResourceWriteFlags operator|(RenderGraphResourceWriteFlags lhs, RenderGraphResourceWriteFlags rhs);
-    RenderGraphResourceWriteFlags& operator|=(RenderGraphResourceWriteFlags& lhs, RenderGraphResourceWriteFlags rhs);
-    RenderGraphResourceWriteFlags operator&(RenderGraphResourceWriteFlags lhs, RenderGraphResourceWriteFlags rhs);
-    RenderGraphResourceWriteFlags& operator&=(RenderGraphResourceWriteFlags& lhs, RenderGraphResourceWriteFlags rhs);
+    DEFINE_ENUM_FLAG_OPERATORS(RenderGraphResourceWriteFlags);
 
     class RenderGraphResourcePool final
     {
@@ -61,7 +55,7 @@ namespace march
         RenderGraphResourcePool(RenderGraphResourcePool&&) = default;
         RenderGraphResourcePool& operator=(RenderGraphResourcePool&&) = default;
 
-        GfxRenderTexture* RentTexture(const GfxRenderTextureDesc& desc);
+        GfxRenderTexture* RentTexture(const GfxTextureDesc& desc);
         void ReturnTexture(GfxRenderTexture* texture);
 
     private:
@@ -73,7 +67,7 @@ namespace march
     class RenderGraphResourceData final
     {
     public:
-        RenderGraphResourceData(RenderGraphResourcePool* pool, const GfxRenderTextureDesc& desc);
+        RenderGraphResourceData(RenderGraphResourcePool* pool, const GfxTextureDesc& desc);
         RenderGraphResourceData(GfxRenderTexture* texture);
         ~RenderGraphResourceData() = default;
 
@@ -88,7 +82,7 @@ namespace march
 
         RenderGraphResourceType GetResourceType() const;
         GfxResource* GetResourcePtr() const;
-        GfxRenderTextureDesc GetTextureDesc() const;
+        GfxTextureDesc GetTextureDesc() const;
 
         bool IsTransient() const;
         void RentTransientResource();
@@ -104,7 +98,7 @@ namespace march
         GfxResource* m_ResourcePtr;
 
         RenderGraphResourcePool* m_TransientResourcePool;
-        GfxRenderTextureDesc m_TransientTextureDesc;
+        GfxTextureDesc m_TransientTextureDesc;
         int32_t m_TransientLifeTimeMinIndex;
         int32_t m_TransientLifeTimeMaxIndex;
     };

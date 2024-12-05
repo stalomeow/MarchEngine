@@ -4,6 +4,10 @@
 
 namespace march
 {
+    static const uint32_t MSAASampleCount = 4;
+    static const GfxTextureFormat ColorFormat = GfxTextureFormat::R16G16B16A16_Float;
+    static const GfxTextureFormat DepthStencilFormat = GfxTextureFormat::D24_UNorm_S8_UInt;
+
     Display::Display(GfxDevice* device, const std::string& name, uint32_t width, uint32_t height)
         : m_Device(device)
         , m_Name(name)
@@ -13,7 +17,6 @@ namespace march
         , m_ResolvedColorBuffer(nullptr)
         , m_ResolvedDepthStencilBuffer(nullptr)
     {
-        m_MSAAQuality = device->GetMSAAQuality(s_ColorFormat, s_MSAASampleCount);
         CreateBuffers(width, height);
     }
 
@@ -33,24 +36,19 @@ namespace march
         CreateBuffers(GetPixelWidth(), GetPixelHeight());
     }
 
-    uint32_t Display::GetCurrentMSAAQuality() const
-    {
-        return m_EnableMSAA ? m_MSAAQuality : 0;
-    }
-
     uint32_t Display::GetCurrentMSAASampleCount() const
     {
-        return m_EnableMSAA ? s_MSAASampleCount : 1;
+        return m_EnableMSAA ? MSAASampleCount : 1;
     }
 
     uint32_t Display::GetPixelWidth() const
     {
-        return m_ColorBuffer->GetWidth();
+        return m_ColorBuffer->GetDesc().Width;
     }
 
     uint32_t Display::GetPixelHeight() const
     {
-        return m_ColorBuffer->GetHeight();
+        return m_ColorBuffer->GetDesc().Height;
     }
 
     void Display::Resize(uint32_t width, uint32_t height)
@@ -63,14 +61,14 @@ namespace march
         CreateBuffers(width, height);
     }
 
-    DXGI_FORMAT Display::GetColorFormat() const
+    GfxTextureFormat Display::GetColorFormat() const
     {
-        return s_ColorFormat;
+        return ColorFormat;
     }
 
-    DXGI_FORMAT Display::GetDepthStencilFormat() const
+    GfxTextureFormat Display::GetDepthStencilFormat() const
     {
-        return s_DepthStencilFormat;
+        return DepthStencilFormat;
     }
 
     GfxRenderTexture* Display::GetColorBuffer() const
@@ -95,23 +93,41 @@ namespace march
 
     void Display::CreateBuffers(uint32_t width, uint32_t height)
     {
-        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorBuffer",
-            s_ColorFormat, width, height,
-            m_EnableMSAA ? s_MSAASampleCount : 1,
-            m_EnableMSAA ? m_MSAAQuality : 0);
+        GfxTextureDesc colorDesc{};
+        colorDesc.Format = ColorFormat;
+        colorDesc.Flags = GfxTextureFlags::None;
+        colorDesc.Dimension = GfxTextureDimension::Tex2D;
+        colorDesc.Width = width;
+        colorDesc.Height = height;
+        colorDesc.DepthOrArraySize = 1;
+        colorDesc.MSAASamples = GetCurrentMSAASampleCount();
+        colorDesc.Filter = GfxTextureFilterMode::Bilinear;
+        colorDesc.Wrap = GfxTextureWrapMode::Clamp;
+        colorDesc.MipmapBias = 0.0f;
 
-        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilBuffer",
-            s_DepthStencilFormat, width, height,
-            m_EnableMSAA ? s_MSAASampleCount : 1,
-            m_EnableMSAA ? m_MSAAQuality : 0);
+        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColor", colorDesc);
+
+        GfxTextureDesc dsDesc{};
+        dsDesc.Format = DepthStencilFormat;
+        dsDesc.Flags = GfxTextureFlags::None;
+        dsDesc.Dimension = GfxTextureDimension::Tex2D;
+        dsDesc.Width = width;
+        dsDesc.Height = height;
+        dsDesc.DepthOrArraySize = 1;
+        dsDesc.MSAASamples = GetCurrentMSAASampleCount();
+        dsDesc.Filter = GfxTextureFilterMode::Bilinear;
+        dsDesc.Wrap = GfxTextureWrapMode::Clamp;
+        dsDesc.MipmapBias = 0.0f;
+
+        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencil", dsDesc);
 
         if (m_EnableMSAA)
         {
-            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device,
-                m_Name + "DisplayResolvedColorBuffer", s_ColorFormat, width, height);
+            colorDesc.MSAASamples = 1;
+            dsDesc.MSAASamples = 1;
 
-            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device,
-                m_Name + "DisplayResolvedDepthStencilBuffer", s_DepthStencilFormat, width, height);
+            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorResolved", colorDesc);
+            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilResolved", dsDesc);
         }
         else
         {

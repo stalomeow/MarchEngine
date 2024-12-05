@@ -84,7 +84,7 @@ namespace March.Editor
 
         public static bool EnumField(StringLike label, StringLike tooltip, ref Enum value)
         {
-            TypeCache.GetEnumData(value.GetType(), out ReadOnlySpan<string> names, out ReadOnlySpan<Enum> values);
+            TypeCache.GetInspectorEnumData(value.GetType(), out ReadOnlySpan<string> names, out ReadOnlySpan<Enum> values);
 
             int index = -1;
 
@@ -111,7 +111,7 @@ namespace March.Editor
 
         public static bool EnumField<T>(StringLike label, StringLike tooltip, ref T value) where T : struct, Enum
         {
-            TypeCache.GetEnumData(out ReadOnlySpan<string> names, out ReadOnlySpan<T> values);
+            TypeCache.GetInspectorEnumData(out ReadOnlySpan<string> names, out ReadOnlySpan<T> values);
 
             int index = -1;
 
@@ -140,6 +140,9 @@ namespace March.Editor
 
         [NativeMethod]
         public static partial bool CenterButton(StringLike label, float width);
+
+        [NativeMethod]
+        public static partial void CenterText(StringLike text);
 
         [NativeMethod]
         public static partial void Space();

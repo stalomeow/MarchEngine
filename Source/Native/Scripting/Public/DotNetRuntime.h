@@ -14,6 +14,7 @@ namespace march
         AssetManager_NativeLoadAsset,
         AssetManager_NativeUnloadAsset,
         Mesh_NativeGetGeometry,
+        Texture_NativeGetDefault,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

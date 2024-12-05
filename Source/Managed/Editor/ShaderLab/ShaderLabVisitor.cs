@@ -20,7 +20,7 @@ namespace March.Editor.ShaderLab
         public int DefaultInt;
         public Color DefaultColor;
         public Vector4 DefaultVector;
-        public ShaderDefaultTexture DefaultTexture;
+        public DefaultTexture DefaultTexture;
     }
 
     internal struct ParsedBlend
@@ -1055,14 +1055,14 @@ namespace March.Editor.ShaderLab
             );
         }
 
-        private static ShaderDefaultTexture ParseTexture(ShaderLabParser.TextureLiteralExpressionContext context)
+        private static DefaultTexture ParseTexture(ShaderLabParser.TextureLiteralExpressionContext context)
         {
             string value = context.StringLiteral().GetText()[1..^1]; // Remove quotes
             return value switch
             {
-                "black" => ShaderDefaultTexture.Black,
-                "white" => ShaderDefaultTexture.White,
-                "bump" => ShaderDefaultTexture.Bump,
+                "black" => DefaultTexture.Black,
+                "white" => DefaultTexture.White,
+                "bump" => DefaultTexture.Bump,
                 _ => throw new NotSupportedException("Unknown texture value")
             };
         }

@@ -479,7 +479,7 @@ namespace march
         return m_ResourceId;
     }
 
-    GfxRenderTextureDesc RenderGraphTextureHandle::GetDesc() const
+    GfxTextureDesc RenderGraphTextureHandle::GetDesc() const
     {
         RenderGraphResourceData& data = m_Graph->GetResourceData(m_ResourceId);
         return data.GetTextureDesc();
@@ -524,7 +524,7 @@ namespace march
         resMap.emplace(std::move(id), RenderGraphResourceData(texture));
     }
 
-    void RenderGraphBuilder::CreateTransientTexture(int32_t id, const GfxRenderTextureDesc& desc)
+    void RenderGraphBuilder::CreateTransientTexture(int32_t id, const GfxTextureDesc& desc)
     {
         std::unordered_map<int32_t, RenderGraphResourceData>& resMap = m_Graph->m_ResourceDataMap;
 
@@ -537,7 +537,7 @@ namespace march
         resMap.emplace(std::move(id), RenderGraphResourceData(m_Graph->m_ResourcePool.get(), desc));
     }
 
-    GfxRenderTextureDesc RenderGraphBuilder::GetTextureDesc(int32_t id) const
+    GfxTextureDesc RenderGraphBuilder::GetTextureDesc(int32_t id) const
     {
         if (auto it = m_Graph->m_ResourceDataMap.find(id); it == m_Graph->m_ResourceDataMap.end())
         {

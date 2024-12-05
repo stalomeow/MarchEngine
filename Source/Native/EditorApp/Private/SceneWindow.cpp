@@ -134,7 +134,7 @@ namespace march
 
         GfxRenderTexture* colorBuffer = m_EnableMSAA ? m_Display->GetResolvedColorBuffer() : m_Display->GetColorBuffer();
         GfxDescriptorTable srv = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, 1);
-        srv.Copy(0, colorBuffer->GetSrvCpuDescriptorHandle());
+        srv.Copy(0, colorBuffer->GetSrv());
 
         // TODO image 不能有 alpha
         ImGui::Image(reinterpret_cast<ImTextureID>(srv.GetGpuHandle(0).ptr), size);

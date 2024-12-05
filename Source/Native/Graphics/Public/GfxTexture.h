@@ -5,9 +5,7 @@
 #include <directx/d3dx12.h>
 #include <DirectXTex.h>
 #include <string>
-#include <vector>
 #include <stdint.h>
-#include <memory>
 #include <unordered_map>
 
 namespace march
@@ -46,7 +44,7 @@ namespace march
         R16_SInt,
 
         R8G8B8A8_UNorm,
-        R8G8B8A8_UINT,
+        R8G8B8A8_UInt,
         R8G8B8A8_SNorm,
         R8G8B8A8_SInt,
         R8G8_UNorm,
@@ -90,16 +88,14 @@ namespace march
     {
         None = 0,
         SRGB = 1 << 0,
-        MipMap = 1 << 1,
-        Render = 1 << 2,
-        UnorderedAccess = 1 << 3,
+        Mipmaps = 1 << 1,
+        UnorderedAccess = 1 << 2,
     };
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxTextureFlags);
 
     enum class GfxTextureDimension
     {
-        Unknown,
         Tex2D,
         Tex3D,
         Cube,
@@ -107,7 +103,7 @@ namespace march
         CubeArray,
     };
 
-    enum class GfxFilterMode
+    enum class GfxTextureFilterMode
     {
         Point,
         Bilinear,
@@ -136,7 +132,7 @@ namespace march
         AnisotropicMax = Anisotropic16,
     };
 
-    enum class GfxWrapMode
+    enum class GfxTextureWrapMode
     {
         Repeat,
         Clamp,
@@ -152,7 +148,7 @@ namespace march
         Stencil,
     };
 
-    enum class CubemapFace
+    enum class GfxCubemapFace
     {
         PositiveX = 0,
         NegativeX = 1,
@@ -170,14 +166,29 @@ namespace march
         GfxTextureDimension Dimension;
         uint32_t Width;
         uint32_t Height;
-        uint32_t DepthOrArraySize;
+        uint32_t DepthOrArraySize; // Cubemap 时为 1，CubemapArray 时为 Cubemap 的数量，都不用乘 6
         uint32_t MSAASamples;
 
-        GfxFilterMode Filter;
-        GfxWrapMode Wrap;
-        float MipMapBias;
+        GfxTextureFilterMode Filter;
+        GfxTextureWrapMode Wrap;
+        float MipmapBias;
 
-        bool IsCompatibleWith(const GfxTextureDesc& other) const;
+        uint32_t GetDepthBits() const noexcept;
+        bool HasStencil() const noexcept;
+        bool IsDepthStencil() const noexcept;
+
+        bool HasFlag(GfxTextureFlags flag) const noexcept;
+        bool IsCompatibleWith(const GfxTextureDesc& other) const noexcept;
+
+        // 如果 updateFlags 为 true，会根据 format 更新 Flags，例如 sRGB
+        void SetDXGIFormat(DXGI_FORMAT format, bool updateFlags = false);
+    };
+
+    enum class GfxDefaultTexture
+    {
+        Black, // RGBA: 0, 0, 0, 1
+        White, // RGBA: 1, 1, 1, 1
+        Bump,  // RGBA: 0.5, 0.5, 1, 1
     };
 
     class GfxTexture : public GfxResource
@@ -188,25 +199,27 @@ namespace march
     public:
         virtual ~GfxTexture();
 
+        uint32_t GetMipLevels() const;
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxTextureElement element = GfxTextureElement::Default);
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(uint32_t wOrArraySlice = 0, uint32_t wOrArraySize = 1, uint32_t mipSlice = 0);
-        D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(CubemapFace face, uint32_t faceCount = 1, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
+        D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(GfxCubemapFace face, uint32_t faceCount = 1, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetSampler();
 
-        static GfxTexture* GetDefaultBlack();
-        static GfxTexture* GetDefaultWhite();
-        static GfxTexture* GetDefaultBump();
-        static void DestroyDefaultTextures();
+        static GfxTexture* GetDefault(GfxDefaultTexture texture);
+
+        virtual bool AllowRendering() const = 0;
 
         GfxTexture(const GfxTexture&) = delete;
         GfxTexture& operator=(const GfxTexture&) = delete;
 
-    private:
-        GfxTextureDesc m_Desc;
+    protected:
+        virtual void Reset();
+        void Reset(const GfxTextureDesc& desc);
 
+    private:
         struct RtvDsvQuery
         {
             uint32_t WOrArraySlice;
@@ -219,55 +232,61 @@ namespace march
             }
         };
 
-        // TODO Hash function for RtvDsvQuery
+        struct RtvDsvQueryHash
+        {
+            size_t operator()(const RtvDsvQuery& query) const
+            {
+                return std::hash<uint32_t>()(query.WOrArraySlice) ^ std::hash<uint32_t>()(query.WOrArraySize) ^ std::hash<uint32_t>()(query.MipSlice);
+            }
+        };
+
+        void CreateRtvDsv(const RtvDsvQuery& query, GfxDescriptorHandle& handle);
+
+        GfxTextureDesc m_Desc;
 
         // Lazy creation
         std::pair<GfxDescriptorHandle, bool> m_SrvHandles[2];
         std::pair<GfxDescriptorHandle, bool> m_UavHandles[2];
-        std::unordered_map<RtvDsvQuery, GfxDescriptorHandle> m_RtvDsvHandles;
+        std::unordered_map<RtvDsvQuery, GfxDescriptorHandle, RtvDsvQueryHash> m_RtvDsvHandles;
         std::pair<GfxDescriptorHandle, bool> m_SamplerHandle;
     };
 
-    enum class GfxTexture2DSourceType
+    struct LoadTextureFileArgs
     {
-        DDS = 0,
-        WIC = 1,
+        GfxTextureFlags Flags;
+        GfxTextureFilterMode Filter;
+        GfxTextureWrapMode Wrap;
+        float MipmapBias;
+        bool Compress;
     };
 
-    class GfxEnternTexture : public GfxTexture
+    class GfxExternalTexture : public GfxTexture
     {
+    public:
+        GfxExternalTexture(GfxDevice* device);
+        void LoadFromPixels(const std::string& name, const GfxTextureDesc& desc, void* pixelsData, size_t pixelsSize, uint32_t mipLevels);
+        void LoadFromFile(const std::string& name, const std::string& filePath, const LoadTextureFileArgs& args);
 
+        const std::string& GetName() const { return m_Name; }
+        bool AllowRendering() const override { return false; }
+        uint8_t* GetPixelsData() const { return m_Image.GetPixels(); }
+        size_t GetPixelsSize() const { return m_Image.GetPixelsSize(); }
+
+    private:
+        void UploadImage();
+
+        std::string m_Name;
+        DirectX::ScratchImage m_Image;
     };
 
     class GfxRenderTexture : public GfxTexture
     {
     public:
-        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxRenderTextureDesc& desc);
-        GfxRenderTexture(GfxDevice* device, const std::string& name, DXGI_FORMAT format, uint32_t width, uint32_t height, uint32_t sampleCount = 1, uint32_t sampleQuality = 0);
-        virtual ~GfxRenderTexture();
+        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc);
 
-        uint32_t GetWidth() const override;
-        uint32_t GetHeight() const override;
-        virtual DXGI_FORMAT GetFormat() const;
-        virtual GfxRenderTextureDesc GetDesc() const;
-        bool IsDepthStencilTexture() const;
+        // 这个构造方法会接管 resource 的所有权
+        GfxRenderTexture(GfxDevice* device, const GfxTextureDesc& desc, ID3D12Resource* resource, D3D12_RESOURCE_STATES state);
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsvCpuDescriptorHandle() const { return m_RtvDsvDescriptorHandle.GetCpuHandle(); }
-
-    protected:
-        GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, bool isDepthStencilTexture);
-
-        GfxDescriptorHandle m_RtvDsvDescriptorHandle;
-        bool m_IsDepthStencilTexture;
-    };
-
-    class GfxRenderTextureSwapChain : public GfxRenderTexture
-    {
-    public:
-        GfxRenderTextureSwapChain(GfxDevice* device, ID3D12Resource* resource);
-        virtual ~GfxRenderTextureSwapChain() = default;
-
-        DXGI_FORMAT GetFormat() const override;
-        GfxRenderTextureDesc GetDesc() const override;
+        bool AllowRendering() const override { return true; }
     };
 }

@@ -3,7 +3,6 @@
 #include <string>
 #include <imgui.h>
 #include <DirectXMath.h>
-#include <memory>
 
 namespace march
 {
@@ -26,6 +25,7 @@ namespace march
         static bool CollapsingHeader(const std::string& label, bool defaultOpen = false);
         static bool Combo(const std::string& label, const std::string& tooltip, int* currentItem, const std::string& itemsSeparatedByZeros);
         static bool CenterButton(const std::string& label, float width = 0.0f);
+        static void CenterText(const std::string& text);
         static void Space();
         static void SeparatorText(const std::string& label);
         static bool TextField(const std::string& label, const std::string& tooltip, std::string& text, const std::string& charBlacklist);
@@ -104,7 +104,7 @@ namespace march
         static void EndMainViewportSideBar();
 
     public:
-        static constexpr float MinLabelWidth = 140.0f;
+        static constexpr float MinLabelWidth = 160.0f;
         static constexpr float MaxFieldWidth = 320.0f;
     };
 }

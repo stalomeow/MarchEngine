@@ -53,7 +53,7 @@
     <ClCompile Include="Private\ShaderKeyword.cpp" />
     <ClCompile Include="Private\ShaderRootSignature.cpp" />
     <ClCompile Include="Private\ShaderProgram.cpp" />
-    <ClCompile Include="Private\Texture.binding.cpp" />
+    <ClCompile Include="Private\GfxTexture.binding.cpp" />
     <ClCompile Include="Private\GfxTexture.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

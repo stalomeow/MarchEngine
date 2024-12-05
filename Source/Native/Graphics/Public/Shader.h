@@ -20,6 +20,8 @@ namespace march
     class ShaderKeywordSet;
     class ShaderKeywordSpace;
 
+    enum class GfxDefaultTexture;
+
     class ShaderKeywordSet
     {
     public:
@@ -211,13 +213,6 @@ namespace march
         Texture = 4,
     };
 
-    enum class ShaderDefaultTexture
-    {
-        Black = 0,
-        White = 1,
-        Bump = 2,
-    };
-
     struct ShaderProperty
     {
         ShaderPropertyType Type;
@@ -228,7 +223,7 @@ namespace march
             int32_t Int;
             DirectX::XMFLOAT4 Color;
             DirectX::XMFLOAT4 Vector;
-            ShaderDefaultTexture Texture;
+            GfxDefaultTexture Texture;
         } DefaultValue;
 
         GfxTexture* GetDefaultTexture() const;

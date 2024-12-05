@@ -71,7 +71,7 @@
     <ClCompile Include="Private\GfxMesh.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Texture.binding.cpp">
+    <ClCompile Include="Private\GfxTexture.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxTexture.cpp">

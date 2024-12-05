@@ -56,6 +56,11 @@ NATIVE_EXPORT_AUTO EditorGUI_CenterButton(cs_string label, cs_float width)
     retcs EditorGUI::CenterButton(label, width);
 }
 
+NATIVE_EXPORT_AUTO EditorGUI_CenterText(cs_string text)
+{
+    EditorGUI::CenterText(text);
+}
+
 NATIVE_EXPORT_AUTO EditorGUI_Space()
 {
     EditorGUI::Space();

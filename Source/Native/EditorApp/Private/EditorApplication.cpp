@@ -247,7 +247,6 @@ namespace march
             DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
 
             m_RenderPipeline.reset();
-            GfxTexture::DestroyDefaultTextures();
         }
         EndFrame(true);
 
@@ -371,8 +370,9 @@ namespace march
     {
         auto builder = m_ImGuiRenderGraph->AddPass("DrawImGui");
 
-        GfxRenderTextureDesc desc = device->GetBackBuffer()->GetDesc();
-        desc.Format = m_ImGuiRtvFormat;
+        GfxTextureDesc desc = device->GetBackBuffer()->GetDesc();
+        desc.SetDXGIFormat(m_ImGuiRtvFormat);
+        desc.Flags = GfxTextureFlags::None;
 
         builder.CreateTransientTexture(renderTargetId, desc);
         builder.SetColorTarget(renderTargetId, false);

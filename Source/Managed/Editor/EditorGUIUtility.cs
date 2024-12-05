@@ -50,5 +50,21 @@ namespace March.Editor
             // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
             return builder.Append("###").Append(id);
         }
+
+        private static readonly string[] s_SizeUnits = ["B", "KB", "MB", "GB"];
+
+        public static StringBuilder AppendSize(this StringBuilder builder, long sizeInBytes)
+        {
+            int unit = 0;
+            float size = sizeInBytes;
+
+            while (unit < s_SizeUnits.Length - 1 && size > 1024.0f)
+            {
+                size /= 1024.0f;
+                unit++;
+            }
+
+            return builder.Append($"{size:F1}").Append(' ').Append(s_SizeUnits[unit]);
+        }
     }
 }

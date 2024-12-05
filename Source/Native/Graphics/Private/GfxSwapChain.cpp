@@ -80,12 +80,27 @@ namespace march
 
     void GfxSwapChain::CreateBackBuffers()
     {
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+        GFX_HR(m_SwapChain->GetDesc1(&swapChainDesc));
+
+        GfxTextureDesc texDesc{};
+        texDesc.SetDXGIFormat(swapChainDesc.Format);
+        texDesc.Flags = GfxTextureFlags::SRGB;
+        texDesc.Dimension = GfxTextureDimension::Tex2D;
+        texDesc.Width = static_cast<uint32_t>(swapChainDesc.Width);
+        texDesc.Height = static_cast<uint32_t>(swapChainDesc.Height);
+        texDesc.DepthOrArraySize = 1;
+        texDesc.MSAASamples = static_cast<uint32_t>(swapChainDesc.SampleDesc.Count);
+        texDesc.Filter = GfxTextureFilterMode::Point;
+        texDesc.Wrap = GfxTextureWrapMode::Clamp;
+        texDesc.MipmapBias = 0.0f;
+
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
             ID3D12Resource* backBuffer = nullptr;
             GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
 
-            m_BackBuffers[i] = std::make_unique<GfxRenderTextureSwapChain>(m_Device, backBuffer);
+            m_BackBuffers[i] = std::make_unique<GfxRenderTexture>(m_Device, texDesc, backBuffer, D3D12_RESOURCE_STATE_COMMON);
         }
     }
 

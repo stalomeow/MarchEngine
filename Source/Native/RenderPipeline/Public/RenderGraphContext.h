@@ -30,10 +30,7 @@ namespace march
         All = Color | Depth | Stencil,
     };
 
-    RenderTargetClearFlags operator|(RenderTargetClearFlags lhs, RenderTargetClearFlags rhs);
-    RenderTargetClearFlags& operator|=(RenderTargetClearFlags& lhs, RenderTargetClearFlags rhs);
-    RenderTargetClearFlags operator&(RenderTargetClearFlags lhs, RenderTargetClearFlags rhs);
-    RenderTargetClearFlags& operator&=(RenderTargetClearFlags& lhs, RenderTargetClearFlags rhs);
+    DEFINE_ENUM_FLAG_OPERATORS(RenderTargetClearFlags);
 
     struct MeshDesc
     {

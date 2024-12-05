@@ -1,6 +1,7 @@
 using March.Core.Interop;
+using March.Core.Serialization;
 using Newtonsoft.Json;
-using System.Runtime.Serialization;
+using System.Runtime.InteropServices;
 
 namespace March.Core.Rendering
 {
@@ -36,7 +37,7 @@ namespace March.Core.Rendering
         R16_SInt,
 
         R8G8B8A8_UNorm,
-        R8G8B8A8_UINT,
+        R8G8B8A8_UInt,
         R8G8B8A8_SNorm,
         R8G8B8A8_SInt,
         R8G8_UNorm,
@@ -76,86 +77,168 @@ namespace March.Core.Rendering
         D16_UNorm,
     }
 
-    public enum FilterMode
+    [Flags]
+    public enum TextureFlags
     {
-        Point = 0,
-        Bilinear = 1,
-        Trilinear = 2,
-    }
-
-    public enum WrapMode
-    {
-        Repeat = 0,
-        Clamp = 1,
-        Mirror = 2,
-    }
-
-    public enum Texture2DSourceType
-    {
-        DDS = 0,
-        WIC = 1,
+        None = 0,
+        SRGB = 1 << 0,
+        Mipmaps = 1 << 1,
+        UnorderedAccess = 1 << 2,
     }
 
     public enum TextureDimension
     {
-        Unknown,
-        _2D,
-        _2DArray,
-        _3D,
+        Tex2D,
+        Tex3D,
         Cube,
+        Tex2DArray,
         CubeArray,
     }
 
-    public partial class Texture : NativeMarchObject
+    public enum TextureFilterMode
     {
-        [JsonProperty]
-        private string m_SerializedName = "Texture";
+        Point,
+        Bilinear,
+        Trilinear,
 
-        [JsonProperty]
-        private byte[] m_SourceData = [];
+        // Shadow 使用 Comparison Sampler，和其他的 Sampler 不一样
+        [HideInInspector]
+        Shadow,
 
-        [JsonProperty]
-        internal Texture2DSourceType SourceType { get; set; }
+        [InspectorName("Anisotropic 1")] Anisotropic1,
+        [InspectorName("Anisotropic 2")] Anisotropic2,
+        [InspectorName("Anisotropic 3")] Anisotropic3,
+        [InspectorName("Anisotropic 4")] Anisotropic4,
+        [InspectorName("Anisotropic 5")] Anisotropic5,
+        [InspectorName("Anisotropic 6")] Anisotropic6,
+        [InspectorName("Anisotropic 7")] Anisotropic7,
+        [InspectorName("Anisotropic 8")] Anisotropic8,
+        [InspectorName("Anisotropic 9")] Anisotropic9,
+        [InspectorName("Anisotropic 10")] Anisotropic10,
+        [InspectorName("Anisotropic 11")] Anisotropic11,
+        [InspectorName("Anisotropic 12")] Anisotropic12,
+        [InspectorName("Anisotropic 13")] Anisotropic13,
+        [InspectorName("Anisotropic 14")] Anisotropic14,
+        [InspectorName("Anisotropic 15")] Anisotropic15,
+        [InspectorName("Anisotropic 16")] Anisotropic16,
+    }
 
-        [JsonProperty]
+    public enum TextureWrapMode
+    {
+        Repeat,
+        Clamp,
+        Mirror,
+
+        [InspectorName("Mirror Once")]
+        MirrorOnce,
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct TextureDesc
+    {
+        public TextureFormat Format;
+        public TextureFlags Flags;
+
+        public TextureDimension Dimension;
+        public uint Width;
+        public uint Height;
+        public uint DepthOrArraySize; // Cubemap 时为 1，CubemapArray 时为 Cubemap 的数量，都不用乘 6
+        public uint MSAASamples;
+
+        public TextureFilterMode Filter;
+        public TextureWrapMode Wrap;
+        public float MipmapBias;
+    }
+
+    [NativeTypeName("GfxTexture")]
+    public abstract partial class Texture(nint nativePtr) : NativeMarchObject(nativePtr)
+    {
         [NativeProperty]
-        public partial bool IsSRGB { get; set; }
+        public partial uint MipLevels { get; }
 
-        [JsonProperty]
-        [NativeProperty("FilterMode")]
-        public partial FilterMode Filter { get; set; }
+        [NativeProperty]
+        public partial TextureDesc Desc { get; }
 
-        [JsonProperty]
-        [NativeProperty("WrapMode")]
-        public partial WrapMode Wrap { get; set; }
+        [NativeProperty]
+        public partial bool AllowRendering { get; }
+    }
 
-        public Texture() : base(New()) { }
+    internal sealed class ExternalTextureData
+    {
+        public string Name = string.Empty;
+        public TextureDesc Desc;
+        public byte[] Pixels = [];
+        public uint MipLevels;
+    }
 
-        protected override void Dispose(bool disposing)
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LoadTextureFileArgs
+    {
+        public TextureFlags Flags;
+        public TextureFilterMode Filter;
+        public TextureWrapMode Wrap;
+        public float MipmapBias;
+        public bool Compress;
+    }
+
+    [NativeTypeName("GfxExternalTexture")]
+    internal unsafe partial class ExternalTexture : Texture
+    {
+        public ExternalTexture() : base(New()) { }
+
+        protected override void Dispose(bool disposing) => Delete();
+
+        public byte[] Pixels
         {
-            Delete();
-        }
-
-        public unsafe void LoadFromSource(string name, byte[] source)
-        {
-            fixed (byte* p = source)
+            get
             {
-                LoadFromSource(name, SourceType, (nint)p, source.Length);
+                byte[] pixels = new byte[PixelsSize];
+
+                fixed (void* p = pixels)
+                {
+                    Buffer.MemoryCopy(GetPixelsData(), p, pixels.LongLength, pixels.LongLength);
+                }
+
+                return pixels;
             }
         }
 
-        public void SetSerializationData(string name, byte[] source)
+        [JsonProperty("Data")]
+        private ExternalTextureData DataSerializationOnly
         {
-            m_SerializedName = name;
-            m_SourceData = source;
+            get => new()
+            {
+                Name = Name,
+                Desc = Desc,
+                Pixels = Pixels,
+                MipLevels = MipLevels,
+            };
+
+            set
+            {
+                fixed (void* p = value.Pixels)
+                {
+                    LoadFromPixels(value.Name, in value.Desc, p, value.Pixels.LongLength, value.MipLevels);
+                }
+            }
         }
 
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
+        public void LoadFromPixels(string name, in TextureDesc desc, ReadOnlySpan<byte> pixels, uint mipLevels)
         {
-            LoadFromSource(m_SerializedName, m_SourceData);
-            SetSerializationData(string.Empty, []);
+            fixed (void* p = pixels)
+            {
+                LoadFromPixels(name, in desc, p, pixels.Length, mipLevels);
+            }
         }
+
+        [NativeProperty]
+        public partial string Name { get; }
+
+        /// <summary>
+        /// 所有像素占用的总字节数
+        /// </summary>
+        [NativeProperty]
+        public partial long PixelsSize { get; }
 
         [NativeMethod]
         private static partial nint New();
@@ -164,6 +247,12 @@ namespace March.Core.Rendering
         private partial void Delete();
 
         [NativeMethod]
-        private partial void LoadFromSource(string name, Texture2DSourceType sourceType, nint pSource, int size);
+        private partial void* GetPixelsData();
+
+        [NativeMethod]
+        private partial void LoadFromPixels(string name, in TextureDesc desc, void* pixelsData, long pixelsSize, uint mipLevels);
+
+        [NativeMethod]
+        public partial void LoadFromFile(string name, string filePath, in LoadTextureFileArgs args);
     }
 }

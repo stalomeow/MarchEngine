@@ -29,10 +29,10 @@ namespace march
     {
         m_FullScreenTriangleMesh = GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle);
 
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), GfxUtils::GetShaderColorTextureFormat(DXGI_FORMAT_R8G8B8A8_UNORM));
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM);
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer2"), DXGI_FORMAT_R8G8B8A8_UNORM);
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer3"), DXGI_FORMAT_R32_FLOAT);
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), DXGI_FORMAT_R8G8B8A8_UNORM, true);
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer2"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
+        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer3"), DXGI_FORMAT_R32_FLOAT, false);
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
@@ -173,7 +173,7 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             ID3D12GraphicsCommandList* cmd = context.GetD3D12GraphicsCommandList();
-            cmd->ResolveSubresource(resolvedTex->GetD3D12Resource(), 0, tex->GetD3D12Resource(), 0, tex->GetFormat());
+            cmd->ResolveSubresource(resolvedTex->GetD3D12Resource(), 0, tex->GetD3D12Resource(), 0, tex->GetDXGIFormat());
         });
     }
 
@@ -190,13 +190,14 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("DrawObjects");
 
-        GfxRenderTextureDesc desc = builder.GetTextureDesc(colorTargetId);
+        GfxTextureDesc desc = builder.GetTextureDesc(colorTargetId);
 
         for (int32_t i = 0; i < m_GBuffers.size(); i++)
         {
-            auto& [id, format] = m_GBuffers[i];
+            auto& [id, format, sRGB] = m_GBuffers[i];
 
-            desc.Format = format;
+            desc.SetDXGIFormat(format);
+            desc.Flags = sRGB ? GfxTextureFlags::SRGB : GfxTextureFlags::None;
             builder.CreateTransientTexture(id, desc);
             builder.SetColorTarget(id, i, false);
         }
@@ -217,7 +218,7 @@ namespace march
         int32_t numGBuffers = 0;
         TextureHandle gBuffers[8];
 
-        for (auto& [id, format] : m_GBuffers)
+        for (auto& [id, format, sRGB] : m_GBuffers)
         {
             gBuffers[numGBuffers++] = builder.ReadTexture(id, ReadFlags::PixelShader);
         }
@@ -265,12 +266,17 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 
-        GfxRenderTextureDesc desc = {};
-        desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        GfxTextureDesc desc = {};
+        desc.Format = GfxTextureFormat::D24_UNorm_S8_UInt;
+        desc.Flags = GfxTextureFlags::None;
+        desc.Dimension = GfxTextureDimension::Tex2D;
         desc.Width = 2048;
         desc.Height = 2048;
-        desc.SampleCount = 1;
-        desc.SampleQuality = 0;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Shadow;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0.0f;
 
         builder.AllowPassCulling(false);
         builder.CreateTransientTexture(targetId, desc);

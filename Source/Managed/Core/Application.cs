@@ -26,6 +26,7 @@ namespace March.Core
         {
             SceneManager.CurrentScene.Dispose();
             Mesh.DestroyGeometries();
+            Texture.DestroyDefaults();
 
             GC.Collect();
             GC.WaitForPendingFinalizers();

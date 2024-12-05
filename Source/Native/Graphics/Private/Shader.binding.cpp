@@ -2,6 +2,7 @@
 #include "InteropServices.h"
 #include "Debug.h"
 #include "GfxDevice.h"
+#include "GfxTexture.h"
 #include <exception>
 
 struct CSharpShaderConstantBuffer
@@ -49,7 +50,7 @@ struct CSharpShaderProperty
     cs_int DefaultInt;
     cs_color DefaultColor;
     cs_vec4 DefaultVector;
-    cs<ShaderDefaultTexture> DefaultTexture;
+    cs<GfxDefaultTexture> DefaultTexture;
 };
 
 struct CSharpShaderPropertyLocation

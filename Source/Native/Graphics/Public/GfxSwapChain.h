@@ -12,7 +12,6 @@ namespace march
     class GfxDevice;
     class GfxCommandList;
     class GfxRenderTexture;
-    class GfxRenderTextureSwapChain;
 
     class GfxSwapChain
     {
@@ -42,7 +41,7 @@ namespace march
         Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain;
         HANDLE m_FrameLatencyHandle;
 
-        std::unique_ptr<GfxRenderTextureSwapChain> m_BackBuffers[BackBufferCount];
+        std::unique_ptr<GfxRenderTexture> m_BackBuffers[BackBufferCount];
         uint32_t m_CurrentBackBufferIndex;
     };
 }

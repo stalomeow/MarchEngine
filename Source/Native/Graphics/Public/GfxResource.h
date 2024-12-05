@@ -27,6 +27,9 @@ namespace march
         D3D12_RESOURCE_STATES GetState() const { return m_State; }
         void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
 
+        D3D12_RESOURCE_DESC GetD3D12Desc() const { return m_Resource->GetDesc(); }
+        DXGI_FORMAT GetDXGIFormat() const { return m_Resource->GetDesc().Format; }
+
     protected:
         GfxDevice* m_Device;
         ID3D12Resource* m_Resource;

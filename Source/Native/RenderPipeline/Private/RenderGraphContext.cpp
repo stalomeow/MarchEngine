@@ -17,26 +17,6 @@ using namespace DirectX;
 
 namespace march
 {
-    RenderTargetClearFlags operator|(RenderTargetClearFlags lhs, RenderTargetClearFlags rhs)
-    {
-        return static_cast<RenderTargetClearFlags>(static_cast<int>(lhs) | static_cast<int>(rhs));
-    }
-
-    RenderTargetClearFlags& operator|=(RenderTargetClearFlags& lhs, RenderTargetClearFlags rhs)
-    {
-        return lhs = lhs | rhs;
-    }
-
-    RenderTargetClearFlags operator&(RenderTargetClearFlags lhs, RenderTargetClearFlags rhs)
-    {
-        return static_cast<RenderTargetClearFlags>(static_cast<int>(lhs) & static_cast<int>(rhs));
-    }
-
-    RenderTargetClearFlags& operator&=(RenderTargetClearFlags& lhs, RenderTargetClearFlags rhs)
-    {
-        return lhs = lhs & rhs;
-    }
-
     RenderGraphContext::RenderGraphContext()
         : m_ColorTargets{}
         , m_DepthStencilTarget(nullptr)
@@ -406,9 +386,9 @@ namespace march
 
             for (int32_t i = 0; i < numColorTargets; i++)
             {
-                rtv[i] = colorTargets[i]->GetRtvDsvCpuDescriptorHandle();
+                rtv[i] = colorTargets[i]->GetRtvDsv();
                 m_ColorTargets.push_back(colorTargets[i]);
-                m_OutputDesc.RTVFormats.push_back(colorTargets[i]->GetFormat());
+                m_OutputDesc.RTVFormats.push_back(colorTargets[i]->GetDXGIFormat());
             }
 
             if (depthStencilTarget == nullptr)
@@ -420,15 +400,15 @@ namespace march
             else
             {
                 m_DepthStencilTarget = depthStencilTarget;
-                m_OutputDesc.DSVFormat = depthStencilTarget->GetFormat();
-                D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthStencilTarget->GetRtvDsvCpuDescriptorHandle();
+                m_OutputDesc.DSVFormat = depthStencilTarget->GetDXGIFormat();
+                D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthStencilTarget->GetRtvDsv();
                 cmd->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, &dsv);
             }
 
             GfxRenderTexture* anyRT = numColorTargets > 0 ? colorTargets[0] : depthStencilTarget;
-            GfxRenderTextureDesc anyRTDesc = anyRT->GetDesc();
-            m_OutputDesc.SampleCount = anyRTDesc.SampleCount;
-            m_OutputDesc.SampleQuality = anyRTDesc.SampleQuality;
+            D3D12_RESOURCE_DESC anyRTDesc = anyRT->GetD3D12Desc();
+            m_OutputDesc.SampleCount = static_cast<uint32_t>(anyRTDesc.SampleDesc.Count);
+            m_OutputDesc.SampleQuality = static_cast<uint32_t>(anyRTDesc.SampleDesc.Quality);
         }
 
         const D3D12_VIEWPORT& viewportValue = viewport != nullptr ? *viewport : GetDefaultViewport();
@@ -455,7 +435,7 @@ namespace march
         {
             for (GfxRenderTexture* target : m_ColorTargets)
             {
-                cmd->ClearRenderTargetView(target->GetRtvDsvCpuDescriptorHandle(), color, 0, nullptr);
+                cmd->ClearRenderTargetView(target->GetRtvDsv(), color, 0, nullptr);
             }
         }
 
@@ -475,7 +455,7 @@ namespace march
 
             if (depthStencilClearFlags != 0)
             {
-                D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsvCpuDescriptorHandle();
+                D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsv();
                 cmd->ClearDepthStencilView(dsv, depthStencilClearFlags, depth, static_cast<UINT8>(stencil), 0, nullptr);
             }
         }
@@ -494,7 +474,7 @@ namespace march
 
     D3D12_VIEWPORT RenderGraphContext::GetDefaultViewport() const
     {
-        GfxRenderTextureDesc desc = m_ColorTargets.empty() ? m_DepthStencilTarget->GetDesc() : m_ColorTargets[0]->GetDesc();
+        const GfxTextureDesc& desc = m_ColorTargets.empty() ? m_DepthStencilTarget->GetDesc() : m_ColorTargets[0]->GetDesc();
 
         D3D12_VIEWPORT viewport = {};
         viewport.TopLeftX = 0;
@@ -508,7 +488,7 @@ namespace march
 
     D3D12_RECT RenderGraphContext::GetDefaultScissorRect() const
     {
-        GfxRenderTextureDesc desc = m_ColorTargets.empty() ? m_DepthStencilTarget->GetDesc() : m_ColorTargets[0]->GetDesc();
+        const GfxTextureDesc& desc = m_ColorTargets.empty() ? m_DepthStencilTarget->GetDesc() : m_ColorTargets[0]->GetDesc();
 
         D3D12_RECT scissorRect = {};
         scissorRect.left = 0;
@@ -604,7 +584,7 @@ namespace march
 
                     if (texture != nullptr)
                     {
-                        viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrvCpuDescriptorHandle());
+                        viewTable.Copy(kv.second.TextureDescriptorTableIndex, texture->GetSrv());
 
                         if (kv.second.HasSampler)
                         {
@@ -640,7 +620,7 @@ namespace march
 
                     if (texture != nullptr)
                     {
-                        samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSamplerCpuDescriptorHandle());
+                        samplerTable.Copy(kv.second.SamplerDescriptorTableIndex, texture->GetSampler());
                     }
                 }
 

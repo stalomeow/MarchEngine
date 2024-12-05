@@ -208,13 +208,6 @@ namespace March.Core.Rendering
         Texture = 4,
     }
 
-    internal enum ShaderDefaultTexture
-    {
-        Black = 0, // RGBA: 0, 0, 0, 1
-        White = 1, // RGBA: 1, 1, 1, 1
-        Bump = 2,  // RGBA: 0.5, 0.5, 1, 1
-    }
-
     internal class ShaderPropertyAttribute
     {
         public string Name = string.Empty;
@@ -233,7 +226,7 @@ namespace March.Core.Rendering
         public int DefaultInt;
         public Color DefaultColor;
         public Vector4 DefaultVector;
-        public ShaderDefaultTexture DefaultTexture;
+        public DefaultTexture DefaultTexture;
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
@@ -245,7 +238,7 @@ namespace March.Core.Rendering
             public int DefaultInt;
             public Color DefaultColor;
             public Vector4 DefaultVector;
-            public ShaderDefaultTexture DefaultTexture;
+            public DefaultTexture DefaultTexture;
         }
 
         public static void ToNative(ShaderProperty value, out Native native)

@@ -10,51 +10,11 @@
 
 namespace march
 {
-    RenderGraphResourceReadFlags operator|(RenderGraphResourceReadFlags lhs, RenderGraphResourceReadFlags rhs)
-    {
-        return static_cast<RenderGraphResourceReadFlags>(static_cast<int>(lhs) | static_cast<int>(rhs));
-    }
-
-    RenderGraphResourceReadFlags& operator|=(RenderGraphResourceReadFlags& lhs, RenderGraphResourceReadFlags rhs)
-    {
-        return lhs = lhs | rhs;
-    }
-
-    RenderGraphResourceReadFlags operator&(RenderGraphResourceReadFlags lhs, RenderGraphResourceReadFlags rhs)
-    {
-        return static_cast<RenderGraphResourceReadFlags>(static_cast<int>(lhs) & static_cast<int>(rhs));
-    }
-
-    RenderGraphResourceReadFlags& operator&=(RenderGraphResourceReadFlags& lhs, RenderGraphResourceReadFlags rhs)
-    {
-        return lhs = lhs & rhs;
-    }
-
-    RenderGraphResourceWriteFlags operator|(RenderGraphResourceWriteFlags lhs, RenderGraphResourceWriteFlags rhs)
-    {
-        return static_cast<RenderGraphResourceWriteFlags>(static_cast<int>(lhs) | static_cast<int>(rhs));
-    }
-
-    RenderGraphResourceWriteFlags& operator|=(RenderGraphResourceWriteFlags& lhs, RenderGraphResourceWriteFlags rhs)
-    {
-        return lhs = lhs | rhs;
-    }
-
-    RenderGraphResourceWriteFlags operator&(RenderGraphResourceWriteFlags lhs, RenderGraphResourceWriteFlags rhs)
-    {
-        return static_cast<RenderGraphResourceWriteFlags>(static_cast<int>(lhs) & static_cast<int>(rhs));
-    }
-
-    RenderGraphResourceWriteFlags& operator&=(RenderGraphResourceWriteFlags& lhs, RenderGraphResourceWriteFlags rhs)
-    {
-        return lhs = lhs & rhs;
-    }
-
     RenderGraphResourcePool::RenderGraphResourcePool() : m_AllTextures{}, m_TextureMap{}, m_FreeTextures{}
     {
     }
 
-    GfxRenderTexture* RenderGraphResourcePool::RentTexture(const GfxRenderTextureDesc& desc)
+    GfxRenderTexture* RenderGraphResourcePool::RentTexture(const GfxTextureDesc& desc)
     {
         auto it = m_FreeTextures.begin();
 
@@ -102,7 +62,7 @@ namespace march
         m_FreeTextures.push_back({ texture, 0 });
     }
 
-    RenderGraphResourceData::RenderGraphResourceData(RenderGraphResourcePool* pool, const GfxRenderTextureDesc& desc)
+    RenderGraphResourceData::RenderGraphResourceData(RenderGraphResourcePool* pool, const GfxTextureDesc& desc)
         : m_ProducerPasses{}
         , m_ResourceType(RenderGraphResourceType::Texture)
         , m_ResourcePtr(nullptr)
@@ -149,7 +109,7 @@ namespace march
         return m_ResourcePtr;
     }
 
-    GfxRenderTextureDesc RenderGraphResourceData::GetTextureDesc() const
+    GfxTextureDesc RenderGraphResourceData::GetTextureDesc() const
     {
         if (m_ResourceType != RenderGraphResourceType::Texture)
         {

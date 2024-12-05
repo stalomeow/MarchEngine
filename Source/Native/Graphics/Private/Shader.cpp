@@ -15,20 +15,7 @@ namespace march
             throw GfxException("Property is not a texture type");
         }
 
-        switch (DefaultValue.Texture)
-        {
-        case ShaderDefaultTexture::Black:
-            return GfxTexture::GetDefaultBlack();
-
-        case ShaderDefaultTexture::White:
-            return GfxTexture::GetDefaultWhite();
-
-        case ShaderDefaultTexture::Bump:
-            return GfxTexture::GetDefaultBump();
-
-        default:
-            throw GfxException("Unknown default texture type");
-        }
+        return GfxTexture::GetDefault(DefaultValue.Texture);
     }
 
     ShaderPass::ShaderPass(Shader* shader)

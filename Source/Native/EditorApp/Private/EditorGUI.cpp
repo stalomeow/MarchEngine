@@ -162,6 +162,16 @@ namespace march
         return ret;
     }
 
+    void EditorGUI::CenterText(const std::string& text)
+    {
+        auto windowWidth = ImGui::GetWindowSize().x;
+        auto textWidth = ImGui::CalcTextSize(text.c_str()).x;
+        auto cursorPosX = (windowWidth - textWidth) * 0.5f;
+
+        ImGui::SetCursorPosX(max(0, cursorPosX));
+        ImGui::TextUnformatted(text.c_str());
+    }
+
     void EditorGUI::Space()
     {
         ImGui::Spacing();
@@ -515,10 +525,10 @@ namespace march
     void EditorGUI::DrawTexture(GfxTexture* texture)
     {
         GfxDescriptorTable table = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, 1);
-        table.Copy(0, texture->GetSrvCpuDescriptorHandle());
+        table.Copy(0, texture->GetSrv());
         auto id = (ImTextureID)table.GetGpuHandle(0).ptr;
         ImVec2 region = ImGui::GetContentRegionAvail();
-        ImVec2 size = { region.x, static_cast<float>(texture->GetHeight()) / texture->GetWidth() * region.x };
+        ImVec2 size = { region.x, static_cast<float>(texture->GetDesc().Height) / texture->GetDesc().Width * region.x };
         ImGui::Image(id, size);
     }
 

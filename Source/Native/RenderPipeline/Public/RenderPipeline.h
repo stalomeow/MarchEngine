@@ -89,7 +89,7 @@ namespace march
 
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
-        std::vector<std::tuple<int32_t, DXGI_FORMAT>> m_GBuffers{};
+        std::vector<std::tuple<int32_t, DXGI_FORMAT, bool>> m_GBuffers{};
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
 

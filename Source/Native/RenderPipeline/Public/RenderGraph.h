@@ -143,7 +143,7 @@ namespace march
         ~RenderGraphTextureHandle() = default;
 
         int32_t Id() const;
-        GfxRenderTextureDesc GetDesc() const;
+        GfxTextureDesc GetDesc() const;
         GfxRenderTexture* Get() const;
         GfxRenderTexture* operator->() const;
 
@@ -162,9 +162,9 @@ namespace march
         void AllowPassCulling(bool value);
 
         void ImportTexture(int32_t id, GfxRenderTexture* texture);
-        void CreateTransientTexture(int32_t id, const GfxRenderTextureDesc& desc);
+        void CreateTransientTexture(int32_t id, const GfxTextureDesc& desc);
 
-        GfxRenderTextureDesc GetTextureDesc(int32_t id) const;
+        GfxTextureDesc GetTextureDesc(int32_t id) const;
         TextureHandle ReadTexture(int32_t id, ReadFlags flags);
         TextureHandle WriteTexture(int32_t id, WriteFlags flags);
 

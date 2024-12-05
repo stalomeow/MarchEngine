@@ -3,6 +3,7 @@
 #include "GfxCommand.h"
 #include "GfxPipelineState.h"
 #include "DotNetRuntime.h"
+#include "DotNetMarshal.h"
 #include <Windows.h>
 
 using namespace DirectX;
@@ -19,7 +20,9 @@ namespace march
 
     GfxMesh* GfxMesh::GetGeometry(GfxMeshGeometry geometry)
     {
-        return DotNet::RuntimeInvoke<GfxMesh*, GfxMeshGeometry>(ManagedMethod::Mesh_NativeGetGeometry, geometry);
+        cs<GfxMeshGeometry> csGeometry{};
+        csGeometry.assign(geometry);
+        return DotNet::RuntimeInvoke<GfxMesh*>(ManagedMethod::Mesh_NativeGetGeometry, csGeometry);
     }
 
     GfxMesh::GfxMesh()

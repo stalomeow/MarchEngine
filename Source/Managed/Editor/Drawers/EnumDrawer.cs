@@ -17,7 +17,7 @@ namespace March.Editor.Drawers
                     return false;
                 }
 
-                TypeCache.GetEnumData(property.PropertyType, out _, out ReadOnlySpan<Enum> values);
+                TypeCache.GetInspectorEnumData(property.PropertyType, out _, out ReadOnlySpan<Enum> values);
 
                 if (values.Length <= 0)
                 {
