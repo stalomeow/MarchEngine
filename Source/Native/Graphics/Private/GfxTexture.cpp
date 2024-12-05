@@ -1094,6 +1094,61 @@ namespace march
         UploadImage();
     }
 
+    static DXGI_FORMAT GetCompressedFormat(DXGI_FORMAT format, GfxTextureCompression compression)
+    {
+        // https://docs.unity3d.com/6000.0/Documentation/Manual/texture-choose-format-by-platform.html
+        // https://docs.unity3d.com/6000.0/Documentation/Manual/texture-formats-reference.html
+
+        if (IsCompressed(format))
+        {
+            throw GfxException("Texture format is already compressed");
+        }
+
+        DXGI_FORMAT result;
+
+        if (HasAlpha(format))
+        {
+            switch (compression)
+            {
+            case GfxTextureCompression::NormalQuality:
+                result = DXGI_FORMAT_BC3_UNORM;
+                break;
+            case GfxTextureCompression::HighQuality:
+                result = DXGI_FORMAT_BC7_UNORM;
+                break;
+            case GfxTextureCompression::LowQuality:
+                result = DXGI_FORMAT_BC3_UNORM;
+                break;
+            default:
+                throw GfxException("Invalid texture compression");
+            }
+        }
+        else
+        {
+            switch (compression)
+            {
+            case GfxTextureCompression::NormalQuality:
+                result = DXGI_FORMAT_BC1_UNORM;
+                break;
+            case GfxTextureCompression::HighQuality:
+                result = DXGI_FORMAT_BC7_UNORM;
+                break;
+            case GfxTextureCompression::LowQuality:
+                result = DXGI_FORMAT_BC1_UNORM;
+                break;
+            default:
+                throw GfxException("Invalid texture compression");
+            }
+        }
+
+        if (IsSRGB(format))
+        {
+            result = MakeSRGB(result);
+        }
+
+        return result;
+    }
+
     void GfxExternalTexture::LoadFromFile(const std::string& name, const std::string& filePath, const LoadTextureFileArgs& args)
     {
         GfxTextureDesc desc = {};
@@ -1115,29 +1170,31 @@ namespace march
             GFX_HR(LoadFromWICFile(wFilePath.c_str(), WIC_FLAGS_NONE, nullptr, m_Image));
         }
 
-        if (desc.HasFlag(GfxTextureFlags::Mipmaps) && (m_Image.GetMetadata().width > 1 || m_Image.GetMetadata().height > 1))
-        {
-            if (IsCompressed(m_Image.GetMetadata().format))
-            {
-                ScratchImage decompressed;
-                GFX_HR(Decompress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), DXGI_FORMAT_UNKNOWN, decompressed));
-                m_Image = std::move(decompressed);
-            }
-
-            ScratchImage mipChain;
-            GFX_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
-            m_Image = std::move(mipChain);
-        }
-
-        if (args.Compress && !IsCompressed(m_Image.GetMetadata().format))
-        {
-            // TODO compress
-        }
-        else if (!args.Compress && IsCompressed(m_Image.GetMetadata().format))
+        if (IsCompressed(m_Image.GetMetadata().format))
         {
             ScratchImage decompressed;
             GFX_HR(Decompress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), DXGI_FORMAT_UNKNOWN, decompressed));
             m_Image = std::move(decompressed);
+        }
+
+        if (desc.HasFlag(GfxTextureFlags::Mipmaps) && (m_Image.GetMetadata().width > 1 || m_Image.GetMetadata().height > 1))
+        {
+            ScratchImage mipChain;
+
+            // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps
+            // This function does not operate directly on block compressed images.
+            GFX_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+            m_Image = std::move(mipChain);
+        }
+
+        if (args.Compression != GfxTextureCompression::None)
+        {
+            ScratchImage compressed;
+
+            // TODO 目前 BC7 压缩速度巨慢
+            DXGI_FORMAT targetFormat = GetCompressedFormat(m_Image.GetMetadata().format, args.Compression);
+            GFX_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), targetFormat, TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL, TEX_THRESHOLD_DEFAULT, compressed));
+            m_Image = std::move(compressed);
         }
 
         const TexMetadata& metadata = m_Image.GetMetadata();

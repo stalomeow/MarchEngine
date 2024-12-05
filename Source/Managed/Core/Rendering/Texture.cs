@@ -171,6 +171,14 @@ namespace March.Core.Rendering
         public uint MipLevels;
     }
 
+    public enum TextureCompression
+    {
+        [InspectorName("Normal Quality")] NormalQuality,
+        [InspectorName("High Quality")] HighQuality,
+        [InspectorName("Low Quality")] LowQuality,
+        None,
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct LoadTextureFileArgs
     {
@@ -178,7 +186,7 @@ namespace March.Core.Rendering
         public TextureFilterMode Filter;
         public TextureWrapMode Wrap;
         public float MipmapBias;
-        public bool Compress;
+        public TextureCompression Compression;
     }
 
     [NativeTypeName("GfxExternalTexture")]

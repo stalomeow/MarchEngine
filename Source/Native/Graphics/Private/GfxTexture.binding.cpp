@@ -24,7 +24,7 @@ struct CSharpLoadTextureFileArgs
     cs<GfxTextureFilterMode> Filter;
     cs<GfxTextureWrapMode> Wrap;
     cs_float MipmapBias;
-    cs_bool Compress;
+    cs<GfxTextureCompression> Compression;
 };
 
 NATIVE_EXPORT_AUTO GfxTexture_GetMipLevels(cs<GfxTexture*> t)
@@ -107,7 +107,7 @@ NATIVE_EXPORT_AUTO GfxExternalTexture_LoadFromFile(cs<GfxExternalTexture*> t, cs
         args->Filter,
         args->Wrap,
         args->MipmapBias,
-        args->Compress
+        args->Compression
     };
 
     t->LoadFromFile(name, filePath, as);

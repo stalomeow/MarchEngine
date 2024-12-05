@@ -251,13 +251,21 @@ namespace march
         std::pair<GfxDescriptorHandle, bool> m_SamplerHandle;
     };
 
+    enum class GfxTextureCompression
+    {
+        NormalQuality,
+        HighQuality,
+        LowQuality,
+        None,
+    };
+
     struct LoadTextureFileArgs
     {
         GfxTextureFlags Flags;
         GfxTextureFilterMode Filter;
         GfxTextureWrapMode Wrap;
         float MipmapBias;
-        bool Compress;
+        GfxTextureCompression Compression;
     };
 
     class GfxExternalTexture : public GfxTexture

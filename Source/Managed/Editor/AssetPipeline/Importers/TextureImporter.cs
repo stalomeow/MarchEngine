@@ -7,7 +7,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 7)]
+    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 9)]
     internal class TextureImporter : AssetImporter
     {
         [JsonProperty]
@@ -23,7 +23,7 @@ namespace March.Editor.AssetPipeline.Importers
         public bool UnorderedAccess { get; set; } = false;
 
         [JsonProperty]
-        public bool Compress { get; set; } = true;
+        public TextureCompression Compression { get; set; } = TextureCompression.NormalQuality;
 
         [JsonProperty]
         [InspectorName("Filter Mode")]
@@ -46,7 +46,7 @@ namespace March.Editor.AssetPipeline.Importers
                 Filter = Filter,
                 Wrap = Wrap,
                 MipmapBias = MipmapBias,
-                Compress = Compress,
+                Compression = Compression,
             };
 
             if (IsSRGB)
