@@ -429,13 +429,22 @@ namespace March.Editor.AssetPipeline
         private bool m_IsChanged;
         private List<MarchObject>? m_EditingAssets; // 保存资产的强引用，避免编辑时被 GC 回收
 
+        /// <summary>
+        /// 如果编辑器需要使用实际的资产对象，必须返回 <see langword="true"/>，保证资产不被 GC 回收
+        /// </summary>
+        protected virtual bool RequireAssets => false;
+
         public override void OnCreate()
         {
             base.OnCreate();
 
             m_IsChanged = false;
-            m_EditingAssets = ListPool<MarchObject>.Shared.Rent();
-            Target.GetAssets(m_EditingAssets);
+
+            if (RequireAssets)
+            {
+                m_EditingAssets = ListPool<MarchObject>.Shared.Rent();
+                Target.GetAssets(m_EditingAssets);
+            }
         }
 
         public override void OnDestroy()
@@ -525,6 +534,8 @@ namespace March.Editor.AssetPipeline
 
     public abstract class DirectAssetImporterDrawerFor<T> : AssetImporterDrawerFor<T> where T : DirectAssetImporter
     {
+        protected override bool RequireAssets => true;
+
         protected override bool DrawProperties(out bool showApplyRevertButtons)
         {
             bool isChanged = EditorGUI.ObjectPropertyFields(Target.MainAsset, out int propertyCount);

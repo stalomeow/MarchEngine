@@ -71,6 +71,8 @@ namespace March.Editor.AssetPipeline.Importers
 
     internal class TextureImporterDrawer : AssetImporterDrawerFor<TextureImporter>
     {
+        protected override bool RequireAssets => true;
+
         protected override void DrawAdditional()
         {
             base.DrawAdditional();

@@ -47,6 +47,7 @@ namespace march
         {
             m_DeferredLitMaterial.reset();
             m_DeferredLitShader.reset();
+            m_SkyboxMaterial.reset();
         }
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
