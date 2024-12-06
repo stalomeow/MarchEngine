@@ -1096,10 +1096,12 @@ namespace march
         UploadImage();
     }
 
-    static DXGI_FORMAT GetCompressedFormat(DXGI_FORMAT format, GfxTextureCompression compression)
+    static DXGI_FORMAT GetCompressedFormat(const ScratchImage& image, GfxTextureCompression compression)
     {
         // https://docs.unity3d.com/6000.0/Documentation/Manual/texture-choose-format-by-platform.html
         // https://docs.unity3d.com/6000.0/Documentation/Manual/texture-formats-reference.html
+
+        DXGI_FORMAT format = image.GetMetadata().format;
 
         if (IsCompressed(format))
         {
@@ -1108,7 +1110,7 @@ namespace march
 
         DXGI_FORMAT result;
 
-        if (HasAlpha(format))
+        if (HasAlpha(format) && !image.IsAlphaAllOpaque())
         {
             switch (compression)
             {
@@ -1160,8 +1162,6 @@ namespace march
         desc.Wrap = args.Wrap;
         desc.MipmapBias = args.MipmapBias;
 
-        // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
-
         std::wstring wFilePath = StringUtils::Utf8ToUtf16(filePath);
         if (fs::path(filePath).extension() == ".dds")
         {
@@ -1179,14 +1179,56 @@ namespace march
             m_Image = std::move(decompressed);
         }
 
-        if (desc.HasFlag(GfxTextureFlags::Mipmaps) && (m_Image.GetMetadata().width > 1 || m_Image.GetMetadata().height > 1))
+        if (desc.HasFlag(GfxTextureFlags::Mipmaps))
         {
-            ScratchImage mipChain;
+            if (m_Image.GetMetadata().mipLevels == 1 && (m_Image.GetMetadata().width > 1 || m_Image.GetMetadata().height > 1))
+            {
+                ScratchImage mipChain;
 
-            // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps
-            // This function does not operate directly on block compressed images.
-            GFX_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
-            m_Image = std::move(mipChain);
+                if (m_Image.GetMetadata().dimension == TEX_DIMENSION_TEXTURE3D)
+                {
+                    // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps3D
+                    // This function does not operate directly on block compressed images.
+                    GFX_HR(GenerateMipMaps3D(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+                }
+                else
+                {
+                    // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps
+                    // This function does not operate directly on block compressed images.
+                    GFX_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+                }
+
+                m_Image = std::move(mipChain);
+            }
+        }
+        else if (m_Image.GetMetadata().mipLevels > 1)
+        {
+            TexMetadata metadata = m_Image.GetMetadata();
+            metadata.mipLevels = 1; // Remove mipmaps
+
+            ScratchImage level0;
+            GFX_HR(level0.Initialize(metadata, CP_FLAGS_NONE));
+
+            if (metadata.dimension == TEX_DIMENSION_TEXTURE3D)
+            {
+                for (size_t i = 0; i < metadata.depth; i++)
+                {
+                    const Image* src = m_Image.GetImage(0, 0, i);
+                    const Image* dst = level0.GetImage(0, 0, i);
+                    memcpy(dst->pixels, src->pixels, src->slicePitch);
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < metadata.arraySize; i++)
+                {
+                    const Image* src = m_Image.GetImage(0, i, 0);
+                    const Image* dst = level0.GetImage(0, i, 0);
+                    memcpy(dst->pixels, src->pixels, src->slicePitch);
+                }
+            }
+
+            m_Image = std::move(level0);
         }
 
         if (args.Compression != GfxTextureCompression::None)
@@ -1194,8 +1236,18 @@ namespace march
             ScratchImage compressed;
 
             // TODO 目前 BC7 压缩速度巨慢
-            DXGI_FORMAT targetFormat = GetCompressedFormat(m_Image.GetMetadata().format, args.Compression);
-            GFX_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), targetFormat, TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL, TEX_THRESHOLD_DEFAULT, compressed));
+            TEX_COMPRESS_FLAGS flags = TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL;
+
+            if (!desc.HasFlag(GfxTextureFlags::SRGB))
+            {
+                // By default, BC1-3 uses a perceptual weighting.
+                // By using this flag, the perceptual weighting is disabled which can be useful
+                // when using the RGB channels for other data.
+                flags |= TEX_COMPRESS_UNIFORM;
+            }
+
+            DXGI_FORMAT targetFormat = GetCompressedFormat(m_Image, args.Compression);
+            GFX_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), targetFormat, flags, TEX_THRESHOLD_DEFAULT, compressed));
             m_Image = std::move(compressed);
         }
 
@@ -1247,6 +1299,8 @@ namespace march
 
         m_Name = name;
         Reset(desc);
+
+        // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
 
         ID3D12Device4* d3d12Device = m_Device->GetD3D12Device();
         D3D12_RESOURCE_FLAGS resFlags = GetResourceFlags(desc, false);

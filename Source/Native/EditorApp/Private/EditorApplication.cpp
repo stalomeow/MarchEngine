@@ -81,7 +81,7 @@ namespace march
         desc.WindowWidth = GetClientWidth();
         desc.WindowHeight = GetClientHeight();
         desc.ViewTableStaticDescriptorCount = 1;
-        desc.ViewTableDynamicDescriptorCapacity = 4096;
+        desc.ViewTableDynamicDescriptorCapacity = 409600;
         desc.SamplerTableStaticDescriptorCount = 0;
         desc.SamplerTableDynamicDescriptorCapacity = 1024;
         InitGfxDevice(desc);
