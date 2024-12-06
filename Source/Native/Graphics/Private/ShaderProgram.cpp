@@ -180,6 +180,18 @@ namespace march
             program = "ps";
             break;
 
+        case ShaderProgramType::Domain:
+            program = "ds";
+            break;
+
+        case ShaderProgramType::Hull:
+            program = "hs";
+            break;
+
+        case ShaderProgramType::Geometry:
+            program = "gs";
+            break;
+
         default:
             program = "unknown";
             break;
@@ -235,6 +247,18 @@ namespace march
             else if (args[0] == "ps" && args.size() == 2)
             {
                 config.Entrypoints[static_cast<int32_t>(ShaderProgramType::Pixel)] = args[1];
+            }
+            else if (args[0] == "ds" && args.size() == 2)
+            {
+                config.Entrypoints[static_cast<int32_t>(ShaderProgramType::Domain)] = args[1];
+            }
+            else if (args[0] == "hs" && args.size() == 2)
+            {
+                config.Entrypoints[static_cast<int32_t>(ShaderProgramType::Hull)] = args[1];
+            }
+            else if (args[0] == "gs" && args.size() == 2)
+            {
+                config.Entrypoints[static_cast<int32_t>(ShaderProgramType::Geometry)] = args[1];
             }
             else if (args[0] == "enable_debug_information" && args.size() == 1)
             {

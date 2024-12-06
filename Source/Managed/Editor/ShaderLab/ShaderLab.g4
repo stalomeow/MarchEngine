@@ -55,7 +55,11 @@ propertyTypeDeclaration
     | Int
     | Color
     | Vector
-    | Texture
+    | TwoD
+    | ThreeD
+    | Cube
+    | TwoDArray
+    | CubeArray
     ;
 
 propertyDeclaration
@@ -323,8 +327,24 @@ Vector
     : 'Vector'
     ;
 
-Texture
+TwoD
     : '2D'
+    ;
+
+ThreeD
+    : '3D'
+    ;
+
+Cube
+    : 'Cube'
+    ;
+
+TwoDArray
+    : '2DArray'
+    ;
+
+CubeArray
+    : 'CubeArray'
     ;
 
 On

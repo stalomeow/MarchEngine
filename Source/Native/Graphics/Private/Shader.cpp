@@ -15,7 +15,7 @@ namespace march
             throw GfxException("Property is not a texture type");
         }
 
-        return GfxTexture::GetDefault(DefaultValue.Texture);
+        return GfxTexture::GetDefault(DefaultTexture, TextureDimension);
     }
 
     ShaderPass::ShaderPass(Shader* shader)

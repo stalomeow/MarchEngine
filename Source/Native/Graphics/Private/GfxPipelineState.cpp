@@ -289,6 +289,9 @@ namespace march
 
             SetShaderProgramIfExists(psoDesc.VS, pass, ShaderProgramType::Vertex, keywords);
             SetShaderProgramIfExists(psoDesc.PS, pass, ShaderProgramType::Pixel, keywords);
+            SetShaderProgramIfExists(psoDesc.DS, pass, ShaderProgramType::Domain, keywords);
+            SetShaderProgramIfExists(psoDesc.HS, pass, ShaderProgramType::Hull, keywords);
+            SetShaderProgramIfExists(psoDesc.GS, pass, ShaderProgramType::Geometry, keywords);
 
             psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
             psoDesc.BlendState.IndependentBlendEnable = rs.Blends.size() > 1 ? TRUE : FALSE;

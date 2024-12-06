@@ -171,7 +171,19 @@ namespace March.Editor.AssetPipeline
 
                 if (!data.TryGetAsset(out MarchObject? asset))
                 {
-                    asset = TryLoadAssetFromCache(guid);
+                    try
+                    {
+                        asset = TryLoadAssetFromCache(guid);
+                    }
+                    catch (IOException)
+                    {
+                        // 递归时，缓存文件被占用
+                        // 假设一个资产里有 a 和 b 两个子资产，a 依赖 b
+                        // 加载 a 时，需要加载 b，但是**递归**加载 b 时发现 b 的缓存文件没了
+                        // 这时要重新导入 a 和 b，但是 a 的缓存文件还在被占用（读），无法写入，所以会抛出异常
+                        forceReimport = true;
+                        continue;
+                    }
 
                     // 可能是缓存文件被删除了，重新导入再试一次
                     if (asset == null)

@@ -21,6 +21,7 @@ namespace march
     class ShaderKeywordSpace;
 
     enum class GfxDefaultTexture;
+    enum class GfxTextureDimension;
 
     class ShaderKeywordSet
     {
@@ -165,6 +166,9 @@ namespace march
     {
         Vertex,
         Pixel,
+        Domain,
+        Hull,
+        Geometry,
         NumTypes,
     };
 
@@ -219,12 +223,17 @@ namespace march
 
         union
         {
-            float Float;
-            int32_t Int;
-            DirectX::XMFLOAT4 Color;
-            DirectX::XMFLOAT4 Vector;
-            GfxDefaultTexture Texture;
-        } DefaultValue;
+            float DefaultFloat;
+            int32_t DefaultInt;
+            DirectX::XMFLOAT4 DefaultColor;
+            DirectX::XMFLOAT4 DefaultVector;
+
+            struct
+            {
+                GfxTextureDimension TextureDimension;
+                GfxDefaultTexture DefaultTexture;
+            };
+        };
 
         GfxTexture* GetDefaultTexture() const;
     };

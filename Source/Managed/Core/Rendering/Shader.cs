@@ -131,6 +131,9 @@ namespace March.Core.Rendering
     {
         Vertex,
         Pixel,
+        Domain,
+        Hull,
+        Geometry,
         NumTypes,
     };
 
@@ -219,14 +222,16 @@ namespace March.Core.Rendering
         public string Name = string.Empty;
         public string Label = string.Empty;
         public string Tooltip = string.Empty;
-        public ShaderPropertyAttribute[] Attributes = [];
+        public List<ShaderPropertyAttribute> Attributes = [];
         public ShaderPropertyType Type;
 
         public float DefaultFloat;
         public int DefaultInt;
         public Color DefaultColor;
         public Vector4 DefaultVector;
-        public DefaultTexture DefaultTexture;
+
+        public TextureDimension TexDimension;
+        public DefaultTexture DefaultTex;
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
@@ -238,7 +243,9 @@ namespace March.Core.Rendering
             public int DefaultInt;
             public Color DefaultColor;
             public Vector4 DefaultVector;
-            public DefaultTexture DefaultTexture;
+
+            public TextureDimension TexDimension;
+            public DefaultTexture DefaultTex;
         }
 
         public static void ToNative(ShaderProperty value, out Native native)
@@ -249,7 +256,8 @@ namespace March.Core.Rendering
             native.DefaultInt = value.DefaultInt;
             native.DefaultColor = value.DefaultColor;
             native.DefaultVector = value.DefaultVector;
-            native.DefaultTexture = value.DefaultTexture;
+            native.TexDimension = value.TexDimension;
+            native.DefaultTex = value.DefaultTex;
         }
 
         public static void FreeNative(ref Native native)

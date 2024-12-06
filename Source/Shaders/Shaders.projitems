@@ -20,6 +20,7 @@
     <None Include="$(MSBuildThisFileDirectory)public\includes\Packing.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\Sampler.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
+    <None Include="$(MSBuildThisFileDirectory)public\Skybox.shader" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Public\Includes\" />

@@ -1018,11 +1018,13 @@ namespace march
         m_Desc = desc;
     }
 
-    GfxTexture* GfxTexture::GetDefault(GfxDefaultTexture texture)
+    GfxTexture* GfxTexture::GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension)
     {
         cs<GfxDefaultTexture> csTexture{};
         csTexture.assign(texture);
-        return DotNet::RuntimeInvoke<GfxTexture*>(ManagedMethod::Texture_NativeGetDefault, csTexture);
+        cs<GfxTextureDimension> csDimension{};
+        csDimension.assign(dimension);
+        return DotNet::RuntimeInvoke<GfxTexture*>(ManagedMethod::Texture_NativeGetDefault, csTexture, csDimension);
     }
 
     static D3D12_RESOURCE_FLAGS GetResourceFlags(const GfxTextureDesc& desc, bool allowRendering)

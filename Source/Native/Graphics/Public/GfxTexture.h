@@ -189,6 +189,11 @@ namespace march
         Black, // RGBA: 0, 0, 0, 1
         White, // RGBA: 1, 1, 1, 1
         Bump,  // RGBA: 0.5, 0.5, 1, 1
+        Gray,  // RGBA: 0.5, 0.5, 0.5, 1
+        Red,   // RGBA: 1, 0, 0, 1
+
+        // Alias
+        Grey = Gray,
     };
 
     class GfxTexture : public GfxResource
@@ -208,7 +213,7 @@ namespace march
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(GfxCubemapFace face, uint32_t faceCount = 1, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetSampler();
 
-        static GfxTexture* GetDefault(GfxDefaultTexture texture);
+        static GfxTexture* GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension);
 
         virtual bool AllowRendering() const = 0;
 

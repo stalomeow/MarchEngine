@@ -43,13 +43,14 @@ public partial class ShaderLabParser : Parser {
 		T__24=25, T__25=26, T__26=27, T__27=28, T__28=29, HlslInclude=30, HlslProgram=31, 
 		Assign=32, LeftBrace=33, RightBrace=34, StringLiteral=35, BracketLiteral=36, 
 		IntegerLiteral=37, FloatLiteral=38, Float=39, Int=40, Color=41, Vector=42, 
-		Texture=43, On=44, Off=45, Disabled=46, Front=47, Back=48, Zero=49, One=50, 
-		SrcColor=51, OneMinusSrcColor=52, SrcAlpha=53, OneMinusSrcAlpha=54, DstAlpha=55, 
-		OneMinusDstAlpha=56, DstColor=57, OneMinusDstColor=58, SrcAlphaSaturate=59, 
-		Add=60, Sub=61, RevSub=62, Min=63, Max=64, Never=65, Less=66, Equal=67, 
-		LEqual=68, Greater=69, NotEqual=70, GEqual=71, Always=72, Keep=73, Replace=74, 
-		IncrSat=75, DecrSat=76, Invert=77, IncrWrap=78, DecrWrap=79, Identifier=80, 
-		Whitespace=81, Newline=82, BlockComment=83, LineComment=84;
+		TwoD=43, ThreeD=44, Cube=45, TwoDArray=46, CubeArray=47, On=48, Off=49, 
+		Disabled=50, Front=51, Back=52, Zero=53, One=54, SrcColor=55, OneMinusSrcColor=56, 
+		SrcAlpha=57, OneMinusSrcAlpha=58, DstAlpha=59, OneMinusDstAlpha=60, DstColor=61, 
+		OneMinusDstColor=62, SrcAlphaSaturate=63, Add=64, Sub=65, RevSub=66, Min=67, 
+		Max=68, Never=69, Less=70, Equal=71, LEqual=72, Greater=73, NotEqual=74, 
+		GEqual=75, Always=76, Keep=77, Replace=78, IncrSat=79, DecrSat=80, Invert=81, 
+		IncrWrap=82, DecrWrap=83, Identifier=84, Whitespace=85, Newline=86, BlockComment=87, 
+		LineComment=88;
 	public const int
 		RULE_shader = 0, RULE_shaderDeclaration = 1, RULE_propertiesBlock = 2, 
 		RULE_passBlock = 3, RULE_passDeclaration = 4, RULE_attributeDeclaration = 5, 
@@ -94,26 +95,27 @@ public partial class ShaderLabParser : Parser {
 		"'ZFail'", "'CompFront'", "'PassFront'", "'FailFront'", "'ZFailFront'", 
 		"'CompBack'", "'PassBack'", "'FailBack'", "'ZFailBack'", null, null, "'='", 
 		"'{'", "'}'", null, null, null, null, "'Float'", "'Int'", "'Color'", "'Vector'", 
-		"'2D'", "'On'", "'Off'", "'Disabled'", "'Front'", "'Back'", "'Zero'", 
-		"'One'", "'SrcColor'", "'OneMinusSrcColor'", "'SrcAlpha'", "'OneMinusSrcAlpha'", 
-		"'DstAlpha'", "'OneMinusDstAlpha'", "'DstColor'", "'OneMinusDstColor'", 
-		"'SrcAlphaSaturate'", "'Add'", "'Sub'", "'RevSub'", "'Min'", "'Max'", 
-		"'Never'", "'Less'", "'Equal'", "'LEqual'", "'Greater'", "'NotEqual'", 
-		"'GEqual'", "'Always'", "'Keep'", "'Replace'", "'IncrSat'", "'DecrSat'", 
-		"'Invert'", "'IncrWrap'", "'DecrWrap'"
+		"'2D'", "'3D'", "'Cube'", "'2DArray'", "'CubeArray'", "'On'", "'Off'", 
+		"'Disabled'", "'Front'", "'Back'", "'Zero'", "'One'", "'SrcColor'", "'OneMinusSrcColor'", 
+		"'SrcAlpha'", "'OneMinusSrcAlpha'", "'DstAlpha'", "'OneMinusDstAlpha'", 
+		"'DstColor'", "'OneMinusDstColor'", "'SrcAlphaSaturate'", "'Add'", "'Sub'", 
+		"'RevSub'", "'Min'", "'Max'", "'Never'", "'Less'", "'Equal'", "'LEqual'", 
+		"'Greater'", "'NotEqual'", "'GEqual'", "'Always'", "'Keep'", "'Replace'", 
+		"'IncrSat'", "'DecrSat'", "'Invert'", "'IncrWrap'", "'DecrWrap'"
 	};
 	private static readonly string[] _SymbolicNames = {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, "HlslInclude", "HlslProgram", "Assign", 
 		"LeftBrace", "RightBrace", "StringLiteral", "BracketLiteral", "IntegerLiteral", 
-		"FloatLiteral", "Float", "Int", "Color", "Vector", "Texture", "On", "Off", 
-		"Disabled", "Front", "Back", "Zero", "One", "SrcColor", "OneMinusSrcColor", 
-		"SrcAlpha", "OneMinusSrcAlpha", "DstAlpha", "OneMinusDstAlpha", "DstColor", 
-		"OneMinusDstColor", "SrcAlphaSaturate", "Add", "Sub", "RevSub", "Min", 
-		"Max", "Never", "Less", "Equal", "LEqual", "Greater", "NotEqual", "GEqual", 
-		"Always", "Keep", "Replace", "IncrSat", "DecrSat", "Invert", "IncrWrap", 
-		"DecrWrap", "Identifier", "Whitespace", "Newline", "BlockComment", "LineComment"
+		"FloatLiteral", "Float", "Int", "Color", "Vector", "TwoD", "ThreeD", "Cube", 
+		"TwoDArray", "CubeArray", "On", "Off", "Disabled", "Front", "Back", "Zero", 
+		"One", "SrcColor", "OneMinusSrcColor", "SrcAlpha", "OneMinusSrcAlpha", 
+		"DstAlpha", "OneMinusDstAlpha", "DstColor", "OneMinusDstColor", "SrcAlphaSaturate", 
+		"Add", "Sub", "RevSub", "Min", "Max", "Never", "Less", "Equal", "LEqual", 
+		"Greater", "NotEqual", "GEqual", "Always", "Keep", "Replace", "IncrSat", 
+		"DecrSat", "Invert", "IncrWrap", "DecrWrap", "Identifier", "Whitespace", 
+		"Newline", "BlockComment", "LineComment"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -772,7 +774,11 @@ public partial class ShaderLabParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Int() { return GetToken(ShaderLabParser.Int, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Color() { return GetToken(ShaderLabParser.Color, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Vector() { return GetToken(ShaderLabParser.Vector, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Texture() { return GetToken(ShaderLabParser.Texture, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode TwoD() { return GetToken(ShaderLabParser.TwoD, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode ThreeD() { return GetToken(ShaderLabParser.ThreeD, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Cube() { return GetToken(ShaderLabParser.Cube, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode TwoDArray() { return GetToken(ShaderLabParser.TwoDArray, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode CubeArray() { return GetToken(ShaderLabParser.CubeArray, 0); }
 		public PropertyTypeDeclarationContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
 		{
@@ -796,7 +802,7 @@ public partial class ShaderLabParser : Parser {
 			{
 			State = 163;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 17042430230528L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 280925220896768L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -1311,7 +1317,7 @@ public partial class ShaderLabParser : Parser {
 			Match(T__10);
 			State = 218;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 52845277609984L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 844493649608704L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2918,7 +2924,7 @@ public partial class ShaderLabParser : Parser {
 			{
 			State = 361;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 457396837154816L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 7318349394477056L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -2973,7 +2979,7 @@ public partial class ShaderLabParser : Parser {
 			{
 			State = 363;
 			_la = TokenStream.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 1152358554653425664L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & -9007199254740992L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -3087,7 +3093,7 @@ public partial class ShaderLabParser : Parser {
 			{
 			State = 369;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 60)) & ~0x3f) == 0 && ((1L << (_la - 60)) & 31L) != 0)) ) {
+			if ( !(((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & 31L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -3198,7 +3204,7 @@ public partial class ShaderLabParser : Parser {
 			{
 			State = 375;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & 255L) != 0)) ) {
+			if ( !(((((_la - 69)) & ~0x3f) == 0 && ((1L << (_la - 69)) & 255L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -3250,7 +3256,7 @@ public partial class ShaderLabParser : Parser {
 			{
 			State = 377;
 			_la = TokenStream.LA(1);
-			if ( !(((((_la - 49)) & ~0x3f) == 0 && ((1L << (_la - 49)) & 2130706433L) != 0)) ) {
+			if ( !(((((_la - 53)) & ~0x3f) == 0 && ((1L << (_la - 53)) & 2130706433L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
 			}
 			else {
@@ -3271,7 +3277,7 @@ public partial class ShaderLabParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,84,380,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,88,380,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,21,
 		2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,2,27,7,27,2,28,7,28,
@@ -3301,9 +3307,9 @@ public partial class ShaderLabParser : Parser {
 		1,41,1,41,1,42,1,42,1,43,1,43,3,43,368,8,43,1,44,1,44,1,45,1,45,3,45,374,
 		8,45,1,46,1,46,1,47,1,47,1,47,0,0,48,0,2,4,6,8,10,12,14,16,18,20,22,24,
 		26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,
-		74,76,78,80,82,84,86,88,90,92,94,0,9,1,0,37,38,1,0,39,43,2,0,36,36,44,
-		45,1,0,36,37,2,0,45,45,47,48,1,0,49,59,1,0,60,64,1,0,65,72,2,0,49,49,73,
-		79,393,0,96,1,0,0,0,2,112,1,0,0,0,4,114,1,0,0,0,6,124,1,0,0,0,8,138,1,
+		74,76,78,80,82,84,86,88,90,92,94,0,9,1,0,37,38,1,0,39,47,2,0,36,36,48,
+		49,1,0,36,37,2,0,49,49,51,52,1,0,53,63,1,0,64,68,1,0,69,76,2,0,53,53,77,
+		83,393,0,96,1,0,0,0,2,112,1,0,0,0,4,114,1,0,0,0,6,124,1,0,0,0,8,138,1,
 		0,0,0,10,140,1,0,0,0,12,142,1,0,0,0,14,144,1,0,0,0,16,154,1,0,0,0,18,161,
 		1,0,0,0,20,163,1,0,0,0,22,168,1,0,0,0,24,180,1,0,0,0,26,190,1,0,0,0,28,
 		192,1,0,0,0,30,202,1,0,0,0,32,206,1,0,0,0,34,211,1,0,0,0,36,217,1,0,0,
@@ -3333,7 +3339,7 @@ public partial class ShaderLabParser : Parser {
 		160,162,3,16,8,0,161,158,1,0,0,0,161,159,1,0,0,0,161,160,1,0,0,0,162,19,
 		1,0,0,0,163,164,7,1,0,0,164,21,1,0,0,0,165,167,3,10,5,0,166,165,1,0,0,
 		0,167,170,1,0,0,0,168,166,1,0,0,0,168,169,1,0,0,0,169,171,1,0,0,0,170,
-		168,1,0,0,0,171,172,5,80,0,0,172,173,5,4,0,0,173,174,5,35,0,0,174,175,
+		168,1,0,0,0,171,172,5,84,0,0,172,173,5,4,0,0,173,174,5,35,0,0,174,175,
 		5,5,0,0,175,176,3,20,10,0,176,177,5,6,0,0,177,178,5,32,0,0,178,179,3,18,
 		9,0,179,23,1,0,0,0,180,181,5,7,0,0,181,182,5,35,0,0,182,25,1,0,0,0,183,
 		191,3,32,16,0,184,191,3,34,17,0,185,191,3,36,18,0,186,191,3,38,19,0,187,
@@ -3344,11 +3350,11 @@ public partial class ShaderLabParser : Parser {
 		198,1,0,0,0,198,200,1,0,0,0,199,197,1,0,0,0,200,201,5,34,0,0,201,29,1,
 		0,0,0,202,203,5,35,0,0,203,204,5,32,0,0,204,205,5,35,0,0,205,31,1,0,0,
 		0,206,209,5,9,0,0,207,210,3,82,41,0,208,210,5,36,0,0,209,207,1,0,0,0,209,
-		208,1,0,0,0,210,33,1,0,0,0,211,215,5,10,0,0,212,216,5,46,0,0,213,216,3,
+		208,1,0,0,0,210,33,1,0,0,0,211,215,5,10,0,0,212,216,5,50,0,0,213,216,3,
 		92,46,0,214,216,5,36,0,0,215,212,1,0,0,0,215,213,1,0,0,0,215,214,1,0,0,
 		0,216,35,1,0,0,0,217,218,5,11,0,0,218,219,7,2,0,0,219,37,1,0,0,0,220,222,
 		5,12,0,0,221,223,5,37,0,0,222,221,1,0,0,0,222,223,1,0,0,0,223,233,1,0,
-		0,0,224,234,5,45,0,0,225,226,3,86,43,0,226,231,3,86,43,0,227,228,5,5,0,
+		0,0,224,234,5,49,0,0,225,226,3,86,43,0,226,231,3,86,43,0,227,228,5,5,0,
 		0,228,229,3,86,43,0,229,230,3,86,43,0,230,232,1,0,0,0,231,227,1,0,0,0,
 		231,232,1,0,0,0,232,234,1,0,0,0,233,224,1,0,0,0,233,225,1,0,0,0,234,39,
 		1,0,0,0,235,237,5,13,0,0,236,238,5,37,0,0,237,236,1,0,0,0,237,238,1,0,
@@ -3356,7 +3362,7 @@ public partial class ShaderLabParser : Parser {
 		0,242,240,1,0,0,0,242,243,1,0,0,0,243,41,1,0,0,0,244,245,5,14,0,0,245,
 		260,5,37,0,0,246,247,5,14,0,0,247,248,5,37,0,0,248,260,5,37,0,0,249,251,
 		5,14,0,0,250,252,5,37,0,0,251,250,1,0,0,0,251,252,1,0,0,0,252,253,1,0,
-		0,0,253,260,5,80,0,0,254,256,5,14,0,0,255,257,5,37,0,0,256,255,1,0,0,0,
+		0,0,253,260,5,84,0,0,254,256,5,14,0,0,255,257,5,37,0,0,256,255,1,0,0,0,
 		256,257,1,0,0,0,257,258,1,0,0,0,258,260,5,36,0,0,259,244,1,0,0,0,259,246,
 		1,0,0,0,259,249,1,0,0,0,259,254,1,0,0,0,260,43,1,0,0,0,261,262,5,15,0,
 		0,262,266,5,33,0,0,263,265,3,46,23,0,264,263,1,0,0,0,265,268,1,0,0,0,266,

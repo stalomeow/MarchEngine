@@ -69,8 +69,14 @@ namespace March.Editor.AssetPipeline.Importers
                         case ShaderPropertyType.Texture:
                             {
                                 Texture? value = material.MustGetTexture(shaderProp.Name);
-                                isChanged |= EditorGUI.MarchObjectField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                                material.SetTexture(shaderProp.Name, value);
+                                bool isTexChanged = EditorGUI.MarchObjectField(shaderProp.Label, shaderProp.Tooltip, ref value);
+
+                                if (isTexChanged && (value == null || value.Desc.Dimension == shaderProp.TexDimension))
+                                {
+                                    isChanged = true;
+                                    material.SetTexture(shaderProp.Name, value);
+                                }
+
                                 break;
                             }
                     }

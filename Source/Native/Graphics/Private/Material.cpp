@@ -117,7 +117,7 @@ namespace march
             auto shaderProp = m_Shader->GetProperties().find(id);
             if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Int)
             {
-                *outValue = shaderProp->second.DefaultValue.Int;
+                *outValue = shaderProp->second.DefaultInt;
                 return true;
             }
         }
@@ -139,7 +139,7 @@ namespace march
             auto shaderProp = m_Shader->GetProperties().find(id);
             if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Float)
             {
-                *outValue = shaderProp->second.DefaultValue.Float;
+                *outValue = shaderProp->second.DefaultFloat;
                 return true;
             }
         }
@@ -161,7 +161,7 @@ namespace march
             auto shaderProp = m_Shader->GetProperties().find(id);
             if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Vector)
             {
-                *outValue = shaderProp->second.DefaultValue.Vector;
+                *outValue = shaderProp->second.DefaultVector;
                 return true;
             }
         }
@@ -183,7 +183,7 @@ namespace march
             auto shaderProp = m_Shader->GetProperties().find(id);
             if (shaderProp != m_Shader->GetProperties().end() && shaderProp->second.Type == ShaderPropertyType::Color)
             {
-                *outValue = shaderProp->second.DefaultValue.Color;
+                *outValue = shaderProp->second.DefaultColor;
                 return true;
             }
         }

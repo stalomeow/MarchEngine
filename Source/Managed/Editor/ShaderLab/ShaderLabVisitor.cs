@@ -8,21 +8,6 @@ using System.Text.RegularExpressions;
 
 namespace March.Editor.ShaderLab
 {
-    internal class ParsedShaderProperty
-    {
-        public string? Name;
-        public string? Label;
-        public string Tooltip = string.Empty;
-        public List<ShaderPropertyAttribute> Attributes = [];
-        public ShaderPropertyType Type;
-
-        public float DefaultFloat;
-        public int DefaultInt;
-        public Color DefaultColor;
-        public Vector4 DefaultVector;
-        public DefaultTexture DefaultTexture;
-    }
-
     internal struct ParsedBlend
     {
         public bool Enable;
@@ -249,8 +234,8 @@ namespace March.Editor.ShaderLab
 
     internal class ParsedShaderData : ParsedMetadataContainer
     {
-        public string? Name;
-        public List<ParsedShaderProperty> Properties = [];
+        public string Name = "UnnamedShader";
+        public List<ShaderProperty> Properties = [];
         public List<string> HlslIncludes = [];
         public List<ParsedShaderPass> Passes = [];
 
@@ -332,27 +317,10 @@ namespace March.Editor.ShaderLab
 
         public override int VisitPropertyDeclaration([NotNull] ShaderLabParser.PropertyDeclarationContext context)
         {
-            ParsedShaderProperty prop = new();
-
-            var i = context.GetText();
-            var a = context.Identifier().GetText();
-            var b = context.StringLiteral().GetText();
+            ShaderProperty prop = new();
 
             prop.Name = context.Identifier().GetText();
             prop.Label = context.StringLiteral().GetText()[1..^1]; // remove quotes
-
-            var type = context.propertyTypeDeclaration();
-            Visit(type);
-
-            prop.Type = type.GetChild<ITerminalNode>(0).Symbol.Type switch
-            {
-                ShaderLabParser.Float => ShaderPropertyType.Float,
-                ShaderLabParser.Int => ShaderPropertyType.Int,
-                ShaderLabParser.Color => ShaderPropertyType.Color,
-                ShaderLabParser.Vector => ShaderPropertyType.Vector,
-                ShaderLabParser.Texture => ShaderPropertyType.Texture,
-                _ => throw new NotSupportedException("Unknown property type"),
-            };
 
             foreach (var attr in context.attributeDeclaration())
             {
@@ -379,30 +347,66 @@ namespace March.Editor.ShaderLab
                 }
             }
 
+            var type = context.propertyTypeDeclaration();
+            Visit(type);
+
             var defaultValue = context.propertyDefaultValueExpression();
             Visit(defaultValue);
 
-            switch (prop.Type)
+            switch (type.GetChild<ITerminalNode>(0).Symbol.Type)
             {
-                case ShaderPropertyType.Float:
+                case ShaderLabParser.Float:
+                    prop.Type = ShaderPropertyType.Float;
                     prop.DefaultFloat = float.Parse(defaultValue.numberLiteralExpression().GetText());
                     break;
 
-                case ShaderPropertyType.Int:
+                case ShaderLabParser.Int:
+                    prop.Type = ShaderPropertyType.Int;
                     prop.DefaultInt = int.Parse(defaultValue.numberLiteralExpression().GetText());
                     break;
 
-                case ShaderPropertyType.Color:
+                case ShaderLabParser.Color:
+                    prop.Type = ShaderPropertyType.Color;
                     prop.DefaultColor = ParseColor(defaultValue.vectorLiteralExpression());
                     break;
 
-                case ShaderPropertyType.Vector:
+                case ShaderLabParser.Vector:
+                    prop.Type = ShaderPropertyType.Vector;
                     prop.DefaultVector = ParseVector(defaultValue.vectorLiteralExpression());
                     break;
 
-                case ShaderPropertyType.Texture:
-                    prop.DefaultTexture = ParseTexture(defaultValue.textureLiteralExpression());
+                case ShaderLabParser.TwoD:
+                    prop.Type = ShaderPropertyType.Texture;
+                    prop.DefaultTex = ParseTextureValue(defaultValue.textureLiteralExpression());
+                    prop.TexDimension = TextureDimension.Tex2D;
                     break;
+
+                case ShaderLabParser.ThreeD:
+                    prop.Type = ShaderPropertyType.Texture;
+                    prop.DefaultTex = ParseTextureValue(defaultValue.textureLiteralExpression());
+                    prop.TexDimension = TextureDimension.Tex3D;
+                    break;
+
+                case ShaderLabParser.Cube:
+                    prop.Type = ShaderPropertyType.Texture;
+                    prop.DefaultTex = ParseTextureValue(defaultValue.textureLiteralExpression());
+                    prop.TexDimension = TextureDimension.Cube;
+                    break;
+
+                case ShaderLabParser.TwoDArray:
+                    prop.Type = ShaderPropertyType.Texture;
+                    prop.DefaultTex = ParseTextureValue(defaultValue.textureLiteralExpression());
+                    prop.TexDimension = TextureDimension.Tex2DArray;
+                    break;
+
+                case ShaderLabParser.CubeArray:
+                    prop.Type = ShaderPropertyType.Texture;
+                    prop.DefaultTex = ParseTextureValue(defaultValue.textureLiteralExpression());
+                    prop.TexDimension = TextureDimension.CubeArray;
+                    break;
+
+                default:
+                    throw new NotSupportedException("Unknown property type");
             }
 
             Data.Properties.Add(prop);
@@ -1055,16 +1059,16 @@ namespace March.Editor.ShaderLab
             );
         }
 
-        private static DefaultTexture ParseTexture(ShaderLabParser.TextureLiteralExpressionContext context)
+        private static DefaultTexture ParseTextureValue(ShaderLabParser.TextureLiteralExpressionContext context)
         {
             string value = context.StringLiteral().GetText()[1..^1]; // Remove quotes
-            return value switch
+
+            if (string.IsNullOrEmpty(value))
             {
-                "black" => DefaultTexture.Black,
-                "white" => DefaultTexture.White,
-                "bump" => DefaultTexture.Bump,
-                _ => throw new NotSupportedException("Unknown texture value")
-            };
+                return DefaultTexture.Gray;
+            }
+
+            return Enum.Parse<DefaultTexture>(value, true); // Ignore case
         }
 
         private static CompareFunction ParseCompareFunc(ITerminalNode node)

@@ -102,7 +102,7 @@ NATIVE_EXPORT_AUTO Material_GetAllInts(cs<Material*> pMaterial)
         {
             if (p.second.Type == ShaderPropertyType::Int && !allValues.count(p.first))
             {
-                allValues[p.first] = p.second.DefaultValue.Int;
+                allValues[p.first] = p.second.DefaultInt;
             }
         }
     }
@@ -138,7 +138,7 @@ NATIVE_EXPORT_AUTO Material_GetAllFloats(cs<Material*> pMaterial)
         {
             if (p.second.Type == ShaderPropertyType::Float && !allValues.count(p.first))
             {
-                allValues[p.first] = p.second.DefaultValue.Float;
+                allValues[p.first] = p.second.DefaultFloat;
             }
         }
     }
@@ -174,7 +174,7 @@ NATIVE_EXPORT_AUTO Material_GetAllVectors(cs<Material*> pMaterial)
         {
             if (p.second.Type == ShaderPropertyType::Vector && !allValues.count(p.first))
             {
-                allValues[p.first] = p.second.DefaultValue.Vector;
+                allValues[p.first] = p.second.DefaultVector;
             }
         }
     }
@@ -210,7 +210,7 @@ NATIVE_EXPORT_AUTO Material_GetAllColors(cs<Material*> pMaterial)
         {
             if (p.second.Type == ShaderPropertyType::Color && !allValues.count(p.first))
             {
-                allValues[p.first] = p.second.DefaultValue.Color;
+                allValues[p.first] = p.second.DefaultColor;
             }
         }
     }

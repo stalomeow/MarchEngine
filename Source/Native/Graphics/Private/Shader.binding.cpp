@@ -50,7 +50,9 @@ struct CSharpShaderProperty
     cs_int DefaultInt;
     cs_color DefaultColor;
     cs_vec4 DefaultVector;
-    cs<GfxDefaultTexture> DefaultTexture;
+
+    cs<GfxTextureDimension> TexDimension;
+    cs<GfxDefaultTexture> DefaultTex;
 };
 
 struct CSharpShaderPropertyLocation
@@ -197,19 +199,20 @@ namespace march
             switch (prop->Type)
             {
             case ShaderPropertyType::Float:
-                p.DefaultValue.Float = prop->DefaultFloat;
+                p.DefaultFloat = prop->DefaultFloat;
                 break;
             case ShaderPropertyType::Int:
-                p.DefaultValue.Int = prop->DefaultInt;
+                p.DefaultInt = prop->DefaultInt;
                 break;
             case ShaderPropertyType::Color:
-                p.DefaultValue.Color = prop->DefaultColor;
+                p.DefaultColor = prop->DefaultColor;
                 break;
             case ShaderPropertyType::Vector:
-                p.DefaultValue.Vector = prop->DefaultVector;
+                p.DefaultVector = prop->DefaultVector;
                 break;
             case ShaderPropertyType::Texture:
-                p.DefaultValue.Texture = prop->DefaultTexture;
+                p.TextureDimension = prop->TexDimension;
+                p.DefaultTexture = prop->DefaultTex;
                 break;
             default:
                 LOG_ERROR("Unknown shader property type: %d", static_cast<int32_t>(prop->Type.data));
