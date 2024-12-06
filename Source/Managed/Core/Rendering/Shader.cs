@@ -134,7 +134,6 @@ namespace March.Core.Rendering
         Domain,
         Hull,
         Geometry,
-        NumTypes,
     };
 
     internal class ShaderProgram : INativeMarshal<ShaderProgram, ShaderProgram.Native>

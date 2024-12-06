@@ -91,6 +91,13 @@ namespace March.Editor
             values = (T[])data.Values;
         }
 
+        public static string ToInspectorEnumName<T>(this T value) where T : struct, Enum
+        {
+            EnumData data = GetInspectorEnumData(typeof(T));
+            int index = Array.IndexOf((T[])data.Values, value);
+            return (index == -1) ? value.ToString() : data.Names[index];
+        }
+
         private static EnumData GetInspectorEnumData(Type type)
         {
             if (!s_EnumCache.TryGetValue(type, out EnumData? data))

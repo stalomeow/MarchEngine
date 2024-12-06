@@ -28,6 +28,7 @@ namespace march
     RenderPipeline::RenderPipeline()
     {
         m_FullScreenTriangleMesh = GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle);
+        m_SphereMesh = GfxMesh::GetGeometry(GfxMeshGeometry::Sphere);
 
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), DXGI_FORMAT_R8G8B8A8_UNORM, true);
         m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
@@ -36,6 +37,7 @@ namespace march
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
+        m_SkyboxMaterial.reset("Assets/skybox.mat");
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -73,6 +75,8 @@ namespace march
             ClearTargets(colorTargetId, depthStencilTargetId);
             DrawObjects(colorTargetId, depthStencilTargetId, camera->GetEnableWireframe());
             DeferredLighting(colorTargetId, depthStencilTargetId);
+
+            DrawSkybox(colorTargetId, depthStencilTargetId);
 
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
             {
@@ -286,6 +290,18 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), "ShadowCaster");
+        });
+    }
+
+    void RenderPipeline::DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId)
+    {
+        auto builder = m_RenderGraph->AddPass("Skybox");
+
+        builder.SetColorTarget(colorTargetId);
+        builder.SetDepthStencilTarget(depthStencilTargetId);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            context.DrawMesh(m_SphereMesh, m_SkyboxMaterial.get());
         });
     }
 

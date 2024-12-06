@@ -211,7 +211,17 @@ Shader ""ErrorShader""
                 {
                     foreach (ShaderProperty prop in shader.Properties)
                     {
-                        EditorGUI.LabelField(prop.Name, string.Empty, prop.Type.ToString());
+                        if (prop.Type == ShaderPropertyType.Texture)
+                        {
+                            using var label = StringBuilderPool.Get();
+                            label.Value.Append(prop.Type.ToString()).Append(' ');
+                            label.Value.Append('(').Append(prop.TexDimension.ToInspectorEnumName()).Append(')');
+                            EditorGUI.LabelField(prop.Name, string.Empty, label);
+                        }
+                        else
+                        {
+                            EditorGUI.LabelField(prop.Name, string.Empty, prop.Type.ToString());
+                        }
                     }
                 }
             }

@@ -88,11 +88,11 @@ namespace March.Core.Rendering
 
     public enum TextureDimension
     {
-        Tex2D,
-        Tex3D,
-        Cube,
-        Tex2DArray,
-        CubeArray,
+        [InspectorName("2D")] Tex2D,
+        [InspectorName("3D")] Tex3D,
+        [InspectorName("Cube")] Cube,
+        [InspectorName("2D Array")] Tex2DArray,
+        [InspectorName("Cube Array")] CubeArray,
     }
 
     public enum TextureFilterMode

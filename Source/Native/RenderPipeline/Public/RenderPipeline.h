@@ -85,13 +85,16 @@ namespace march
         void DrawShadowCasters(int32_t targetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
+        void DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId);
         void PrepareTextureForImGui(int32_t id);
 
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
+        GfxMesh* m_SphereMesh = nullptr;
         std::vector<std::tuple<int32_t, DXGI_FORMAT, bool>> m_GBuffers{};
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
+        asset_ptr<Material> m_SkyboxMaterial = nullptr;
 
     private:
         std::vector<RenderObject*> m_RenderObjects{};
