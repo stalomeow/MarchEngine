@@ -15,9 +15,9 @@ Shader "BlinnPhong"
     #include "Includes/Common.hlsl"
 
     Texture2D _DiffuseMap;
-    SAMPLER(_DiffuseMap);
+    SamplerState sampler_DiffuseMap;
     Texture2D _BumpMap;
-    SAMPLER(_BumpMap);
+    SamplerState sampler_BumpMap;
 
     cbuffer cbMaterial
     {

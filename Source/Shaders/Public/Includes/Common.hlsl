@@ -6,7 +6,7 @@
 // MARCH_NEAR_CLIP_VALUE    近裁剪平面的深度
 // MARCH_FAR_CLIP_VALUE     远裁剪平面的深度
 
-#define SAMPLER(texture) SamplerState sampler##texture
+#include "Sampler.hlsl"
 
 cbuffer cbObject
 {

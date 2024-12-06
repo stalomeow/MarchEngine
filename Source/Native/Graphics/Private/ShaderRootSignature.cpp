@@ -2,6 +2,8 @@
 #include "GfxDevice.h"
 #include "HashUtils.h"
 #include "Debug.h"
+#include <vector>
+#include <string>
 
 using namespace Microsoft::WRL;
 
@@ -27,79 +29,51 @@ namespace march
 
     static void AddStaticSamplers(std::vector<CD3DX12_STATIC_SAMPLER_DESC>& samplers, ShaderProgram* program, D3D12_SHADER_VISIBILITY visibility)
     {
-        auto& s = program->GetStaticSamplers();
-        decltype(s.end()) it;
-
-        if ((it = s.find(Shader::GetNameId("sampler_PointWrap"))) != s.end())
+        static const std::vector<std::pair<std::string, D3D12_FILTER>> filters =
         {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
-                it->second.ShaderRegister,        // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_POINT,   // filter
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-            desc.ShaderVisibility = visibility;
+            { "Point"    , D3D12_FILTER_MIN_MAG_MIP_POINT        },
+            { "Linear"   , D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT },
+            { "Trilinear", D3D12_FILTER_MIN_MAG_MIP_LINEAR       },
+        };
+
+        static const std::vector<std::pair<std::string, D3D12_TEXTURE_ADDRESS_MODE>> wraps =
+        {
+            { "Repeat"    , D3D12_TEXTURE_ADDRESS_MODE_WRAP        },
+            { "Clamp"     , D3D12_TEXTURE_ADDRESS_MODE_CLAMP       },
+            { "Mirror"    , D3D12_TEXTURE_ADDRESS_MODE_MIRROR      },
+            { "MirrorOnce", D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE },
+        };
+
+        const std::unordered_map<int32_t, ShaderStaticSampler>& s = program->GetStaticSamplers();
+
+        for (const auto& [filterName, filterValue] : filters)
+        {
+            for (const auto& [wrapName, wrapValue] : wraps)
+            {
+                if (auto it = s.find(Shader::GetNameId("sampler_" + filterName + wrapName)); it != s.end())
+                {
+                    CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                        it->second.ShaderRegister, filterValue, wrapValue, wrapValue, wrapValue);
+                    desc.RegisterSpace = it->second.RegisterSpace;
+                    desc.ShaderVisibility = visibility;
+                }
+            }
         }
 
-        if ((it = s.find(Shader::GetNameId("sampler_PointClamp"))) != s.end())
+        // Anisotropic
+        for (int aniso = 1; aniso <= 16; aniso++)
         {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
-                it->second.ShaderRegister,         // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_POINT,    // filter
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-            desc.ShaderVisibility = visibility;
-        }
-
-        if ((it = s.find(Shader::GetNameId("sampler_LinearWrap"))) != s.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
-                it->second.ShaderRegister,        // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-            desc.ShaderVisibility = visibility;
-        }
-
-        if ((it = s.find(Shader::GetNameId("sampler_LinearClamp"))) != s.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
-                it->second.ShaderRegister,         // shaderRegister
-                D3D12_FILTER_MIN_MAG_MIP_LINEAR,   // filter
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-            desc.ShaderVisibility = visibility;
-        }
-
-        if ((it = s.find(Shader::GetNameId("sampler_AnisotropicWrap"))) != s.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
-                it->second.ShaderRegister,        // shaderRegister
-                D3D12_FILTER_ANISOTROPIC,         // filter
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-            desc.ShaderVisibility = visibility;
-        }
-
-        if ((it = s.find(Shader::GetNameId("sampler_AnisotropicClamp"))) != s.end())
-        {
-            CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
-                it->second.ShaderRegister,         // shaderRegister
-                D3D12_FILTER_ANISOTROPIC,          // filter
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-                D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
-            desc.RegisterSpace = it->second.RegisterSpace;
-            desc.ShaderVisibility = visibility;
+            for (const auto& [wrapName, wrapValue] : wraps)
+            {
+                if (auto it = s.find(Shader::GetNameId("sampler_Aniso" + std::to_string(aniso) + wrapName)); it != s.end())
+                {
+                    CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(
+                        it->second.ShaderRegister, D3D12_FILTER_ANISOTROPIC, wrapValue, wrapValue, wrapValue);
+                    desc.MaxAnisotropy = static_cast<UINT>(aniso);
+                    desc.RegisterSpace = it->second.RegisterSpace;
+                    desc.ShaderVisibility = visibility;
+                }
+            }
         }
     }
 

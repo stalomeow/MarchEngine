@@ -23,7 +23,7 @@ Shader "BlitImGui"
         };
 
         Texture2D _SrcTex;
-        SAMPLER(_SrcTex);
+        SamplerState sampler_SrcTex;
 
         Varyings vert(uint vertexID : SV_VertexID)
         {
