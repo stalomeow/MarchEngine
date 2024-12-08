@@ -90,6 +90,7 @@ namespace march
         SRGB = 1 << 0,
         Mipmaps = 1 << 1,
         UnorderedAccess = 1 << 2,
+        SwapChain = 1 << 3,
     };
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxTextureFlags);
@@ -180,8 +181,13 @@ namespace march
         bool HasFlag(GfxTextureFlags flag) const noexcept;
         bool IsCompatibleWith(const GfxTextureDesc& other) const noexcept;
 
+        DXGI_FORMAT GetResDXGIFormat() const noexcept;
+        DXGI_FORMAT GetRtvDsvDXGIFormat() const noexcept;
+        DXGI_FORMAT GetSrvUavDXGIFormat(GfxTextureElement element = GfxTextureElement::Default) const noexcept;
+        D3D12_RESOURCE_FLAGS GetResFlags(bool allowRendering) const noexcept;
+
         // 如果 updateFlags 为 true，会根据 format 更新 Flags，例如 sRGB
-        void SetDXGIFormat(DXGI_FORMAT format, bool updateFlags = false);
+        void SetResDXGIFormat(DXGI_FORMAT format, bool updateFlags = false);
     };
 
     enum class GfxDefaultTexture
@@ -292,13 +298,23 @@ namespace march
         DirectX::ScratchImage m_Image;
     };
 
+    struct GfxTextureResourceDesc
+    {
+        bool IsCube;
+        D3D12_RESOURCE_STATES State;
+        GfxTextureFlags Flags;
+        GfxTextureFilterMode Filter;
+        GfxTextureWrapMode Wrap;
+        float MipmapBias;
+    };
+
     class GfxRenderTexture : public GfxTexture
     {
     public:
         GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc);
 
         // 这个构造方法会接管 resource 的所有权
-        GfxRenderTexture(GfxDevice* device, const GfxTextureDesc& desc, ID3D12Resource* resource, D3D12_RESOURCE_STATES state);
+        GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, const GfxTextureResourceDesc& resDesc);
 
         bool AllowRendering() const override { return true; }
     };

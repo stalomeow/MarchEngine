@@ -371,7 +371,7 @@ namespace march
         auto builder = m_ImGuiRenderGraph->AddPass("DrawImGui");
 
         GfxTextureDesc desc = device->GetBackBuffer()->GetDesc();
-        desc.SetDXGIFormat(m_ImGuiRtvFormat);
+        desc.SetResDXGIFormat(m_ImGuiRtvFormat);
         desc.Flags = GfxTextureFlags::None;
 
         builder.CreateTransientTexture(renderTargetId, desc);

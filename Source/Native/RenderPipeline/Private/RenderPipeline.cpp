@@ -200,7 +200,7 @@ namespace march
         {
             auto& [id, format, sRGB] = m_GBuffers[i];
 
-            desc.SetDXGIFormat(format);
+            desc.SetResDXGIFormat(format);
             desc.Flags = sRGB ? GfxTextureFlags::SRGB : GfxTextureFlags::None;
             builder.CreateTransientTexture(id, desc);
             builder.SetColorTarget(id, i, false);

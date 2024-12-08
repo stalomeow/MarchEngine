@@ -13,8 +13,6 @@
 namespace march
 {
     class GfxCommandQueue;
-    class GfxFence;
-    class GfxCommandAllocatorPool;
     class GfxCommandList;
     class GfxUploadMemory;
     class GfxUploadMemoryAllocator;

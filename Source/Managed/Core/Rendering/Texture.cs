@@ -81,9 +81,17 @@ namespace March.Core.Rendering
     public enum TextureFlags
     {
         None = 0,
+
+        [InspectorName("sRGB")]
         SRGB = 1 << 0,
+
         Mipmaps = 1 << 1,
+
+        [InspectorName("Unordered Access")]
         UnorderedAccess = 1 << 2,
+
+        [HideInInspector]
+        SwapChain = 1 << 3,
     }
 
     public enum TextureDimension

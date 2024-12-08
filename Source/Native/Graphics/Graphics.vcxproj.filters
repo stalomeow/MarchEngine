@@ -24,9 +24,6 @@
     <ClInclude Include="ThirdParty\renderdoc_app.h">
       <Filter>ThirdParty</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxFence.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\GfxDevice.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -63,6 +60,9 @@
     <ClInclude Include="Public\Display.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\GfxCommon.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\GfxDescriptor.cpp">
@@ -75,9 +75,6 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxTexture.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GfxFence.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxException.cpp">

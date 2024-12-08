@@ -2,6 +2,7 @@
 
 #include "GfxSettings.h"
 #include <directx/d3d12.h>
+#include <string>
 
 namespace march
 {
@@ -14,6 +15,7 @@ namespace march
         static float LinearToSRGBSpace(float x);
 
         static void ReportLiveObjects();
+        static void SetName(ID3D12Object* obj, const std::string& name);
 
         static constexpr D3D12_PRIMITIVE_TOPOLOGY_TYPE GetTopologyType(D3D12_PRIMITIVE_TOPOLOGY topology)
         {

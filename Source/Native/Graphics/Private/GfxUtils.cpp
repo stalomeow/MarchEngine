@@ -1,4 +1,5 @@
 #include "GfxUtils.h"
+#include "StringUtils.h"
 #include "GfxDevice.h"
 #include <cmath>
 #include <wrl.h>
@@ -26,5 +27,14 @@ namespace march
         ComPtr<IDXGIDebug1> debug = nullptr;
         GFX_HR(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)));
         GFX_HR(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+    }
+
+    void GfxUtils::SetName(ID3D12Object* obj, const std::string& name)
+    {
+#ifdef ENABLE_GFX_DEBUG_NAME
+        GFX_HR(obj->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
+#else
+        (name);
+#endif
     }
 }

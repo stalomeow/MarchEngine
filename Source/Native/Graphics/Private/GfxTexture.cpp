@@ -71,7 +71,255 @@ namespace march
             && MipmapBias == other.MipmapBias;
     }
 
-    void GfxTextureDesc::SetDXGIFormat(DXGI_FORMAT format, bool updateFlags)
+    static DXGI_FORMAT GetResDXGIFormat(GfxTextureFormat format, bool sRGB, bool swapChain) noexcept
+    {
+        if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Linear)
+        {
+            // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
+            // SwapChain Resource 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
+
+            sRGB &= !swapChain;
+        }
+        else
+        {
+            sRGB = false; // 强制关闭 sRGB 转换
+        }
+
+        switch (format)
+        {
+        case GfxTextureFormat::R32G32B32A32_Float:
+            return DXGI_FORMAT_R32G32B32A32_FLOAT;
+        case GfxTextureFormat::R32G32B32A32_UInt:
+            return DXGI_FORMAT_R32G32B32A32_UINT;
+        case GfxTextureFormat::R32G32B32A32_SInt:
+            return DXGI_FORMAT_R32G32B32A32_SINT;
+        case GfxTextureFormat::R32G32B32_Float:
+            return DXGI_FORMAT_R32G32B32_FLOAT;
+        case GfxTextureFormat::R32G32B32_UInt:
+            return DXGI_FORMAT_R32G32B32_UINT;
+        case GfxTextureFormat::R32G32B32_SInt:
+            return DXGI_FORMAT_R32G32B32_SINT;
+        case GfxTextureFormat::R32G32_Float:
+            return DXGI_FORMAT_R32G32_FLOAT;
+        case GfxTextureFormat::R32G32_UInt:
+            return DXGI_FORMAT_R32G32_UINT;
+        case GfxTextureFormat::R32G32_SInt:
+            return DXGI_FORMAT_R32G32_SINT;
+        case GfxTextureFormat::R32_Float:
+            return DXGI_FORMAT_R32_FLOAT;
+        case GfxTextureFormat::R32_UInt:
+            return DXGI_FORMAT_R32_UINT;
+        case GfxTextureFormat::R32_SInt:
+            return DXGI_FORMAT_R32_SINT;
+
+        case GfxTextureFormat::R16G16B16A16_Float:
+            return DXGI_FORMAT_R16G16B16A16_FLOAT;
+        case GfxTextureFormat::R16G16B16A16_UNorm:
+            return DXGI_FORMAT_R16G16B16A16_UNORM;
+        case GfxTextureFormat::R16G16B16A16_UInt:
+            return DXGI_FORMAT_R16G16B16A16_UINT;
+        case GfxTextureFormat::R16G16B16A16_SNorm:
+            return DXGI_FORMAT_R16G16B16A16_SNORM;
+        case GfxTextureFormat::R16G16B16A16_SInt:
+            return DXGI_FORMAT_R16G16B16A16_SINT;
+        case GfxTextureFormat::R16G16_Float:
+            return DXGI_FORMAT_R16G16_FLOAT;
+        case GfxTextureFormat::R16G16_UNorm:
+            return DXGI_FORMAT_R16G16_UNORM;
+        case GfxTextureFormat::R16G16_UInt:
+            return DXGI_FORMAT_R16G16_UINT;
+        case GfxTextureFormat::R16G16_SNorm:
+            return DXGI_FORMAT_R16G16_SNORM;
+        case GfxTextureFormat::R16G16_SInt:
+            return DXGI_FORMAT_R16G16_SINT;
+        case GfxTextureFormat::R16_Float:
+            return DXGI_FORMAT_R16_FLOAT;
+        case GfxTextureFormat::R16_UNorm:
+            return DXGI_FORMAT_R16_UNORM;
+        case GfxTextureFormat::R16_UInt:
+            return DXGI_FORMAT_R16_UINT;
+        case GfxTextureFormat::R16_SNorm:
+            return DXGI_FORMAT_R16_SNORM;
+        case GfxTextureFormat::R16_SInt:
+            return DXGI_FORMAT_R16_SINT;
+
+        case GfxTextureFormat::R8G8B8A8_UNorm:
+            return sRGB ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
+        case GfxTextureFormat::R8G8B8A8_UInt:
+            return DXGI_FORMAT_R8G8B8A8_UINT;
+        case GfxTextureFormat::R8G8B8A8_SNorm:
+            return DXGI_FORMAT_R8G8B8A8_SNORM;
+        case GfxTextureFormat::R8G8B8A8_SInt:
+            return DXGI_FORMAT_R8G8B8A8_SINT;
+        case GfxTextureFormat::R8G8_UNorm:
+            return DXGI_FORMAT_R8G8_UNORM;
+        case GfxTextureFormat::R8G8_UInt:
+            return DXGI_FORMAT_R8G8_UINT;
+        case GfxTextureFormat::R8G8_SNorm:
+            return DXGI_FORMAT_R8G8_SNORM;
+        case GfxTextureFormat::R8G8_SInt:
+            return DXGI_FORMAT_R8G8_SINT;
+        case GfxTextureFormat::R8_UNorm:
+            return DXGI_FORMAT_R8_UNORM;
+        case GfxTextureFormat::R8_UInt:
+            return DXGI_FORMAT_R8_UINT;
+        case GfxTextureFormat::R8_SNorm:
+            return DXGI_FORMAT_R8_SNORM;
+        case GfxTextureFormat::R8_SInt:
+            return DXGI_FORMAT_R8_SINT;
+        case GfxTextureFormat::A8_UNorm:
+            return DXGI_FORMAT_A8_UNORM;
+
+        case GfxTextureFormat::R11G11B10_Float:
+            return DXGI_FORMAT_R11G11B10_FLOAT;
+        case GfxTextureFormat::R10G10B10A2_UNorm:
+            return DXGI_FORMAT_R10G10B10A2_UNORM;
+        case GfxTextureFormat::R10G10B10A2_UInt:
+            return DXGI_FORMAT_R10G10B10A2_UINT;
+
+        case GfxTextureFormat::B5G6R5_UNorm:
+            return DXGI_FORMAT_B5G6R5_UNORM;
+        case GfxTextureFormat::B5G5R5A1_UNorm:
+            return DXGI_FORMAT_B5G5R5A1_UNORM;
+        case GfxTextureFormat::B8G8R8A8_UNorm:
+            return sRGB ? DXGI_FORMAT_B8G8R8A8_UNORM_SRGB : DXGI_FORMAT_B8G8R8A8_UNORM;
+        case GfxTextureFormat::B8G8R8_UNorm:
+            return sRGB ? DXGI_FORMAT_B8G8R8X8_UNORM_SRGB : DXGI_FORMAT_B8G8R8X8_UNORM;
+        case GfxTextureFormat::B4G4R4A4_UNorm:
+            return DXGI_FORMAT_B4G4R4A4_UNORM;
+
+        case GfxTextureFormat::BC1_UNorm:
+            return sRGB ? DXGI_FORMAT_BC1_UNORM_SRGB : DXGI_FORMAT_BC1_UNORM;
+        case GfxTextureFormat::BC2_UNorm:
+            return sRGB ? DXGI_FORMAT_BC2_UNORM_SRGB : DXGI_FORMAT_BC2_UNORM;
+        case GfxTextureFormat::BC3_UNorm:
+            return sRGB ? DXGI_FORMAT_BC3_UNORM_SRGB : DXGI_FORMAT_BC3_UNORM;
+        case GfxTextureFormat::BC4_UNorm:
+            return DXGI_FORMAT_BC4_UNORM;
+        case GfxTextureFormat::BC4_SNorm:
+            return DXGI_FORMAT_BC4_SNORM;
+        case GfxTextureFormat::BC5_UNorm:
+            return DXGI_FORMAT_BC5_UNORM;
+        case GfxTextureFormat::BC5_SNorm:
+            return DXGI_FORMAT_BC5_SNORM;
+        case GfxTextureFormat::BC6H_UF16:
+            return DXGI_FORMAT_BC6H_UF16;
+        case GfxTextureFormat::BC6H_SF16:
+            return DXGI_FORMAT_BC6H_SF16;
+        case GfxTextureFormat::BC7_UNorm:
+            return sRGB ? DXGI_FORMAT_BC7_UNORM_SRGB : DXGI_FORMAT_BC7_UNORM;
+
+        case GfxTextureFormat::D32_Float_S8_UInt:
+            return DXGI_FORMAT_R32G8X24_TYPELESS;
+        case GfxTextureFormat::D32_Float:
+            return DXGI_FORMAT_R32_TYPELESS;
+        case GfxTextureFormat::D24_UNorm_S8_UInt:
+            return DXGI_FORMAT_R24G8_TYPELESS;
+        case GfxTextureFormat::D16_UNorm:
+            return DXGI_FORMAT_R16_TYPELESS;
+
+        default:
+            return DXGI_FORMAT_UNKNOWN;
+        }
+    }
+
+    DXGI_FORMAT GfxTextureDesc::GetResDXGIFormat() const noexcept
+    {
+        bool sRGB = HasFlag(GfxTextureFlags::SRGB);
+        bool swapChain = HasFlag(GfxTextureFlags::SwapChain);
+        return ::march::GetResDXGIFormat(Format, sRGB, swapChain);
+    }
+
+    DXGI_FORMAT GfxTextureDesc::GetRtvDsvDXGIFormat() const noexcept
+    {
+        if (IsDepthStencil())
+        {
+            switch (Format)
+            {
+            case GfxTextureFormat::D32_Float_S8_UInt:
+                return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+            case GfxTextureFormat::D32_Float:
+                return DXGI_FORMAT_D32_FLOAT;
+            case GfxTextureFormat::D24_UNorm_S8_UInt:
+                return DXGI_FORMAT_D24_UNORM_S8_UINT;
+            case GfxTextureFormat::D16_UNorm:
+                return DXGI_FORMAT_D16_UNORM;
+            }
+        }
+        else
+        {
+            // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
+            // SwapChain Resource 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
+
+            bool sRGB = HasFlag(GfxTextureFlags::SRGB);
+            return ::march::GetResDXGIFormat(Format, sRGB, /* swapChain */ false);
+        }
+
+        return DXGI_FORMAT_UNKNOWN;
+    }
+
+    DXGI_FORMAT GfxTextureDesc::GetSrvUavDXGIFormat(GfxTextureElement element) const noexcept
+    {
+        if (IsDepthStencil())
+        {
+            if (element == GfxTextureElement::Default || element == GfxTextureElement::Depth)
+            {
+                switch (Format)
+                {
+                case GfxTextureFormat::D32_Float_S8_UInt:
+                    return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                case GfxTextureFormat::D32_Float:
+                    return DXGI_FORMAT_R32_FLOAT;
+                case GfxTextureFormat::D24_UNorm_S8_UInt:
+                    return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+                case GfxTextureFormat::D16_UNorm:
+                    return DXGI_FORMAT_R16_UNORM;
+                }
+            }
+            else if (element == GfxTextureElement::Stencil)
+            {
+                switch (Format)
+                {
+                case GfxTextureFormat::D32_Float_S8_UInt:
+                    return DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
+                case GfxTextureFormat::D24_UNorm_S8_UInt:
+                    return DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+                }
+            }
+        }
+        else if (element == GfxTextureElement::Default || element == GfxTextureElement::Color)
+        {
+            return GetResDXGIFormat();
+        }
+
+        return DXGI_FORMAT_UNKNOWN;
+    }
+
+    D3D12_RESOURCE_FLAGS GfxTextureDesc::GetResFlags(bool allowRendering) const noexcept
+    {
+        D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
+
+        if (allowRendering)
+        {
+            if (IsDepthStencil())
+            {
+                flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+            }
+            else
+            {
+                flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+            }
+        }
+
+        if (HasFlag(GfxTextureFlags::UnorderedAccess))
+        {
+            flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        }
+
+        return flags;
+    }
+
+    void GfxTextureDesc::SetResDXGIFormat(DXGI_FORMAT format, bool updateFlags)
     {
         bool sRGB = false;
 
@@ -348,210 +596,6 @@ namespace march
         throw GfxException("Invalid texture element");
     }
 
-    static DXGI_FORMAT GetDepthStencilSrvUavFormat(GfxTextureFormat format, GfxTextureElement element)
-    {
-        if (element == GfxTextureElement::Default || element == GfxTextureElement::Depth)
-        {
-            switch (format)
-            {
-            case GfxTextureFormat::D32_Float_S8_UInt:
-                return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
-            case GfxTextureFormat::D32_Float:
-                return DXGI_FORMAT_R32_FLOAT;
-            case GfxTextureFormat::D24_UNorm_S8_UInt:
-                return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-            case GfxTextureFormat::D16_UNorm:
-                return DXGI_FORMAT_R16_UNORM;
-            default:
-                throw GfxException("Invalid depth stencil format");
-            }
-        }
-        else if (element == GfxTextureElement::Stencil)
-        {
-            switch (format)
-            {
-            case GfxTextureFormat::D32_Float_S8_UInt:
-                return DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
-            case GfxTextureFormat::D24_UNorm_S8_UInt:
-                return DXGI_FORMAT_X24_TYPELESS_G8_UINT;
-            default:
-                throw GfxException("Invalid depth stencil format");
-            }
-        }
-        else
-        {
-            throw GfxException("Invalid texture element");
-        }
-    }
-
-    static DXGI_FORMAT GetDepthStencilDsvFormat(GfxTextureFormat format)
-    {
-        switch (format)
-        {
-        case GfxTextureFormat::D32_Float_S8_UInt:
-            return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
-        case GfxTextureFormat::D32_Float:
-            return DXGI_FORMAT_D32_FLOAT;
-        case GfxTextureFormat::D24_UNorm_S8_UInt:
-            return DXGI_FORMAT_D24_UNORM_S8_UINT;
-        case GfxTextureFormat::D16_UNorm:
-            return DXGI_FORMAT_D16_UNORM;
-        default:
-            throw GfxException("Invalid depth stencil format");
-        }
-    }
-
-    static DXGI_FORMAT GetResourceFormat(const GfxTextureDesc& desc)
-    {
-        bool sRGB;
-
-        if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Linear)
-        {
-            sRGB = desc.HasFlag(GfxTextureFlags::SRGB);
-        }
-        else
-        {
-            sRGB = false; // 强制关闭 sRGB 转换
-        }
-
-        switch (desc.Format)
-        {
-        case GfxTextureFormat::R32G32B32A32_Float:
-            return DXGI_FORMAT_R32G32B32A32_FLOAT;
-        case GfxTextureFormat::R32G32B32A32_UInt:
-            return DXGI_FORMAT_R32G32B32A32_UINT;
-        case GfxTextureFormat::R32G32B32A32_SInt:
-            return DXGI_FORMAT_R32G32B32A32_SINT;
-        case GfxTextureFormat::R32G32B32_Float:
-            return DXGI_FORMAT_R32G32B32_FLOAT;
-        case GfxTextureFormat::R32G32B32_UInt:
-            return DXGI_FORMAT_R32G32B32_UINT;
-        case GfxTextureFormat::R32G32B32_SInt:
-            return DXGI_FORMAT_R32G32B32_SINT;
-        case GfxTextureFormat::R32G32_Float:
-            return DXGI_FORMAT_R32G32_FLOAT;
-        case GfxTextureFormat::R32G32_UInt:
-            return DXGI_FORMAT_R32G32_UINT;
-        case GfxTextureFormat::R32G32_SInt:
-            return DXGI_FORMAT_R32G32_SINT;
-        case GfxTextureFormat::R32_Float:
-            return DXGI_FORMAT_R32_FLOAT;
-        case GfxTextureFormat::R32_UInt:
-            return DXGI_FORMAT_R32_UINT;
-        case GfxTextureFormat::R32_SInt:
-            return DXGI_FORMAT_R32_SINT;
-
-        case GfxTextureFormat::R16G16B16A16_Float:
-            return DXGI_FORMAT_R16G16B16A16_FLOAT;
-        case GfxTextureFormat::R16G16B16A16_UNorm:
-            return DXGI_FORMAT_R16G16B16A16_UNORM;
-        case GfxTextureFormat::R16G16B16A16_UInt:
-            return DXGI_FORMAT_R16G16B16A16_UINT;
-        case GfxTextureFormat::R16G16B16A16_SNorm:
-            return DXGI_FORMAT_R16G16B16A16_SNORM;
-        case GfxTextureFormat::R16G16B16A16_SInt:
-            return DXGI_FORMAT_R16G16B16A16_SINT;
-        case GfxTextureFormat::R16G16_Float:
-            return DXGI_FORMAT_R16G16_FLOAT;
-        case GfxTextureFormat::R16G16_UNorm:
-            return DXGI_FORMAT_R16G16_UNORM;
-        case GfxTextureFormat::R16G16_UInt:
-            return DXGI_FORMAT_R16G16_UINT;
-        case GfxTextureFormat::R16G16_SNorm:
-            return DXGI_FORMAT_R16G16_SNORM;
-        case GfxTextureFormat::R16G16_SInt:
-            return DXGI_FORMAT_R16G16_SINT;
-        case GfxTextureFormat::R16_Float:
-            return DXGI_FORMAT_R16_FLOAT;
-        case GfxTextureFormat::R16_UNorm:
-            return DXGI_FORMAT_R16_UNORM;
-        case GfxTextureFormat::R16_UInt:
-            return DXGI_FORMAT_R16_UINT;
-        case GfxTextureFormat::R16_SNorm:
-            return DXGI_FORMAT_R16_SNORM;
-        case GfxTextureFormat::R16_SInt:
-            return DXGI_FORMAT_R16_SINT;
-
-        case GfxTextureFormat::R8G8B8A8_UNorm:
-            return sRGB ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
-        case GfxTextureFormat::R8G8B8A8_UInt:
-            return DXGI_FORMAT_R8G8B8A8_UINT;
-        case GfxTextureFormat::R8G8B8A8_SNorm:
-            return DXGI_FORMAT_R8G8B8A8_SNORM;
-        case GfxTextureFormat::R8G8B8A8_SInt:
-            return DXGI_FORMAT_R8G8B8A8_SINT;
-        case GfxTextureFormat::R8G8_UNorm:
-            return DXGI_FORMAT_R8G8_UNORM;
-        case GfxTextureFormat::R8G8_UInt:
-            return DXGI_FORMAT_R8G8_UINT;
-        case GfxTextureFormat::R8G8_SNorm:
-            return DXGI_FORMAT_R8G8_SNORM;
-        case GfxTextureFormat::R8G8_SInt:
-            return DXGI_FORMAT_R8G8_SINT;
-        case GfxTextureFormat::R8_UNorm:
-            return DXGI_FORMAT_R8_UNORM;
-        case GfxTextureFormat::R8_UInt:
-            return DXGI_FORMAT_R8_UINT;
-        case GfxTextureFormat::R8_SNorm:
-            return DXGI_FORMAT_R8_SNORM;
-        case GfxTextureFormat::R8_SInt:
-            return DXGI_FORMAT_R8_SINT;
-        case GfxTextureFormat::A8_UNorm:
-            return DXGI_FORMAT_A8_UNORM;
-
-        case GfxTextureFormat::R11G11B10_Float:
-            return DXGI_FORMAT_R11G11B10_FLOAT;
-        case GfxTextureFormat::R10G10B10A2_UNorm:
-            return DXGI_FORMAT_R10G10B10A2_UNORM;
-        case GfxTextureFormat::R10G10B10A2_UInt:
-            return DXGI_FORMAT_R10G10B10A2_UINT;
-
-        case GfxTextureFormat::B5G6R5_UNorm:
-            return DXGI_FORMAT_B5G6R5_UNORM;
-        case GfxTextureFormat::B5G5R5A1_UNorm:
-            return DXGI_FORMAT_B5G5R5A1_UNORM;
-        case GfxTextureFormat::B8G8R8A8_UNorm:
-            return sRGB ? DXGI_FORMAT_B8G8R8A8_UNORM_SRGB : DXGI_FORMAT_B8G8R8A8_UNORM;
-        case GfxTextureFormat::B8G8R8_UNorm:
-            return sRGB ? DXGI_FORMAT_B8G8R8X8_UNORM_SRGB : DXGI_FORMAT_B8G8R8X8_UNORM;
-        case GfxTextureFormat::B4G4R4A4_UNorm:
-            return DXGI_FORMAT_B4G4R4A4_UNORM;
-
-        case GfxTextureFormat::BC1_UNorm:
-            return sRGB ? DXGI_FORMAT_BC1_UNORM_SRGB : DXGI_FORMAT_BC1_UNORM;
-        case GfxTextureFormat::BC2_UNorm:
-            return sRGB ? DXGI_FORMAT_BC2_UNORM_SRGB : DXGI_FORMAT_BC2_UNORM;
-        case GfxTextureFormat::BC3_UNorm:
-            return sRGB ? DXGI_FORMAT_BC3_UNORM_SRGB : DXGI_FORMAT_BC3_UNORM;
-        case GfxTextureFormat::BC4_UNorm:
-            return DXGI_FORMAT_BC4_UNORM;
-        case GfxTextureFormat::BC4_SNorm:
-            return DXGI_FORMAT_BC4_SNORM;
-        case GfxTextureFormat::BC5_UNorm:
-            return DXGI_FORMAT_BC5_UNORM;
-        case GfxTextureFormat::BC5_SNorm:
-            return DXGI_FORMAT_BC5_SNORM;
-        case GfxTextureFormat::BC6H_UF16:
-            return DXGI_FORMAT_BC6H_UF16;
-        case GfxTextureFormat::BC6H_SF16:
-            return DXGI_FORMAT_BC6H_SF16;
-        case GfxTextureFormat::BC7_UNorm:
-            return sRGB ? DXGI_FORMAT_BC7_UNORM_SRGB : DXGI_FORMAT_BC7_UNORM;
-
-        case GfxTextureFormat::D32_Float_S8_UInt:
-            return DXGI_FORMAT_R32G8X24_TYPELESS;
-        case GfxTextureFormat::D32_Float:
-            return DXGI_FORMAT_R32_TYPELESS;
-        case GfxTextureFormat::D24_UNorm_S8_UInt:
-            return DXGI_FORMAT_R24G8_TYPELESS;
-        case GfxTextureFormat::D16_UNorm:
-            return DXGI_FORMAT_R16_TYPELESS;
-
-        default:
-            return DXGI_FORMAT_UNKNOWN;
-        }
-    }
-
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSrv(GfxTextureElement element)
     {
         std::pair<GfxDescriptorHandle, bool>& handle = m_SrvHandles[GetSrvUavIndex(m_Desc, element)];
@@ -559,23 +603,8 @@ namespace march
         if (!handle.second)
         {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = m_Desc.GetSrvUavDXGIFormat(element);
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-            if (m_Desc.IsDepthStencil())
-            {
-                srvDesc.Format = GetDepthStencilSrvUavFormat(m_Desc.Format, element);
-            }
-            else
-            {
-                if (element == GfxTextureElement::Default || element == GfxTextureElement::Color)
-                {
-                    srvDesc.Format = m_Resource->GetDesc().Format;
-                }
-                else
-                {
-                    throw GfxException("Invalid texture element");
-                }
-            }
 
             if (m_Desc.MSAASamples > 1)
             {
@@ -658,22 +687,7 @@ namespace march
         if (!handle.second)
         {
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-
-            if (m_Desc.IsDepthStencil())
-            {
-                uavDesc.Format = GetDepthStencilSrvUavFormat(m_Desc.Format, element);
-            }
-            else
-            {
-                if (element == GfxTextureElement::Default || element == GfxTextureElement::Color)
-                {
-                    uavDesc.Format = m_Resource->GetDesc().Format;
-                }
-                else
-                {
-                    throw GfxException("Invalid texture element");
-                }
-            }
+            uavDesc.Format = m_Desc.GetSrvUavDXGIFormat(element);
 
             if (m_Desc.MSAASamples > 1)
             {
@@ -782,7 +796,7 @@ namespace march
         if (m_Desc.IsDepthStencil())
         {
             D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-            dsvDesc.Format = GetDepthStencilDsvFormat(m_Desc.Format);
+            dsvDesc.Format = m_Desc.GetRtvDsvDXGIFormat();
             dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 
             if (m_Desc.MSAASamples > 1)
@@ -830,13 +844,7 @@ namespace march
         else
         {
             D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-
-            // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
-            // SwapChain Resource 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
-            // 如果像下面这样写，会导致 SwapChain RTV 的 Format 没有 _SRGB
-            // rtvDesc.Format = m_Resource->GetDesc().Format;
-            // 下面这种方式才能正确处理 SwapChain 的 SRGB
-            rtvDesc.Format = GetResourceFormat(m_Desc);
+            rtvDesc.Format = m_Desc.GetRtvDsvDXGIFormat();
 
             if (m_Desc.Dimension == GfxTextureDimension::Tex3D)
             {
@@ -1027,30 +1035,6 @@ namespace march
         return DotNet::RuntimeInvoke<GfxTexture*>(ManagedMethod::Texture_NativeGetDefault, csTexture, csDimension);
     }
 
-    static D3D12_RESOURCE_FLAGS GetResourceFlags(const GfxTextureDesc& desc, bool allowRendering)
-    {
-        D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
-
-        if (allowRendering)
-        {
-            if (desc.IsDepthStencil())
-            {
-                flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-            }
-            else
-            {
-                flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-            }
-        }
-
-        if (desc.HasFlag(GfxTextureFlags::UnorderedAccess))
-        {
-            flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-        }
-
-        return flags;
-    }
-
     GfxExternalTexture::GfxExternalTexture(GfxDevice* device) : GfxTexture(device, {}), m_Name{}, m_Image{} {}
 
     void GfxExternalTexture::LoadFromPixels(const std::string& name, const GfxTextureDesc& desc, void* pixelsData, size_t pixelsSize, uint32_t mipLevels)
@@ -1058,7 +1042,7 @@ namespace march
         m_Name = name;
         Reset(desc);
 
-        DXGI_FORMAT format = GetResourceFormat(desc);
+        DXGI_FORMAT format = desc.GetResDXGIFormat();
         size_t width = static_cast<size_t>(desc.Width);
         size_t height = static_cast<size_t>(desc.Height);
         size_t depthOrArraySize = static_cast<size_t>(desc.DepthOrArraySize);
@@ -1088,7 +1072,7 @@ namespace march
         memcpy(m_Image.GetPixels(), pixelsData, pixelsSize);
 
         ID3D12Device4* d3d12Device = m_Device->GetD3D12Device();
-        D3D12_RESOURCE_FLAGS resFlags = GetResourceFlags(desc, false);
+        D3D12_RESOURCE_FLAGS resFlags = desc.GetResFlags(false);
         GFX_HR(CreateTextureEx(d3d12Device, m_Image.GetMetadata(), resFlags, CREATETEX_DEFAULT, &m_Resource));
         m_State = D3D12_RESOURCE_STATE_COMMON; // CreateTextureEx 使用的 state
         SetD3D12ResourceName(name);
@@ -1252,7 +1236,7 @@ namespace march
         }
 
         const TexMetadata& metadata = m_Image.GetMetadata();
-        desc.SetDXGIFormat(metadata.format);
+        desc.SetResDXGIFormat(metadata.format);
         desc.Width = static_cast<uint32_t>(metadata.width);
         desc.Height = static_cast<uint32_t>(metadata.height);
 
@@ -1303,7 +1287,7 @@ namespace march
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
 
         ID3D12Device4* d3d12Device = m_Device->GetD3D12Device();
-        D3D12_RESOURCE_FLAGS resFlags = GetResourceFlags(desc, false);
+        D3D12_RESOURCE_FLAGS resFlags = desc.GetResFlags(false);
         GFX_HR(CreateTextureEx(d3d12Device, metadata, resFlags, createFlags, &m_Resource));
         m_State = D3D12_RESOURCE_STATE_COMMON; // CreateTextureEx 使用的 state
         SetD3D12ResourceName(name);
@@ -1334,11 +1318,11 @@ namespace march
         resDesc.Height = static_cast<UINT>(std::max(1u, desc.Height));
         resDesc.DepthOrArraySize = static_cast<UINT16>(desc.DepthOrArraySize);
         resDesc.MipLevels = 1;
-        resDesc.Format = GetResourceFormat(desc);
+        resDesc.Format = desc.GetResDXGIFormat();
         resDesc.SampleDesc.Count = static_cast<UINT>(desc.MSAASamples);
         resDesc.SampleDesc.Quality = static_cast<UINT>(device->GetMSAAQuality(resDesc.Format, resDesc.SampleDesc.Count));
         resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        resDesc.Flags = GetResourceFlags(desc, true);
+        resDesc.Flags = desc.GetResFlags(true);
 
         switch (desc.Dimension)
         {
@@ -1362,10 +1346,10 @@ namespace march
         }
 
         D3D12_CLEAR_VALUE clearValue = {};
+        clearValue.Format = desc.GetRtvDsvDXGIFormat();
 
         if (desc.IsDepthStencil())
         {
-            clearValue.Format = GetDepthStencilDsvFormat(desc.Format);
             clearValue.DepthStencil.Depth = GfxUtils::FarClipPlaneDepth;
             clearValue.DepthStencil.Stencil = 0;
 
@@ -1373,7 +1357,6 @@ namespace march
         }
         else
         {
-            clearValue.Format = resDesc.Format;
             memcpy(clearValue.Color, Colors::Black, sizeof(clearValue.Color));
 
             m_State = D3D12_RESOURCE_STATE_COMMON;
@@ -1385,10 +1368,44 @@ namespace march
         SetD3D12ResourceName(name);
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const GfxTextureDesc& desc, ID3D12Resource* resource, D3D12_RESOURCE_STATES state)
-        : GfxTexture(device, desc)
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, const GfxTextureResourceDesc& resDesc)
+        : GfxTexture(device, {})
     {
+        D3D12_RESOURCE_DESC d3d12Desc = resource->GetDesc();
+
+        GfxTextureDesc desc{};
+        desc.SetResDXGIFormat(d3d12Desc.Format);
+        desc.Flags = resDesc.Flags;
+        desc.Width = static_cast<uint32_t>(d3d12Desc.Width);
+        desc.Height = static_cast<uint32_t>(d3d12Desc.Height);
+        desc.DepthOrArraySize = static_cast<uint32_t>(d3d12Desc.DepthOrArraySize);
+        desc.MSAASamples = static_cast<uint32_t>(d3d12Desc.SampleDesc.Count);
+        desc.Filter = resDesc.Filter;
+        desc.Wrap = resDesc.Wrap;
+        desc.MipmapBias = resDesc.MipmapBias;
+
+        switch (d3d12Desc.Dimension)
+        {
+        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+            if (resDesc.IsCube)
+            {
+                desc.DepthOrArraySize /= 6u;
+                desc.Dimension = desc.DepthOrArraySize > 1 ? GfxTextureDimension::CubeArray : GfxTextureDimension::Cube;
+            }
+            else
+            {
+                desc.Dimension = desc.DepthOrArraySize > 1 ? GfxTextureDimension::Tex2DArray : GfxTextureDimension::Tex2D;
+            }
+            break;
+        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+            desc.Dimension = GfxTextureDimension::Tex3D;
+            break;
+        default:
+            throw GfxException("Invalid resource dimension");
+        }
+
+        Reset(desc);
         m_Resource = resource;
-        m_State = state;
+        m_State = resDesc.State;
     }
 }
