@@ -60,7 +60,7 @@
     <ClInclude Include="Public\Display.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxCommon.h">
+    <ClInclude Include="Public\GfxSync.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>
@@ -135,6 +135,12 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Display.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxTextureDesc.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GfxSync.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

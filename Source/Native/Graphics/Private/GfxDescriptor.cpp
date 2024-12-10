@@ -27,7 +27,7 @@ namespace march
     GfxDescriptorHeap::GfxDescriptorHeap(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t capacity, bool shaderVisible, const std::string& name)
         : m_Device(device)
     {
-        ID3D12Device4* d3d12Device = device->GetD3D12Device();
+        ID3D12Device4* d3d12Device = device->GetD3DDevice4();
         m_IncrementSize = static_cast<uint32_t>(d3d12Device->GetDescriptorHandleIncrementSize(type));
 
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
@@ -74,7 +74,7 @@ namespace march
     void GfxDescriptorHeap::Copy(uint32_t destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
     {
         D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor = GetCpuHandle(destIndex);
-        m_Device->GetD3D12Device()->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetType());
+        m_Device->GetD3DDevice4()->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetType());
     }
 
     GfxDescriptorHandle::GfxDescriptorHandle(GfxDescriptorHeap* heap, uint32_t pageIndex, uint32_t heapIndex)

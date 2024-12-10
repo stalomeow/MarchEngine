@@ -223,7 +223,7 @@ namespace march
 
         ReloadFonts();
 
-        auto device = GetGfxDevice()->GetD3D12Device();
+        auto device = GetGfxDevice()->GetD3DDevice4();
         ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
             m_ImGuiRtvFormat, m_StaticDescriptorViewTable.GetD3D12DescriptorHeap(),
             m_StaticDescriptorViewTable.GetCpuHandle(0), m_StaticDescriptorViewTable.GetGpuHandle(0));

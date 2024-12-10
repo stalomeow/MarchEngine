@@ -15,21 +15,23 @@ namespace march
 
     class GfxBuffer : public GfxResource
     {
-    protected:
-        GfxBuffer(GfxDevice* device, D3D12_HEAP_TYPE heapType, const std::string& name, uint32_t stride, uint32_t count);
-
     public:
-        virtual ~GfxBuffer() = default;
+        ~GfxBuffer() override;
 
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t index) const;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetSrv() override;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetUav() override;
 
-        uint32_t GetStride() const { return m_Stride; }
-        uint32_t GetCount() const { return m_Count; }
-        uint32_t GetSize() const { return m_Stride * m_Count; }
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint64_t index) const;
+
+        uint64_t GetStride() const { return m_Stride; }
+        uint64_t GetCount() const { return m_Count; }
+        uint64_t GetSize() const { return m_Stride * m_Count; }
 
     protected:
-        uint32_t m_Stride;
-        uint32_t m_Count;
+        GfxBuffer(GfxDevice* device, const std::string& name, D3D12_HEAP_TYPE type, uint64_t stride, uint64_t count, bool unorderedAccess);
+
+        uint64_t m_Stride;
+        uint64_t m_Count;
     };
 
     class GfxUploadBuffer : public GfxBuffer
@@ -135,7 +137,7 @@ namespace march
         GfxUploadMemory Allocate(uint32_t size, uint32_t count = 1, uint32_t alignment = 1);
 
     public:
-        static const uint32_t PageSize = 2 * 1024 * 1024; // 2MB
+        static const uint32_t PageSize = 4 * 1024 * 1024; // 4MB
 
     private:
         GfxDevice* m_Device;

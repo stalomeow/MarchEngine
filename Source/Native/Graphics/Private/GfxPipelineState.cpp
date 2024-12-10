@@ -346,7 +346,7 @@ namespace march
             psoDesc.SampleDesc.Count = static_cast<UINT>(outputDesc.SampleCount);
             psoDesc.SampleDesc.Quality = static_cast<UINT>(outputDesc.SampleQuality);
 
-            ID3D12Device4* device = GetGfxDevice()->GetD3D12Device();
+            ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
             GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
 
 #ifdef ENABLE_GFX_DEBUG_NAME

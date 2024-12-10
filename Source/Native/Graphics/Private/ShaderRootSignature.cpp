@@ -94,7 +94,7 @@ namespace march
         {
             LOG_TRACE("Create new RootSignature");
 
-            ID3D12Device4* device = GetGfxDevice()->GetD3D12Device();
+            ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
             GFX_HR(device->CreateRootSignature(0, bufferPointer, bufferSize, IID_PPV_ARGS(result.GetAddressOf())));
         }
         else

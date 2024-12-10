@@ -16,7 +16,7 @@
     <ClInclude Include="Public\GfxBuffer.h" />
     <ClInclude Include="Public\GfxCommand.h" />
     <ClInclude Include="Public\GfxDevice.h" />
-    <ClInclude Include="Public\GfxCommon.h" />
+    <ClInclude Include="Public\GfxSync.h" />
     <ClInclude Include="Public\GfxUtils.h" />
     <ClInclude Include="Public\GfxPipelineState.h" />
     <ClInclude Include="Public\GfxResource.h" />
@@ -41,6 +41,8 @@
     <ClCompile Include="Private\GfxPipelineState.cpp" />
     <ClCompile Include="Private\GfxResource.cpp" />
     <ClCompile Include="Private\GfxSettings.binding.cpp" />
+    <ClCompile Include="Private\GfxSync.cpp" />
+    <ClCompile Include="Private\GfxTextureDesc.cpp" />
     <ClCompile Include="Private\GfxUtils.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />
     <ClCompile Include="Private\GfxMesh.binding.cpp" />

@@ -7,17 +7,18 @@
 
 namespace march
 {
-    GfxBuffer::GfxBuffer(GfxDevice* device, D3D12_HEAP_TYPE heapType, const std::string& name, uint32_t stride, uint32_t count)
-        : GfxResource(device, D3D12_RESOURCE_STATE_COMMON), m_Stride(stride), m_Count(count)
+    GfxBuffer::GfxBuffer(GfxDevice* device, const std::string& name, D3D12_HEAP_TYPE type, uint32_t stride, uint32_t count)
+        : GfxResource(device)
+        , m_Stride(stride)
+        , m_Count(count)
     {
         UINT64 width = static_cast<UINT64>(stride) * static_cast<UINT64>(count);
 
-        GFX_HR(device->GetD3D12Device()->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(heapType),
+        GFX_HR(device->GetD3DDevice4()->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(type),
             D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(width),
+            &CD3DX12_RESOURCE_DESC::Buffer(width, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
             m_State, nullptr, IID_PPV_ARGS(&m_Resource)));
-        SetD3D12ResourceName(name);
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS GfxBuffer::GetGpuVirtualAddress(uint32_t index) const
@@ -54,7 +55,7 @@ namespace march
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
         desc.BufferLocation = GetGpuVirtualAddress(index);
         desc.SizeInBytes = static_cast<UINT>(m_Stride);
-        m_Device->GetD3D12Device()->CreateConstantBufferView(&desc, destDescriptor);
+        m_Device->GetDevice4()->CreateConstantBufferView(&desc, destDescriptor);
     }
 
     uint32_t GfxConstantBuffer::GetAlignedSize(uint32_t size)

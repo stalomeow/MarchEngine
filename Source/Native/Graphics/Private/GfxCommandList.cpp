@@ -40,6 +40,19 @@ namespace march
         GFX_HR(m_CommandList->Close());
     }
 
+    bool GfxResource::NeedStateTransition(D3D12_RESOURCE_STATES stateAfter) const
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_states
+        // D3D12_RESOURCE_STATE_COMMON 为 0，要特殊处理
+
+        if (stateAfter == D3D12_RESOURCE_STATE_COMMON)
+        {
+            return m_State != stateAfter;
+        }
+
+        return (m_State & stateAfter) != stateAfter;
+    }
+
     void GfxCommandList::ResourceBarrier(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter, bool immediate)
     {
         if (resource->NeedStateTransition(stateAfter))
