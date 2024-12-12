@@ -74,6 +74,7 @@ namespace march
     GfxCommandManager::GfxCommandManager(GfxDevice* device)
         : m_Device(device)
         , m_ContextStore{}
+        , m_CompletedFence(0)
     {
         GfxCommandQueueDesc queueDesc{};
         queueDesc.Priority = 0;
@@ -102,7 +103,7 @@ namespace march
             }
 
             m_Commands[i].Queue = std::make_unique<GfxCommandQueue>(device, queueName, queueDesc);
-            m_Commands[i].FrameFence = std::make_unique<GfxFence>(device, queueName + " FrameFence");
+            m_Commands[i].FrameFence = std::make_unique<GfxFence>(device, queueName + "FrameFence", m_CompletedFence);
             m_Commands[i].FreeContexts = {};
         }
     }
@@ -137,6 +138,32 @@ namespace march
         m_Commands[static_cast<size_t>(context->GetType())].FreeContexts.push(context);
     }
 
+    uint64_t GfxCommandManager::GetCompletedFrameFence(bool useCache)
+    {
+        if (!useCache)
+        {
+            m_CompletedFence = std::numeric_limits<uint64_t>::max();
+
+            for (auto& c : m_Commands)
+            {
+                m_CompletedFence = std::min(m_CompletedFence, c.FrameFence->GetCompletedValue());
+            }
+        }
+
+        return m_CompletedFence;
+    }
+
+    bool GfxCommandManager::IsFrameFenceCompleted(uint64_t fence, bool useCache)
+    {
+        return fence <= GetCompletedFrameFence(useCache);
+    }
+
+    uint64_t GfxCommandManager::GetNextFrameFence() const
+    {
+        // All queues should have the same value
+        return m_Commands[0].FrameFence->GetNextValue();
+    }
+
     uint64_t GfxCommandManager::SignalNextFence()
     {
         uint64_t value;
@@ -153,24 +180,6 @@ namespace march
     void GfxCommandManager::OnFrameEnd()
     {
         SignalNextFence();
-    }
-
-    uint64_t GfxCommandManager::GetCompletedFrameFence() const
-    {
-        uint64_t result = std::numeric_limits<uint64_t>::max();
-
-        for (auto& c : m_Commands)
-        {
-            result = std::min(result, c.FrameFence->GetCompletedValue());
-        }
-
-        return result;
-    }
-
-    uint64_t GfxCommandManager::GetNextFrameFence() const
-    {
-        // All queues should have the same value
-        return m_Commands[0].FrameFence->GetNextValue();
     }
 
     void GfxCommandManager::WaitForGpuIdle()

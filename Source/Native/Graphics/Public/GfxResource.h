@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <queue>
 
 namespace march
 {
@@ -31,6 +32,8 @@ namespace march
             D3D12_RESOURCE_STATES initialState,
             const D3D12_CLEAR_VALUE* pOptimizedClearValue = nullptr) = 0;
 
+        void CleanUpAllocations();
+
         GfxDevice* GetDevice() const { return m_Device; }
         D3D12_HEAP_PROPERTIES GetHeapProperties() const { return CD3DX12_HEAP_PROPERTIES(m_HeapType); }
         D3D12_HEAP_FLAGS GetHeapFlags() const { return m_HeapFlags; }
@@ -50,6 +53,9 @@ namespace march
         GfxDevice* m_Device;
         const D3D12_HEAP_TYPE m_HeapType;
         const D3D12_HEAP_FLAGS m_HeapFlags;
+        std::queue<std::pair<uint64_t, GfxResourceAllocation>> m_ReleaseQueue;
+
+        void DeferredRelease(const GfxResourceAllocation& allocation);
     };
 
     class GfxResource final
@@ -57,14 +63,13 @@ namespace march
         friend GfxResourceAllocator;
 
     public:
+        GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
         ~GfxResource();
 
-        GfxDevice* GetDevice() const { return m_Allocator->GetDevice(); }
+        GfxDevice* GetDevice() const { return m_Device; }
         ID3D12Resource* GetD3DResource() const { return m_Resource.Get(); }
         D3D12_RESOURCE_STATES GetState() const { return m_State; }
         void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
-
-        GfxResource() = default;
 
         GfxResource(const GfxResource&) = delete;
         GfxResource& operator=(const GfxResource&) = delete;
@@ -73,6 +78,7 @@ namespace march
         GfxResource& operator=(GfxResource&&) = default;
 
     private:
+        GfxDevice* m_Device;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource;
         D3D12_RESOURCE_STATES m_State;
         GfxResourceAllocator* m_Allocator;

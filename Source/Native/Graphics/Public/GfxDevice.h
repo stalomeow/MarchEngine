@@ -58,10 +58,13 @@ namespace march
         GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
         GfxCommandContext* RequestContext(GfxCommandType type);
 
+        uint64_t GetCompletedFrameFence(bool useCache = false);
+        bool IsFrameFenceCompleted(uint64_t fence, bool useCache = false);
+        uint64_t GetNextFrameFence() const;
+
         void BeginFrame();
         void EndFrame();
-        void DeferredRelease(const std::function<void()>& callback, Microsoft::WRL::ComPtr<ID3D12Object> obj = nullptr);
-        bool IsGraphicsFenceCompleted(uint64_t fenceValue);
+        void DeferredRelease(Microsoft::WRL::ComPtr<ID3D12Object> obj);
         void WaitForIdle();
         void WaitForIdleAndReleaseUnusedD3D12Objects();
 
@@ -106,7 +109,7 @@ namespace march
 
         std::unique_ptr<GfxCommandManager> m_CommandManager;
 
-        std::queue<std::pair<uint64_t, ID3D12Object*>> m_ReleaseQueue;
+        std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
     };
 
     class GfxException : public std::exception

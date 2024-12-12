@@ -14,6 +14,9 @@ namespace march
         , m_CommandList(nullptr)
         , m_ResourceBarriers{}
         , m_SyncPointsToWait{}
+        , m_SrvCache{}
+        , m_UavCache{}
+        , m_SamplerCache{}
     {
     }
 

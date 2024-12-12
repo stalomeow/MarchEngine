@@ -1,7 +1,6 @@
 #include "GfxDescriptor.h"
 #include "GfxDevice.h"
-#include "GfxFence.h"
-#include "StringUtils.h"
+#include "GfxUtils.h"
 #include "Debug.h"
 #include <Windows.h>
 
@@ -24,39 +23,35 @@ namespace march
         }
     }
 
-    GfxDescriptorHeap::GfxDescriptorHeap(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t capacity, bool shaderVisible, const std::string& name)
+    GfxDescriptorHeap::GfxDescriptorHeap(GfxDevice* device, const std::string& name, const GfxDescriptorHeapDesc& desc)
         : m_Device(device)
+        , m_Heap(nullptr)
     {
-        ID3D12Device4* d3d12Device = device->GetD3DDevice4();
-        m_IncrementSize = static_cast<uint32_t>(d3d12Device->GetDescriptorHandleIncrementSize(type));
+        ID3D12Device4* d3dDevice = device->GetD3DDevice4();
 
-        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-        desc.NumDescriptors = static_cast<UINT>(capacity);
-        desc.Type = type;
-        desc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        GFX_HR(d3d12Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_Heap)));
+        D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+        heapDesc.Type = desc.Type;
+        heapDesc.NumDescriptors = static_cast<UINT>(desc.Capacity);
+        heapDesc.Flags = desc.ShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        GFX_HR(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_Heap)));
+        GfxUtils::SetName(m_Heap.Get(), name);
 
-#ifdef ENABLE_GFX_DEBUG_NAME
-        GFX_HR(m_Heap->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
-#else
-        (name);
-#endif
+        m_IncrementSize = static_cast<uint32_t>(d3dDevice->GetDescriptorHandleIncrementSize(desc.Type));
     }
 
     GfxDescriptorHeap::~GfxDescriptorHeap()
     {
-        m_Device->ReleaseD3D12Object(m_Heap);
-        m_Heap = nullptr;
+        m_Device->DeferredRelease(m_Heap);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GfxDescriptorHeap::GetCpuHandle(uint32_t index) const
     {
         if (index >= GetCapacity())
         {
-            throw std::out_of_range("GetCpuHandle: Index out of the range of descriptor heap");
+            throw std::out_of_range("GfxDescriptorHeap::GetCpuHandle: Index out of the range of descriptor heap");
         }
 
-        CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_Heap->GetCPUDescriptorHandleForHeapStart());
+        CD3DX12_CPU_DESCRIPTOR_HANDLE handle{ m_Heap->GetCPUDescriptorHandleForHeapStart() };
         return handle.Offset(static_cast<INT>(index), static_cast<UINT>(m_IncrementSize));
     }
 
@@ -64,17 +59,25 @@ namespace march
     {
         if (index >= GetCapacity())
         {
-            throw std::out_of_range("GetGpuHandle: Index out of the range of descriptor heap");
+            throw std::out_of_range("GfxDescriptorHeap::GetGpuHandle: Index out of the range of descriptor heap");
         }
 
-        CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_Heap->GetGPUDescriptorHandleForHeapStart());
+        CD3DX12_GPU_DESCRIPTOR_HANDLE handle{ m_Heap->GetGPUDescriptorHandleForHeapStart() };
         return handle.Offset(static_cast<INT>(index), static_cast<UINT>(m_IncrementSize));
     }
 
-    void GfxDescriptorHeap::Copy(uint32_t destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
+    void GfxDescriptorHeap::CopyFrom(const D3D12_CPU_DESCRIPTOR_HANDLE* srcDescriptors, uint32_t numDescriptors, uint32_t destStartIndex) const
     {
-        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor = GetCpuHandle(destIndex);
-        m_Device->GetD3DDevice4()->CopyDescriptorsSimple(1, destDescriptor, srcDescriptor, GetType());
+        if (destStartIndex + numDescriptors > GetCapacity())
+        {
+            throw std::out_of_range("GfxDescriptorHeap::Copy: Index out of the range of descriptor heap");
+        }
+
+        D3D12_CPU_DESCRIPTOR_HANDLE destDescriptors = GetCpuHandle(destStartIndex);
+        UINT numCopy = static_cast<UINT>(numDescriptors);
+
+        // pSrcDescriptorRangeSizes 为 nullptr 表示所有范围的大小均为 1
+        m_Device->GetD3DDevice4()->CopyDescriptors(1, &destDescriptors, &numCopy, numCopy, srcDescriptors, nullptr, GetType());
     }
 
     GfxDescriptorHandle::GfxDescriptorHandle(GfxDescriptorHeap* heap, uint32_t pageIndex, uint32_t heapIndex)

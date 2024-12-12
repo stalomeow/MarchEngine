@@ -27,6 +27,8 @@ namespace march
         UnorderedAccess = 1 << 6,
     };
 
+    DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsage);
+
     struct GfxBufferDesc
     {
         uint32_t Stride;

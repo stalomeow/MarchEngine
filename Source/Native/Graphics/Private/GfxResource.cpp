@@ -14,31 +14,55 @@ namespace march
         : m_Device(device)
         , m_HeapType(heapType)
         , m_HeapFlags(heapFlags)
+        , m_ReleaseQueue{}
     {
     }
 
     std::unique_ptr<GfxResource> GfxResourceAllocator::CreateResource(
         const std::string& name,
-        Microsoft::WRL::ComPtr<ID3D12Resource> res,
+        ComPtr<ID3D12Resource> res,
         D3D12_RESOURCE_STATES initialState,
         const GfxResourceAllocation& allocation)
     {
-        std::unique_ptr<GfxResource> result = std::make_unique<GfxResource>();
-        GfxUtils::SetName(result->GetD3DResource(), name);
-        result->m_Resource = res;
-        result->m_State = initialState;
+        GfxUtils::SetName(res.Get(), name);
+
+        std::unique_ptr<GfxResource> result = std::make_unique<GfxResource>(m_Device, res, initialState);
         result->m_Allocator = this;
         result->m_Allocation = allocation;
         return result;
     }
 
+    void GfxResourceAllocator::DeferredRelease(const GfxResourceAllocation& allocation)
+    {
+        m_ReleaseQueue.emplace(m_Device->GetNextFrameFence(), allocation);
+    }
+
+    void GfxResourceAllocator::CleanUpAllocations()
+    {
+        while (!m_ReleaseQueue.empty() && m_Device->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        {
+            Release(m_ReleaseQueue.front().second);
+            m_ReleaseQueue.pop();
+        }
+    }
+
+    GfxResource::GfxResource(GfxDevice* device, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state)
+        : m_Device(device)
+        , m_Resource(resource)
+        , m_State(state)
+        , m_Allocator(nullptr)
+        , m_Allocation{}
+    {
+    }
+
     GfxResource::~GfxResource()
     {
-        GfxResourceAllocator* allocator = m_Allocator;
-        GfxResourceAllocation allocation = m_Allocation;
+        if (m_Allocator != nullptr)
+        {
+            m_Allocator->DeferredRelease(m_Allocation);
+        }
 
-        // 等 GPU 使用完成后释放资源
-        GetDevice()->DeferredRelease([allocator, allocation]() { allocator->Release(allocation); }, m_Resource);
+        m_Device->DeferredRelease(m_Resource);
     }
 
     static constexpr uint32_t GetResourcePlacementAlignment(bool msaa)

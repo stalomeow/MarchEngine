@@ -5,49 +5,43 @@
 
 namespace march
 {
-    namespace HashUtils
-    {
-        // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Hash.h
-
-        inline size_t FNV1Range(const uint32_t* const Begin, const uint32_t* const End, size_t Hash)
-        {
-            for (const uint32_t* Iter = Begin; Iter < End; ++Iter)
-            {
-                Hash = 16777619U * Hash ^ *Iter;
-            }
-
-            return Hash;
-        }
-
-        constexpr size_t DefaultHash = 2166136261U;
-
-        template <typename T>
-        inline size_t FNV1(const T* Object, size_t Count = 1, size_t Hash = DefaultHash)
-        {
-            static_assert((sizeof(T) & 3) == 0 && alignof(T) >= 4, "Object is not word-aligned");
-            return FNV1Range(reinterpret_cast<const uint32_t*>(Object), reinterpret_cast<const uint32_t*>(Object + Count), Hash);
-        }
-
-        template <>
-        inline size_t FNV1<uint8_t>(const uint8_t* Object, size_t Count, size_t Hash)
-        {
-            assert((Count & 3) == 0); // Count must be a multiple of 4
-            return FNV1Range(reinterpret_cast<const uint32_t*>(Object), reinterpret_cast<const uint32_t*>(Object + Count), Hash);
-        }
-    }
+    // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Hash.h
 
     class FNV1Hash
     {
-    public:
-        template <typename T>
-        void Append(const T* Object, size_t Count = 1)
+        size_t m_Value = 2166136261U;
+
+        void AppendRange(const uint32_t* const begin, const uint32_t* const end)
         {
-            HashUtils::FNV1(Object, Count, m_Value);
+            for (const uint32_t* iter = begin; iter < end; ++iter)
+            {
+                m_Value = 16777619U * m_Value ^ *iter;
+            }
         }
 
+    public:
         size_t GetValue() const { return m_Value; }
 
-    private:
-        size_t m_Value = HashUtils::DefaultHash;
+        template <typename T>
+        void Append(const T& obj)
+        {
+            static_assert((sizeof(T) & 3) == 0 && alignof(T) >= 4, "Object is not word-aligned");
+
+            const T* ptr = &obj;
+            auto begin = reinterpret_cast<const uint32_t*>(ptr);
+            auto end = reinterpret_cast<const uint32_t*>(ptr + 1);
+            return AppendRange(begin, end);
+        }
+
+        void Append(const void* data, size_t sizeInBytes)
+        {
+            assert((sizeInBytes & 3) == 0 && "sizeInBytes must be a multiple of 4");
+
+            auto begin = reinterpret_cast<const uint32_t*>(data);
+            auto end = reinterpret_cast<const uint32_t*>(reinterpret_cast<const uint8_t*>(data) + sizeInBytes);
+            return AppendRange(begin, end);
+        }
     };
+
+    using DefaultHash = typename FNV1Hash;
 }

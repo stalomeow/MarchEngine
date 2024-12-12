@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GfxDescriptor.h"
 #include <directx/d3dx12.h>
 #include <wrl.h>
 #include <string>
@@ -105,10 +106,11 @@ namespace march
         GfxCommandContext* RequestAndOpenContext(GfxCommandType type);
         void RecycleContext(GfxCommandContext* context);
 
-        void OnFrameEnd();
-        uint64_t GetCompletedFrameFence() const;
+        uint64_t GetCompletedFrameFence(bool useCache);
+        bool IsFrameFenceCompleted(uint64_t fence, bool useCache);
         uint64_t GetNextFrameFence() const;
 
+        void OnFrameEnd();
         void WaitForGpuIdle();
 
         GfxDevice* GetDevice() const { return m_Device; }
@@ -122,9 +124,8 @@ namespace march
         } m_Commands[3]; // Matches GfxCommandType
 
         GfxDevice* m_Device;
-
-        // 保存所有分配的 command context，用于释放资源
-        std::vector<std::unique_ptr<GfxCommandContext>> m_ContextStore;
+        std::vector<std::unique_ptr<GfxCommandContext>> m_ContextStore; // 保存所有分配的 command context，用于释放资源
+        uint64_t m_CompletedFence; // cache
 
         uint64_t SignalNextFence();
     };
@@ -155,7 +156,11 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 
-        std::vector<CD3DX12_RESOURCE_BARRIER> m_ResourceBarriers;
+        std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
         std::vector<GfxSyncPoint> m_SyncPointsToWait;
+
+        GfxOfflineDescriptorCache<64> m_SrvCache;
+        GfxOfflineDescriptorCache<32> m_UavCache;
+        GfxOfflineDescriptorCache<16> m_SamplerCache;
     };
 }
