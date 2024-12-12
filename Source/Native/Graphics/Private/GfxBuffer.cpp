@@ -1,66 +1,80 @@
 #include "GfxBuffer.h"
+#include "GfxResource.h"
 #include "GfxDevice.h"
-#include "GfxFence.h"
 #include "MathUtils.h"
 #include "Debug.h"
+#include <assert.h>
 #include <stdexcept>
 
 namespace march
 {
-    GfxBuffer::GfxBuffer(GfxDevice* device, const std::string& name, D3D12_HEAP_TYPE type, uint32_t stride, uint32_t count)
-        : GfxResource(device)
-        , m_Stride(stride)
-        , m_Count(count)
+    GfxAABuffer::GfxAABuffer(const std::string& name, const GfxBufferDesc& desc, GfxResourceAllocator* allocator)
+        : m_Stride(desc.Stride)
+        , m_Count(desc.Count)
+        , m_CpuAccessFlags(desc.CpuAccessFlags)
+        , m_MappedData(nullptr)
     {
-        UINT64 width = static_cast<UINT64>(stride) * static_cast<UINT64>(count);
+        UINT64 width = static_cast<UINT64>(m_Stride) * static_cast<UINT64>(m_Count);
+        D3D12_RESOURCE_FLAGS flags = desc.UnorderedAccess ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
+        m_Resource = allocator->Allocate(name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), desc.InitialState);
 
-        GFX_HR(device->GetD3DDevice4()->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(type),
-            D3D12_HEAP_FLAG_NONE,
-            &CD3DX12_RESOURCE_DESC::Buffer(width, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-            m_State, nullptr, IID_PPV_ARGS(&m_Resource)));
+        if (desc.CpuAccessFlags != GfxBufferAccessFlags::None)
+        {
+            assert(CD3DX12_HEAP_PROPERTIES(allocator->GetHeapProperties()).IsCPUAccessible());
+
+            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-map
+            bool read = (desc.CpuAccessFlags & GfxBufferAccessFlags::Read) == GfxBufferAccessFlags::Read;
+            GFX_HR(m_Resource->GetD3DResource()->Map(0, read ? nullptr : &CD3DX12_RANGE(0, 0), &m_MappedData));
+        }
     }
 
-    D3D12_GPU_VIRTUAL_ADDRESS GfxBuffer::GetGpuVirtualAddress(uint32_t index) const
+    GfxAABuffer::~GfxAABuffer()
+    {
+        if (m_MappedData != nullptr)
+        {
+            m_MappedData = nullptr;
+
+            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-unmap
+            bool write = (m_CpuAccessFlags & GfxBufferAccessFlags::Write) == GfxBufferAccessFlags::Write;
+            m_Resource->GetD3DResource()->Unmap(0, write ? nullptr : &CD3DX12_RANGE(0, 0));
+        }
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS GfxAABuffer::GetGpuVirtualAddress(uint32_t index) const
     {
         auto offset = static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(index) * static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(m_Stride);
-        return m_Resource->GetGPUVirtualAddress() + offset;
+        return m_Resource->GetD3DResource()->GetGPUVirtualAddress() + offset;
     }
 
-    GfxUploadBuffer::GfxUploadBuffer(GfxDevice* device, const std::string& name, uint32_t stride, uint32_t count, bool readable)
-        : GfxBuffer(device, D3D12_HEAP_TYPE_UPLOAD, name, stride, count), m_MappedData(nullptr)
+    void* GfxAABuffer::GetDataPointer(uint32_t index) const
     {
-        GFX_HR(m_Resource->Map(0, readable ? nullptr : &CD3DX12_RANGE(0, 0), &m_MappedData));
-    }
+        if (index >= m_Count)
+        {
+            throw std::out_of_range("Index out of range");
+        }
 
-    GfxUploadBuffer::~GfxUploadBuffer()
-    {
-        m_Resource->Unmap(0, nullptr);
-        m_MappedData = nullptr;
-    }
-
-    uint8_t* GfxUploadBuffer::GetMappedData(uint32_t index) const
-    {
-        uint8_t* p = reinterpret_cast<uint8_t*>(m_MappedData);
+        uint8_t* p = static_cast<uint8_t*>(m_MappedData);
         return &p[index * m_Stride];
     }
 
-    GfxConstantBuffer::GfxConstantBuffer(GfxDevice* device, const std::string& name, uint32_t dataSize, uint32_t count, bool readable)
-        : GfxUploadBuffer(device, name, GetAlignedSize(dataSize), count, readable)
+    D3D12_VERTEX_BUFFER_VIEW GfxAABuffer::GetVbv() const
     {
+        D3D12_VERTEX_BUFFER_VIEW view{};
+        view.BufferLocation = GetGpuVirtualAddress(0);
+        view.SizeInBytes = static_cast<UINT>(GetSize());
+        view.StrideInBytes = static_cast<UINT>(GetStride());
+        return view;
     }
 
-    void GfxConstantBuffer::CreateView(uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor) const
+    D3D12_INDEX_BUFFER_VIEW GfxAABuffer::GetIbv() const
     {
-        D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
-        desc.BufferLocation = GetGpuVirtualAddress(index);
-        desc.SizeInBytes = static_cast<UINT>(m_Stride);
-        m_Device->GetDevice4()->CreateConstantBufferView(&desc, destDescriptor);
-    }
+        assert(GetStride() == 2u || GetStride() == 4u);
 
-    uint32_t GfxConstantBuffer::GetAlignedSize(uint32_t size)
-    {
-        return MathUtils::AlignUp(size, Alignment);
+        D3D12_INDEX_BUFFER_VIEW view{};
+        view.BufferLocation = GetGpuVirtualAddress(0);
+        view.SizeInBytes = static_cast<UINT>(GetSize());
+        view.Format = GetStride() == 2u ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+        return view;
     }
 
     GfxUploadMemory::GfxUploadMemory(GfxUploadBuffer* buffer, uint32_t offset, uint32_t stride, uint32_t count)

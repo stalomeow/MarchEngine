@@ -16,7 +16,6 @@
     <ClInclude Include="Public\GfxBuffer.h" />
     <ClInclude Include="Public\GfxCommand.h" />
     <ClInclude Include="Public\GfxDevice.h" />
-    <ClInclude Include="Public\GfxSync.h" />
     <ClInclude Include="Public\GfxUtils.h" />
     <ClInclude Include="Public\GfxPipelineState.h" />
     <ClInclude Include="Public\GfxResource.h" />
@@ -33,15 +32,15 @@
     <ClCompile Include="Private\Display.cpp" />
     <ClCompile Include="Private\GfxDescriptor.cpp" />
     <ClCompile Include="Private\GfxBuffer.cpp" />
-    <ClCompile Include="Private\GfxCommandList.cpp" />
+    <ClCompile Include="Private\GfxCommandContext.cpp" />
     <ClCompile Include="Private\GfxCommandQueue.cpp" />
     <ClCompile Include="Private\GfxDevice.cpp" />
     <ClCompile Include="Private\GfxException.cpp" />
+    <ClCompile Include="Private\GfxFence.cpp" />
     <ClCompile Include="Private\GfxMesh.cpp" />
     <ClCompile Include="Private\GfxPipelineState.cpp" />
     <ClCompile Include="Private\GfxResource.cpp" />
     <ClCompile Include="Private\GfxSettings.binding.cpp" />
-    <ClCompile Include="Private\GfxSync.cpp" />
     <ClCompile Include="Private\GfxTextureDesc.cpp" />
     <ClCompile Include="Private\GfxUtils.cpp" />
     <ClCompile Include="Private\GfxSwapChain.cpp" />

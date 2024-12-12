@@ -1,71 +1,16 @@
 #pragma once
 
+#include "Allocator.h"
 #include <directx/d3dx12.h>
 #include <wrl.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include <set>
-#include <optional>
 #include <memory>
 
 namespace march
 {
     class GfxDevice;
-    class BuddyAllocator;
-
-    struct BuddyAllocation
-    {
-        BuddyAllocator* Owner;
-        uint32_t Offset;
-        uint32_t Order;
-    };
-
-    class BuddyAllocator
-    {
-    public:
-        BuddyAllocator(uint32_t minBlockSize, uint32_t maxBlockSize);
-        virtual ~BuddyAllocator() = default;
-
-        void Reset();
-        std::optional<uint32_t> Allocate(uint32_t sizeInBytes, uint32_t alignment, BuddyAllocation& outAllocation);
-        void Release(const BuddyAllocation& allocation);
-
-    private:
-        const uint32_t m_MinBlockSize;
-        const uint32_t m_MaxBlockSize;
-        uint32_t m_MaxOrder;
-        std::vector<std::set<uint32_t>> m_FreeBlocks;
-
-        uint32_t SizeToUnitSize(uint32_t size) const;
-        uint32_t UnitSizeToOrder(uint32_t size) const;
-        uint32_t OrderToUnitSize(uint32_t order) const;
-        uint32_t GetBuddyOffset(uint32_t offset, uint32_t size) const;
-
-        std::optional<uint32_t> AllocateBlock(uint32_t order);
-        void ReleaseBlock(uint32_t offset, uint32_t order);
-    };
-
-    class MultiBuddyAllocator
-    {
-    public:
-        MultiBuddyAllocator(const std::string& name, uint32_t minBlockSize, uint32_t defaultMaxBlockSize);
-        virtual ~MultiBuddyAllocator() = default;
-
-        std::optional<uint32_t> Allocate(uint32_t sizeInBytes, uint32_t alignment, size_t& outAllocatorIndex, BuddyAllocation& outAllocation);
-
-        const std::string& GetName() const { return m_Name; }
-
-    protected:
-        virtual void AppendNewAllocator(uint32_t maxBlockSize);
-
-    private:
-        std::string m_Name;
-        uint32_t m_MinBlockSize;
-        uint32_t m_DefaultMaxBlockSize;
-        std::vector<std::unique_ptr<BuddyAllocator>> m_Allocators;
-    };
-
     class GfxResource;
 
     union GfxResourceAllocation
@@ -78,8 +23,6 @@ namespace march
         friend GfxResource;
 
     public:
-        GfxDevice* GetDevice() const { return m_Device; }
-
         virtual ~GfxResourceAllocator() = default;
 
         virtual std::unique_ptr<GfxResource> Allocate(
@@ -88,8 +31,12 @@ namespace march
             D3D12_RESOURCE_STATES initialState,
             const D3D12_CLEAR_VALUE* pOptimizedClearValue = nullptr) = 0;
 
+        GfxDevice* GetDevice() const { return m_Device; }
+        D3D12_HEAP_PROPERTIES GetHeapProperties() const { return CD3DX12_HEAP_PROPERTIES(m_HeapType); }
+        D3D12_HEAP_FLAGS GetHeapFlags() const { return m_HeapFlags; }
+
     protected:
-        GfxResourceAllocator(GfxDevice* device) : m_Device(device) {}
+        GfxResourceAllocator(GfxDevice* device, D3D12_HEAP_TYPE heapType, D3D12_HEAP_FLAGS heapFlags);
 
         std::unique_ptr<GfxResource> CreateResource(
             const std::string& name,
@@ -101,6 +48,8 @@ namespace march
 
     private:
         GfxDevice* m_Device;
+        const D3D12_HEAP_TYPE m_HeapType;
+        const D3D12_HEAP_FLAGS m_HeapFlags;
     };
 
     class GfxResource final
@@ -154,8 +103,6 @@ namespace march
         void Release(const GfxResourceAllocation& allocation) override;
 
     private:
-        const D3D12_HEAP_TYPE m_HeapType;
-        const D3D12_HEAP_FLAGS m_HeapFlags;
         const bool m_MSAA;
         std::vector<Microsoft::WRL::ComPtr<ID3D12Heap>> m_Heaps;
     };
@@ -179,32 +126,5 @@ namespace march
 
     protected:
         void Release(const GfxResourceAllocation& allocation) override;
-
-    private:
-        const D3D12_HEAP_TYPE m_HeapType;
-        const D3D12_HEAP_FLAGS m_HeapFlags;
-    };
-
-    struct GfxSubBufferMultiBuddyAllocatorDesc
-    {
-        uint32_t MinBlockSize;
-        uint32_t DefaultMaxBlockSize;
-        D3D12_RESOURCE_FLAGS ResourceFlags;
-        D3D12_RESOURCE_STATES InitialResourceState;
-    };
-
-    class GfxSubBufferMultiBuddyAllocator : protected MultiBuddyAllocator
-    {
-    public:
-        GfxSubBufferMultiBuddyAllocator(const std::string& name, const GfxSubBufferMultiBuddyAllocatorDesc& desc, GfxResourceAllocator* bufferAllocator);
-
-    protected:
-        void AppendNewAllocator(uint32_t maxBlockSize) override;
-
-    private:
-        const D3D12_RESOURCE_FLAGS m_ResourceFlags;
-        const D3D12_RESOURCE_STATES m_InitialResourceState;
-        GfxResourceAllocator* m_BufferAllocator;
-        std::vector<std::unique_ptr<GfxResource>> m_Buffers;
     };
 }

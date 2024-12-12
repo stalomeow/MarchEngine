@@ -48,6 +48,9 @@
     <ClCompile Include="Private\Gizmos.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\Allocator.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Public\Debug.h">
@@ -78,6 +81,9 @@
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\Gizmos.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Allocator.h">
       <Filter>Public</Filter>
     </ClInclude>
   </ItemGroup>

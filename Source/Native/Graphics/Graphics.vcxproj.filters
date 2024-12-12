@@ -60,9 +60,6 @@
     <ClInclude Include="Public\Display.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\GfxSync.h">
-      <Filter>Public</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\GfxDescriptor.cpp">
@@ -89,7 +86,7 @@
     <ClCompile Include="Private\GfxDevice.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxCommandList.cpp">
+    <ClCompile Include="Private\GfxCommandContext.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxResource.cpp">
@@ -140,7 +137,7 @@
     <ClCompile Include="Private\GfxTextureDesc.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\GfxSync.cpp">
+    <ClCompile Include="Private\GfxFence.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

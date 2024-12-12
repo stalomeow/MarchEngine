@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GfxResource.h"
+#include "Allocator.h"
 #include <directx/d3dx12.h>
 #include <string>
 #include <stdint.h>
@@ -12,100 +12,87 @@
 namespace march
 {
     class GfxDevice;
+    class GfxResource;
+    class GfxResourceAllocator;
 
-    class GfxBuffer : public GfxResource
+    enum class GfxBufferUsage
     {
-    public:
-        ~GfxBuffer() override;
-
-        D3D12_CPU_DESCRIPTOR_HANDLE GetSrv() override;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetUav() override;
-
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint64_t index) const;
-
-        uint64_t GetStride() const { return m_Stride; }
-        uint64_t GetCount() const { return m_Count; }
-        uint64_t GetSize() const { return m_Stride * m_Count; }
-
-    protected:
-        GfxBuffer(GfxDevice* device, const std::string& name, D3D12_HEAP_TYPE type, uint64_t stride, uint64_t count, bool unorderedAccess);
-
-        uint64_t m_Stride;
-        uint64_t m_Count;
+        None = 0,
+        Vertex = 1 << 0,
+        Index = 1 << 1,
+        Constant = 1 << 2,
+        Structured = 1 << 3,
+        Raw = 1 << 4,
+        Counter = 1 << 5,
+        UnorderedAccess = 1 << 6,
     };
 
-    class GfxUploadBuffer : public GfxBuffer
+    struct GfxBufferDesc
+    {
+        uint32_t Stride;
+        uint32_t Count;
+        D3D12_RESOURCE_STATES InitialState;
+    };
+
+    class GfxBuffer
     {
     public:
-        GfxUploadBuffer(GfxDevice* device, const std::string& name, uint32_t stride, uint32_t count, bool readable);
-        virtual ~GfxUploadBuffer();
+        virtual ~GfxBuffer();
 
-        uint8_t* GetMappedData(uint32_t index) const;
+        virtual GfxResource* GetBufferResource() const = 0;
+        virtual uint32_t GetBufferResourceOffset() const = 0;
+
+        virtual GfxResource* GetCounterResource() const = 0;
+        virtual uint32_t GetCounterResourceOffset() const = 0;
+
+        uint32_t GetStride() const { return m_Stride; }
+        uint32_t GetCount() const { return m_Count; }
+        uint32_t GetSize() const { return m_Stride * m_Count; }
 
     protected:
+        GfxBuffer(uint32_t stride, uint32_t count);
+
+    private:
+        const uint32_t m_Stride;
+        const uint32_t m_Count;
+    };
+
+    class GfxAABuffer
+    {
+    public:
+        GfxAABuffer(const std::string& name, const GfxBufferDesc& desc, GfxResourceAllocator* allocator);
+        virtual ~GfxAABuffer();
+
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t index) const;
+        void* GetDataPointer(uint32_t index) const;
+
+        D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
+        D3D12_INDEX_BUFFER_VIEW GetIbv() const;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetSrv();
+        D3D12_CPU_DESCRIPTOR_HANDLE GetUav();
+
+        template <typename T>
+        T& GetData(uint32_t index) const
+        {
+            static_assert(sizeof(T) <= m_Stride, "Size of T is larger than stride");
+            return *static_cast<T*>(GetDataPointer(index));
+        }
+
+    private:
+        const uint32_t m_Stride;
+        const uint32_t m_Count;
+        std::unique_ptr<GfxResource> m_BufferResource;
+        std::unique_ptr<GfxResource> m_CounterResource;
         void* m_MappedData;
     };
 
-    class GfxConstantBuffer : public GfxUploadBuffer
-    {
-    public:
-        GfxConstantBuffer(GfxDevice* device, const std::string& name, uint32_t dataSize, uint32_t count, bool readable);
-        virtual ~GfxConstantBuffer() = default;
-
-        void CreateView(uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE destDescriptor) const;
-
-        static constexpr uint32_t Alignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-        static uint32_t GetAlignedSize(uint32_t size);
-    };
-
-    template<typename T>
-    class GfxVertexBuffer : public GfxBuffer
-    {
-    public:
-        GfxVertexBuffer(GfxDevice* device, const std::string& name, uint32_t count)
-            : GfxBuffer(device, D3D12_HEAP_TYPE_DEFAULT, name, sizeof(T), count)
-        {
-        }
-
-        virtual ~GfxVertexBuffer() = default;
-
-        D3D12_VERTEX_BUFFER_VIEW GetView() const
-        {
-            D3D12_VERTEX_BUFFER_VIEW view = {};
-            view.BufferLocation = m_Resource->GetGPUVirtualAddress();
-            view.SizeInBytes = static_cast<UINT>(GetSize());
-            view.StrideInBytes = static_cast<UINT>(GetStride());
-            return view;
-        }
-    };
-
-    template<typename T>
-    class GfxIndexBuffer : public GfxBuffer
-    {
-        static_assert(sizeof(T) == 2 || sizeof(T) == 4, "T must be 2 or 4 bytes in size.");
-
-    public:
-        GfxIndexBuffer(GfxDevice* device, const std::string& name, uint32_t count)
-            : GfxBuffer(device, D3D12_HEAP_TYPE_DEFAULT, name, sizeof(T), count)
-        {
-        }
-
-        virtual ~GfxIndexBuffer() = default;
-
-        D3D12_INDEX_BUFFER_VIEW GetView() const
-        {
-            D3D12_INDEX_BUFFER_VIEW view = {};
-            view.BufferLocation = m_Resource->GetGPUVirtualAddress();
-            view.SizeInBytes = static_cast<UINT>(GetSize());
-            view.Format = GetStride() == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-            return view;
-        }
-    };
+    // 考虑 Buffer SRV，还必须按照 stride 对齐
+    // D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT
 
     class GfxUploadMemory
     {
     public:
-        GfxUploadMemory(GfxUploadBuffer* buffer, uint32_t offset, uint32_t stride, uint32_t count);
+        GfxUploadMemory(GfxBuffer* buffer, uint32_t offset, uint32_t stride, uint32_t count);
 
         uint8_t* GetMappedData(uint32_t index) const;
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t index) const;
@@ -117,7 +104,7 @@ namespace march
         uint32_t GetSize() const { return m_Stride * m_Count; }
 
     private:
-        GfxUploadBuffer* m_Buffer;
+        GfxBuffer* m_Buffer;
         uint32_t m_Offset;
         uint32_t m_Stride;
         uint32_t m_Count;
@@ -147,5 +134,36 @@ namespace march
         std::vector<std::unique_ptr<GfxUploadBuffer>> m_UsedPages;
         std::vector<std::unique_ptr<GfxUploadBuffer>> m_LargePages;
         std::queue<std::pair<uint64_t, std::unique_ptr<GfxUploadBuffer>>> m_ReleaseQueue;
+    };
+
+    struct GfxSubBufferMultiBuddyAllocatorDesc
+    {
+        uint32_t MinBlockSize;
+        uint32_t DefaultMaxBlockSize;
+        D3D12_RESOURCE_FLAGS ResourceFlags;
+        D3D12_RESOURCE_STATES InitialResourceState;
+    };
+
+    class GfxSubBufferMultiBuddyAllocator : protected MultiBuddyAllocator
+    {
+    public:
+        GfxSubBufferMultiBuddyAllocator(const std::string& name, const GfxSubBufferMultiBuddyAllocatorDesc& desc, GfxResourceAllocator* bufferAllocator);
+
+    protected:
+        void AppendNewAllocator(uint32_t maxBlockSize) override;
+
+    private:
+        const D3D12_RESOURCE_FLAGS m_ResourceFlags;
+        const D3D12_RESOURCE_STATES m_InitialResourceState;
+        GfxResourceAllocator* m_BufferAllocator;
+        std::vector<std::unique_ptr<GfxBuffer>> m_Buffers;
+    };
+
+    class GfxSubBufferLinearAllocator : protected LinearAllocator
+    {
+    private:
+        const D3D12_RESOURCE_FLAGS m_ResourceFlags;
+        const D3D12_RESOURCE_STATES m_InitialResourceState;
+        GfxResourceAllocator* m_BufferAllocator;
     };
 }

@@ -28,6 +28,10 @@ namespace march
 
     enum class GfxDescriptorTableType;
 
+    enum class GfxCommandType;
+    class GfxCommandManager;
+    class GfxCommandContext;
+
     struct GfxDeviceDesc
     {
         bool EnableDebugLayer;
@@ -48,10 +52,11 @@ namespace march
 
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
-        GfxCommandQueue* GetGraphicsCommandQueue() const { return m_GraphicsCommandQueue.get(); }
-        GfxCommandList* GetGraphicsCommandList() const { return m_GraphicsCommandList.get(); }
         GfxDescriptorTableAllocator* GetViewDescriptorTableAllocator() const { return m_ViewDescriptorTableAllocator.get(); }
         GfxDescriptorTableAllocator* GetSamplerDescriptorTableAllocator() const { return m_SamplerDescriptorTableAllocator.get(); }
+
+        GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
+        GfxCommandContext* RequestContext(GfxCommandType type);
 
         void BeginFrame();
         void EndFrame();
@@ -85,7 +90,6 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12Device4> m_Device;
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 
-        std::unique_ptr<GfxCommandQueue> m_GraphicsCommandQueue;
         std::unique_ptr<GfxUploadMemoryAllocator> m_UploadMemoryAllocator;
         std::unique_ptr<GfxDescriptorAllocator> m_DescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
         std::unique_ptr<GfxDescriptorTableAllocator> m_ViewDescriptorTableAllocator;
@@ -99,6 +103,8 @@ namespace march
         std::unique_ptr<GfxResourceAllocator> m_RenderTextureAllocator;
 
         std::unique_ptr<GfxSubBufferMultiBuddyAllocator> m_UploadConstantBufferAllocator;
+
+        std::unique_ptr<GfxCommandManager> m_CommandManager;
 
         std::queue<std::pair<uint64_t, ID3D12Object*>> m_ReleaseQueue;
     };
