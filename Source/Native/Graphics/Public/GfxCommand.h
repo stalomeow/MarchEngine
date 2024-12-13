@@ -28,13 +28,13 @@ namespace march
         uint64_t SignalNextValueOnCpu();
         uint64_t SignalNextValueOnGpu(ID3D12CommandQueue* queue);
 
-        uint64_t GetNextValue() const { return m_Value + 1; }
+        uint64_t GetNextValue() const { return m_NextValue; }
         ID3D12Fence* GetFence() const { return m_Fence.Get(); }
 
     private:
         Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence;
         HANDLE m_EventHandle;
-        uint64_t m_Value; // 上一次 signal 的值，可能从 cpu 侧 signal，也可能从 gpu 侧 signal
+        uint64_t m_NextValue; // 下一次 signal 的值，可能从 cpu 侧 signal，也可能从 gpu 侧 signal
     };
 
     class GfxSyncPoint final

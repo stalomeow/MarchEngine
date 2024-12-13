@@ -17,16 +17,13 @@ namespace march
     class GfxCommandList;
     class GfxUploadMemory;
     class GfxUploadMemoryAllocator;
-    class GfxDescriptorHandle;
-    class GfxDescriptorAllocator;
-    class GfxDescriptorTable;
-    class GfxDescriptorTableAllocator;
     class GfxSwapChain;
     class GfxRenderTexture;
     class GfxResourceAllocator;
     class GfxSubBufferMultiBuddyAllocator;
 
-    enum class GfxDescriptorTableType;
+    struct GfxOfflineDescriptor;
+    class GfxOfflineDescriptorAllocator;
 
     enum class GfxCommandType;
     class GfxCommandManager;
@@ -72,8 +69,8 @@ namespace march
         GfxRenderTexture* GetBackBuffer() const;
         uint32_t GetMaxFrameLatency() const;
 
-        GfxDescriptorHandle AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
-        void FreeDescriptor(const GfxDescriptorHandle& handle);
+        GfxOfflineDescriptor AllocateOfflineDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
+        void ReleaseOfflineDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, const GfxOfflineDescriptor& descriptor);
 
         GfxUploadMemory AllocateTransientUploadMemory(uint32_t size, uint32_t count = 1, uint32_t alignment = 1);
         GfxDescriptorTable AllocateTransientDescriptorTable(GfxDescriptorTableType type, uint32_t descriptorCount);
@@ -94,7 +91,7 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 
         std::unique_ptr<GfxUploadMemoryAllocator> m_UploadMemoryAllocator;
-        std::unique_ptr<GfxDescriptorAllocator> m_DescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+        std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
         std::unique_ptr<GfxDescriptorTableAllocator> m_ViewDescriptorTableAllocator;
         std::unique_ptr<GfxDescriptorTableAllocator> m_SamplerDescriptorTableAllocator;
         std::unique_ptr<GfxSwapChain> m_SwapChain;

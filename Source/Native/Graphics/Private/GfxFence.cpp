@@ -7,7 +7,7 @@ namespace march
 {
     GfxFence::GfxFence(GfxDevice* device, const std::string& name, uint64_t initialValue)
         : m_Fence(nullptr)
-        , m_Value(initialValue)
+        , m_NextValue(initialValue + 1)
     {
         GFX_HR(device->GetD3DDevice4()->CreateFence(static_cast<UINT64>(initialValue), D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
         GfxUtils::SetName(m_Fence.Get(), name);
@@ -46,15 +46,13 @@ namespace march
 
     uint64_t GfxFence::SignalNextValueOnCpu()
     {
-        uint64_t value = GetNextValue();
-        GFX_HR(m_Fence->Signal(static_cast<UINT64>(value)));
-        return (m_Value = value);
+        GFX_HR(m_Fence->Signal(static_cast<UINT64>(m_NextValue)));
+        return m_NextValue++;
     }
 
     uint64_t GfxFence::SignalNextValueOnGpu(ID3D12CommandQueue* queue)
     {
-        uint64_t value = GetNextValue();
-        GFX_HR(queue->Signal(m_Fence.Get(), static_cast<UINT64>(value)));
-        return (m_Value = value);
+        GFX_HR(queue->Signal(m_Fence.Get(), static_cast<UINT64>(m_NextValue)));
+        return m_NextValue++;
     }
 }

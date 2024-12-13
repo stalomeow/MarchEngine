@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <bitset>
+#include <optional>
 
 #undef min
 #undef max
@@ -36,6 +36,7 @@ namespace march
         ID3D12DescriptorHeap* GetD3DDescriptorHeap() const { return m_Heap.Get(); }
         D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Heap->GetDesc().Type; }
         uint32_t GetCapacity() const { return static_cast<uint32_t>(m_Heap->GetDesc().NumDescriptors); }
+        uint32_t GetIncrementSize() const { return m_IncrementSize; }
 
         bool IsShaderVisible() const
         {
@@ -50,78 +51,73 @@ namespace march
         uint32_t m_IncrementSize;
     };
 
+    struct GfxOfflineDescriptor : public D3D12_CPU_DESCRIPTOR_HANDLE
+    {
+    public:
+        GfxOfflineDescriptor() = default;
+        GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle) : D3D12_CPU_DESCRIPTOR_HANDLE(handle), m_Version(0) {}
+        operator bool() const { return ptr != 0; }
+
+        // D3D12_CPU_DESCRIPTOR_HANDLE 本质上是一个指针，用 version 表示指针指向的内容的版本
+        // 当内容变化时，增加 version，使以前的缓存失效
+        void IncrementVersion() { m_Version++; }
+        uint32_t GetVersion() const { return m_Version; }
+
+        bool operator==(const GfxOfflineDescriptor& other) const
+        {
+            return ptr == other.ptr && m_Version == other.m_Version;
+        }
+
+    private:
+        uint32_t m_Version;
+    };
+
     class GfxOfflineDescriptorAllocator
     {
-        friend class GfxOfflineDescriptor;
-
     public:
         GfxOfflineDescriptorAllocator(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t pageSize);
 
         GfxOfflineDescriptor Allocate();
         void Release(const GfxOfflineDescriptor& descriptor);
 
-        void CleanUpAllocations();
-
-        const GfxOfflineDescriptor& GetDefault() const;
-
         GfxDevice* GetDevice() const { return m_Device; }
         D3D12_DESCRIPTOR_HEAP_TYPE GetType() const { return m_Type; }
+        uint32_t GetPageSize() const { return m_PageSize; }
 
     private:
         GfxDevice* m_Device;
-        D3D12_DESCRIPTOR_HEAP_TYPE m_Type;
+        const D3D12_DESCRIPTOR_HEAP_TYPE m_Type;
+        const uint32_t m_PageSize;
 
         uint32_t m_NextDescriptorIndex;
         std::vector<std::unique_ptr<GfxDescriptorHeap>> m_Pages;
         std::queue<std::pair<uint64_t, GfxOfflineDescriptor>> m_ReleaseQueue;
     };
 
-    class GfxOfflineDescriptor
-    {
-    public:
-        GfxOfflineDescriptor() = default;
-        GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle) : m_Handle(handle), m_Version(0) {}
-
-        uint32_t GetVersion() const { return m_Version; }
-        D3D12_CPU_DESCRIPTOR_HANDLE GetHandle() const { return m_Handle; }
-
-        // D3D12_CPU_DESCRIPTOR_HANDLE 本质上是一个指针，用 version 表示指针指向的内容的版本
-        // 当内容变化时，增加 version，使以前的缓存失效
-        void IncrementVersion() { m_Version++; }
-
-        bool operator==(const GfxOfflineDescriptor& other) const
-        {
-            return m_Handle.ptr == other.m_Handle.ptr && m_Version == other.m_Version;
-        }
-
-    private:
-        D3D12_CPU_DESCRIPTOR_HANDLE m_Handle;
-        uint32_t m_Version;
-    };
-
     template <size_t Capacity>
-    class GfxOfflineDescriptorCache
+    class GfxOfflineDescriptorTable
     {
     public:
-        GfxOfflineDescriptorCache() = default;
+        GfxOfflineDescriptorTable() = default;
 
         // 当 root signature 变化时，全部清空
-        // 如果 root signature 没变，可以通过设置某几个 dirty 位来标记 descriptor 是否需要更新，没变则可以不重新设置 root descriptor table
-        void Clear()
+        // 如果 root signature 没变，可以通过设置 dirty 位来标记 descriptor table 是否需要更新，没变则可以不重新设置 root descriptor table
+        void Reset()
         {
             m_Count = 0;
-            m_Dirty.reset();
-            memset(&m_Descriptors, 0, sizeof(m_Descriptors));
-        }
-
-        void Apply()
-        {
-            m_Dirty.reset();
+            m_IsDirty = false;
         }
 
         bool IsDirty() const
         {
-            return m_Dirty.any();
+            return m_IsDirty;
+        }
+
+        // 当切换 heap 时，需要设置为 dirty
+        // 当设置 root descriptor table 后，需要清除 dirty 标记
+        void SetDirty(bool value)
+        {
+            m_IsDirty = value;
         }
 
         size_t GetCount() const
@@ -147,75 +143,56 @@ namespace march
             }
 
             m_Count = std::max(m_Count, index + 1);
-            m_Dirty.set(index);
             m_Descriptors[index] = descriptor;
+            m_IsDirty = true;
         }
 
     private:
         size_t m_Count; // 设置的最大 index + 1
-        std::bitset<Capacity> m_Dirty;
         GfxOfflineDescriptor m_Descriptors[Capacity];
+        bool m_IsDirty;
     };
 
-    enum class GfxDescriptorTableType
-    {
-        CbvSrvUav = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        Sampler = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-    };
-
-    class GfxOnlineDescriptorHeapAllocator
-    {
-
-    };
-
-    class GfxDescriptorTable
+    struct GfxOnlineDescriptorTable : public D3D12_GPU_DESCRIPTOR_HANDLE
     {
     public:
-        GfxDescriptorTable() = default;
-        GfxDescriptorTable(GfxDescriptorHeap* heap, uint32_t offset, uint32_t count);
+        GfxOnlineDescriptorTable(D3D12_GPU_DESCRIPTOR_HANDLE handle, uint32_t numDescriptors)
+            : D3D12_GPU_DESCRIPTOR_HANDLE(handle), m_NumDescriptors(numDescriptors) {}
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(uint32_t index) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32_t index) const;
-        void Copy(uint32_t destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const;
-
-        GfxDescriptorTableType GetType() const { return static_cast<GfxDescriptorTableType>(m_Heap->GetType()); }
-        ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_Heap->GetD3D12DescriptorHeap(); }
-        uint32_t GetOffset() const { return m_Offset; }
-        uint32_t GetCount() const { return m_Count; }
+        uint32_t GetNumDescriptors() const { return m_NumDescriptors; }
 
     private:
-        GfxDescriptorHeap* m_Heap;
-        uint32_t m_Offset;
-        uint32_t m_Count;
+        uint32_t m_NumDescriptors;
     };
 
-    class GfxDescriptorTableAllocator
+    class GfxOnlineViewDescriptorTableAllocator
     {
     public:
-        GfxDescriptorTableAllocator(GfxDevice* device, GfxDescriptorTableType type, uint32_t staticDescriptorCount, uint32_t dynamicDescriptorCapacity);
-        ~GfxDescriptorTableAllocator() = default;
+        GfxOnlineViewDescriptorTableAllocator(GfxDevice* device, uint32_t numMaxDescriptors);
 
-        GfxDescriptorTableAllocator(const GfxDescriptorTableAllocator&) = delete;
-        GfxDescriptorTableAllocator& operator=(const GfxDescriptorTableAllocator&) = delete;
+        std::optional<GfxOnlineDescriptorTable> AllocateOneFrame(
+            const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors,
+            uint32_t numDescriptors);
 
-        void BeginFrame();
-        void EndFrame(uint64_t fenceValue);
-        GfxDescriptorTable AllocateDynamicTable(uint32_t descriptorCount);
+        void CleanUpAllocations();
 
-        GfxDescriptorTable GetStaticTable() const;
-
-        uint32_t GetStaticDescriptorCount() const { return m_Heap->GetCapacity() - m_DynamicCapacity; }
-        uint32_t GetDynamicDescriptorCapacity() const { return m_DynamicCapacity; }
-        ID3D12DescriptorHeap* GetD3D12DescriptorHeap() const { return m_Heap->GetD3D12DescriptorHeap(); }
-
-        uint32_t GetDynamicFront() const { return m_DynamicFront; }
-        uint32_t GetDynamicRear() const { return m_DynamicRear; }
+        uint32_t GetFront() const { return m_Front; }
+        uint32_t GetRear() const { return m_Rear; }
+        uint32_t GetNumMaxDescriptors() const { return m_NumMaxDescriptors; }
+        GfxDescriptorHeap* GetHeap() const { return m_Heap.get(); }
 
     private:
+        // Ring buffer
         std::unique_ptr<GfxDescriptorHeap> m_Heap;
+        uint32_t m_Front;
+        uint32_t m_Rear;
+        uint32_t m_NumMaxDescriptors;
+
         std::queue<std::pair<uint64_t, uint32_t>> m_ReleaseQueue;
-        uint32_t m_DynamicFront;
-        uint32_t m_DynamicRear;
-        uint32_t m_DynamicCapacity;
+    };
+
+    class GfxOnlineSamplerDescriptorTableAllocator
+    {
+
     };
 }

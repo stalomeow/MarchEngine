@@ -3,15 +3,16 @@
 #include "GfxUtils.h"
 #include "Debug.h"
 #include <Windows.h>
+#include <stdexcept>
 
 namespace march
 {
-    static LPCSTR GetDescriptorHeapTypeName(D3D12_DESCRIPTOR_HEAP_TYPE type)
+    static std::string to_string(D3D12_DESCRIPTOR_HEAP_TYPE type)
     {
         switch (type)
         {
         case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
-            return "CBV_SRV_UAV";
+            return "CBV/SRV/UAV";
         case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
             return "SAMPLER";
         case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
@@ -80,145 +81,92 @@ namespace march
         m_Device->GetD3DDevice4()->CopyDescriptors(1, &destDescriptors, &numCopy, numCopy, srcDescriptors, nullptr, GetType());
     }
 
-    GfxDescriptorHandle::GfxDescriptorHandle(GfxDescriptorHeap* heap, uint32_t pageIndex, uint32_t heapIndex)
-        : m_Heap(heap), m_PageIndex(pageIndex), m_HeapIndex(heapIndex)
+    GfxOfflineDescriptorAllocator::GfxOfflineDescriptorAllocator(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t pageSize)
+        : m_Device(device)
+        , m_Type(type)
+        , m_PageSize(pageSize)
+        , m_NextDescriptorIndex(0)
+        , m_Pages{}
+        , m_ReleaseQueue{}
     {
     }
 
-    GfxDescriptorAllocator::GfxDescriptorAllocator(GfxDevice* device, D3D12_DESCRIPTOR_HEAP_TYPE descriptorType)
-        : m_Device(device), m_DescriptorType(descriptorType)
-        , m_NextDescriptorIndex(0), m_Pages{}, m_FrameFreeList{}, m_ReleaseQueue{}
+    GfxOfflineDescriptor GfxOfflineDescriptorAllocator::Allocate()
     {
-    }
-
-    void GfxDescriptorAllocator::BeginFrame()
-    {
-    }
-
-    void GfxDescriptorAllocator::EndFrame(uint64_t fenceValue)
-    {
-        for (const GfxDescriptorHandle& handle : m_FrameFreeList)
+        if (!m_ReleaseQueue.empty() && m_Device->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
-            m_ReleaseQueue.emplace(fenceValue, handle);
-        }
-
-        m_FrameFreeList.clear();
-    }
-
-    GfxDescriptorHandle GfxDescriptorAllocator::Allocate()
-    {
-        if (!m_ReleaseQueue.empty() && m_Device->IsGraphicsFenceCompleted(m_ReleaseQueue.front().first))
-        {
-            GfxDescriptorHandle result = m_ReleaseQueue.front().second;
+            GfxOfflineDescriptor result = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
+
+            // 增加版号，使以前的缓存失效
+            result.IncrementVersion();
             return result;
         }
 
-        if (m_Pages.empty() || m_NextDescriptorIndex >= PageSize)
+        if (m_Pages.empty() || m_NextDescriptorIndex >= m_PageSize)
         {
+            std::string heapName = "GfxOfflineDescriptorPage" + std::to_string(m_Pages.size());
+
+            GfxDescriptorHeapDesc heapDesc{};
+            heapDesc.Type = m_Type;
+            heapDesc.Capacity = m_PageSize;
+            heapDesc.ShaderVisible = false;
+
+            m_Pages.push_back(std::make_unique<GfxDescriptorHeap>(m_Device, heapName, heapDesc));
             m_NextDescriptorIndex = 0;
 
-            std::string name = "GfxDescriptorPage" + std::to_string(m_Pages.size());
-            m_Pages.push_back(std::make_unique<GfxDescriptorHeap>(m_Device, m_DescriptorType, PageSize, false, name));
-            LOG_TRACE("Create %s; Size: %d; Type: %s", name.c_str(), PageSize, GetDescriptorHeapTypeName(m_DescriptorType));
+            LOG_TRACE("Create %s; Size: %u; Type: %s", heapName.c_str(), m_PageSize, to_string(m_Type).c_str());
         }
 
-        return GfxDescriptorHandle(m_Pages.back().get(), static_cast<uint32_t>(m_Pages.size()) - 1, m_NextDescriptorIndex++);
+        return m_Pages.back()->GetCpuHandle(m_NextDescriptorIndex++);
     }
 
-    void GfxDescriptorAllocator::Free(const GfxDescriptorHandle& handle)
+    void GfxOfflineDescriptorAllocator::Release(const GfxOfflineDescriptor& descriptor)
     {
-        // TODO check if the handle is valid
-        m_FrameFreeList.push_back(handle);
+        m_ReleaseQueue.emplace(m_Device->GetNextFrameFence(), descriptor);
     }
 
-    GfxDescriptorTable::GfxDescriptorTable(GfxDescriptorHeap* heap, uint32_t offset, uint32_t count)
-        : m_Heap(heap), m_Offset(offset), m_Count(count)
+    GfxOnlineViewDescriptorTableAllocator::GfxOnlineViewDescriptorTableAllocator(GfxDevice* device, uint32_t numMaxDescriptors)
+        : m_Front(0)
+        , m_Rear(0)
+        , m_NumMaxDescriptors(numMaxDescriptors)
+        , m_ReleaseQueue{}
     {
+        GfxDescriptorHeapDesc heapDesc{};
+        heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        heapDesc.Capacity = numMaxDescriptors;
+        heapDesc.ShaderVisible = true;
+
+        m_Heap = std::make_unique<GfxDescriptorHeap>(device, "OnlineViewDescriptorTableRingBuffer", heapDesc);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxDescriptorTable::GetCpuHandle(uint32_t index) const
-    {
-        if (index >= m_Count)
-        {
-            throw std::out_of_range("Index out of the range of descriptor table");
-        }
-
-        return m_Heap->GetCpuHandle(m_Offset + index);
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE GfxDescriptorTable::GetGpuHandle(uint32_t index) const
-    {
-        if (index >= m_Count)
-        {
-            throw std::out_of_range("Index out of the range of descriptor table");
-        }
-
-        return m_Heap->GetGpuHandle(m_Offset + index);
-    }
-
-    void GfxDescriptorTable::Copy(uint32_t destIndex, D3D12_CPU_DESCRIPTOR_HANDLE srcDescriptor) const
-    {
-        if (destIndex >= m_Count)
-        {
-            throw std::out_of_range("Index out of the range of descriptor heap span");
-        }
-
-        m_Heap->Copy(m_Offset + destIndex, srcDescriptor);
-    }
-
-    GfxDescriptorTableAllocator::GfxDescriptorTableAllocator(GfxDevice* device, GfxDescriptorTableType type, uint32_t staticDescriptorCount, uint32_t dynamicDescriptorCapacity)
-        : m_ReleaseQueue{}, m_DynamicFront(0), m_DynamicRear(0), m_DynamicCapacity(dynamicDescriptorCapacity)
-    {
-        D3D12_DESCRIPTOR_HEAP_TYPE heapType = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(type);
-        std::string name = GetDescriptorHeapTypeName(heapType) + std::string("_DescriptorTablePool");
-        uint32_t capacity = dynamicDescriptorCapacity + staticDescriptorCount; // static 部分放在 dynamic 后面
-        m_Heap = std::make_unique<GfxDescriptorHeap>(device, heapType, capacity, true, name);
-    }
-
-    void GfxDescriptorTableAllocator::BeginFrame()
-    {
-        GfxDevice* device = m_Heap->GetDevice();
-
-        while (!m_ReleaseQueue.empty() && device->IsGraphicsFenceCompleted(m_ReleaseQueue.front().first))
-        {
-            m_DynamicFront = m_ReleaseQueue.front().second;
-            m_ReleaseQueue.pop();
-        }
-    }
-
-    void GfxDescriptorTableAllocator::EndFrame(uint64_t fenceValue)
-    {
-        m_ReleaseQueue.emplace(fenceValue, m_DynamicRear);
-    }
-
-    GfxDescriptorTable GfxDescriptorTableAllocator::AllocateDynamicTable(uint32_t descriptorCount)
+    std::optional<GfxOnlineDescriptorTable> GfxOnlineViewDescriptorTableAllocator::AllocateOneFrame(const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors, uint32_t numDescriptors)
     {
         // 循环队列需要保留一个空间来区分队列满和队列空
-        if (descriptorCount > m_DynamicCapacity - 1)
+        if (numDescriptors > m_NumMaxDescriptors - 1)
         {
-            throw std::out_of_range("Dynamic descriptor table size exceeds the capacity of the allocator");
+            return std::nullopt;
         }
 
         bool canAllocate = false;
 
-        if (m_DynamicFront <= m_DynamicRear)
+        if (m_Front <= m_Rear)
         {
-            UINT remaining = m_DynamicCapacity - m_DynamicRear;
+            uint32_t remaining = m_NumMaxDescriptors - m_Rear;
 
-            if (m_DynamicFront == 0)
+            if (m_Front == 0)
             {
                 // 空出一个位置来区分队列满和队列空
-                if (remaining - 1 >= descriptorCount)
+                if (remaining - 1 >= numDescriptors)
                 {
                     canAllocate = true;
                 }
             }
             else
             {
-                if (remaining < descriptorCount)
+                if (remaining < numDescriptors)
                 {
-                    m_DynamicRear = 0; // 后面不够了，从头开始分配，之后 Front > Rear
+                    m_Rear = 0; // 后面不够了，从头开始分配，之后 Front > Rear
                 }
                 else
                 {
@@ -227,23 +175,33 @@ namespace march
             }
         }
 
-        if (m_DynamicFront - m_DynamicRear - 1 >= descriptorCount)
+        if (m_Front - m_Rear - 1 >= numDescriptors)
         {
             canAllocate = true;
         }
 
         if (!canAllocate)
         {
-            throw std::out_of_range("Descriptor table pool is full");
+            return std::nullopt;
         }
 
-        GfxDescriptorTable table(m_Heap.get(), m_DynamicRear, descriptorCount);
-        m_DynamicRear = (m_DynamicRear + descriptorCount) % m_DynamicCapacity;
-        return table;
+        m_Heap->CopyFrom(offlineDescriptors, numDescriptors, m_Rear);
+        D3D12_GPU_DESCRIPTOR_HANDLE handle = m_Heap->GetGpuHandle(m_Rear);
+
+        m_Rear = (m_Rear + numDescriptors) % m_NumMaxDescriptors;
+        return GfxOnlineDescriptorTable{ handle, numDescriptors };
     }
 
-    GfxDescriptorTable GfxDescriptorTableAllocator::GetStaticTable() const
+    void GfxOnlineViewDescriptorTableAllocator::CleanUpAllocations()
     {
-        return GfxDescriptorTable(m_Heap.get(), m_DynamicCapacity, GetStaticDescriptorCount());
+        GfxDevice* device = m_Heap->GetDevice();
+
+        while (!m_ReleaseQueue.empty() && device->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        {
+            m_Front = m_ReleaseQueue.front().second;
+            m_ReleaseQueue.pop();
+        }
+
+        m_ReleaseQueue.emplace(device->GetNextFrameFence(), m_Rear);
     }
 }
