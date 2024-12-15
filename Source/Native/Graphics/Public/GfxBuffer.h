@@ -1,171 +1,147 @@
 #pragma once
 
-#include "Allocator.h"
+#include "GfxResource.h"
 #include <directx/d3dx12.h>
 #include <string>
 #include <stdint.h>
-#include <vector>
-#include <queue>
-#include <memory>
-#include <Windows.h>
 
 namespace march
 {
     class GfxDevice;
-    class GfxResource;
-    class GfxResourceAllocator;
-
-    enum class GfxBufferUsage
-    {
-        None = 0,
-        Vertex = 1 << 0,
-        Index = 1 << 1,
-        Constant = 1 << 2,
-        Structured = 1 << 3,
-        Raw = 1 << 4,
-        Counter = 1 << 5,
-        UnorderedAccess = 1 << 6,
-    };
-
-    DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsage);
 
     struct GfxBufferDesc
     {
-        uint32_t Stride;
-        uint32_t Count;
+        uint32_t SizeInBytes;
+        bool UnorderedAccess;
         D3D12_RESOURCE_STATES InitialState;
     };
 
+    // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
+    // 但 RootUav 无法使用 Counter，所以 Buffer 会提供 Uav
     class GfxBuffer
     {
     public:
+        GfxBuffer(GfxDevice* device, const std::string& name, const GfxBufferDesc& desc, GfxAllocator allocator);
+        GfxBuffer(GfxDevice* device, uint32_t sizeInBytes, uint32_t dataPlacementAlignment, GfxSubAllocator allocator);
         virtual ~GfxBuffer();
 
-        virtual GfxResource* GetBufferResource() const = 0;
-        virtual uint32_t GetBufferResourceOffset() const = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t offset = 0) const;
+        void SetData(uint32_t destOffset, const void* src, uint32_t sizeInBytes);
 
-        virtual GfxResource* GetCounterResource() const = 0;
-        virtual uint32_t GetCounterResourceOffset() const = 0;
-
-        uint32_t GetStride() const { return m_Stride; }
-        uint32_t GetCount() const { return m_Count; }
-        uint32_t GetSize() const { return m_Stride * m_Count; }
-
-    protected:
-        GfxBuffer(uint32_t stride, uint32_t count);
+        uint32_t GetSize() const { return m_Resource.GetBufferSize(); }
+        GfxResource* GetResource() const { return m_Resource.GetResource(); }
+        GfxDevice* GetDevice() const { return m_Resource.GetDevice(); }
 
     private:
-        const uint32_t m_Stride;
-        const uint32_t m_Count;
+        GfxResourceSpan m_Resource;
+        uint8_t* m_MappedData;
+
+        void TryMapData(GfxResourceAllocator* allocator);
     };
 
-    class GfxAABuffer
+    template <typename T>
+    class GfxVertexBuffer : public GfxBuffer
     {
     public:
-        GfxAABuffer(const std::string& name, const GfxBufferDesc& desc, GfxResourceAllocator* allocator);
-        virtual ~GfxAABuffer();
-
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t index) const;
-        void* GetDataPointer(uint32_t index) const;
-
-        D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
-        D3D12_INDEX_BUFFER_VIEW GetIbv() const;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetSrv();
-        D3D12_CPU_DESCRIPTOR_HANDLE GetUav();
-
-        template <typename T>
-        T& GetData(uint32_t index) const
+        GfxVertexBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
+            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
         {
-            static_assert(sizeof(T) <= m_Stride, "Size of T is larger than stride");
-            return *static_cast<T*>(GetDataPointer(index));
         }
 
-    private:
-        const uint32_t m_Stride;
-        const uint32_t m_Count;
-        std::unique_ptr<GfxResource> m_BufferResource;
-        std::unique_ptr<GfxResource> m_CounterResource;
-        void* m_MappedData;
+        // TODO 我不清楚 vertex buffer 有没有 dataPlacementAlignment
+
+        GfxVertexBuffer(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
+            : GfxBuffer(device, static_cast<uint32_t>(sizeof(T)) * count, /* dataPlacementAlignment */ 0, allocator)
+        {
+        }
+
+        D3D12_VERTEX_BUFFER_VIEW GetVbv() const
+        {
+            D3D12_VERTEX_BUFFER_VIEW view{};
+            view.BufferLocation = GetGpuVirtualAddress();
+            view.SizeInBytes = static_cast<UINT>(GetSize());
+            view.StrideInBytes = sizeof(T);
+            return view;
+        }
     };
 
-    // 考虑 Buffer SRV，还必须按照 stride 对齐
-    // D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT
-
-    class GfxUploadMemory
+    class GfxIndexBufferUInt16 : public GfxBuffer
     {
     public:
-        GfxUploadMemory(GfxBuffer* buffer, uint32_t offset, uint32_t stride, uint32_t count);
+        GfxIndexBufferUInt16(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
+            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(uint16_t)) * count, false, D3D12_RESOURCE_STATE_INDEX_BUFFER }, allocator)
+        {
+        }
 
-        uint8_t* GetMappedData(uint32_t index) const;
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t index) const;
-        uint32_t GetD3D12ResourceOffset(uint32_t index) const;
-        ID3D12Resource* GetD3D12Resource() const;
+        // TODO 我不清楚 index buffer 有没有 dataPlacementAlignment
 
-        uint32_t GetStride() const { return m_Stride; }
-        uint32_t GetCount() const { return m_Count; }
-        uint32_t GetSize() const { return m_Stride * m_Count; }
+        GfxIndexBufferUInt16(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
+            : GfxBuffer(device, static_cast<uint32_t>(sizeof(uint16_t)) * count, /* dataPlacementAlignment */ 0, allocator)
+        {
+        }
 
-    private:
-        GfxBuffer* m_Buffer;
-        uint32_t m_Offset;
-        uint32_t m_Stride;
-        uint32_t m_Count;
+        D3D12_INDEX_BUFFER_VIEW GetIbv() const
+        {
+            D3D12_INDEX_BUFFER_VIEW view{};
+            view.BufferLocation = GetGpuVirtualAddress();
+            view.SizeInBytes = static_cast<UINT>(GetSize());
+            view.Format = DXGI_FORMAT_R16_UINT;
+            return view;
+        }
     };
 
-    class GfxUploadMemoryAllocator
+    class GfxIndexBufferUInt32 : public GfxBuffer
     {
     public:
-        GfxUploadMemoryAllocator(GfxDevice* device);
-        ~GfxUploadMemoryAllocator() = default;
+        GfxIndexBufferUInt32(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
+            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(uint32_t)) * count, false, D3D12_RESOURCE_STATE_INDEX_BUFFER }, allocator)
+        {
+        }
 
-        GfxUploadMemoryAllocator(const GfxUploadMemoryAllocator&) = delete;
-        GfxUploadMemoryAllocator& operator=(const GfxUploadMemoryAllocator&) = delete;
+        // TODO 我不清楚 index buffer 有没有 dataPlacementAlignment
 
-        void BeginFrame();
-        void EndFrame(uint64_t fenceValue);
-        GfxUploadMemory Allocate(uint32_t size, uint32_t count = 1, uint32_t alignment = 1);
+        GfxIndexBufferUInt32(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
+            : GfxBuffer(device, static_cast<uint32_t>(sizeof(uint32_t)) * count, /* dataPlacementAlignment */ 0, allocator)
+        {
+        }
 
-    public:
-        static const uint32_t PageSize = 4 * 1024 * 1024; // 4MB
-
-    private:
-        GfxDevice* m_Device;
-
-        uint32_t m_AllocateOffset;
-        uint32_t m_PageCounter; // 统计已经分配的 page 数量（不包括 large page）
-        std::vector<std::unique_ptr<GfxUploadBuffer>> m_UsedPages;
-        std::vector<std::unique_ptr<GfxUploadBuffer>> m_LargePages;
-        std::queue<std::pair<uint64_t, std::unique_ptr<GfxUploadBuffer>>> m_ReleaseQueue;
+        D3D12_INDEX_BUFFER_VIEW GetIbv() const
+        {
+            D3D12_INDEX_BUFFER_VIEW view{};
+            view.BufferLocation = GetGpuVirtualAddress();
+            view.SizeInBytes = static_cast<UINT>(GetSize());
+            view.Format = DXGI_FORMAT_R32_UINT;
+            return view;
+        }
     };
 
-    struct GfxSubBufferMultiBuddyAllocatorDesc
+    template <typename T>
+    class GfxConstantBuffer : public GfxBuffer
     {
-        uint32_t MinBlockSize;
-        uint32_t DefaultMaxBlockSize;
-        D3D12_RESOURCE_FLAGS ResourceFlags;
-        D3D12_RESOURCE_STATES InitialResourceState;
+        GfxConstantBuffer(GfxDevice* device, const std::string& name, GfxAllocator allocator)
+            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)), false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
+        {
+        }
+
+        GfxConstantBuffer(GfxDevice* device, GfxSubAllocator allocator)
+            : GfxBuffer(device, static_cast<uint32_t>(sizeof(T)), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, allocator)
+        {
+        }
     };
 
-    class GfxSubBufferMultiBuddyAllocator : protected MultiBuddyAllocator
+    template <typename T>
+    class GfxStructuredBuffer : public GfxBuffer
     {
-    public:
-        GfxSubBufferMultiBuddyAllocator(const std::string& name, const GfxSubBufferMultiBuddyAllocatorDesc& desc, GfxResourceAllocator* bufferAllocator);
+        GfxStructuredBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
+            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_GENERIC_READ }, allocator)
+        {
+        }
 
-    protected:
-        void AppendNewAllocator(uint32_t maxBlockSize) override;
+        // TODO 我不清楚 structured buffer 有没有 dataPlacementAlignment
 
-    private:
-        const D3D12_RESOURCE_FLAGS m_ResourceFlags;
-        const D3D12_RESOURCE_STATES m_InitialResourceState;
-        GfxResourceAllocator* m_BufferAllocator;
-        std::vector<std::unique_ptr<GfxBuffer>> m_Buffers;
-    };
-
-    class GfxSubBufferLinearAllocator : protected LinearAllocator
-    {
-    private:
-        const D3D12_RESOURCE_FLAGS m_ResourceFlags;
-        const D3D12_RESOURCE_STATES m_InitialResourceState;
-        GfxResourceAllocator* m_BufferAllocator;
+        GfxStructuredBuffer(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
+            : GfxBuffer(device, static_cast<uint32_t>(sizeof(T)) * count, /* dataPlacementAlignment */ 0, allocator)
+        {
+        }
     };
 }

@@ -132,6 +132,7 @@ namespace march
 
     class GfxResource;
 
+    // 不要跨帧使用
     class GfxCommandContext final
     {
     public:

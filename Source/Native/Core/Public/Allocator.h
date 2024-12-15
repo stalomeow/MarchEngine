@@ -21,6 +21,7 @@ namespace march
         const std::string& GetName() const { return m_Name; }
 
     protected:
+        // 返回 page index
         virtual size_t RequestNewPage(uint32_t sizeInBytes, bool large) = 0;
 
     private:

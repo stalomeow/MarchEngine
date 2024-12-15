@@ -15,15 +15,16 @@ namespace march
 {
     class GfxCommandQueue;
     class GfxCommandList;
-    class GfxUploadMemory;
-    class GfxUploadMemoryAllocator;
     class GfxSwapChain;
     class GfxRenderTexture;
-    class GfxResourceAllocator;
-    class GfxSubBufferMultiBuddyAllocator;
 
     struct GfxOfflineDescriptor;
     class GfxOfflineDescriptorAllocator;
+
+    class GfxCompleteResourceAllocator;
+    class GfxBufferSubAllocator;
+    enum class GfxAllocator;
+    enum class GfxSubAllocator;
 
     enum class GfxCommandType;
     class GfxCommandManager;
@@ -49,8 +50,6 @@ namespace march
 
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
-        GfxDescriptorTableAllocator* GetViewDescriptorTableAllocator() const { return m_ViewDescriptorTableAllocator.get(); }
-        GfxDescriptorTableAllocator* GetSamplerDescriptorTableAllocator() const { return m_SamplerDescriptorTableAllocator.get(); }
 
         GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
         GfxCommandContext* RequestContext(GfxCommandType type);
@@ -69,12 +68,10 @@ namespace march
         GfxRenderTexture* GetBackBuffer() const;
         uint32_t GetMaxFrameLatency() const;
 
-        GfxOfflineDescriptor AllocateOfflineDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
-        void ReleaseOfflineDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, const GfxOfflineDescriptor& descriptor);
+        GfxOfflineDescriptorAllocator* GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type);
 
-        GfxUploadMemory AllocateTransientUploadMemory(uint32_t size, uint32_t count = 1, uint32_t alignment = 1);
-        GfxDescriptorTable AllocateTransientDescriptorTable(GfxDescriptorTableType type, uint32_t descriptorCount);
-        GfxDescriptorTable GetStaticDescriptorTable(GfxDescriptorTableType type);
+        GfxCompleteResourceAllocator* GetAllocator(GfxAllocator allocator) const;
+        GfxBufferSubAllocator* GetSubAllocator(GfxSubAllocator subAllocator) const;
 
         uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
 
@@ -90,19 +87,16 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12Device4> m_Device;
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 
-        std::unique_ptr<GfxUploadMemoryAllocator> m_UploadMemoryAllocator;
         std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-        std::unique_ptr<GfxDescriptorTableAllocator> m_ViewDescriptorTableAllocator;
-        std::unique_ptr<GfxDescriptorTableAllocator> m_SamplerDescriptorTableAllocator;
         std::unique_ptr<GfxSwapChain> m_SwapChain;
 
-        std::unique_ptr<GfxResourceAllocator> m_DefaultBufferAllocator;
-        std::unique_ptr<GfxResourceAllocator> m_UploadBufferAllocator;
-        std::unique_ptr<GfxResourceAllocator> m_ExternalTextureAllocator;
-        std::unique_ptr<GfxResourceAllocator> m_RenderTextureAllocatorMSAA;
-        std::unique_ptr<GfxResourceAllocator> m_RenderTextureAllocator;
-
-        std::unique_ptr<GfxSubBufferMultiBuddyAllocator> m_UploadConstantBufferAllocator;
+        std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedDefaultAllocator;
+        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocator;
+        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultMSAllocatorMS;
+        std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedUploadAllocator;
+        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocator;
+        std::unique_ptr<GfxBufferSubAllocator> m_TempUploadSubAllocator;
+        std::unique_ptr<GfxBufferSubAllocator> m_PersistentUploadSubAllocator;
 
         std::unique_ptr<GfxCommandManager> m_CommandManager;
 
