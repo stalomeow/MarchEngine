@@ -14,9 +14,14 @@ namespace march
         , m_CommandList(nullptr)
         , m_ResourceBarriers{}
         , m_SyncPointsToWait{}
-        , m_SrvCache{}
-        , m_UavCache{}
-        , m_SamplerCache{}
+        , m_GraphicsSrvUavCache{}
+        , m_GraphicsSamplerCache{}
+        , m_ViewResourceRequiredStates{}
+        , m_ViewHeap(nullptr)
+        , m_SamplerHeap(nullptr)
+        , m_IsDescriptorHeapChanged(false)
+        , m_GlobalTextures{}
+        , m_GlobalBuffers{}
     {
     }
 
@@ -107,5 +112,86 @@ namespace march
     void GfxCommandContext::WaitOnGpu(const GfxSyncPoint& syncPoint)
     {
         m_SyncPointsToWait.push_back(syncPoint);
+    }
+
+    void GfxCommandContext::SetGraphicsSrv(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    {
+        m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
+
+        // 记录状态，之后会统一使用 ResourceBarrier
+        if (type == ShaderProgramType::Pixel)
+        {
+            m_ViewResourceRequiredStates[resource] |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
+        else
+        {
+            m_ViewResourceRequiredStates[resource] |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        }
+    }
+
+    void GfxCommandContext::SetGraphicsUav(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    {
+        m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
+
+        // 记录状态，之后会统一使用 ResourceBarrier
+        m_ViewResourceRequiredStates[resource] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+
+    void GfxCommandContext::SetGraphicsSampler(ShaderProgramType type, uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    {
+        m_GraphicsSamplerCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
+    }
+
+    void GfxCommandContext::SetGraphicsRootSrvUavTable(ShaderProgramType type, uint32_t index)
+    {
+        auto& cache = m_GraphicsSrvUavCache[static_cast<size_t>(type)];
+
+        if (!cache.IsDirty() || cache.IsEmpty())
+        {
+            return;
+        }
+
+        GfxDescriptorHeap* heap = nullptr;
+        GfxOnlineDescriptorTableMultiAllocator* allocator = m_Device->GetOnlineViewDescriptorTableAllocator();
+        D3D12_GPU_DESCRIPTOR_HANDLE table = allocator->Allocate(cache.GetDescriptors(), cache.GetNum(), &heap);
+
+        if (heap != m_ViewHeap)
+        {
+            m_ViewHeap = heap;
+            m_IsDescriptorHeapChanged = true;
+        }
+
+        m_CommandList->SetGraphicsRootDescriptorTable(static_cast<UINT>(index), table);
+    }
+
+    void GfxCommandContext::SetGraphicsRootSamplerTable(ShaderProgramType type, uint32_t index)
+    {
+
+    }
+
+    void GfxCommandContext::SetDescriptorHeaps()
+    {
+        if (!m_IsDescriptorHeapChanged)
+        {
+            return;
+        }
+
+        if (m_ViewHeap != nullptr && m_SamplerHeap != nullptr)
+        {
+            ID3D12DescriptorHeap* heaps[] = { m_ViewHeap->GetD3DDescriptorHeap(), m_SamplerHeap->GetD3DDescriptorHeap() };
+            m_CommandList->SetDescriptorHeaps(2, heaps);
+        }
+        else if (m_ViewHeap != nullptr)
+        {
+            ID3D12DescriptorHeap* heaps[] = { m_ViewHeap->GetD3DDescriptorHeap() };
+            m_CommandList->SetDescriptorHeaps(1, heaps);
+        }
+        else if (m_SamplerHeap != nullptr)
+        {
+            ID3D12DescriptorHeap* heaps[] = { m_SamplerHeap->GetD3DDescriptorHeap() };
+            m_CommandList->SetDescriptorHeaps(1, heaps);
+        }
+
+        m_IsDescriptorHeapChanged = false;
     }
 }

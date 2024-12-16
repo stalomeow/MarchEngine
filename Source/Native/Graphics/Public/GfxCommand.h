@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GfxDescriptor.h"
+#include "Shader.h"
 #include <directx/d3dx12.h>
 #include <wrl.h>
 #include <string>
@@ -8,10 +9,13 @@
 #include <vector>
 #include <stdint.h>
 #include <memory>
+#include <unordered_map>
 
 namespace march
 {
     class GfxDevice;
+    class GfxTexture;
+    class GfxBuffer;
 
     class GfxFence final
     {
@@ -92,6 +96,8 @@ namespace march
 
         // https://therealmjp.github.io/posts/gpu-memory-pool/
         // AsyncCopyHighPriority, // 高优先级的拷贝操作，或许有一天会用到
+
+        NumTypes
     };
 
     class GfxCommandContext;
@@ -121,7 +127,7 @@ namespace march
             std::unique_ptr<GfxCommandQueue> Queue;
             std::unique_ptr<GfxFence> FrameFence;
             std::queue<GfxCommandContext*> FreeContexts;
-        } m_Commands[3]; // Matches GfxCommandType
+        } m_Commands[static_cast<size_t>(GfxCommandType::NumTypes)];
 
         GfxDevice* m_Device;
         std::vector<std::unique_ptr<GfxCommandContext>> m_ContextStore; // 保存所有分配的 command context，用于释放资源
@@ -160,8 +166,26 @@ namespace march
         std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
         std::vector<GfxSyncPoint> m_SyncPointsToWait;
 
-        GfxOfflineDescriptorCache<64> m_SrvCache;
-        GfxOfflineDescriptorCache<32> m_UavCache;
-        GfxOfflineDescriptorCache<16> m_SamplerCache;
+        // 如果 root signature 变化，全部清空
+        // 如果 root signature 没变，只有 dirty 时才重新设置 root descriptor table
+        // 设置 root descriptor table 后，需要清除 dirty 标记
+        // 切换 heap 时，需要强制设置为 dirty，重新设置 root descriptor table
+
+        GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[ShaderProgram::NumTypes];
+        GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[ShaderProgram::NumTypes];
+        std::unordered_map<GfxResource*, D3D12_RESOURCE_STATES> m_ViewResourceRequiredStates; // 暂存 Srv/Uav 资源需要的状态
+        GfxDescriptorHeap* m_ViewHeap;
+        GfxDescriptorHeap* m_SamplerHeap;
+        bool m_IsDescriptorHeapChanged;
+
+        std::unordered_map<int32_t, GfxTexture*> m_GlobalTextures;
+        std::unordered_map<int32_t, GfxBuffer*> m_GlobalBuffers;
+
+        void SetGraphicsSrv(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsUav(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsSampler(ShaderProgramType type, uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsRootSrvUavTable(ShaderProgramType type, uint32_t index);
+        void SetGraphicsRootSamplerTable(ShaderProgramType type, uint32_t index);
+        void SetDescriptorHeaps();
     };
 }

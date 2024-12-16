@@ -13,13 +13,11 @@
 
 namespace march
 {
-    class GfxCommandQueue;
-    class GfxCommandList;
     class GfxSwapChain;
     class GfxRenderTexture;
 
-    struct GfxOfflineDescriptor;
     class GfxOfflineDescriptorAllocator;
+    class GfxOnlineDescriptorTableMultiAllocator;
 
     class GfxCompleteResourceAllocator;
     class GfxBufferSubAllocator;
@@ -51,7 +49,7 @@ namespace march
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
 
-        GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
+        GfxCommandManager* GetCommandManager() const;
         GfxCommandContext* RequestContext(GfxCommandType type);
 
         uint64_t GetCompletedFrameFence(bool useCache = false);
@@ -69,9 +67,11 @@ namespace march
         uint32_t GetMaxFrameLatency() const;
 
         GfxOfflineDescriptorAllocator* GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type);
+        GfxOnlineDescriptorTableMultiAllocator* GetOnlineViewDescriptorTableAllocator() const;
+        GfxOnlineDescriptorTableMultiAllocator* GetOnlineSamplerDescriptorTableAllocator() const;
 
-        GfxCompleteResourceAllocator* GetAllocator(GfxAllocator allocator) const;
-        GfxBufferSubAllocator* GetSubAllocator(GfxSubAllocator subAllocator) const;
+        GfxCompleteResourceAllocator* GetResourceAllocator(GfxAllocator allocator) const;
+        GfxBufferSubAllocator* GetResourceAllocator(GfxSubAllocator subAllocator) const;
 
         uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
 
@@ -87,8 +87,13 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12Device4> m_Device;
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 
-        std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+        std::unique_ptr<GfxCommandManager> m_CommandManager;
         std::unique_ptr<GfxSwapChain> m_SwapChain;
+        std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
+
+        std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
+        std::unique_ptr<GfxOnlineDescriptorTableMultiAllocator> m_OnlineViewAllocator;
+        std::unique_ptr<GfxOnlineDescriptorTableMultiAllocator> m_OnlineSamplerAllocator;
 
         std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedDefaultAllocator;
         std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocator;
@@ -97,10 +102,6 @@ namespace march
         std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocator;
         std::unique_ptr<GfxBufferSubAllocator> m_TempUploadSubAllocator;
         std::unique_ptr<GfxBufferSubAllocator> m_PersistentUploadSubAllocator;
-
-        std::unique_ptr<GfxCommandManager> m_CommandManager;
-
-        std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
     };
 
     class GfxException : public std::exception

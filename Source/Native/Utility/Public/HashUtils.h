@@ -21,6 +21,7 @@ namespace march
 
     public:
         size_t GetValue() const { return m_Value; }
+        size_t operator*() const { return m_Value; }
 
         template <typename T>
         void Append(const T& obj)

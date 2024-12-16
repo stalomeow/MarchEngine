@@ -9,7 +9,7 @@ namespace march
         : m_Resource{}
         , m_MappedData(nullptr)
     {
-        GfxCompleteResourceAllocator* resAllocator = device->GetAllocator(allocator);
+        GfxCompleteResourceAllocator* resAllocator = device->GetResourceAllocator(allocator);
         UINT64 width = static_cast<UINT64>(desc.SizeInBytes);
         D3D12_RESOURCE_FLAGS flags = desc.UnorderedAccess ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
         m_Resource = resAllocator->Allocate(name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), desc.InitialState);
@@ -21,7 +21,7 @@ namespace march
         : m_Resource{}
         , m_MappedData(nullptr)
     {
-        GfxBufferSubAllocator* subAllocator = device->GetSubAllocator(allocator);
+        GfxBufferSubAllocator* subAllocator = device->GetResourceAllocator(allocator);
         m_Resource = subAllocator->Allocate(sizeInBytes, dataPlacementAlignment);
 
         TryMapData(subAllocator);
