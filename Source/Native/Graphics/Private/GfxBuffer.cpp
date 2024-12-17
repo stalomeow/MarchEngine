@@ -78,8 +78,8 @@ namespace march
             tempUpload.SetData(0, src, sizeInBytes);
 
             D3D12_RESOURCE_STATES currentState = GetResource()->GetState();
-            context->TransitionResource(GetResource(), D3D12_RESOURCE_STATE_COPY_DEST);
-            context->TransitionResource(tempUpload.GetResource(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+            context->TransitionResource(GetResource().get(), D3D12_RESOURCE_STATE_COPY_DEST);
+            context->TransitionResource(tempUpload.GetResource().get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
             context->FlushResourceBarriers();
 
             context->GetCommandList()->CopyBufferRegion(
@@ -89,7 +89,7 @@ namespace march
                 static_cast<UINT64>(tempUpload.m_Resource.GetBufferOffset()),
                 static_cast<UINT64>(sizeInBytes));
 
-            context->TransitionResource(GetResource(), currentState);
+            context->TransitionResource(GetResource().get(), currentState);
             context->SubmitAndRelease().WaitOnCpu();
         }
     }

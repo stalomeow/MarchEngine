@@ -340,6 +340,8 @@ namespace march
                 continue;
             }
 
+            // sampler 会根据 hash 复用，所以这里也可以根据 hash 复用一组 sampler
+
             DefaultHash hash{};
             for (uint32_t j = 0; j < numDescriptors[i]; j++)
             {

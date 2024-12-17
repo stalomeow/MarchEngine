@@ -85,6 +85,7 @@ namespace march
         GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle, GfxOfflineDescriptorAllocator* allocator);
         GfxOfflineDescriptor() : GfxOfflineDescriptor({}, nullptr) {}
 
+        void Release();
         ~GfxOfflineDescriptor() { Release(); }
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetHandle() const { return m_Handle; }
@@ -99,8 +100,6 @@ namespace march
     private:
         D3D12_CPU_DESCRIPTOR_HANDLE m_Handle;
         GfxOfflineDescriptorAllocator* m_Allocator;
-
-        void Release();
     };
 
     template <size_t Capacity>

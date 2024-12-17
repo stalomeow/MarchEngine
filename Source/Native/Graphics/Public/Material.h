@@ -1,19 +1,16 @@
 #pragma once
 
-#include "GfxBuffer.h"
 #include "Shader.h"
+#include "GfxBuffer.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
-#include <vector>
-#include <memory>
 
 namespace march
 {
     class GfxTexture;
-    class GfxConstantBuffer;
     class MaterialInternalUtility;
 
     class Material final
@@ -56,23 +53,20 @@ namespace march
         void EnableKeyword(const std::string& keyword);
         void DisableKeyword(const std::string& keyword);
         void SetKeyword(const std::string& keyword, bool value);
-        GfxConstantBuffer* GetConstantBuffer(int32_t passIndex);
+        GfxRawConstantBuffer* GetConstantBuffer(int32_t passIndex);
         const ShaderPassRenderState& GetResolvedRenderState(int32_t passIndex, size_t* outHash = nullptr);
 
     private:
         void CheckShaderVersion();
-        void RecreateConstantBuffers();
         void RebuildKeywordCache();
+        void ClearConstantBuffers();
         void ClearResolvedRenderStates();
-
-        template<typename T>
-        void SetConstantBufferValue(int32_t id, const T& value);
 
         Shader* m_Shader;
         int32_t m_ShaderVersion;
         ShaderKeywordSet m_KeywordCache;
         std::unordered_set<std::string> m_EnabledKeywords;
-        std::vector<std::unique_ptr<GfxConstantBuffer>> m_ConstantBuffers;
+        std::unordered_map<int32_t, GfxRawConstantBuffer> m_ConstantBuffers; // Key 是 ShaderPassIndex
 
         // Key 是 ShaderPassIndex, Value 是 ShaderPassRenderState 和对应的 Hash
         std::unordered_map<int32_t, std::pair<ShaderPassRenderState, size_t>> m_ResolvedRenderStates;

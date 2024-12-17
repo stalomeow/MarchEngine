@@ -28,8 +28,9 @@ namespace march
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t offset = 0) const;
         void SetData(uint32_t destOffset, const void* src, uint32_t sizeInBytes);
 
+        uint32_t GetResourceOffset() const { return m_Resource.GetBufferOffset(); }
         uint32_t GetSize() const { return m_Resource.GetBufferSize(); }
-        GfxResource* GetResource() const { return m_Resource.GetResource(); }
+        std::shared_ptr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
         GfxDevice* GetDevice() const { return m_Resource.GetDevice(); }
 
     private:
@@ -118,6 +119,7 @@ namespace march
     template <typename T>
     class GfxConstantBuffer : public GfxBuffer
     {
+    public:
         GfxConstantBuffer(GfxDevice* device, const std::string& name, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)), false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
         {
@@ -129,9 +131,24 @@ namespace march
         }
     };
 
+    class GfxRawConstantBuffer : public GfxBuffer
+    {
+    public:
+        GfxRawConstantBuffer(GfxDevice* device, const std::string& name, uint32_t sizeInBytes, GfxAllocator allocator)
+            : GfxBuffer(device, name, GfxBufferDesc{ sizeInBytes, false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
+        {
+        }
+
+        GfxRawConstantBuffer(GfxDevice* device, uint32_t sizeInBytes, GfxSubAllocator allocator)
+            : GfxBuffer(device, sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, allocator)
+        {
+        }
+    };
+
     template <typename T>
     class GfxStructuredBuffer : public GfxBuffer
     {
+    public:
         GfxStructuredBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_GENERIC_READ }, allocator)
         {

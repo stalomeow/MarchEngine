@@ -4,6 +4,7 @@
 #include "GfxCommand.h"
 #include "GfxSettings.h"
 #include "GfxUtils.h"
+#include "HashUtils.h"
 #include "StringUtils.h"
 #include "DotNetRuntime.h"
 #include "DotNetMarshal.h"
@@ -14,25 +15,25 @@
 #undef max
 
 using namespace DirectX;
+using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
 namespace march
 {
-    GfxTexture::GfxTexture(GfxDevice* device, const GfxTextureDesc& desc)
-        : GfxResource(device, D3D12_RESOURCE_STATE_COMMON)
-        , m_Desc(desc)
-        , m_SrvHandles{}
-        , m_UavHandles{}
-        , m_RtvDsvHandles{}
-        , m_SamplerHandle{}
+    GfxTexture::GfxTexture(GfxDevice* device)
+        : m_Device(device)
+        , m_Desc{}
+        , m_Resource{}
+        , m_SrvDescriptors{}
+        , m_UavDescriptors{}
+        , m_RtvDsvDescriptors{}
+        , m_SamplerDescriptor{}
     {
     }
 
-    GfxTexture::~GfxTexture() { Reset(); }
-
     uint32_t GfxTexture::GetMipLevels() const
     {
-        return static_cast<uint32_t>(m_Resource->GetDesc().MipLevels);
+        return static_cast<uint32_t>(GetResource()->GetD3DResource()->GetDesc().MipLevels);
     }
 
     static size_t GetSrvUavIndex(const GfxTextureDesc& desc, GfxTextureElement element)
@@ -58,9 +59,9 @@ namespace march
 
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSrv(GfxTextureElement element)
     {
-        std::pair<GfxDescriptorHandle, bool>& handle = m_SrvHandles[GetSrvUavIndex(m_Desc, element)];
+        GfxOfflineDescriptor& srv = m_SrvDescriptors[GetSrvUavIndex(m_Desc, element)];
 
-        if (!handle.second)
+        if (!srv)
         {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.Format = m_Desc.GetSrvUavDXGIFormat(element);
@@ -127,12 +128,11 @@ namespace march
                 }
             }
 
-            handle.first = m_Device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            handle.second = true;
-            m_Device->GetDevice4()->CreateShaderResourceView(m_Resource, &srvDesc, handle.first.GetCpuHandle());
+            srv = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
+            m_Device->GetD3DDevice4()->CreateShaderResourceView(GetResource()->GetD3DResource(), &srvDesc, srv.GetHandle());
         }
 
-        return handle.first.GetCpuHandle();
+        return srv.GetHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetUav(GfxTextureElement element)
@@ -142,9 +142,9 @@ namespace march
             throw GfxException("Texture is not created with UnorderedAccess flag");
         }
 
-        std::pair<GfxDescriptorHandle, bool>& handle = m_UavHandles[GetSrvUavIndex(m_Desc, element)];
+        GfxOfflineDescriptor& uav = m_UavDescriptors[GetSrvUavIndex(m_Desc, element)];
 
-        if (!handle.second)
+        if (!uav)
         {
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
             uavDesc.Format = m_Desc.GetSrvUavDXGIFormat(element);
@@ -216,12 +216,11 @@ namespace march
                 }
             }
 
-            handle.first = m_Device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            handle.second = true;
-            m_Device->GetDevice4()->CreateUnorderedAccessView(m_Resource, nullptr, &uavDesc, handle.first.GetCpuHandle());
+            uav = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
+            m_Device->GetD3DDevice4()->CreateUnorderedAccessView(GetResource()->GetD3DResource(), nullptr, &uavDesc, uav.GetHandle());
         }
 
-        return handle.first.GetCpuHandle();
+        return uav.GetHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
@@ -232,14 +231,14 @@ namespace march
         }
 
         RtvDsvQuery query = { wOrArraySlice, wOrArraySize, mipSlice };
-        auto [it, isNew] = m_RtvDsvHandles.try_emplace(query);
+        auto [it, isNew] = m_RtvDsvDescriptors.try_emplace(query);
 
         if (isNew)
         {
             CreateRtvDsv(query, it->second);
         }
 
-        return it->second.GetCpuHandle();
+        return it->second.GetHandle();
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(GfxCubemapFace face, uint32_t faceCount, uint32_t arraySlice, uint32_t mipSlice)
@@ -249,9 +248,9 @@ namespace march
         return GetRtvDsv(wOrArraySlice, wOrArraySize, mipSlice);
     }
 
-    void GfxTexture::CreateRtvDsv(const RtvDsvQuery& query, GfxDescriptorHandle& handle)
+    void GfxTexture::CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv)
     {
-        ID3D12Device4* d3d12Device = m_Device->GetDevice4();
+        ID3D12Device4* d3dDevice = m_Device->GetD3DDevice4();
 
         if (m_Desc.IsDepthStencil())
         {
@@ -298,8 +297,8 @@ namespace march
                 }
             }
 
-            handle = m_Device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-            d3d12Device->CreateDepthStencilView(m_Resource, &dsvDesc, handle.GetCpuHandle());
+            rtvDsv = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)->Allocate();
+            d3dDevice->CreateDepthStencilView(GetResource()->GetD3DResource(), &dsvDesc, rtvDsv.GetHandle());
         }
         else
         {
@@ -354,17 +353,17 @@ namespace march
                 }
             }
 
-            handle = m_Device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-            d3d12Device->CreateRenderTargetView(m_Resource, &rtvDesc, handle.GetCpuHandle());
+            rtvDsv = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)->Allocate();
+            d3dDevice->CreateRenderTargetView(GetResource()->GetD3DResource(), &rtvDesc, rtvDsv.GetHandle());
         }
     }
 
-    // TODO make sampler into a global cache
-    // TODO sampler heap 8 个一组为一个 block，lru 复用 sampler 组合，参考 ue5
-
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSampler()
     {
-        if (!m_SamplerHandle.second)
+        // 根据 hash 复用
+        static std::unordered_map<size_t, GfxOfflineDescriptor> samplerCache{};
+
+        if (!m_SamplerDescriptor)
         {
             D3D12_SAMPLER_DESC samplerDesc = {};
             samplerDesc.MipLODBias = m_Desc.MipmapBias;
@@ -440,53 +439,43 @@ namespace march
                 throw GfxException("Invalid wrap mode");
             }
 
-            m_SamplerHandle.first = m_Device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-            m_SamplerHandle.second = true;
-            m_Device->GetDevice4()->CreateSampler(&samplerDesc, m_SamplerHandle.first.GetCpuHandle());
+            DefaultHash hash{};
+            hash.Append(samplerDesc);
+            auto [it, isNew] = samplerCache.try_emplace(*hash);
+
+            if (isNew)
+            {
+                it->second = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->Allocate();
+                m_Device->GetD3DDevice4()->CreateSampler(&samplerDesc, it->second.GetHandle());
+            }
+
+            m_SamplerDescriptor = it->second.GetHandle();
         }
 
-        return m_SamplerHandle.first.GetCpuHandle();
+        return *m_SamplerDescriptor;
     }
 
-    void GfxTexture::Reset()
+    void GfxTexture::ReleaseDescriptors()
     {
-        ReleaseD3D12Resource();
-
-        for (size_t i = 0; i < std::size(m_SrvHandles); i++)
+        for (auto& srv : m_SrvDescriptors)
         {
-            if (m_SrvHandles[i].second)
-            {
-                m_Device->FreeDescriptor(m_SrvHandles[i].first);
-                m_SrvHandles[i].second = false;
-            }
+            srv.Release();
         }
 
-        for (size_t i = 0; i < std::size(m_UavHandles); i++)
+        for (auto& uav : m_UavDescriptors)
         {
-            if (m_UavHandles[i].second)
-            {
-                m_Device->FreeDescriptor(m_UavHandles[i].first);
-                m_UavHandles[i].second = false;
-            }
+            uav.Release();
         }
 
-        for (auto& kv : m_RtvDsvHandles)
-        {
-            m_Device->FreeDescriptor(kv.second);
-        }
-        m_RtvDsvHandles.clear();
-
-        if (m_SamplerHandle.second)
-        {
-            m_Device->FreeDescriptor(m_SamplerHandle.first);
-            m_SamplerHandle.second = false;
-        }
+        m_RtvDsvDescriptors.clear();
+        m_SamplerDescriptor = std::nullopt;
     }
 
-    void GfxTexture::Reset(const GfxTextureDesc& desc)
+    void GfxTexture::Reset(const GfxTextureDesc& desc, GfxResourceSpan&& resource)
     {
-        Reset();
+        ReleaseDescriptors();
         m_Desc = desc;
+        m_Resource = std::move(resource);
     }
 
     GfxTexture* GfxTexture::GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension)
@@ -498,13 +487,10 @@ namespace march
         return DotNet::RuntimeInvoke<GfxTexture*>(ManagedMethod::Texture_NativeGetDefault, csTexture, csDimension);
     }
 
-    GfxExternalTexture::GfxExternalTexture(GfxDevice* device) : GfxTexture(device, {}), m_Name{}, m_Image{} {}
+    GfxExternalTexture::GfxExternalTexture(GfxDevice* device) : GfxTexture(device), m_Name{}, m_Image{} {}
 
     void GfxExternalTexture::LoadFromPixels(const std::string& name, const GfxTextureDesc& desc, void* pixelsData, size_t pixelsSize, uint32_t mipLevels)
     {
-        m_Name = name;
-        Reset(desc);
-
         DXGI_FORMAT format = desc.GetResDXGIFormat();
         size_t width = static_cast<size_t>(desc.Width);
         size_t height = static_cast<size_t>(desc.Height);
@@ -534,13 +520,8 @@ namespace march
 
         memcpy(m_Image.GetPixels(), pixelsData, pixelsSize);
 
-        ID3D12Device4* d3d12Device = m_Device->GetDevice4();
-        D3D12_RESOURCE_FLAGS resFlags = desc.GetResFlags(false);
-        GFX_HR(CreateTextureEx(d3d12Device, m_Image.GetMetadata(), resFlags, CREATETEX_DEFAULT, &m_Resource));
-        m_State = D3D12_RESOURCE_STATE_COMMON; // CreateTextureEx 使用的 state
-        SetD3D12ResourceName(name);
-
-        UploadImage();
+        m_Name = name;
+        UploadImage(desc, CREATETEX_DEFAULT);
     }
 
     static DXGI_FORMAT GetCompressedFormat(const ScratchImage& image, GfxTextureCompression compression)
@@ -745,35 +726,45 @@ namespace march
         }
 
         m_Name = name;
-        Reset(desc);
+        UploadImage(desc, createFlags);
+    }
 
+    void GfxExternalTexture::UploadImage(const GfxTextureDesc& desc, CREATETEX_FLAGS flags)
+    {
         // https://github.com/microsoft/DirectXTex/wiki/CreateTexture#directx-12
 
-        ID3D12Device4* d3d12Device = m_Device->GetDevice4();
-        D3D12_RESOURCE_FLAGS resFlags = desc.GetResFlags(false);
-        GFX_HR(CreateTextureEx(d3d12Device, metadata, resFlags, createFlags, &m_Resource));
-        m_State = D3D12_RESOURCE_STATE_COMMON; // CreateTextureEx 使用的 state
-        SetD3D12ResourceName(name);
+        GfxDevice* device = GetDevice();
+        ID3D12Device4* d3dDevice = device->GetD3DDevice4();
 
-        UploadImage();
-    }
+        ComPtr<ID3D12Resource> resource = nullptr;
+        GFX_HR(CreateTextureEx(d3dDevice, m_Image.GetMetadata(), desc.GetResFlags(false), flags, resource.GetAddressOf()));
+        GfxUtils::SetName(resource.Get(), m_Name);
 
-    void GfxExternalTexture::UploadImage()
-    {
+        // CreateTextureEx 使用 D3D12_RESOURCE_STATE_COMMON
+        Reset(desc, std::make_shared<GfxResource>(device, resource, D3D12_RESOURCE_STATE_COMMON));
+
         std::vector<D3D12_SUBRESOURCE_DATA> subresources{};
-        GFX_HR(PrepareUpload(m_Device->GetDevice4(), m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
+        GFX_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
 
         // upload is implemented by application developer. Here's one solution using <d3dx12.h>
-        const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_Resource, 0, static_cast<UINT>(subresources.size()));
+        const UINT64 uploadBufferSize = GetRequiredIntermediateSize(GetResource()->GetD3DResource(), 0, static_cast<UINT>(subresources.size()));
 
-        GfxUploadMemory m = m_Device->AllocateTransientUploadMemory(static_cast<uint32_t>(uploadBufferSize));
-        UINT64 mOffset = static_cast<UINT64>(m.GetD3D12ResourceOffset(0));
-        UpdateSubresources(m_Device->GetGraphicsCommandList()->GetD3D12CommandList(), m_Resource,
-            m.GetD3D12Resource(), mOffset, 0, static_cast<UINT>(subresources.size()), subresources.data());
+        GfxBuffer uploadBuffer{ device, static_cast<uint32_t>(uploadBufferSize), 0, GfxSubAllocator::TempUpload };
+        GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
+
+        UpdateSubresources(
+            context->GetCommandList(),
+            GetResource()->GetD3DResource(),
+            uploadBuffer.GetResource()->GetD3DResource(),
+            static_cast<UINT64>(uploadBuffer.GetResourceOffset()),
+            0, static_cast<UINT>(subresources.size()),
+            subresources.data());
+
+        context->SubmitAndRelease().WaitOnCpu();
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc)
-        : GfxTexture(device, desc)
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxAllocator allocator)
+        : GfxTexture(device)
     {
         D3D12_RESOURCE_DESC resDesc = {};
         resDesc.Alignment = 0;
@@ -811,28 +802,28 @@ namespace march
         D3D12_CLEAR_VALUE clearValue = {};
         clearValue.Format = desc.GetRtvDsvDXGIFormat();
 
+        D3D12_RESOURCE_STATES initialState;
+
         if (desc.IsDepthStencil())
         {
             clearValue.DepthStencil.Depth = GfxUtils::FarClipPlaneDepth;
             clearValue.DepthStencil.Stencil = 0;
 
-            m_State = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+            initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
         }
         else
         {
             memcpy(clearValue.Color, Colors::Black, sizeof(clearValue.Color));
 
-            m_State = D3D12_RESOURCE_STATE_COMMON;
+            initialState = D3D12_RESOURCE_STATE_COMMON;
         }
 
-        GFX_HR(device->GetD3DDevice4()->CreateCommittedResource(
-            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE,
-            &resDesc, m_State, &clearValue, IID_PPV_ARGS(&m_Resource)));
-        SetD3D12ResourceName(name);
+        GfxCompleteResourceAllocator* resAllocator = device->GetResourceAllocator(allocator);
+        Reset(desc, resAllocator->Allocate(name, &resDesc, initialState, &clearValue));
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, const GfxTextureResourceDesc& resDesc)
-        : GfxTexture(device, {})
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc)
+        : GfxTexture(device)
     {
         D3D12_RESOURCE_DESC d3d12Desc = resource->GetDesc();
 
@@ -867,8 +858,6 @@ namespace march
             throw GfxException("Invalid resource dimension");
         }
 
-        Reset(desc);
-        m_Resource = resource;
-        m_State = resDesc.State;
+        Reset(desc, std::make_shared<GfxResource>(device, resource, resDesc.State));
     }
 }

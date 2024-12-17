@@ -235,7 +235,7 @@ namespace march
 
         GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[ShaderProgram::NumTypes];
         GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[ShaderProgram::NumTypes];
-        std::unordered_map<GfxResource*, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
+        std::unordered_map<std::shared_ptr<GfxResource>, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
@@ -256,13 +256,13 @@ namespace march
         std::unordered_map<int32_t, GfxBuffer*> m_GlobalBuffers;
 
         GfxTexture* FindTexture(int32_t id, Material* material);
-        GfxBuffer* FindBuffer(int32_t id, Material* material, bool isConstantBuffer);
+        GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex);
 
-        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer);
-        void SetGraphicsSrv(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
-        void SetGraphicsUav(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer);
+        void SetGraphicsSrv(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsUav(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
         void SetGraphicsSampler(ShaderProgramType type, uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
-        void SetGraphicsRootSignatureAndParameters(GfxRootSignature* rootSignature, Material* material);
+        void SetGraphicsRootSignatureAndParameters(GfxRootSignature* rootSignature, Material* material, int32_t passIndex);
         void SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature);
         void SetGraphicsRootSrvCbvBuffers();
         void TransitionGraphicsViewResources();

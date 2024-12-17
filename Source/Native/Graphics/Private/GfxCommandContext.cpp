@@ -132,11 +132,11 @@ namespace march
         return texture;
     }
 
-    GfxBuffer* GfxCommandContext::FindBuffer(int32_t id, Material* material, bool isConstantBuffer)
+    GfxBuffer* GfxCommandContext::FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex)
     {
         if (isConstantBuffer && id == Shader::GetMaterialConstantBufferId())
         {
-            //return material->GetConstantBuffer();
+            return material->GetConstantBuffer(passIndex);
         }
 
         if (auto it = m_GlobalBuffers.find(id); it != m_GlobalBuffers.end())
@@ -147,7 +147,7 @@ namespace march
         return nullptr;
     }
 
-    void GfxCommandContext::SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer)
+    void GfxCommandContext::SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer)
     {
         m_GraphicsSrvCbvBufferCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), address, isConstantBuffer);
 
@@ -165,7 +165,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetGraphicsSrv(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    void GfxCommandContext::SetGraphicsSrv(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
     {
         m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
 
@@ -180,7 +180,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetGraphicsUav(ShaderProgramType type, uint32_t index, GfxResource* resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    void GfxCommandContext::SetGraphicsUav(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
     {
         m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
 
@@ -193,7 +193,7 @@ namespace march
         m_GraphicsSamplerCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
     }
 
-    void GfxCommandContext::SetGraphicsRootSignatureAndParameters(GfxRootSignature* rootSignature, Material* material)
+    void GfxCommandContext::SetGraphicsRootSignatureAndParameters(GfxRootSignature* rootSignature, Material* material, int32_t passIndex)
     {
         // GfxRootSignature 本身不复用，但内部的 ID3D12RootSignature 是复用的
         // 如果 ID3D12RootSignature 变了，说明根签名发生了结构上的变化
@@ -216,7 +216,7 @@ namespace march
 
             for (const GfxRootSignature::BufferBinding& buf : rootSignature->GetSrvCbvBufferRootParamIndices(programType))
             {
-                if (GfxBuffer* buffer = FindBuffer(buf.Id, material, buf.IsConstantBuffer))
+                if (GfxBuffer* buffer = FindBuffer(buf.Id, buf.IsConstantBuffer, material, passIndex))
                 {
                     SetGraphicsSrvCbvBuffer(programType, buf.BindPoint, buffer->GetResource(), buffer->GetGpuVirtualAddress(), buf.IsConstantBuffer);
                 }
@@ -226,7 +226,7 @@ namespace march
             {
                 if (GfxTexture* texture = FindTexture(tex.Id, material))
                 {
-                    SetGraphicsSrv(programType, tex.BindPointTexture, texture, texture->GetSrv());
+                    SetGraphicsSrv(programType, tex.BindPointTexture, texture->GetResource(), texture->GetSrv());
 
                     if (tex.BindPointSampler.has_value())
                     {
@@ -245,7 +245,7 @@ namespace march
             {
                 if (GfxTexture* texture = FindTexture(tex.Id, material))
                 {
-                    SetGraphicsUav(programType, tex.BindPoint, texture, texture->GetUav());
+                    SetGraphicsUav(programType, tex.BindPoint, texture->GetResource(), texture->GetUav());
                 }
             }
         }
@@ -471,7 +471,7 @@ namespace march
     {
         for (const auto& [resource, state] : m_GraphicsViewResourceRequiredStates)
         {
-            TransitionResource(resource, state);
+            TransitionResource(resource.get(), state);
         }
 
         m_GraphicsViewResourceRequiredStates.clear();

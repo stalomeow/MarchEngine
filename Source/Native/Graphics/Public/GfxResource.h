@@ -62,7 +62,7 @@ namespace march
 
         GfxResourceSpan MakeBufferSlice(uint32_t offset, uint32_t size, GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation) const;
 
-        GfxResource* GetResource() const { return m_Resource.get(); }
+        std::shared_ptr<GfxResource> GetResource() const { return m_Resource; }
         GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
         GfxResourceAllocator* GetSubAllocator() const { return m_Allocator; }
 

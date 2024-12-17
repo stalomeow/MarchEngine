@@ -4,6 +4,7 @@
 #include "GfxTexture.h"
 #include "GfxUtils.h"
 #include "GfxPipelineState.h"
+#include <vector>
 
 using namespace DirectX;
 
@@ -42,28 +43,48 @@ namespace march
 
     void Material::SetInt(int32_t id, int32_t value)
     {
+        if (auto it = m_Ints.find(id); it != m_Ints.end() && it->second == value)
+        {
+            return;
+        }
+
         m_Ints[id] = value;
-        SetConstantBufferValue(id, value);
         ClearResolvedRenderStates(); // 解析时用到了 Int 和 Float，强制重新解析
+        ClearConstantBuffers(); // 强制重新创建 ConstantBuffer；当前的 ConstantBuffer 可能正被 GPU 使用，不能直接写入新值
     }
 
     void Material::SetFloat(int32_t id, float value)
     {
+        if (auto it = m_Floats.find(id); it != m_Floats.end() && it->second == value)
+        {
+            return;
+        }
+
         m_Floats[id] = value;
-        SetConstantBufferValue(id, value);
         ClearResolvedRenderStates(); // 解析时用到了 Int 和 Float，强制重新解析
+        ClearConstantBuffers(); // 强制重新创建 ConstantBuffer；当前的 ConstantBuffer 可能正被 GPU 使用，不能直接写入新值
     }
 
     void Material::SetVector(int32_t id, const XMFLOAT4& value)
     {
+        if (auto it = m_Vectors.find(id); it != m_Vectors.end() && XMVector4Equal(XMLoadFloat4(&it->second), XMLoadFloat4(&value)))
+        {
+            return;
+        }
+
         m_Vectors[id] = value;
-        SetConstantBufferValue(id, value);
+        ClearConstantBuffers(); // 强制重新创建 ConstantBuffer；当前的 ConstantBuffer 可能正被 GPU 使用，不能直接写入新值
     }
 
     void Material::SetColor(int32_t id, const XMFLOAT4& value)
     {
+        if (auto it = m_Colors.find(id); it != m_Colors.end() && XMVector4Equal(XMLoadFloat4(&it->second), XMLoadFloat4(&value)))
+        {
+            return;
+        }
+
         m_Colors[id] = value;
-        SetConstantBufferValue(id, GfxUtils::GetShaderColor(value));
+        ClearConstantBuffers(); // 强制重新创建 ConstantBuffer；当前的 ConstantBuffer 可能正被 GPU 使用，不能直接写入新值
     }
 
     void Material::SetTexture(int32_t id, GfxTexture* texture)
@@ -251,156 +272,9 @@ namespace march
         }
 
         m_ShaderVersion = m_Shader->GetVersion();
-        RecreateConstantBuffers();
         RebuildKeywordCache();
         ClearResolvedRenderStates();
-    }
-
-    void Material::RecreateConstantBuffers()
-    {
-        LOG_TRACE("Recreate material cbuffer");
-
-        m_ConstantBuffers.clear();
-
-        if (m_Shader == nullptr)
-        {
-            return;
-        }
-
-        // 创建 cbuffer
-        for (int32_t i = 0; i < m_Shader->GetPassCount(); i++)
-        {
-            ShaderPass* pass = m_Shader->GetPass(i);
-            uint32_t cbUnalignedSize = 0;
-
-            for (int32_t j = 0; j < static_cast<int32_t>(ShaderProgramType::NumTypes); j++)
-            {
-                ShaderProgramType type = static_cast<ShaderProgramType>(j);
-
-                for (int32_t k = 0; k < pass->GetProgramCount(type); k++)
-                {
-                    ShaderProgram* program = pass->GetProgram(type, k);
-
-                    if (program == nullptr)
-                    {
-                        continue;
-                    }
-
-                    const auto& cbMap = program->GetConstantBuffers();
-                    if (auto it = cbMap.find(Shader::GetMaterialConstantBufferId()); it != cbMap.end())
-                    {
-                        if (cbUnalignedSize == 0)
-                        {
-                            cbUnalignedSize = it->second.UnalignedSize;
-                        }
-                        else if (cbUnalignedSize != it->second.UnalignedSize)
-                        {
-                            // 同一个 pass 下的所有 program 的 material cbuffer 大小必须一致
-                            throw std::runtime_error("Material cbuffer size mismatch");
-                        }
-                    }
-                }
-            }
-
-            if (cbUnalignedSize > 0)
-            {
-                std::string cbName = pass->GetName() + "ConstantBuffer";
-                m_ConstantBuffers.emplace_back(std::make_unique<GfxConstantBuffer>(GetGfxDevice(), cbName, cbUnalignedSize, 1, false));
-            }
-            else
-            {
-                // 插入 nullptr
-                m_ConstantBuffers.emplace_back();
-            }
-        }
-
-        // 初始化 cbuffer
-        for (const auto& kv : m_Shader->GetProperties())
-        {
-            int32_t id = kv.first;
-            const ShaderProperty& prop = kv.second;
-
-            switch (prop.Type)
-            {
-            case ShaderPropertyType::Float:
-            {
-                float value;
-                if (GetFloat(id, &value))
-                {
-                    SetConstantBufferValue(id, value);
-                }
-                break;
-            }
-
-            case ShaderPropertyType::Int:
-            {
-                int32_t value;
-                if (GetInt(id, &value))
-                {
-                    SetConstantBufferValue(id, value);
-                }
-                break;
-            }
-
-            case ShaderPropertyType::Color:
-            {
-                XMFLOAT4 value;
-                if (GetColor(id, &value))
-                {
-                    SetConstantBufferValue(id, GfxUtils::GetShaderColor(value));
-                }
-                break;
-            }
-
-            case ShaderPropertyType::Vector:
-            {
-                XMFLOAT4 value;
-                if (GetVector(id, &value))
-                {
-                    SetConstantBufferValue(id, value);
-                }
-                break;
-            }
-
-            case ShaderPropertyType::Texture:
-                // Ignore
-                break;
-
-            default:
-                LOG_ERROR("Unknown shader property type");
-                break;
-            }
-        }
-    }
-
-    template<typename T>
-    void Material::SetConstantBufferValue(int32_t id, const T& value)
-    {
-        CheckShaderVersion();
-
-        if (m_Shader == nullptr)
-        {
-            return;
-        }
-
-        for (int32_t i = 0; i < m_ConstantBuffers.size(); i++)
-        {
-            const GfxConstantBuffer* cb = m_ConstantBuffers[static_cast<size_t>(i)].get();
-
-            if (cb == nullptr)
-            {
-                continue;
-            }
-
-            auto& locations = m_Shader->GetPass(i)->GetPropertyLocations();
-
-            if (const auto prop = locations.find(id); prop != locations.end())
-            {
-                BYTE* p = cb->GetMappedData(0);
-                assert(sizeof(value) >= prop->second.Size); // 有时候会把 Vector4 绑定到 Vector3 上，所以用 >=
-                memcpy(p + prop->second.Offset, &value, prop->second.Size);
-            }
-        }
+        ClearConstantBuffers();
     }
 
     Shader* Material::GetShader() const
@@ -418,9 +292,9 @@ namespace march
         m_Shader = pShader;
         m_ShaderVersion = pShader == nullptr ? 0 : pShader->GetVersion();
 
-        RecreateConstantBuffers();
         RebuildKeywordCache();
         ClearResolvedRenderStates();
+        ClearConstantBuffers();
     }
 
     const ShaderKeywordSet& Material::GetKeywords()
@@ -470,10 +344,135 @@ namespace march
         }
     }
 
-    GfxConstantBuffer* Material::GetConstantBuffer(int32_t passIndex)
+    template<typename T>
+    static void SetConstantBufferProperty(GfxRawConstantBuffer& buffer, ShaderPass* pass, int32_t id, const T& value)
+    {
+        const auto& locations = pass->GetPropertyLocations();
+        if (const auto it = locations.find(id); it != locations.end())
+        {
+            assert(sizeof(T) >= it->second.Size); // 有时候会把 Vector4 绑定到 Vector3 上，所以用 >=
+            buffer.SetData(it->second.Offset, &value, it->second.Size);
+        }
+    }
+
+    GfxRawConstantBuffer* Material::GetConstantBuffer(int32_t passIndex)
     {
         CheckShaderVersion();
-        return m_ConstantBuffers[static_cast<size_t>(passIndex)].get();
+
+        auto it = m_ConstantBuffers.find(passIndex);
+
+        if (it == m_ConstantBuffers.end())
+        {
+            ShaderPass* pass = m_Shader->GetPass(passIndex);
+            uint32_t bufferSizeInBytes = 0;
+
+            for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
+            {
+                ShaderProgramType type = static_cast<ShaderProgramType>(i);
+
+                for (int32_t j = 0; j < pass->GetProgramCount(type); j++)
+                {
+                    ShaderProgram* program = pass->GetProgram(type, j);
+
+                    if (program == nullptr)
+                    {
+                        continue;
+                    }
+
+                    const std::vector<ShaderBuffer>& buffers = program->GetSrvCbvBuffers();
+                    auto cbIterator = std::find_if(buffers.begin(), buffers.end(), [](const ShaderBuffer& buf)
+                    {
+                        return buf.Id == Shader::GetMaterialConstantBufferId();
+                    });
+
+                    if (cbIterator != buffers.end() && cbIterator->ConstantBufferSize > 0)
+                    {
+                        if (bufferSizeInBytes == 0)
+                        {
+                            bufferSizeInBytes = bufferSizeInBytes = cbIterator->ConstantBufferSize;
+                        }
+                        else if (bufferSizeInBytes != cbIterator->ConstantBufferSize)
+                        {
+                            // 同一个 pass 下的所有 program 的 material cbuffer 大小必须一致
+                            throw std::runtime_error("Material cbuffer size mismatch");
+                        }
+                    }
+                }
+            }
+
+            if (bufferSizeInBytes == 0)
+            {
+                return nullptr;
+            }
+
+            std::string cbName = pass->GetName() + "ConstantBuffer";
+            it = m_ConstantBuffers.emplace(passIndex, GfxRawConstantBuffer{ GetGfxDevice() , cbName, bufferSizeInBytes, GfxAllocator::PlacedUpload }).first;
+
+            // 初始化 cbuffer
+            for (const auto& kv : m_Shader->GetProperties())
+            {
+                int32_t id = kv.first;
+                const ShaderProperty& prop = kv.second;
+
+                switch (prop.Type)
+                {
+                case ShaderPropertyType::Float:
+                {
+                    float value;
+                    if (GetFloat(id, &value))
+                    {
+                        SetConstantBufferProperty(it->second, pass, id, value);
+                    }
+                    break;
+                }
+
+                case ShaderPropertyType::Int:
+                {
+                    int32_t value;
+                    if (GetInt(id, &value))
+                    {
+                        SetConstantBufferProperty(it->second, pass, id, value);
+                    }
+                    break;
+                }
+
+                case ShaderPropertyType::Color:
+                {
+                    XMFLOAT4 value;
+                    if (GetColor(id, &value))
+                    {
+                        SetConstantBufferProperty(it->second, pass, id, GfxUtils::GetShaderColor(value));
+                    }
+                    break;
+                }
+
+                case ShaderPropertyType::Vector:
+                {
+                    XMFLOAT4 value;
+                    if (GetVector(id, &value))
+                    {
+                        SetConstantBufferProperty(it->second, pass, id, value);
+                    }
+                    break;
+                }
+
+                case ShaderPropertyType::Texture:
+                    // Ignore
+                    break;
+
+                default:
+                    LOG_ERROR("Unknown shader property type");
+                    break;
+                }
+            }
+        }
+
+        return &it->second;
+    }
+
+    void Material::ClearConstantBuffers()
+    {
+        m_ConstantBuffers.clear();
     }
 
     const ShaderPassRenderState& Material::GetResolvedRenderState(int32_t passIndex, size_t* outHash)

@@ -4,9 +4,11 @@
 #include "GfxDescriptor.h"
 #include <directx/d3dx12.h>
 #include <DirectXTex.h>
+#include <wrl.h>
 #include <string>
 #include <stdint.h>
 #include <unordered_map>
+#include <optional>
 
 namespace march
 {
@@ -202,16 +204,15 @@ namespace march
         Grey = Gray,
     };
 
-    class GfxTexture : public GfxResource
+    class GfxTexture
     {
-    protected:
-        GfxTexture(GfxDevice* device, const GfxTextureDesc& desc);
-
     public:
-        virtual ~GfxTexture();
+        virtual ~GfxTexture() = default;
 
         uint32_t GetMipLevels() const;
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
+        std::shared_ptr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
+        GfxDevice* GetDevice() const { return m_Device; }
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxTextureElement element = GfxTextureElement::Default);
@@ -227,8 +228,9 @@ namespace march
         GfxTexture& operator=(const GfxTexture&) = delete;
 
     protected:
-        virtual void Reset();
-        void Reset(const GfxTextureDesc& desc);
+        GfxTexture(GfxDevice* device);
+        void ReleaseDescriptors();
+        void Reset(const GfxTextureDesc& desc, GfxResourceSpan&& resource);
 
     private:
         struct RtvDsvQuery
@@ -237,7 +239,7 @@ namespace march
             uint32_t WOrArraySize;
             uint32_t MipSlice;
 
-            bool operator == (const RtvDsvQuery& other) const
+            bool operator ==(const RtvDsvQuery& other) const
             {
                 return WOrArraySlice == other.WOrArraySlice && WOrArraySize == other.WOrArraySize && MipSlice == other.MipSlice;
             }
@@ -251,15 +253,17 @@ namespace march
             }
         };
 
-        void CreateRtvDsv(const RtvDsvQuery& query, GfxDescriptorHandle& handle);
+        void CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv);
 
+        GfxDevice* m_Device;
         GfxTextureDesc m_Desc;
+        GfxResourceSpan m_Resource;
 
         // Lazy creation
-        std::pair<GfxDescriptorHandle, bool> m_SrvHandles[2];
-        std::pair<GfxDescriptorHandle, bool> m_UavHandles[2];
-        std::unordered_map<RtvDsvQuery, GfxDescriptorHandle, RtvDsvQueryHash> m_RtvDsvHandles;
-        std::pair<GfxDescriptorHandle, bool> m_SamplerHandle;
+        GfxOfflineDescriptor m_SrvDescriptors[2];
+        GfxOfflineDescriptor m_UavDescriptors[2];
+        std::unordered_map<RtvDsvQuery, GfxOfflineDescriptor, RtvDsvQueryHash> m_RtvDsvDescriptors;
+        std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> m_SamplerDescriptor;
     };
 
     enum class GfxTextureCompression
@@ -292,7 +296,7 @@ namespace march
         size_t GetPixelsSize() const { return m_Image.GetPixelsSize(); }
 
     private:
-        void UploadImage();
+        void UploadImage(const GfxTextureDesc& desc, DirectX::CREATETEX_FLAGS flags);
 
         std::string m_Name;
         DirectX::ScratchImage m_Image;
@@ -311,10 +315,8 @@ namespace march
     class GfxRenderTexture : public GfxTexture
     {
     public:
-        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc);
-
-        // 这个构造方法会接管 resource 的所有权
-        GfxRenderTexture(GfxDevice* device, ID3D12Resource* resource, const GfxTextureResourceDesc& resDesc);
+        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxAllocator allocator);
+        GfxRenderTexture(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc);
 
         bool AllowRendering() const override { return true; }
     };
