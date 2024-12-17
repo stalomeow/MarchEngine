@@ -37,7 +37,7 @@ namespace march
         GfxResource(const GfxResource&) = delete;
         GfxResource& operator=(const GfxResource&) = delete;
 
-        GfxResource(GfxResource&&);
+        GfxResource(GfxResource&&) noexcept;
         GfxResource& operator=(GfxResource&&);
 
     private:
@@ -72,7 +72,7 @@ namespace march
         GfxResourceSpan(const GfxResourceSpan&) = delete;
         GfxResourceSpan& operator=(const GfxResourceSpan&) = delete;
 
-        GfxResourceSpan(GfxResourceSpan&&);
+        GfxResourceSpan(GfxResourceSpan&&) noexcept;
         GfxResourceSpan& operator=(GfxResourceSpan&&);
 
     private:

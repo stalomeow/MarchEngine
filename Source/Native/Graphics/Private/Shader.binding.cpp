@@ -5,21 +5,6 @@
 #include "GfxTexture.h"
 #include <exception>
 
-struct CSharpShaderConstantBuffer
-{
-    cs_string Name;
-    cs_uint ShaderRegister;
-    cs_uint RegisterSpace;
-    cs_uint UnalignedSize;
-};
-
-struct CSharpShaderStaticSampler
-{
-    cs_string Name;
-    cs_uint ShaderRegister;
-    cs_uint RegisterSpace;
-};
-
 struct CSharpShaderTexture
 {
     cs_string Name;
@@ -30,15 +15,32 @@ struct CSharpShaderTexture
     cs_uint RegisterSpaceSampler;
 };
 
+struct CSharpShaderStaticSampler
+{
+    cs_string Name;
+    cs_uint ShaderRegister;
+    cs_uint RegisterSpace;
+};
+
+struct CSharpShaderBuffer
+{
+    cs_string Name;
+    cs_uint ShaderRegister;
+    cs_uint RegisterSpace;
+    cs_uint ConstantBufferSize;
+};
+
 struct CSharpShaderProgram
 {
     cs<ShaderProgramType> Type;
     cs<cs_string[]> Keywords;
     cs<march::cs_byte[]> Hash;
     cs<march::cs_byte[]> Binary;
-    cs<CSharpShaderConstantBuffer[]> ConstantBuffers;
+    cs<CSharpShaderBuffer[]> SrvCbvBuffers;
+    cs<CSharpShaderTexture[]> SrvTextures;
+    cs<CSharpShaderBuffer[]> UavBuffers;
+    cs<CSharpShaderTexture[]> UavTextures;
     cs<CSharpShaderStaticSampler[]> StaticSamplers;
-    cs<CSharpShaderTexture[]> Textures;
 };
 
 struct CSharpShaderProperty
@@ -277,29 +279,48 @@ namespace march
                         return;
                     }
 
-                    for (int32_t k = 0; k < p.ConstantBuffers.size(); k++)
+                    for (int32_t k = 0; k < p.SrvCbvBuffers.size(); k++)
                     {
-                        const auto& cb = p.ConstantBuffers[k];
-                        program->m_ConstantBuffers[Shader::GetNameId(cb.Name)] = { cb.ShaderRegister, cb.RegisterSpace, cb.UnalignedSize };
+                        const auto& buf = p.SrvCbvBuffers[k];
+                        program->m_SrvCbvBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                    }
+
+                    for (int32_t k = 0; k < p.SrvTextures.size(); k++)
+                    {
+                        const auto& tp = p.SrvTextures[k];
+                        program->m_SrvTextures.push_back({
+                            Shader::GetNameId(tp.Name),
+                            tp.ShaderRegisterTexture,
+                            tp.RegisterSpaceTexture,
+                            tp.HasSampler,
+                            tp.ShaderRegisterSampler,
+                            tp.RegisterSpaceSampler
+                            });
+                    }
+
+                    for (int32_t k = 0; k < p.UavBuffers.size(); k++)
+                    {
+                        const auto& buf = p.UavBuffers[k];
+                        program->m_UavBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                    }
+
+                    for (int32_t k = 0; k < p.UavTextures.size(); k++)
+                    {
+                        const auto& tp = p.UavTextures[k];
+                        program->m_UavTextures.push_back({
+                            Shader::GetNameId(tp.Name),
+                            tp.ShaderRegisterTexture,
+                            tp.RegisterSpaceTexture,
+                            tp.HasSampler,
+                            tp.ShaderRegisterSampler,
+                            tp.RegisterSpaceSampler
+                            });
                     }
 
                     for (int32_t k = 0; k < p.StaticSamplers.size(); k++)
                     {
                         const auto& sampler = p.StaticSamplers[k];
                         program->m_StaticSamplers[Shader::GetNameId(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
-                    }
-
-                    for (int32_t k = 0; k < p.Textures.size(); k++)
-                    {
-                        const auto& tp = p.Textures[k];
-                        program->m_Textures[Shader::GetNameId(tp.Name)] =
-                        {
-                            tp.ShaderRegisterTexture,
-                            tp.RegisterSpaceTexture,
-                            tp.HasSampler,
-                            tp.ShaderRegisterSampler,
-                            tp.RegisterSpaceSampler
-                        };
                     }
 
                     pass->m_Programs[static_cast<int32_t>(p.Type.data)].emplace_back(std::move(program));
@@ -430,15 +451,48 @@ namespace march
                         p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash())), reinterpret_cast<const march::cs_byte*>(program->GetHash()));
                         p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<const march::cs_byte*>(program->GetBinaryData()));
 
-                        p.ConstantBuffers.assign(static_cast<int32_t>(program->GetConstantBuffers().size()));
-                        int32_t cbIndex = 0;
-                        for (auto& kvp : program->GetConstantBuffers())
+                        p.SrvCbvBuffers.assign(static_cast<int32_t>(program->GetSrvCbvBuffers().size()));
+                        for (size_t bufIdx = 0; bufIdx < program->GetSrvCbvBuffers().size(); bufIdx++)
                         {
-                            auto& cb = p.ConstantBuffers[cbIndex++];
-                            cb.Name.assign(Shader::GetIdName(kvp.first));
-                            cb.ShaderRegister.assign(kvp.second.ShaderRegister);
-                            cb.RegisterSpace.assign(kvp.second.RegisterSpace);
-                            cb.UnalignedSize.assign(kvp.second.UnalignedSize);
+                            auto& buf = p.SrvCbvBuffers[static_cast<int32_t>(bufIdx)];
+                            buf.Name.assign(Shader::GetIdName(program->GetSrvCbvBuffers()[bufIdx].Id));
+                            buf.ShaderRegister.assign(program->GetSrvCbvBuffers()[bufIdx].ShaderRegister);
+                            buf.RegisterSpace.assign(program->GetSrvCbvBuffers()[bufIdx].RegisterSpace);
+                            buf.ConstantBufferSize.assign(program->GetSrvCbvBuffers()[bufIdx].ConstantBufferSize);
+                        }
+
+                        p.SrvTextures.assign(static_cast<int32_t>(program->GetSrvTextures().size()));
+                        for (size_t texIdx = 0; texIdx < program->GetSrvTextures().size(); texIdx++)
+                        {
+                            auto& tp = p.SrvTextures[static_cast<int32_t>(texIdx)];
+                            tp.Name.assign(Shader::GetIdName(program->GetSrvTextures()[texIdx].Id));
+                            tp.ShaderRegisterTexture.assign(program->GetSrvTextures()[texIdx].ShaderRegisterTexture);
+                            tp.RegisterSpaceTexture.assign(program->GetSrvTextures()[texIdx].RegisterSpaceTexture);
+                            tp.HasSampler.assign(program->GetSrvTextures()[texIdx].HasSampler);
+                            tp.ShaderRegisterSampler.assign(program->GetSrvTextures()[texIdx].ShaderRegisterSampler);
+                            tp.RegisterSpaceSampler.assign(program->GetSrvTextures()[texIdx].RegisterSpaceSampler);
+                        }
+
+                        p.UavBuffers.assign(static_cast<int32_t>(program->GetUavBuffers().size()));
+                        for (size_t bufIdx = 0; bufIdx < program->GetUavBuffers().size(); bufIdx++)
+                        {
+                            auto& buf = p.UavBuffers[static_cast<int32_t>(bufIdx)];
+                            buf.Name.assign(Shader::GetIdName(program->GetUavBuffers()[bufIdx].Id));
+                            buf.ShaderRegister.assign(program->GetUavBuffers()[bufIdx].ShaderRegister);
+                            buf.RegisterSpace.assign(program->GetUavBuffers()[bufIdx].RegisterSpace);
+                            buf.ConstantBufferSize.assign(program->GetUavBuffers()[bufIdx].ConstantBufferSize);
+                        }
+
+                        p.UavTextures.assign(static_cast<int32_t>(program->GetUavTextures().size()));
+                        for (size_t texIdx = 0; texIdx < program->GetUavTextures().size(); texIdx++)
+                        {
+                            auto& tp = p.UavTextures[static_cast<int32_t>(texIdx)];
+                            tp.Name.assign(Shader::GetIdName(program->GetUavTextures()[texIdx].Id));
+                            tp.ShaderRegisterTexture.assign(program->GetUavTextures()[texIdx].ShaderRegisterTexture);
+                            tp.RegisterSpaceTexture.assign(program->GetUavTextures()[texIdx].RegisterSpaceTexture);
+                            tp.HasSampler.assign(program->GetUavTextures()[texIdx].HasSampler);
+                            tp.ShaderRegisterSampler.assign(program->GetUavTextures()[texIdx].ShaderRegisterSampler);
+                            tp.RegisterSpaceSampler.assign(program->GetUavTextures()[texIdx].RegisterSpaceSampler);
                         }
 
                         p.StaticSamplers.assign(static_cast<int32_t>(program->GetStaticSamplers().size()));
@@ -449,19 +503,6 @@ namespace march
                             sampler.Name.assign(Shader::GetIdName(kvp.first));
                             sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
                             sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
-                        }
-
-                        p.Textures.assign(static_cast<int32_t>(program->GetTextures().size()));
-                        int32_t tpIndex = 0;
-                        for (auto& kvp : program->GetTextures())
-                        {
-                            auto& tp = p.Textures[tpIndex++];
-                            tp.Name.assign(Shader::GetIdName(kvp.first));
-                            tp.ShaderRegisterTexture.assign(kvp.second.ShaderRegisterTexture);
-                            tp.RegisterSpaceTexture.assign(kvp.second.RegisterSpaceTexture);
-                            tp.HasSampler.assign(kvp.second.HasSampler);
-                            tp.ShaderRegisterSampler.assign(kvp.second.ShaderRegisterSampler);
-                            tp.RegisterSpaceSampler.assign(kvp.second.RegisterSpaceSampler);
                         }
                     }
                 }

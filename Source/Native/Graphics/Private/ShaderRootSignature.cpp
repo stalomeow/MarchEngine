@@ -9,19 +9,25 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
-    // RootSignature 根据 Hash 复用
+    // ID3D12RootSignature 根据 Hash 复用
     static std::unordered_map<size_t, ComPtr<ID3D12RootSignature>> g_GlobalRootSignaturePool{};
 
     static D3D12_SHADER_VISIBILITY GetShaderVisibility(ShaderProgramType type)
     {
+        // TODO compute, amplification, mesh
+
         switch (type)
         {
         case ShaderProgramType::Vertex:
             return D3D12_SHADER_VISIBILITY_VERTEX;
-
         case ShaderProgramType::Pixel:
             return D3D12_SHADER_VISIBILITY_PIXEL;
-
+        case ShaderProgramType::Domain:
+            return D3D12_SHADER_VISIBILITY_DOMAIN;
+        case ShaderProgramType::Hull:
+            return D3D12_SHADER_VISIBILITY_HULL;
+        case ShaderProgramType::Geometry:
+            return D3D12_SHADER_VISIBILITY_GEOMETRY;
         default:
             throw GfxException("Unknown shader program type");
         }
@@ -77,7 +83,7 @@ namespace march
         }
     }
 
-    static ID3D12RootSignature* CreateRootSignature(ID3DBlob* serializedData)
+    static ComPtr<ID3D12RootSignature> CreateRootSignature(ID3DBlob* serializedData)
     {
         LPVOID bufferPointer = serializedData->GetBufferPointer();
         SIZE_T bufferSize = serializedData->GetBufferSize();
@@ -87,8 +93,9 @@ namespace march
             throw GfxException("Invalid root signature data size");
         }
 
-        size_t hash = HashUtils::FNV1(static_cast<uint32_t*>(bufferPointer), bufferSize / 4);
-        ComPtr<ID3D12RootSignature>& result = g_GlobalRootSignaturePool[hash];
+        DefaultHash hash{};
+        hash.Append(bufferPointer, bufferSize / 4);
+        ComPtr<ID3D12RootSignature>& result = g_GlobalRootSignaturePool[*hash];
 
         if (result == nullptr)
         {
@@ -102,22 +109,23 @@ namespace march
             LOG_TRACE("Reuse RootSignature");
         }
 
-        return result.Get();
+        return result;
     }
 
-    ID3D12RootSignature* ShaderPass::GetRootSignature(const ShaderKeywordSet& keywords)
+    GfxRootSignature* ShaderPass::GetRootSignature(const ShaderKeywordSet& keywords)
     {
         const ShaderPass::ProgramMatch& m = GetProgramMatch(keywords);
 
         if (auto it = m_RootSignatures.find(m.Hash); it != m_RootSignatures.end())
         {
-            return it->second.Get();
+            return it->second.get();
         }
 
-        std::vector<CD3DX12_ROOT_PARAMETER> params;
-        std::vector<CD3DX12_STATIC_SAMPLER_DESC> staticSamplers;
-        std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges;
-        std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges;
+        std::vector<CD3DX12_ROOT_PARAMETER> params{};
+        std::vector<CD3DX12_STATIC_SAMPLER_DESC> staticSamplers{};
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges{};
+        std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges{};
+        std::unique_ptr<GfxRootSignature> rootSignature = std::make_unique<GfxRootSignature>();
 
         for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
         {
@@ -130,44 +138,90 @@ namespace march
             size_t srvUavStartIndex = srvUavRanges.size();
             size_t samplerStartIndex = samplerRanges.size();
             D3D12_SHADER_VISIBILITY visibility = GetShaderVisibility(static_cast<ShaderProgramType>(i));
+            auto& rootSignatureBindings = rootSignature->m_Bindings[i];
 
-            for (auto& kv : program->m_Textures)
+            for (const ShaderTexture& tex : program->GetSrvTextures())
             {
-                ShaderTexture& tex = kv.second;
+                GfxRootSignature::TextureBinding& binding = rootSignatureBindings.SrvTextureTableSlots.emplace_back();
+                binding.Id = tex.Id;
 
                 srvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1,
                     tex.ShaderRegisterTexture, tex.RegisterSpaceTexture, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-                tex.TextureDescriptorTableIndex = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
+                binding.BindPointTexture = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
 
                 if (tex.HasSampler)
                 {
                     samplerRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1,
                         tex.ShaderRegisterSampler, tex.RegisterSpaceSampler, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-                    tex.SamplerDescriptorTableIndex = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex - 1);
+                    binding.BindPointSampler = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex - 1);
                 }
+                else
+                {
+                    binding.BindPointSampler = std::nullopt;
+                }
+            }
+
+            for (const ShaderBuffer& buf : program->GetUavBuffers())
+            {
+                GfxRootSignature::UavBinding& binding = rootSignatureBindings.UavBufferTableSlots.emplace_back();
+                binding.Id = buf.Id;
+
+                srvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1,
+                    buf.ShaderRegister, buf.RegisterSpace, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                binding.BindPoint = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
+            }
+
+            for (const ShaderTexture& tex : program->GetUavTextures())
+            {
+                GfxRootSignature::UavBinding& binding = rootSignatureBindings.UavTextureTableSlots.emplace_back();
+                binding.Id = tex.Id;
+
+                srvUavRanges.emplace_back(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1,
+                    tex.ShaderRegisterTexture, tex.RegisterSpaceTexture, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+                binding.BindPoint = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex - 1);
             }
 
             // TODO: Performance TIP: Order from most frequent to least frequent.
 
-            for (auto& kv : program->m_ConstantBuffers)
+            for (const ShaderBuffer& buf : program->GetSrvCbvBuffers())
             {
-                ShaderConstantBuffer& cb = kv.second;
-                params.emplace_back().InitAsConstantBufferView(cb.ShaderRegister, cb.RegisterSpace, visibility);
-                cb.RootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+                GfxRootSignature::BufferBinding& binding = rootSignatureBindings.SrvCbvBufferRootParamIndices.emplace_back();
+                binding.Id = buf.Id;
+
+                if (buf.ConstantBufferSize == 0)
+                {
+                    params.emplace_back().InitAsShaderResourceView(buf.ShaderRegister, buf.RegisterSpace, visibility);
+                    binding.IsConstantBuffer = false;
+                }
+                else
+                {
+                    params.emplace_back().InitAsConstantBufferView(buf.ShaderRegister, buf.RegisterSpace, visibility);
+                    binding.IsConstantBuffer = true;
+                }
+
+                binding.BindPoint = static_cast<uint32_t>(params.size() - 1);
             }
 
             if (srvUavRanges.size() > srvUavStartIndex)
             {
                 uint32_t count = static_cast<uint32_t>(srvUavRanges.size() - srvUavStartIndex);
                 params.emplace_back().InitAsDescriptorTable(count, srvUavRanges.data() + srvUavStartIndex, visibility);
-                program->m_SrvUavRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+                rootSignatureBindings.SrvUavTableRootParamIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+            else
+            {
+                rootSignatureBindings.SrvUavTableRootParamIndex = std::nullopt;
             }
 
             if (samplerRanges.size() > samplerStartIndex)
             {
                 uint32_t count = static_cast<uint32_t>(samplerRanges.size() - samplerStartIndex);
                 params.emplace_back().InitAsDescriptorTable(count, samplerRanges.data() + samplerStartIndex, visibility);
-                program->m_SamplerRootParameterIndex = static_cast<uint32_t>(params.size() - 1);
+                rootSignatureBindings.SamplerTableRootParamIndex = static_cast<uint32_t>(params.size() - 1);
+            }
+            else
+            {
+                rootSignatureBindings.SamplerTableRootParamIndex = std::nullopt;
             }
 
             AddStaticSamplers(staticSamplers, program, visibility);
@@ -189,9 +243,8 @@ namespace march
 
         GFX_HR(hr);
 
-        ID3D12RootSignature* result = CreateRootSignature(serializedData.Get());
-        m_RootSignatures[m.Hash] = result;
-        return result;
+        rootSignature->m_RootSignature = CreateRootSignature(serializedData.Get());
+        return (m_RootSignatures[m.Hash] = std::move(rootSignature)).get();
     }
 
     void Shader::ClearRootSignatureCache()

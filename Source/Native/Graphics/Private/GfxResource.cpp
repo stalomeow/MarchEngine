@@ -29,7 +29,7 @@ namespace march
     {
     }
 
-    GfxResource::GfxResource(GfxResource&& other)
+    GfxResource::GfxResource(GfxResource&& other) noexcept
         : m_Device(std::exchange(other.m_Device, nullptr))
         , m_Resource(std::move(other.m_Resource))
         , m_State(other.m_State)
@@ -80,7 +80,7 @@ namespace march
     {
     }
 
-    GfxResourceSpan::GfxResourceSpan(GfxResourceSpan&& other)
+    GfxResourceSpan::GfxResourceSpan(GfxResourceSpan&& other) noexcept
         : m_Resource(std::move(other.m_Resource))
         , m_Allocator(std::exchange(other.m_Allocator, nullptr))
         , m_Allocation(other.m_Allocation)

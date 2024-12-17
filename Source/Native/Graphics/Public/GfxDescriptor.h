@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <optional>
 #include <list>
 #include <unordered_map>
 #include <functional>
@@ -94,7 +93,7 @@ namespace march
         GfxOfflineDescriptor(const GfxOfflineDescriptor&) = delete;
         GfxOfflineDescriptor& operator=(const GfxOfflineDescriptor&) = delete;
 
-        GfxOfflineDescriptor(GfxOfflineDescriptor&&);
+        GfxOfflineDescriptor(GfxOfflineDescriptor&&) noexcept;
         GfxOfflineDescriptor& operator=(GfxOfflineDescriptor&&);
 
     private:
@@ -142,29 +141,33 @@ namespace march
         bool m_IsDirty;
     };
 
-    class GfxOnlineDescriptorTableAllocator
+    class GfxOnlineDescriptorAllocator
     {
     public:
-        virtual ~GfxOnlineDescriptorTableAllocator() = default;
+        virtual ~GfxOnlineDescriptorAllocator() = default;
 
         // 分配结果只有一帧有效
-        virtual std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> Allocate(
-            const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors,
-            uint32_t numDescriptors) = 0;
+        virtual bool AllocateMany(
+            size_t numAllocations,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+            const uint32_t* numDescriptors,
+            D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults) = 0;
         virtual void CleanUpAllocations() = 0;
 
         virtual uint32_t GetNumMaxDescriptors() const = 0;
         virtual GfxDescriptorHeap* GetHeap() const = 0;
     };
 
-    class GfxOnlineViewDescriptorTableAllocator : public GfxOnlineDescriptorTableAllocator
+    class GfxOnlineViewDescriptorAllocator : public GfxOnlineDescriptorAllocator
     {
     public:
-        GfxOnlineViewDescriptorTableAllocator(GfxDevice* device, uint32_t numMaxDescriptors);
+        GfxOnlineViewDescriptorAllocator(GfxDevice* device, uint32_t numMaxDescriptors);
 
-        std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> Allocate(
-            const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors,
-            uint32_t numDescriptors) override;
+        bool AllocateMany(
+            size_t numAllocations,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+            const uint32_t* numDescriptors,
+            D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults) override;
         void CleanUpAllocations() override;
 
         uint32_t GetNumMaxDescriptors() const override { return m_Heap->GetCapacity(); }
@@ -182,14 +185,16 @@ namespace march
         std::queue<std::pair<uint64_t, uint32_t>> m_ReleaseQueue;
     };
 
-    class GfxOnlineSamplerDescriptorTableAllocator : public GfxOnlineDescriptorTableAllocator
+    class GfxOnlineSamplerDescriptorAllocator : public GfxOnlineDescriptorAllocator
     {
     public:
-        GfxOnlineSamplerDescriptorTableAllocator(GfxDevice* device, uint32_t numMaxDescriptors);
+        GfxOnlineSamplerDescriptorAllocator(GfxDevice* device, uint32_t numMaxDescriptors);
 
-        std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> Allocate(
-            const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors,
-            uint32_t numDescriptors) override;
+        bool AllocateMany(
+            size_t numAllocations,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+            const uint32_t* numDescriptors,
+            D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults) override;
         void CleanUpAllocations() override;
 
         uint32_t GetNumMaxDescriptors() const override { return m_Heap->GetCapacity(); }
@@ -203,39 +208,43 @@ namespace march
 
         struct BlockData
         {
-            uint64_t Fence;
-            decltype(m_Blocks)::iterator Iterator;
+            uint64_t Fence{};
+            decltype(m_Blocks)::iterator Iterator{};
 
-            D3D12_GPU_DESCRIPTOR_HANDLE Handle;
-            BuddyAllocation Allocation;
+            uint32_t Offset{}; // Offset in heap
+            D3D12_GPU_DESCRIPTOR_HANDLE Handle{};
+            BuddyAllocation Allocation{};
         };
 
         std::unordered_map<size_t, BlockData> m_BlockMap; // Hash 和对应的 block
     };
 
-    class GfxOnlineDescriptorTableMultiAllocator final
+    class GfxOnlineDescriptorMultiAllocator final
     {
     public:
-        using Factory = typename std::function<std::unique_ptr<GfxOnlineDescriptorTableAllocator>(GfxDevice*)>;
+        using Factory = typename std::function<std::unique_ptr<GfxOnlineDescriptorAllocator>(GfxDevice*)>;
 
-        GfxOnlineDescriptorTableMultiAllocator(GfxDevice* device, const Factory& factory);
+        GfxOnlineDescriptorMultiAllocator(GfxDevice* device, const Factory& factory);
 
         // 分配结果只有一帧有效
-        D3D12_GPU_DESCRIPTOR_HANDLE Allocate(
-            const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors,
-            uint32_t numDescriptors,
+        bool AllocateMany(
+            size_t numAllocations,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+            const uint32_t* numDescriptors,
+            D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults,
             GfxDescriptorHeap** ppOutHeap);
+
         void CleanUpAllocations();
+
+        void Rollover();
 
         GfxDevice* GetDevice() const { return m_Device; }
 
     private:
         GfxDevice* m_Device;
         Factory m_Factory;
-        std::vector<std::unique_ptr<GfxOnlineDescriptorTableAllocator>> m_Allocators;
-        std::queue<std::pair<uint64_t, GfxOnlineDescriptorTableAllocator*>> m_ReleaseQueue;
-        GfxOnlineDescriptorTableAllocator* m_CurrentAllocator;
-
-        void Rollover();
+        std::vector<std::unique_ptr<GfxOnlineDescriptorAllocator>> m_Allocators;
+        std::queue<std::pair<uint64_t, GfxOnlineDescriptorAllocator*>> m_ReleaseQueue;
+        GfxOnlineDescriptorAllocator* m_CurrentAllocator;
     };
 }

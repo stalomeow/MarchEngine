@@ -5,7 +5,6 @@
 #include "HashUtils.h"
 #include <Windows.h>
 #include <stdexcept>
-#include <assert.h>
 
 namespace march
 {
@@ -153,7 +152,7 @@ namespace march
         m_Handle.ptr = 0;
     }
 
-    GfxOfflineDescriptor::GfxOfflineDescriptor(GfxOfflineDescriptor&& other)
+    GfxOfflineDescriptor::GfxOfflineDescriptor(GfxOfflineDescriptor&& other) noexcept
         : m_Handle(std::exchange(other.m_Handle, {}))
         , m_Allocator(std::exchange(other.m_Allocator, nullptr))
     {
@@ -172,7 +171,7 @@ namespace march
         return *this;
     }
 
-    GfxOnlineViewDescriptorTableAllocator::GfxOnlineViewDescriptorTableAllocator(GfxDevice* device, uint32_t numMaxDescriptors)
+    GfxOnlineViewDescriptorAllocator::GfxOnlineViewDescriptorAllocator(GfxDevice* device, uint32_t numMaxDescriptors)
         : m_Front(0)
         , m_Rear(0)
         , m_ReleaseQueue{}
@@ -185,61 +184,101 @@ namespace march
         m_Heap = std::make_unique<GfxDescriptorHeap>(device, "OnlineViewDescriptorTableRingBuffer", heapDesc);
     }
 
-    std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> GfxOnlineViewDescriptorTableAllocator::Allocate(const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors, uint32_t numDescriptors)
+    bool GfxOnlineViewDescriptorAllocator::AllocateMany(
+        size_t numAllocations,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+        const uint32_t* numDescriptors,
+        D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults)
     {
-        uint32_t numMaxDescriptors = m_Heap->GetCapacity();
-
-        // 循环队列需要保留一个空间来区分队列满和队列空
-        if (numDescriptors > numMaxDescriptors - 1)
+        constexpr size_t MAX_NUM_ALLOCATIONS = 20;
+        if (numAllocations > MAX_NUM_ALLOCATIONS)
         {
-            return std::nullopt;
+            return false;
         }
 
-        bool canAllocate = false;
+        uint32_t numMaxDescriptors = m_Heap->GetCapacity();
+        uint32_t totalNumDescriptors = 0;
 
-        if (m_Front <= m_Rear)
+        for (size_t i = 0; i < numAllocations; i++)
         {
-            uint32_t remaining = numMaxDescriptors - m_Rear;
+            totalNumDescriptors += numDescriptors[i];
+        }
 
-            if (m_Front == 0)
+        // 循环队列需要保留一个空间来区分队列满和队列空
+        if (totalNumDescriptors > numMaxDescriptors - 1)
+        {
+            return false;
+        }
+
+        uint32_t initialRear = m_Rear; // 保存 Rear，以便回滚
+        uint32_t indices[MAX_NUM_ALLOCATIONS]{};
+
+        for (size_t i = 0; i < numAllocations; i++)
+        {
+            if (numDescriptors[i] == 0)
             {
-                // 空出一个位置来区分队列满和队列空
-                if (remaining - 1 >= numDescriptors)
-                {
-                    canAllocate = true;
-                }
+                continue;
             }
-            else
+
+            bool canAllocate = false;
+
+            if (m_Front <= m_Rear)
             {
-                if (remaining < numDescriptors)
+                uint32_t remaining = numMaxDescriptors - m_Rear;
+
+                if (m_Front == 0)
                 {
-                    m_Rear = 0; // 后面不够了，从头开始分配，之后 Front > Rear
+                    // 空出一个位置来区分队列满和队列空
+                    if (remaining - 1 >= numDescriptors[i])
+                    {
+                        canAllocate = true;
+                    }
                 }
                 else
                 {
-                    canAllocate = true;
+                    if (remaining < numDescriptors[i])
+                    {
+                        m_Rear = 0; // 后面不够了，从头开始分配，之后 Front > Rear
+                    }
+                    else
+                    {
+                        canAllocate = true;
+                    }
                 }
+            }
+
+            if (m_Front - m_Rear - 1 >= numDescriptors[i])
+            {
+                canAllocate = true;
+            }
+
+            if (!canAllocate)
+            {
+                m_Rear = initialRear; // 回滚
+                return false;
+            }
+
+            indices[i] = m_Rear;
+            m_Rear = (m_Rear + numDescriptors[i]) % numMaxDescriptors;
+        }
+
+        for (size_t i = 0; i < numAllocations; i++)
+        {
+            if (numDescriptors[i] == 0)
+            {
+                pOutResults[i].ptr = 0;
+            }
+            else
+            {
+                m_Heap->CopyFrom(offlineDescriptors[i], numDescriptors[i], indices[i]);
+                pOutResults[i] = m_Heap->GetGpuHandle(indices[i]);
             }
         }
 
-        if (m_Front - m_Rear - 1 >= numDescriptors)
-        {
-            canAllocate = true;
-        }
-
-        if (!canAllocate)
-        {
-            return std::nullopt;
-        }
-
-        m_Heap->CopyFrom(offlineDescriptors, numDescriptors, m_Rear);
-        D3D12_GPU_DESCRIPTOR_HANDLE handle = m_Heap->GetGpuHandle(m_Rear);
-
-        m_Rear = (m_Rear + numDescriptors) % numMaxDescriptors;
-        return handle;
+        return true;
     }
 
-    void GfxOnlineViewDescriptorTableAllocator::CleanUpAllocations()
+    void GfxOnlineViewDescriptorAllocator::CleanUpAllocations()
     {
         GfxDevice* device = m_Heap->GetDevice();
 
@@ -253,7 +292,7 @@ namespace march
         m_ReleaseQueue.emplace(device->GetNextFrameFence(), m_Rear);
     }
 
-    GfxOnlineSamplerDescriptorTableAllocator::GfxOnlineSamplerDescriptorTableAllocator(GfxDevice* device, uint32_t numMaxDescriptors)
+    GfxOnlineSamplerDescriptorAllocator::GfxOnlineSamplerDescriptorAllocator(GfxDevice* device, uint32_t numMaxDescriptors)
         : m_Allocator(1, numMaxDescriptors)
         , m_Blocks{}
         , m_BlockMap{}
@@ -266,46 +305,112 @@ namespace march
         m_Heap = std::make_unique<GfxDescriptorHeap>(device, "OnlineSamplerDescriptorTableBlocks", desc);
     }
 
-    std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> GfxOnlineSamplerDescriptorTableAllocator::Allocate(const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors, uint32_t numDescriptors)
+    bool GfxOnlineSamplerDescriptorAllocator::AllocateMany(
+        size_t numAllocations,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+        const uint32_t* numDescriptors,
+        D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults)
     {
-        if (numDescriptors > m_Heap->GetCapacity())
+        constexpr size_t MAX_NUM_ALLOCATIONS = 20;
+        if (numAllocations > MAX_NUM_ALLOCATIONS)
         {
-            throw std::invalid_argument("GfxOnlineSamplerDescriptorTableAllocator::AllocateOneFrame: numDescriptors exceeds the heap size");
+            return false;
         }
 
-        DefaultHash hash{};
-        for (uint32_t i = 0; i < numDescriptors; i++)
+        uint32_t numMaxDescriptors = m_Heap->GetCapacity();
+        uint32_t totalNumDescriptors = 0;
+
+        for (size_t i = 0; i < numAllocations; i++)
         {
-            hash.Append(offlineDescriptors[i].ptr);
+            totalNumDescriptors += numDescriptors[i];
         }
 
-        auto it = m_BlockMap.find(*hash);
-        if (it != m_BlockMap.end())
+        if (totalNumDescriptors > numMaxDescriptors)
         {
-            m_Blocks.erase(it->second.Iterator);
+            return false;
         }
-        else
-        {
-            BlockData data{};
 
-            if (std::optional<uint32_t> offset = m_Allocator.Allocate(numDescriptors, 0, data.Allocation))
+        size_t hashes[MAX_NUM_ALLOCATIONS]{};
+        bool isNew[MAX_NUM_ALLOCATIONS]{};
+
+        for (size_t i = 0; i < numAllocations; i++)
+        {
+            if (numDescriptors[i] == 0)
             {
-                m_Heap->CopyFrom(offlineDescriptors, numDescriptors, *offset);
-                data.Handle = m_Heap->GetGpuHandle(*offset);
-                it = m_BlockMap.emplace(*hash, data).first;
+                continue;
+            }
+
+            DefaultHash hash{};
+            for (uint32_t j = 0; j < numDescriptors[i]; j++)
+            {
+                hash.Append(offlineDescriptors[i][j]);
+            }
+            hashes[i] = *hash;
+
+            if (m_BlockMap.count(*hash) > 0)
+            {
+                isNew[i] = false;
             }
             else
             {
-                return std::nullopt;
+                isNew[i] = true;
+                BlockData data{};
+
+                if (std::optional<uint32_t> offset = m_Allocator.Allocate(numDescriptors[i], 0, data.Allocation))
+                {
+                    data.Offset = *offset;
+                    data.Handle = m_Heap->GetGpuHandle(*offset);
+                    m_BlockMap.emplace(*hash, data);
+                }
+                else
+                {
+                    // 分配失败，回滚
+                    for (size_t j = 0; j < i; j++)
+                    {
+                        if (numDescriptors[i] > 0 && isNew[j])
+                        {
+                            m_Allocator.Release(m_BlockMap[hashes[j]].Allocation);
+                            m_BlockMap.erase(hashes[j]);
+                        }
+                    }
+
+                    return false;
+                }
             }
         }
 
-        it->second.Fence = m_Heap->GetDevice()->GetNextFrameFence();
-        it->second.Iterator = m_Blocks.emplace(m_Blocks.begin(), *hash);
-        return it->second.Handle;
+        uint64_t fence = m_Heap->GetDevice()->GetNextFrameFence();
+
+        for (size_t i = 0; i < numAllocations; i++)
+        {
+            if (numDescriptors[i] == 0)
+            {
+                pOutResults[i].ptr = 0;
+            }
+            else
+            {
+                BlockData& data = m_BlockMap[hashes[i]];
+                pOutResults[i] = data.Handle;
+
+                if (isNew[i])
+                {
+                    m_Heap->CopyFrom(offlineDescriptors[i], numDescriptors[i], data.Offset);
+                }
+                else
+                {
+                    // 准备将 block 移动到最前面
+                    m_Blocks.erase(data.Iterator);
+                }
+
+                data.Fence = fence;
+                data.Iterator = m_Blocks.emplace(m_Blocks.begin(), hashes[i]); // 放在最前面
+            }
+        }
+
+        return true;
     }
 
-    void GfxOnlineSamplerDescriptorTableAllocator::CleanUpAllocations()
+    void GfxOnlineSamplerDescriptorAllocator::CleanUpAllocations()
     {
         GfxDevice* device = m_Heap->GetDevice();
 
@@ -324,7 +429,7 @@ namespace march
         }
     }
 
-    GfxOnlineDescriptorTableMultiAllocator::GfxOnlineDescriptorTableMultiAllocator(GfxDevice* device, const Factory& factory)
+    GfxOnlineDescriptorMultiAllocator::GfxOnlineDescriptorMultiAllocator(GfxDevice* device, const Factory& factory)
         : m_Device(device)
         , m_Factory(factory)
         , m_Allocators{}
@@ -334,30 +439,28 @@ namespace march
         Rollover();
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GfxOnlineDescriptorTableMultiAllocator::Allocate(const D3D12_CPU_DESCRIPTOR_HANDLE* offlineDescriptors, uint32_t numDescriptors, GfxDescriptorHeap** ppOutHeap)
+    bool GfxOnlineDescriptorMultiAllocator::AllocateMany(
+        size_t numAllocations,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* const* offlineDescriptors,
+        const uint32_t* numDescriptors,
+        D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults,
+        GfxDescriptorHeap** ppOutHeap)
     {
-        std::optional<D3D12_GPU_DESCRIPTOR_HANDLE> result;
-        bool rollover = false;
-
-        while (!(result = m_CurrentAllocator->Allocate(offlineDescriptors, numDescriptors)))
+        if (m_CurrentAllocator->AllocateMany(numAllocations, offlineDescriptors, numDescriptors, pOutResults))
         {
-            // 只允许一次 Rollover
-            assert(!rollover);
-
-            Rollover();
-            rollover = true;
+            *ppOutHeap = m_CurrentAllocator->GetHeap();
+            return true;
         }
 
-        *ppOutHeap = m_CurrentAllocator->GetHeap();
-        return *result;
+        return false;
     }
 
-    void GfxOnlineDescriptorTableMultiAllocator::CleanUpAllocations()
+    void GfxOnlineDescriptorMultiAllocator::CleanUpAllocations()
     {
         m_CurrentAllocator->CleanUpAllocations();
     }
 
-    void GfxOnlineDescriptorTableMultiAllocator::Rollover()
+    void GfxOnlineDescriptorMultiAllocator::Rollover()
     {
         if (m_CurrentAllocator != nullptr)
         {

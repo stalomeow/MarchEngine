@@ -9,78 +9,6 @@ using System.Runtime.InteropServices;
 
 namespace March.Core.Rendering
 {
-    internal class ShaderConstantBuffer : INativeMarshal<ShaderConstantBuffer, ShaderConstantBuffer.Native>
-    {
-        public string Name = string.Empty;
-        public uint ShaderRegister;
-        public uint RegisterSpace;
-        public uint UnalignedSize;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Native
-        {
-            public nint Name;
-            public uint ShaderRegister;
-            public uint RegisterSpace;
-            public uint UnalignedSize;
-        }
-
-        public static ShaderConstantBuffer FromNative(ref Native native) => new()
-        {
-            Name = NativeString.Get(native.Name),
-            ShaderRegister = native.ShaderRegister,
-            RegisterSpace = native.RegisterSpace,
-            UnalignedSize = native.UnalignedSize,
-        };
-
-        public static void ToNative(ShaderConstantBuffer value, out Native native)
-        {
-            native.Name = NativeString.New(value.Name);
-            native.ShaderRegister = value.ShaderRegister;
-            native.RegisterSpace = value.RegisterSpace;
-            native.UnalignedSize = value.UnalignedSize;
-        }
-
-        public static void FreeNative(ref Native native)
-        {
-            NativeString.Free(native.Name);
-        }
-    }
-
-    internal class ShaderStaticSampler : INativeMarshal<ShaderStaticSampler, ShaderStaticSampler.Native>
-    {
-        public string Name = string.Empty;
-        public uint ShaderRegister;
-        public uint RegisterSpace;
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Native
-        {
-            public nint Name;
-            public uint ShaderRegister;
-            public uint RegisterSpace;
-        }
-
-        public static ShaderStaticSampler FromNative(ref Native native) => new()
-        {
-            Name = NativeString.Get(native.Name),
-            ShaderRegister = native.ShaderRegister,
-            RegisterSpace = native.RegisterSpace,
-        };
-
-        public static void ToNative(ShaderStaticSampler value, out Native native)
-        {
-            native.Name = NativeString.New(value.Name);
-            native.ShaderRegister = value.ShaderRegister;
-            native.RegisterSpace = value.RegisterSpace;
-        }
-
-        public static void FreeNative(ref Native native)
-        {
-            NativeString.Free(native.Name);
-        }
-    }
-
     internal class ShaderTexture : INativeMarshal<ShaderTexture, ShaderTexture.Native>
     {
         public string Name = string.Empty;
@@ -127,6 +55,78 @@ namespace March.Core.Rendering
         }
     }
 
+    internal class ShaderStaticSampler : INativeMarshal<ShaderStaticSampler, ShaderStaticSampler.Native>
+    {
+        public string Name = string.Empty;
+        public uint ShaderRegister;
+        public uint RegisterSpace;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public uint ShaderRegister;
+            public uint RegisterSpace;
+        }
+
+        public static ShaderStaticSampler FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            ShaderRegister = native.ShaderRegister,
+            RegisterSpace = native.RegisterSpace,
+        };
+
+        public static void ToNative(ShaderStaticSampler value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.ShaderRegister = value.ShaderRegister;
+            native.RegisterSpace = value.RegisterSpace;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+        }
+    }
+
+    internal class ShaderBuffer : INativeMarshal<ShaderBuffer, ShaderBuffer.Native>
+    {
+        public string Name = string.Empty;
+        public uint ShaderRegister;
+        public uint RegisterSpace;
+        public uint ConstantBufferSize;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Native
+        {
+            public nint Name;
+            public uint ShaderRegister;
+            public uint RegisterSpace;
+            public uint ConstantBufferSize;
+        }
+
+        public static ShaderBuffer FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            ShaderRegister = native.ShaderRegister,
+            RegisterSpace = native.RegisterSpace,
+            ConstantBufferSize = native.ConstantBufferSize,
+        };
+
+        public static void ToNative(ShaderBuffer value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.ShaderRegister = value.ShaderRegister;
+            native.RegisterSpace = value.RegisterSpace;
+            native.ConstantBufferSize = value.ConstantBufferSize;
+        }
+
+        public static void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+        }
+    }
+
     internal enum ShaderProgramType
     {
         Vertex,
@@ -142,9 +142,11 @@ namespace March.Core.Rendering
         public string[] Keywords = [];
         public byte[] Hash = [];
         public byte[] Binary = [];
-        public ShaderConstantBuffer[] ConstantBuffers = [];
+        public ShaderBuffer[] SrvCbvBuffers = [];
+        public ShaderTexture[] SrvTextures = [];
+        public ShaderBuffer[] UavBuffers = [];
+        public ShaderTexture[] UavTextures = [];
         public ShaderStaticSampler[] StaticSamplers = [];
-        public ShaderTexture[] Textures = [];
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
@@ -153,9 +155,11 @@ namespace March.Core.Rendering
             public NativeArray<nint> Keywords;
             public NativeArray<byte> Hash;
             public NativeArray<byte> Binary;
-            public NativeArrayMarshal<ShaderConstantBuffer> ConstantBuffers;
+            public NativeArrayMarshal<ShaderBuffer> SrvCbvBuffers;
+            public NativeArrayMarshal<ShaderTexture> SrvTextures;
+            public NativeArrayMarshal<ShaderBuffer> UavBuffers;
+            public NativeArrayMarshal<ShaderTexture> UavTextures;
             public NativeArrayMarshal<ShaderStaticSampler> StaticSamplers;
-            public NativeArrayMarshal<ShaderTexture> Textures;
         }
 
         public static ShaderProgram FromNative(ref Native native) => new()
@@ -164,9 +168,11 @@ namespace March.Core.Rendering
             Keywords = native.Keywords.ConvertValue((in nint s) => NativeString.Get(s)),
             Hash = native.Hash.Value,
             Binary = native.Binary.Value,
-            ConstantBuffers = native.ConstantBuffers.Value,
+            SrvCbvBuffers = native.SrvCbvBuffers.Value,
+            SrvTextures = native.SrvTextures.Value,
+            UavBuffers = native.UavBuffers.Value,
+            UavTextures = native.UavTextures.Value,
             StaticSamplers = native.StaticSamplers.Value,
-            Textures = native.Textures.Value,
         };
 
         public static void ToNative(ShaderProgram value, out Native native)
@@ -175,9 +181,11 @@ namespace March.Core.Rendering
             native.Keywords = new NativeArray<nint>(value.Keywords.Length);
             native.Hash = value.Hash;
             native.Binary = value.Binary;
-            native.ConstantBuffers = value.ConstantBuffers;
+            native.SrvCbvBuffers = value.SrvCbvBuffers;
+            native.SrvTextures = value.SrvTextures;
+            native.UavBuffers = value.UavBuffers;
+            native.UavTextures = value.UavTextures;
             native.StaticSamplers = value.StaticSamplers;
-            native.Textures = value.Textures;
 
             for (int i = 0; i < value.Keywords.Length; i++)
             {
@@ -195,9 +203,11 @@ namespace March.Core.Rendering
             native.Hash.Dispose();
             native.Keywords.Dispose();
             native.Binary.Dispose();
-            native.ConstantBuffers.Dispose();
+            native.SrvCbvBuffers.Dispose();
+            native.SrvTextures.Dispose();
+            native.UavBuffers.Dispose();
+            native.UavTextures.Dispose();
             native.StaticSamplers.Dispose();
-            native.Textures.Dispose();
         }
     }
 

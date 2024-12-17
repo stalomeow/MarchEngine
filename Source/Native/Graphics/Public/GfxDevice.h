@@ -17,7 +17,7 @@ namespace march
     class GfxRenderTexture;
 
     class GfxOfflineDescriptorAllocator;
-    class GfxOnlineDescriptorTableMultiAllocator;
+    class GfxOnlineDescriptorMultiAllocator;
 
     class GfxCompleteResourceAllocator;
     class GfxBufferSubAllocator;
@@ -67,8 +67,8 @@ namespace march
         uint32_t GetMaxFrameLatency() const;
 
         GfxOfflineDescriptorAllocator* GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type);
-        GfxOnlineDescriptorTableMultiAllocator* GetOnlineViewDescriptorTableAllocator() const;
-        GfxOnlineDescriptorTableMultiAllocator* GetOnlineSamplerDescriptorTableAllocator() const;
+        GfxOnlineDescriptorMultiAllocator* GetOnlineViewDescriptorAllocator() const;
+        GfxOnlineDescriptorMultiAllocator* GetOnlineSamplerDescriptorAllocator() const;
 
         GfxCompleteResourceAllocator* GetResourceAllocator(GfxAllocator allocator) const;
         GfxBufferSubAllocator* GetResourceAllocator(GfxSubAllocator subAllocator) const;
@@ -92,8 +92,8 @@ namespace march
         std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
 
         std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-        std::unique_ptr<GfxOnlineDescriptorTableMultiAllocator> m_OnlineViewAllocator;
-        std::unique_ptr<GfxOnlineDescriptorTableMultiAllocator> m_OnlineSamplerAllocator;
+        std::unique_ptr<GfxOnlineDescriptorMultiAllocator> m_OnlineViewAllocator;
+        std::unique_ptr<GfxOnlineDescriptorMultiAllocator> m_OnlineSamplerAllocator;
 
         std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedDefaultAllocator;
         std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocator;
