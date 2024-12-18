@@ -14,7 +14,6 @@
     <ClInclude Include="Public\Camera.h" />
     <ClInclude Include="Public\Light.h" />
     <ClInclude Include="Public\RenderGraph.h" />
-    <ClInclude Include="Public\RenderGraphContext.h" />
     <ClInclude Include="Public\RenderGraphResource.h" />
     <ClInclude Include="Public\RenderPipeline.h" />
   </ItemGroup>
@@ -24,7 +23,6 @@
     <ClCompile Include="Private\Light.binding.cpp" />
     <ClCompile Include="Private\Light.cpp" />
     <ClCompile Include="Private\RenderGraph.cpp" />
-    <ClCompile Include="Private\RenderGraphContext.cpp" />
     <ClCompile Include="Private\RenderGraphResource.cpp" />
     <ClCompile Include="Private\RenderPipeline.binding.cpp" />
     <ClCompile Include="Private\RenderPipeline.cpp" />

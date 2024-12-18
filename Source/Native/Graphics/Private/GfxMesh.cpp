@@ -76,30 +76,41 @@ namespace march
         return inputDesc;
     }
 
-    void GfxMesh::GetBufferViews(D3D12_VERTEX_BUFFER_VIEW* pOutVbv, D3D12_INDEX_BUFFER_VIEW* pOutIbv)
+    const GfxVertexBuffer<GfxMeshVertex>& GfxMesh::GetVertexBuffer()
     {
-        if (m_IsDirty)
+        RecreateBuffersIfDirty();
+        return m_VertexBuffer;
+    }
+
+    const GfxIndexBufferUInt16& GfxMesh::GetIndexBuffer()
+    {
+        RecreateBuffersIfDirty();
+        return m_IndexBuffer;
+    }
+
+    void GfxMesh::RecreateBuffersIfDirty()
+    {
+        if (!m_IsDirty)
         {
-            GfxDevice* device = GetGfxDevice();
-
-            if (m_UseAllocator2)
-            {
-                m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, static_cast<uint32_t>(m_Vertices.size()), m_Allocator2);
-                m_IndexBuffer = GfxIndexBufferUInt16(device, static_cast<uint32_t>(m_Indices.size()), m_Allocator2);
-            }
-            else
-            {
-                m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()), m_Allocator1);
-                m_IndexBuffer = GfxIndexBufferUInt16(device, "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()), m_Allocator1);
-            }
-
-            m_VertexBuffer.SetData(0, m_Vertices.data(), static_cast<uint32_t>(m_Vertices.size()));
-            m_IndexBuffer.SetData(0, m_Indices.data(), static_cast<uint32_t>(m_Indices.size()));
-            m_IsDirty = false;
+            return;
         }
 
-        *pOutVbv = m_VertexBuffer.GetVbv();
-        *pOutIbv = m_IndexBuffer.GetIbv();
+        GfxDevice* device = GetGfxDevice();
+
+        if (m_UseAllocator2)
+        {
+            m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, static_cast<uint32_t>(m_Vertices.size()), m_Allocator2);
+            m_IndexBuffer = GfxIndexBufferUInt16(device, static_cast<uint32_t>(m_Indices.size()), m_Allocator2);
+        }
+        else
+        {
+            m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()), m_Allocator1);
+            m_IndexBuffer = GfxIndexBufferUInt16(device, "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()), m_Allocator1);
+        }
+
+        m_VertexBuffer.SetData(0, m_Vertices.data(), static_cast<uint32_t>(m_Vertices.size()));
+        m_IndexBuffer.SetData(0, m_Indices.data(), static_cast<uint32_t>(m_Indices.size()));
+        m_IsDirty = false;
     }
 
     void GfxMesh::RecalculateNormals()

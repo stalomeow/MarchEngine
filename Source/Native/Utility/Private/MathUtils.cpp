@@ -3,7 +3,7 @@
 
 namespace march::MathUtils
 {
-    DirectX::XMFLOAT4X4 Identity4x4()
+    const DirectX::XMFLOAT4X4& Identity4x4()
     {
         static DirectX::XMFLOAT4X4 I =
         {

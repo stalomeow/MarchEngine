@@ -1,9 +1,9 @@
 #pragma once
 
+#include "GfxCommand.h"
 #include "GfxTexture.h"
 #include "GfxUtils.h"
 #include "RenderGraphResource.h"
-#include "RenderGraphContext.h"
 #include <directx/d3d12.h>
 #include <vector>
 #include <stdint.h>
@@ -16,9 +16,40 @@
 
 namespace march
 {
-    using ReadFlags = typename RenderGraphResourceReadFlags;
-    using WriteFlags = typename RenderGraphResourceWriteFlags;
-    using ClearFlags = typename RenderTargetClearFlags;
+    class RenderGraphContext final
+    {
+        friend class RenderGraph;
+
+    public:
+        RenderGraphContext();
+        ~RenderGraphContext();
+
+        void SetTexture(const std::string& name, GfxTexture* value) { m_Context->SetTexture(name, value); }
+        void SetTexture(int32_t id, GfxTexture* value) { m_Context->SetTexture(id, value); }
+        void SetBuffer(const std::string& name, GfxBuffer* value) { m_Context->SetBuffer(name, value); }
+        void SetBuffer(int32_t id, GfxBuffer* value) { m_Context->SetBuffer(id, value); }
+
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex); }
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, matrix); }
+        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(mesh, material, shaderPassIndex); }
+        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(mesh, material, shaderPassIndex, matrix); }
+        void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode) { m_Context->DrawMeshRenderers(numRenderers, renderers, lightMode); }
+
+        GfxDevice* GetDevice() const { return m_Context->GetDevice(); }
+        ID3D12GraphicsCommandList* GetCommandList() const { return m_Context->GetCommandList(); }
+        GfxCommandContext* GetCommandContext() const { return m_Context; }
+
+        RenderGraphContext(const RenderGraphContext&) = delete;
+        RenderGraphContext& operator=(const RenderGraphContext&) = delete;
+
+        RenderGraphContext(RenderGraphContext&&) = delete;
+        RenderGraphContext& operator=(RenderGraphContext&&) = delete;
+
+    private:
+        GfxCommandContext* m_Context;
+
+        void ClearPassData();
+    };
 
     enum class RenderGraphPassSortState
     {
@@ -41,14 +72,14 @@ namespace march
 
         bool HasSideEffects; // 如果写入了 persistent resource，那么就有副作用
         bool AllowPassCulling;
-        std::unordered_map<int32_t, ReadFlags> ResourcesRead;     // 相当于进来的边
-        std::unordered_map<int32_t, WriteFlags> ResourcesWritten; // 相当于出去的边
+        std::unordered_set<int32_t> ResourcesRead;    // 相当于进来的边
+        std::unordered_set<int32_t> ResourcesWritten; // 相当于出去的边
 
-        int32_t NumColorTargets;
-        RenderTargetData ColorTargets[8];
+        uint32_t NumColorTargets;
+        RenderTargetData ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
         RenderTargetData DepthStencilTarget;
 
-        ClearFlags RenderTargetsClearFlags;
+        GfxClearFlags RenderTargetsClearFlags;
         float ClearColorValue[4];
         float ClearDepthValue;
         uint8_t ClearStencilValue;
@@ -69,7 +100,6 @@ namespace march
         std::function<void(RenderGraphContext&)> RenderFunc;
 
         RenderGraphPass(const std::string& name);
-        ~RenderGraphPass() = default;
 
         RenderGraphPass(const RenderGraphPass&) = delete;
         RenderGraphPass& operator=(const RenderGraphPass&) = delete;
@@ -77,9 +107,6 @@ namespace march
         RenderGraphPass(RenderGraphPass&&) = default;
         RenderGraphPass& operator=(RenderGraphPass&&) = default;
     };
-
-    class RenderGraphTextureHandle;
-    class RenderGraphBuilder;
 
     class IRenderGraphCompiledEventListener
     {
@@ -89,8 +116,8 @@ namespace march
 
     class RenderGraph final
     {
-        friend RenderGraphTextureHandle;
-        friend RenderGraphBuilder;
+        friend class TextureHandle;
+        friend class RenderGraphBuilder;
 
     public:
         RenderGraph(bool emitEvents = true);
@@ -117,11 +144,8 @@ namespace march
         bool RecordResourceLifeTime();
         bool UpdateResourceLifeTime(int32_t sortedPassIndex, int32_t resourceId);
 
-        bool RentOrReturnResources(std::vector<int32_t> resourceIds, bool isReturn);
-        void SetPassRenderTargets(RenderGraphPass& pass);
-        void AddPassResourceBarriers(RenderGraphPass& pass);
-        static D3D12_RESOURCE_STATES GetResourceReadState(RenderGraphResourceData& res, RenderGraphResourceReadFlags flags);
-        static D3D12_RESOURCE_STATES GetResourceWriteState(RenderGraphResourceData& res, RenderGraphResourceWriteFlags flags);
+        bool RentOrReturnResources(const std::vector<int32_t>& resourceIds, bool isReturn);
+        void SetPassRenderTargets(GfxCommandContext* context, RenderGraphPass& pass);
 
         RenderGraphResourceData& GetResourceData(int32_t id);
 
@@ -130,29 +154,26 @@ namespace march
         std::vector<int32_t> m_SortedPasses;
         std::unordered_map<int32_t, RenderGraphResourceData> m_ResourceDataMap;
         std::unique_ptr<RenderGraphResourcePool> m_ResourcePool;
-        std::unique_ptr<RenderGraphContext> m_Context;
 
         static std::unordered_set<IRenderGraphCompiledEventListener*> s_GraphCompiledEventListeners;
     };
 
-    class RenderGraphTextureHandle final
+    class TextureHandle final
     {
     public:
-        RenderGraphTextureHandle();
-        RenderGraphTextureHandle(RenderGraph* graph, int32_t resourceId);
-        ~RenderGraphTextureHandle() = default;
+        TextureHandle(RenderGraph* graph, int32_t resourceId) : m_Graph(graph), m_ResourceId(resourceId) {}
+        TextureHandle() : TextureHandle(nullptr, -1) {}
 
-        int32_t Id() const;
-        GfxTextureDesc GetDesc() const;
-        GfxRenderTexture* Get() const;
-        GfxRenderTexture* operator->() const;
+        const GfxTextureDesc& GetDesc() const { return m_Graph->GetResourceData(m_ResourceId).GetTextureDesc(); }
+        GfxRenderTexture* Get() const { return m_Graph->GetResourceData(m_ResourceId).GetTexture(); }
+
+        int32_t Id() const { return m_ResourceId; }
+        GfxRenderTexture* operator->() const { return Get(); }
 
     private:
         RenderGraph* m_Graph;
         int32_t m_ResourceId;
     };
-
-    using TextureHandle = typename RenderGraphTextureHandle;
 
     class RenderGraphBuilder final
     {
@@ -164,19 +185,19 @@ namespace march
         void ImportTexture(int32_t id, GfxRenderTexture* texture);
         void CreateTransientTexture(int32_t id, const GfxTextureDesc& desc);
 
-        GfxTextureDesc GetTextureDesc(int32_t id) const;
-        TextureHandle ReadTexture(int32_t id, ReadFlags flags);
-        TextureHandle WriteTexture(int32_t id, WriteFlags flags);
+        const GfxTextureDesc& GetTextureDesc(int32_t id) const;
+        TextureHandle ReadTexture(int32_t id);
+        TextureHandle WriteTexture(int32_t id);
 
         void SetColorTarget(int32_t id, bool load);
-        void SetColorTarget(int32_t id, int32_t index = 0, bool load = true);
+        void SetColorTarget(int32_t id, uint32_t index = 0, bool load = true);
         void SetDepthStencilTarget(int32_t id, bool load = true);
-        void ClearRenderTargets(ClearFlags flags = ClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
+        void ClearRenderTargets(GfxClearFlags flags = GfxClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
         void SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
         void SetScissorRect(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
         void SetWireframe(bool value);
 
-        void SetRenderFunc(std::function<void(RenderGraphContext&)> func);
+        void SetRenderFunc(const std::function<void(RenderGraphContext&)>& func);
 
     private:
         RenderGraphBuilder(RenderGraph* graph, int32_t passIndex);

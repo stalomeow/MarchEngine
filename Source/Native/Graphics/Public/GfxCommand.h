@@ -2,9 +2,11 @@
 
 #include "GfxDescriptor.h"
 #include "GfxPipelineState.h"
+#include "GfxBuffer.h"
 #include "GfxUtils.h"
 #include "Shader.h"
 #include <directx/d3dx12.h>
+#include <DirectXMath.h>
 #include <DirectXColors.h>
 #include <wrl.h>
 #include <string>
@@ -22,8 +24,9 @@ namespace march
     class GfxResource;
     class GfxTexture;
     class GfxRenderTexture;
-    class GfxBuffer;
+    class GfxMesh;
     class Material;
+    class MeshRenderer;
 
     class GfxFence final
     {
@@ -205,6 +208,15 @@ namespace march
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxClearFlags);
 
+    struct GfxMeshData
+    {
+        const GfxInputDesc* InputDesc;
+        std::shared_ptr<GfxResource> VertexBufferResource;
+        D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
+        std::shared_ptr<GfxResource> IndexBufferResource;
+        D3D12_INDEX_BUFFER_VIEW IndexBufferView;
+    };
+
     // 不要跨帧使用
     class GfxCommandContext final
     {
@@ -224,10 +236,10 @@ namespace march
 
         void SetTexture(const std::string& name, GfxTexture* value);
         void SetTexture(int32_t id, GfxTexture* value);
+        void ClearTextures();
         void SetBuffer(const std::string& name, GfxBuffer* value);
         void SetBuffer(int32_t id, GfxBuffer* value);
-        void SetBuffer(const std::string& name, GfxBuffer&& value);
-        void SetBuffer(int32_t id, GfxBuffer&& value);
+        void ClearBuffers();
 
         void SetRenderTarget(GfxRenderTexture* colorTarget, GfxRenderTexture* depthStencilTarget = nullptr);
         void SetRenderTargets(uint32_t numColorTargets, GfxRenderTexture* const* colorTargets, GfxRenderTexture* depthStencilTarget);
@@ -239,6 +251,12 @@ namespace march
         void SetDefaultViewport();
         void SetDefaultScissorRect();
         void SetWireframe(bool value);
+
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex);
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex);
+        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+        void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxCommandType GetType() const { return m_Type; }
@@ -288,11 +306,19 @@ namespace march
         ID3D12PipelineState* m_CurrentPipelineState;
         ID3D12RootSignature* m_CurrentGraphicsRootSignature;
         D3D12_PRIMITIVE_TOPOLOGY m_CurrentPrimitiveTopology;
+        D3D12_VERTEX_BUFFER_VIEW m_CurrentVertexBuffer;
+        D3D12_INDEX_BUFFER_VIEW m_CurrentIndexBuffer;
         std::optional<uint8_t> m_CurrentStencilRef;
 
         std::unordered_map<int32_t, GfxTexture*> m_GlobalTextures;
         std::unordered_map<int32_t, GfxBuffer*> m_GlobalBuffers;
-        std::vector<GfxBuffer> m_TempBufferStore; // 临时存储 buffer，用于保持 buffer 存活时间
+
+        struct InstanceData
+        {
+            DirectX::XMFLOAT4X4 Matrix;
+        };
+
+        GfxStructuredBuffer<InstanceData> m_InstanceBuffer;
 
         GfxRenderTexture* GetFirstRenderTarget() const;
         GfxTexture* FindTexture(int32_t id, Material* material);
@@ -314,5 +340,10 @@ namespace march
         void SetStencilRef(uint8_t value);
 
         void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value);
+        void SetVertexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_VERTEX_BUFFER_VIEW& value);
+        void SetIndexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_INDEX_BUFFER_VIEW& value);
+        void SetInstanceBuffer(uint32_t numInstances, const InstanceData* instances);
+        void DrawSubMesh(GfxMesh* mesh, uint32_t subMeshIndex, uint32_t instanceCount);
+        void DrawSubMesh(const GfxMeshData* mesh, uint32_t instanceCount);
     };
 }

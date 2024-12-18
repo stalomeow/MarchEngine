@@ -70,7 +70,7 @@ namespace march
         GfxOnlineDescriptorMultiAllocator* GetOnlineViewDescriptorAllocator() const;
         GfxOnlineDescriptorMultiAllocator* GetOnlineSamplerDescriptorAllocator() const;
 
-        GfxCompleteResourceAllocator* GetResourceAllocator(GfxAllocator allocator) const;
+        GfxCompleteResourceAllocator* GetResourceAllocator(GfxAllocator allocator, bool msaa = false) const;
         GfxBufferSubAllocator* GetResourceAllocator(GfxSubAllocator subAllocator) const;
 
         uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
@@ -97,7 +97,7 @@ namespace march
 
         std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedDefaultAllocator;
         std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocator;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultMSAllocatorMS;
+        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocatorMS;
         std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedUploadAllocator;
         std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocator;
         std::unique_ptr<GfxBufferSubAllocator> m_TempUploadSubAllocator;

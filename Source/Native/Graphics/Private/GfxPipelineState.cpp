@@ -1,6 +1,5 @@
 #include "GfxPipelineState.h"
 #include "HashUtils.h"
-#include "StringUtils.h"
 #include "Shader.h"
 #include "Material.h"
 #include "GfxSettings.h"
@@ -346,11 +345,7 @@ namespace march
 
             ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
             GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
-
-#ifdef ENABLE_GFX_DEBUG_NAME
-            const std::string& debugName = shader->GetName() + " - " + pass->GetName();
-            result->SetName(StringUtils::Utf8ToUtf16(debugName).c_str());
-#endif
+            GfxUtils::SetName(result.Get(), shader->GetName() + " - " + pass->GetName());
 
             LOG_TRACE("Create Graphics PSO for '%s' Pass of '%s' Shader", pass->GetName().c_str(), shader->GetName().c_str());
         }

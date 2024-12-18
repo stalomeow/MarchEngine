@@ -1,7 +1,6 @@
 #include "RenderGraph.h"
 #include "GfxDevice.h"
 #include "GfxCommand.h"
-#include "GfxResource.h"
 #include "Debug.h"
 #include <utility>
 #include <stdexcept>
@@ -11,6 +10,21 @@
 
 namespace march
 {
+    RenderGraphContext::RenderGraphContext()
+    {
+        m_Context = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+    }
+
+    RenderGraphContext::~RenderGraphContext()
+    {
+        m_Context->SubmitAndRelease();
+    }
+
+    void RenderGraphContext::ClearPassData()
+    {
+        m_Context->ClearTextures();
+    }
+
     RenderGraphPass::RenderGraphPass(const std::string& name)
         : Name(name)
         , HasSideEffects(false)
@@ -20,7 +34,7 @@ namespace march
         , NumColorTargets(0)
         , ColorTargets{}
         , DepthStencilTarget{}
-        , RenderTargetsClearFlags(ClearFlags::None)
+        , RenderTargetsClearFlags(GfxClearFlags::None)
         , ClearColorValue{}
         , ClearDepthValue(0)
         , ClearStencilValue(0)
@@ -44,7 +58,6 @@ namespace march
         , m_ResourceDataMap{}
     {
         m_ResourcePool = std::make_unique<RenderGraphResourcePool>();
-        m_Context = std::make_unique<RenderGraphContext>();
     }
 
     RenderGraphBuilder RenderGraph::AddPass()
@@ -88,7 +101,6 @@ namespace march
         m_Passes.clear();
         m_SortedPasses.clear();
         m_ResourceDataMap.clear();
-        m_Context->Reset();
     }
 
     const RenderGraphPass& RenderGraph::GetPass(int32_t index) const
@@ -113,11 +125,11 @@ namespace march
 
     void RenderGraph::ExecutePasses()
     {
-        RenderGraphContext& context = *m_Context.get();
+        RenderGraphContext context{};
 
         for (int32_t passIndex : m_SortedPasses)
         {
-            context.ClearPreviousPassData();
+            context.ClearPassData();
 
             RenderGraphPass& pass = m_Passes[passIndex];
 
@@ -126,18 +138,17 @@ namespace march
                 return;
             }
 
-            context.BeginEvent(pass.Name);
+            context.GetCommandContext()->BeginEvent(pass.Name);
             {
-                AddPassResourceBarriers(pass);
-                SetPassRenderTargets(pass);
-                context.SetWireframe(pass.Wireframe);
+                SetPassRenderTargets(context.GetCommandContext(), pass);
+                context.GetCommandContext()->SetWireframe(pass.Wireframe);
 
                 if (pass.RenderFunc)
                 {
                     pass.RenderFunc(context);
                 }
             }
-            context.EndEvent();
+            context.GetCommandContext()->EndEvent();
 
             if (!RentOrReturnResources(pass.ResourcesDead, true))
             {
@@ -225,23 +236,23 @@ namespace march
         {
             RenderGraphPass& pass = m_Passes[m_SortedPasses[i]];
 
-            for (auto& kv : pass.ResourcesRead)
+            for (int32_t id : pass.ResourcesRead)
             {
-                if (!UpdateResourceLifeTime(i, kv.first))
+                if (!UpdateResourceLifeTime(i, id))
                 {
                     return false;
                 }
             }
 
-            for (auto& kv : pass.ResourcesWritten)
+            for (int32_t id : pass.ResourcesWritten)
             {
-                if (!UpdateResourceLifeTime(i, kv.first))
+                if (!UpdateResourceLifeTime(i, id))
                 {
                     return false;
                 }
             }
 
-            for (int32_t j = 0; j < pass.NumColorTargets; j++)
+            for (uint32_t j = 0; j < pass.NumColorTargets; j++)
             {
                 if (!pass.ColorTargets[j].IsSet)
                 {
@@ -293,7 +304,7 @@ namespace march
         }
     }
 
-    bool RenderGraph::RentOrReturnResources(std::vector<int32_t> resourceIds, bool isReturn)
+    bool RenderGraph::RentOrReturnResources(const std::vector<int32_t>& resourceIds, bool isReturn)
     {
         for (int32_t id : resourceIds)
         {
@@ -320,12 +331,12 @@ namespace march
         return true;
     }
 
-    void RenderGraph::SetPassRenderTargets(RenderGraphPass& pass)
+    void RenderGraph::SetPassRenderTargets(GfxCommandContext* context, RenderGraphPass& pass)
     {
-        GfxRenderTexture* colorTargets[8]{};
+        GfxRenderTexture* colorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
         GfxRenderTexture* depthStencilTarget = nullptr;
 
-        for (int32_t i = 0; i < pass.NumColorTargets; i++)
+        for (uint32_t i = 0; i < pass.NumColorTargets; i++)
         {
             if (!pass.ColorTargets[i].IsSet)
             {
@@ -333,113 +344,35 @@ namespace march
                 continue;
             }
 
-            colorTargets[i] = static_cast<GfxRenderTexture*>(GetResourceData(pass.ColorTargets[i].Id).GetResourcePtr());
+            colorTargets[i] = GetResourceData(pass.ColorTargets[i].Id).GetTexture();
         }
 
         if (pass.DepthStencilTarget.IsSet)
         {
-            depthStencilTarget = static_cast<GfxRenderTexture*>(GetResourceData(pass.DepthStencilTarget.Id).GetResourcePtr());
+            depthStencilTarget = GetResourceData(pass.DepthStencilTarget.Id).GetTexture();
         }
 
-        m_Context->SetRenderTargets(pass.NumColorTargets, colorTargets, depthStencilTarget,
-            pass.HasCustomViewport ? &pass.CustomViewport : nullptr,
-            pass.HasCustomScissorRect ? &pass.CustomScissorRect : nullptr);
-        m_Context->ClearRenderTargets(pass.RenderTargetsClearFlags, pass.ClearColorValue, pass.ClearDepthValue, pass.ClearStencilValue);
-    }
+        context->SetRenderTargets(pass.NumColorTargets, colorTargets, depthStencilTarget);
 
-    void RenderGraph::AddPassResourceBarriers(RenderGraphPass& pass)
-    {
-        GfxCommandList* cmdList = GetGfxDevice()->GetGraphicsCommandList();
-
-        for (const std::pair<int32_t, RenderGraphResourceReadFlags>& kv : pass.ResourcesRead)
+        if (pass.HasCustomViewport)
         {
-            RenderGraphResourceData& res = GetResourceData(kv.first);
-            cmdList->ResourceBarrier(res.GetResourcePtr(), GetResourceReadState(res, kv.second));
-        }
-
-        for (const std::pair<int32_t, RenderGraphResourceWriteFlags>& kv : pass.ResourcesWritten)
-        {
-            RenderGraphResourceData& res = GetResourceData(kv.first);
-            cmdList->ResourceBarrier(res.GetResourcePtr(), GetResourceWriteState(res, kv.second));
-        }
-
-        for (int32_t i = 0; i < pass.NumColorTargets; i++)
-        {
-            if (!pass.ColorTargets[i].IsSet)
-            {
-                LOG_ERROR("Color target %d is not set", i);
-                continue;
-            }
-
-            RenderGraphResourceData& res = GetResourceData(pass.ColorTargets[i].Id);
-            cmdList->ResourceBarrier(res.GetResourcePtr(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-        }
-
-        if (pass.DepthStencilTarget.IsSet)
-        {
-            RenderGraphResourceData& res = GetResourceData(pass.DepthStencilTarget.Id);
-            cmdList->ResourceBarrier(res.GetResourcePtr(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-        }
-
-        cmdList->FlushResourceBarriers();
-    }
-
-    D3D12_RESOURCE_STATES RenderGraph::GetResourceReadState(RenderGraphResourceData& res, RenderGraphResourceReadFlags flags)
-    {
-        D3D12_RESOURCE_STATES result{};
-
-        if (res.GetResourceType() == RenderGraphResourceType::Texture)
-        {
-            if ((flags & RenderGraphResourceReadFlags::Copy) == RenderGraphResourceReadFlags::Copy)
-            {
-                result |= D3D12_RESOURCE_STATE_COPY_SOURCE;
-            }
-
-            if ((flags & RenderGraphResourceReadFlags::Resolve) == RenderGraphResourceReadFlags::Resolve)
-            {
-                result |= D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
-            }
-
-            if ((flags & RenderGraphResourceReadFlags::PixelShader) == RenderGraphResourceReadFlags::PixelShader)
-            {
-                result |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            }
-
-            if ((flags & RenderGraphResourceReadFlags::NonPixelShader) == RenderGraphResourceReadFlags::NonPixelShader)
-            {
-                result |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            }
+            context->SetViewport(pass.CustomViewport);
         }
         else
         {
-            LOG_ERROR("Unsupported resource type");
+            context->SetDefaultViewport();
         }
 
-        return result;
-    }
-
-    D3D12_RESOURCE_STATES RenderGraph::GetResourceWriteState(RenderGraphResourceData& res, RenderGraphResourceWriteFlags flags)
-    {
-        D3D12_RESOURCE_STATES result{};
-
-        if (res.GetResourceType() == RenderGraphResourceType::Texture)
+        if (pass.HasCustomScissorRect)
         {
-            if ((flags & RenderGraphResourceWriteFlags::Copy) == RenderGraphResourceWriteFlags::Copy)
-            {
-                result |= D3D12_RESOURCE_STATE_COPY_DEST;
-            }
-
-            if ((flags & RenderGraphResourceWriteFlags::Resolve) == RenderGraphResourceWriteFlags::Resolve)
-            {
-                result |= D3D12_RESOURCE_STATE_RESOLVE_DEST;
-            }
+            context->SetScissorRect(pass.CustomScissorRect);
         }
         else
         {
-            LOG_ERROR("Unsupported resource type");
+            context->SetDefaultScissorRect();
         }
 
-        return result;
+        context->ClearRenderTargets(pass.RenderTargetsClearFlags, pass.ClearColorValue, pass.ClearDepthValue, pass.ClearStencilValue);
     }
 
     RenderGraphResourceData& RenderGraph::GetResourceData(int32_t id)
@@ -466,43 +399,9 @@ namespace march
         s_GraphCompiledEventListeners.erase(listener);
     }
 
-    RenderGraphTextureHandle::RenderGraphTextureHandle() :RenderGraphTextureHandle(nullptr, -1)
-    {
-    }
-
-    RenderGraphTextureHandle::RenderGraphTextureHandle(RenderGraph* graph, int32_t resourceId) : m_Graph(graph), m_ResourceId(resourceId)
-    {
-    }
-
-    int32_t RenderGraphTextureHandle::Id() const
-    {
-        return m_ResourceId;
-    }
-
-    GfxTextureDesc RenderGraphTextureHandle::GetDesc() const
-    {
-        RenderGraphResourceData& data = m_Graph->GetResourceData(m_ResourceId);
-        return data.GetTextureDesc();
-    }
-
-    GfxRenderTexture* RenderGraphTextureHandle::Get()  const
-    {
-        RenderGraphResourceData& data = m_Graph->GetResourceData(m_ResourceId);
-
-        if (data.GetResourceType() != RenderGraphResourceType::Texture)
-        {
-            return nullptr;
-        }
-
-        return static_cast<GfxRenderTexture*>(data.GetResourcePtr());
-    }
-
-    GfxRenderTexture* RenderGraphTextureHandle::operator->()  const
-    {
-        return Get();
-    }
-
-    RenderGraphBuilder::RenderGraphBuilder(RenderGraph* graph, int32_t passIndex) : m_Graph(graph), m_PassIndex(passIndex)
+    RenderGraphBuilder::RenderGraphBuilder(RenderGraph* graph, int32_t passIndex)
+        : m_Graph(graph)
+        , m_PassIndex(passIndex)
     {
     }
 
@@ -537,7 +436,7 @@ namespace march
         resMap.emplace(std::move(id), RenderGraphResourceData(m_Graph->m_ResourcePool.get(), desc));
     }
 
-    GfxTextureDesc RenderGraphBuilder::GetTextureDesc(int32_t id) const
+    const GfxTextureDesc& RenderGraphBuilder::GetTextureDesc(int32_t id) const
     {
         if (auto it = m_Graph->m_ResourceDataMap.find(id); it == m_Graph->m_ResourceDataMap.end())
         {
@@ -549,15 +448,15 @@ namespace march
         }
     }
 
-    TextureHandle RenderGraphBuilder::ReadTexture(int32_t id, ReadFlags flags)
+    TextureHandle RenderGraphBuilder::ReadTexture(int32_t id)
     {
         RenderGraphPass& pass = GetPass();
 
-        if (auto flagIt = pass.ResourcesRead.find(id); flagIt != pass.ResourcesRead.end())
+        if (pass.ResourcesRead.count(id) > 0)
         {
             throw std::runtime_error("Resource already read");
         }
-        else if (flags != ReadFlags::None)
+        else
         {
             if (pass.ResourcesWritten.count(id) > 0)
             {
@@ -578,22 +477,22 @@ namespace march
                 return TextureHandle(m_Graph, -1);
             }
 
-            pass.ResourcesRead.emplace(id, flags);
+            pass.ResourcesRead.emplace(id);
             m_Graph->m_Passes[producerPassIndex].NextPasses.push_back(m_PassIndex);
         }
 
         return TextureHandle(m_Graph, id);
     }
 
-    TextureHandle RenderGraphBuilder::WriteTexture(int32_t id, WriteFlags flags)
+    TextureHandle RenderGraphBuilder::WriteTexture(int32_t id)
     {
         RenderGraphPass& pass = GetPass();
 
-        if (auto flagIt = pass.ResourcesWritten.find(id); flagIt != pass.ResourcesWritten.end())
+        if (pass.ResourcesWritten.count(id) > 0)
         {
             throw std::runtime_error("Resource already written");
         }
-        else if (flags != WriteFlags::None)
+        else
         {
             if (pass.ResourcesRead.count(id) > 0)
             {
@@ -608,7 +507,7 @@ namespace march
             }
 
             pass.HasSideEffects |= !resIt->second.IsTransient();
-            pass.ResourcesWritten.emplace(id, flags);
+            pass.ResourcesWritten.emplace(id);
             resIt->second.AddProducerPass(m_PassIndex);
         }
 
@@ -620,7 +519,7 @@ namespace march
         SetColorTarget(id, 0, load);
     }
 
-    void RenderGraphBuilder::SetColorTarget(int32_t id, int32_t index, bool load)
+    void RenderGraphBuilder::SetColorTarget(int32_t id, uint32_t index, bool load)
     {
         RenderGraphPass& pass = GetPass();
 
@@ -636,7 +535,7 @@ namespace march
             return;
         }
 
-        pass.NumColorTargets = std::max(pass.NumColorTargets, index + 1);
+        pass.NumColorTargets = std::max(pass.NumColorTargets, index + 1u);
         RenderTargetData& data = pass.ColorTargets[index];
 
         if (data.IsSet)
@@ -700,7 +599,7 @@ namespace march
         resIt->second.AddProducerPass(m_PassIndex);
     }
 
-    void RenderGraphBuilder::ClearRenderTargets(ClearFlags flags, const float color[4], float depth, uint8_t stencil)
+    void RenderGraphBuilder::ClearRenderTargets(GfxClearFlags flags, const float color[4], float depth, uint8_t stencil)
     {
         RenderGraphPass& pass = GetPass();
 
@@ -740,9 +639,9 @@ namespace march
         pass.Wireframe = value;
     }
 
-    void RenderGraphBuilder::SetRenderFunc(std::function<void(RenderGraphContext&)> func)
+    void RenderGraphBuilder::SetRenderFunc(const std::function<void(RenderGraphContext&)>& func)
     {
-        GetPass().RenderFunc = std::move(func);
+        GetPass().RenderFunc = func;
     }
 
     RenderGraphPass& RenderGraphBuilder::GetPass()

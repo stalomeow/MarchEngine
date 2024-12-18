@@ -152,10 +152,9 @@ namespace march
         throw std::runtime_error("Invalid shader property id");
     }
 
-    static int32_t s_MaterialConstantBufferId = Shader::GetNameId("cbMaterial");
-
     int32_t Shader::GetMaterialConstantBufferId()
     {
-        return s_MaterialConstantBufferId;
+        static int32_t id = Shader::GetNameId("cbMaterial");
+        return id;
     }
 }

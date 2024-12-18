@@ -294,7 +294,6 @@ namespace march
     {
         CommittedDefault,
         PlacedDefault,
-        PlacedDefaultMS,
 
         CommittedUpload,
         PlacedUpload,

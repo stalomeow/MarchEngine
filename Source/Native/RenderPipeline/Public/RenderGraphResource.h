@@ -14,27 +14,6 @@ namespace march
         Texture,
     };
 
-    enum class RenderGraphResourceReadFlags
-    {
-        None = 0,
-        Copy = 1 << 0,
-        Resolve = 1 << 1,
-        PixelShader = 1 << 2,
-        NonPixelShader = 1 << 3,
-        AllShader = PixelShader | NonPixelShader,
-    };
-
-    DEFINE_ENUM_FLAG_OPERATORS(RenderGraphResourceReadFlags);
-
-    enum class RenderGraphResourceWriteFlags
-    {
-        None = 0,
-        Copy = 1 << 0,
-        Resolve = 1 << 1,
-    };
-
-    DEFINE_ENUM_FLAG_OPERATORS(RenderGraphResourceWriteFlags);
-
     class RenderGraphResourcePool final
     {
         struct FreeTexture
@@ -43,7 +22,7 @@ namespace march
             uint32_t FailCount;
         };
 
-        const uint32_t MaxFailCount = 20;
+        static constexpr uint32_t MaxFailCount = 20;
 
     public:
         RenderGraphResourcePool();
@@ -81,8 +60,8 @@ namespace march
         void AddProducerPass(int32_t passIndex);
 
         RenderGraphResourceType GetResourceType() const;
-        GfxResource* GetResourcePtr() const;
-        GfxTextureDesc GetTextureDesc() const;
+        GfxRenderTexture* GetTexture() const;
+        const GfxTextureDesc& GetTextureDesc() const;
 
         bool IsTransient() const;
         void RentTransientResource();
@@ -95,7 +74,7 @@ namespace march
         std::vector<int32_t> m_ProducerPasses;
 
         RenderGraphResourceType m_ResourceType;
-        GfxResource* m_ResourcePtr;
+        void* m_ResourcePtr;
 
         RenderGraphResourcePool* m_TransientResourcePool;
         GfxTextureDesc m_TransientTextureDesc;

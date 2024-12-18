@@ -45,7 +45,7 @@ namespace march
         }
 
         GfxDevice* device = GetGfxDevice();
-        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc));
+        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc, GfxAllocator::PlacedDefault));
         GfxRenderTexture* texture = m_AllTextures.back().get();
         m_TextureMap[texture] = std::prev(m_AllTextures.end());
         return texture;
@@ -104,12 +104,17 @@ namespace march
         return m_ResourceType;
     }
 
-    GfxResource* RenderGraphResourceData::GetResourcePtr() const
+    GfxRenderTexture* RenderGraphResourceData::GetTexture() const
     {
-        return m_ResourcePtr;
+        if (m_ResourceType != RenderGraphResourceType::Texture)
+        {
+            throw std::runtime_error("Resource is not a texture");
+        }
+
+        return static_cast<GfxRenderTexture*>(m_ResourcePtr);
     }
 
-    GfxTextureDesc RenderGraphResourceData::GetTextureDesc() const
+    const GfxTextureDesc& RenderGraphResourceData::GetTextureDesc() const
     {
         if (m_ResourceType != RenderGraphResourceType::Texture)
         {
@@ -140,6 +145,10 @@ namespace march
         {
             m_ResourcePtr = m_TransientResourcePool->RentTexture(m_TransientTextureDesc);
         }
+        else
+        {
+            throw std::runtime_error("Unsupported resource type");
+        }
     }
 
     void RenderGraphResourceData::ReturnTransientResource()
@@ -152,6 +161,10 @@ namespace march
         if (m_ResourceType == RenderGraphResourceType::Texture)
         {
             m_TransientResourcePool->ReturnTexture(static_cast<GfxRenderTexture*>(m_ResourcePtr));
+        }
+        else
+        {
+            throw std::runtime_error("Unsupported resource type");
         }
     }
 

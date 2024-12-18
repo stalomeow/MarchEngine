@@ -54,7 +54,9 @@ namespace march
         const DirectX::BoundingBox& GetBounds() const { return m_Bounds; }
 
         const GfxInputDesc& GetInputDesc();
-        void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW* pOutVbv, D3D12_INDEX_BUFFER_VIEW* pOutIbv);
+        const GfxVertexBuffer<GfxMeshVertex>& GetVertexBuffer();
+        const GfxIndexBufferUInt16& GetIndexBuffer();
+
         void RecalculateNormals();
         void RecalculateTangents();
         void RecalculateBounds();
@@ -82,5 +84,7 @@ namespace march
 
         GfxVertexBuffer<GfxMeshVertex> m_VertexBuffer;
         GfxIndexBufferUInt16 m_IndexBuffer;
+
+        void RecreateBuffersIfDirty();
     };
 }

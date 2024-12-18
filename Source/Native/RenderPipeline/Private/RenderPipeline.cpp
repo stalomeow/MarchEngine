@@ -9,7 +9,6 @@
 #include "Transform.h"
 #include "Material.h"
 #include "Camera.h"
-#include "RenderObject.h"
 #include "Display.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
@@ -207,7 +206,7 @@ namespace march
         }
 
         builder.SetDepthStencilTarget(depthStencilTargetId);
-        builder.ClearRenderTargets(ClearFlags::Color);
+        builder.ClearRenderTargets(GfxClearFlags::Color);
         builder.SetWireframe(wireframe);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
@@ -224,7 +223,7 @@ namespace march
 
         for (auto& [id, format, sRGB] : m_GBuffers)
         {
-            gBuffers[numGBuffers++] = builder.ReadTexture(id, ReadFlags::PixelShader);
+            gBuffers[numGBuffers++] = builder.ReadTexture(id);
         }
 
         builder.SetColorTarget(colorTargetId);
@@ -236,7 +235,7 @@ namespace march
                 context.SetTexture(gBuffers[i].Id(), gBuffers[i].Get());
             }
 
-            context.DrawMesh(m_FullScreenTriangleMesh, m_DeferredLitMaterial.get());
+            context.DrawMesh(m_FullScreenTriangleMesh, 0, m_DeferredLitMaterial.get(), 0);
         });
     }
 
@@ -301,7 +300,7 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawMesh(m_SphereMesh, m_SkyboxMaterial.get());
+            context.DrawMesh(m_SphereMesh, 0, m_SkyboxMaterial.get(), 0);
         });
     }
 
@@ -313,7 +312,7 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawMesh(m_FullScreenTriangleMesh, material);
+            context.DrawMesh(m_FullScreenTriangleMesh, 0, material, 0);
         });
     }
 
@@ -322,6 +321,6 @@ namespace march
         auto builder = m_RenderGraph->AddPass("PrepareTextureForImGui");
 
         builder.AllowPassCulling(false);
-        builder.ReadTexture(id, ReadFlags::PixelShader);
+        builder.ReadTexture(id);
     }
 }

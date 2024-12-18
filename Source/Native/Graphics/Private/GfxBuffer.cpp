@@ -92,7 +92,7 @@ namespace march
 
         if (m_MappedData)
         {
-            memcpy(m_MappedData + destOffset, src, static_cast<size_t>(sizeInBytes));
+            memcpy(m_MappedData + m_Resource.GetBufferOffset() + destOffset, src, static_cast<size_t>(sizeInBytes));
         }
         else
         {

@@ -24,9 +24,6 @@
     <ClInclude Include="Public\RenderGraphResource.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\RenderGraphContext.h">
-      <Filter>Public</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Light.binding.cpp">
@@ -51,9 +48,6 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\RenderGraphResource.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderGraphContext.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>
