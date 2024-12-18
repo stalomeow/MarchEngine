@@ -21,9 +21,10 @@ namespace march
     class GfxBuffer
     {
     public:
+        GfxBuffer();
         GfxBuffer(GfxDevice* device, const std::string& name, const GfxBufferDesc& desc, GfxAllocator allocator);
         GfxBuffer(GfxDevice* device, uint32_t sizeInBytes, uint32_t dataPlacementAlignment, GfxSubAllocator allocator);
-        virtual ~GfxBuffer();
+        virtual ~GfxBuffer() { Release(); }
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t offset = 0) const;
         void SetData(uint32_t destOffset, const void* src, uint32_t sizeInBytes);
@@ -33,10 +34,17 @@ namespace march
         std::shared_ptr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
         GfxDevice* GetDevice() const { return m_Resource.GetDevice(); }
 
+        GfxBuffer(const GfxBuffer&) = delete;
+        GfxBuffer& operator=(const GfxBuffer&) = delete;
+
+        GfxBuffer(GfxBuffer&&) noexcept;
+        GfxBuffer& operator=(GfxBuffer&&);
+
     private:
         GfxResourceSpan m_Resource;
         uint8_t* m_MappedData;
 
+        void Release();
         void TryMapData(GfxResourceAllocator* allocator);
     };
 
@@ -44,6 +52,8 @@ namespace march
     class GfxVertexBuffer : public GfxBuffer
     {
     public:
+        GfxVertexBuffer() : GfxBuffer() {}
+
         GfxVertexBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
         {
@@ -69,6 +79,8 @@ namespace march
     class GfxIndexBufferUInt16 : public GfxBuffer
     {
     public:
+        GfxIndexBufferUInt16() : GfxBuffer() {}
+
         GfxIndexBufferUInt16(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(uint16_t)) * count, false, D3D12_RESOURCE_STATE_INDEX_BUFFER }, allocator)
         {
@@ -94,6 +106,8 @@ namespace march
     class GfxIndexBufferUInt32 : public GfxBuffer
     {
     public:
+        GfxIndexBufferUInt32() : GfxBuffer() {}
+
         GfxIndexBufferUInt32(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(uint32_t)) * count, false, D3D12_RESOURCE_STATE_INDEX_BUFFER }, allocator)
         {
@@ -120,6 +134,8 @@ namespace march
     class GfxConstantBuffer : public GfxBuffer
     {
     public:
+        GfxConstantBuffer() : GfxBuffer() {}
+
         GfxConstantBuffer(GfxDevice* device, const std::string& name, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)), false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
         {
@@ -134,6 +150,8 @@ namespace march
     class GfxRawConstantBuffer : public GfxBuffer
     {
     public:
+        GfxRawConstantBuffer() : GfxBuffer() {}
+
         GfxRawConstantBuffer(GfxDevice* device, const std::string& name, uint32_t sizeInBytes, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ sizeInBytes, false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
         {
@@ -149,6 +167,8 @@ namespace march
     class GfxStructuredBuffer : public GfxBuffer
     {
     public:
+        GfxStructuredBuffer() : GfxBuffer() {}
+
         GfxStructuredBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
             : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_GENERIC_READ }, allocator)
         {

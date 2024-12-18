@@ -24,16 +24,13 @@ namespace march
         : m_Device(device)
         , m_Desc{}
         , m_Resource{}
+        , m_MipLevels{}
+        , m_SampleQuality{}
         , m_SrvDescriptors{}
         , m_UavDescriptors{}
         , m_RtvDsvDescriptors{}
         , m_SamplerDescriptor{}
     {
-    }
-
-    uint32_t GfxTexture::GetMipLevels() const
-    {
-        return static_cast<uint32_t>(GetResource()->GetD3DResource()->GetDesc().MipLevels);
     }
 
     static size_t GetSrvUavIndex(const GfxTextureDesc& desc, GfxTextureElement element)
@@ -473,9 +470,14 @@ namespace march
 
     void GfxTexture::Reset(const GfxTextureDesc& desc, GfxResourceSpan&& resource)
     {
-        ReleaseDescriptors();
         m_Desc = desc;
         m_Resource = std::move(resource);
+
+        D3D12_RESOURCE_DESC resourceDesc = m_Resource.GetD3DResourceDesc();
+        m_MipLevels = static_cast<uint32_t>(resourceDesc.MipLevels);
+        m_SampleQuality = static_cast<uint32_t>(resourceDesc.SampleDesc.Quality);
+
+        ReleaseDescriptors();
     }
 
     GfxTexture* GfxTexture::GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension)

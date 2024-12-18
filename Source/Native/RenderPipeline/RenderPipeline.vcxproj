@@ -16,7 +16,6 @@
     <ClInclude Include="Public\RenderGraph.h" />
     <ClInclude Include="Public\RenderGraphContext.h" />
     <ClInclude Include="Public\RenderGraphResource.h" />
-    <ClInclude Include="Public\RenderObject.h" />
     <ClInclude Include="Public\RenderPipeline.h" />
   </ItemGroup>
   <ItemGroup>
@@ -27,8 +26,6 @@
     <ClCompile Include="Private\RenderGraph.cpp" />
     <ClCompile Include="Private\RenderGraphContext.cpp" />
     <ClCompile Include="Private\RenderGraphResource.cpp" />
-    <ClCompile Include="Private\RenderObject.binding.cpp" />
-    <ClCompile Include="Private\RenderObject.cpp" />
     <ClCompile Include="Private\RenderPipeline.binding.cpp" />
     <ClCompile Include="Private\RenderPipeline.cpp" />
   </ItemGroup>

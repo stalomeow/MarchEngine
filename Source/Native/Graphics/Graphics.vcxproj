@@ -25,6 +25,7 @@
     <ClInclude Include="Public\GfxTexture.h" />
     <ClInclude Include="Public\Material.h" />
     <ClInclude Include="Public\RenderDoc.h" />
+    <ClInclude Include="Public\MeshRenderer.h" />
     <ClInclude Include="Public\Shader.h" />
     <ClInclude Include="ThirdParty\renderdoc_app.h" />
   </ItemGroup>
@@ -48,6 +49,8 @@
     <ClCompile Include="Private\Material.binding.cpp" />
     <ClCompile Include="Private\Material.cpp" />
     <ClCompile Include="Private\RenderDoc.cpp" />
+    <ClCompile Include="Private\MeshRenderer.binding.cpp" />
+    <ClCompile Include="Private\MeshRenderer.cpp" />
     <ClCompile Include="Private\Shader.binding.cpp" />
     <ClCompile Include="Private\Shader.cpp" />
     <ClCompile Include="Private\ShaderKeyword.cpp" />

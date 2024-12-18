@@ -2,8 +2,10 @@
 
 #include "GfxDescriptor.h"
 #include "GfxPipelineState.h"
+#include "GfxUtils.h"
 #include "Shader.h"
 #include <directx/d3dx12.h>
+#include <DirectXColors.h>
 #include <wrl.h>
 #include <string>
 #include <queue>
@@ -12,6 +14,7 @@
 #include <memory>
 #include <unordered_map>
 #include <bitset>
+#include <optional>
 
 namespace march
 {
@@ -190,6 +193,18 @@ namespace march
         std::bitset<Capacity> m_IsDirty;
     };
 
+    enum class GfxClearFlags
+    {
+        None = 0,
+        Color = 1 << 0,
+        Depth = 1 << 1,
+        Stencil = 1 << 2,
+        DepthStencil = Depth | Stencil,
+        All = Color | Depth | Stencil,
+    };
+
+    DEFINE_ENUM_FLAG_OPERATORS(GfxClearFlags);
+
     // 不要跨帧使用
     class GfxCommandContext final
     {
@@ -199,10 +214,31 @@ namespace march
         void Open();
         GfxSyncPoint SubmitAndRelease();
 
+        void BeginEvent(const std::string& name);
+        void EndEvent();
+
         void TransitionResource(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter);
         void FlushResourceBarriers();
 
         void WaitOnGpu(const GfxSyncPoint& syncPoint);
+
+        void SetTexture(const std::string& name, GfxTexture* value);
+        void SetTexture(int32_t id, GfxTexture* value);
+        void SetBuffer(const std::string& name, GfxBuffer* value);
+        void SetBuffer(int32_t id, GfxBuffer* value);
+        void SetBuffer(const std::string& name, GfxBuffer&& value);
+        void SetBuffer(int32_t id, GfxBuffer&& value);
+
+        void SetRenderTarget(GfxRenderTexture* colorTarget, GfxRenderTexture* depthStencilTarget = nullptr);
+        void SetRenderTargets(uint32_t numColorTargets, GfxRenderTexture* const* colorTargets, GfxRenderTexture* depthStencilTarget);
+        void ClearRenderTargets(GfxClearFlags flags = GfxClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
+        void SetViewport(const D3D12_VIEWPORT& viewport);
+        void SetViewports(uint32_t numViewports, const D3D12_VIEWPORT* viewports);
+        void SetScissorRect(const D3D12_RECT& rect);
+        void SetScissorRects(uint32_t numRects, const D3D12_RECT* rects);
+        void SetDefaultViewport();
+        void SetDefaultScissorRect();
+        void SetWireframe(bool value);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxCommandType GetType() const { return m_Type; }
@@ -239,33 +275,44 @@ namespace march
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
-        std::vector<GfxRenderTexture*> m_ColorTargets;
+        GfxRenderTexture* m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
         GfxRenderTexture* m_DepthStencilTarget;
-        D3D12_VIEWPORT m_Viewport;
-        D3D12_RECT m_ScissorRect;
+
+        uint32_t m_NumViewports;
+        D3D12_VIEWPORT m_Viewports[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+        uint32_t m_NumScissorRects;
+        D3D12_RECT m_ScissorRects[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 
         GfxOutputDesc m_OutputDesc;
 
         ID3D12PipelineState* m_CurrentPipelineState;
         ID3D12RootSignature* m_CurrentGraphicsRootSignature;
         D3D12_PRIMITIVE_TOPOLOGY m_CurrentPrimitiveTopology;
-        uint8_t m_CurrentStencilRef;
-        bool m_IsStencilRefSet;
+        std::optional<uint8_t> m_CurrentStencilRef;
 
         std::unordered_map<int32_t, GfxTexture*> m_GlobalTextures;
         std::unordered_map<int32_t, GfxBuffer*> m_GlobalBuffers;
+        std::vector<GfxBuffer> m_TempBufferStore; // 临时存储 buffer，用于保持 buffer 存活时间
 
+        GfxRenderTexture* GetFirstRenderTarget() const;
         GfxTexture* FindTexture(int32_t id, Material* material);
         GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex);
+
+        ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex);
 
         void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer);
         void SetGraphicsSrv(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
         void SetGraphicsUav(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
         void SetGraphicsSampler(ShaderProgramType type, uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
-        void SetGraphicsRootSignatureAndParameters(GfxRootSignature* rootSignature, Material* material, int32_t passIndex);
+        void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex);
         void SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature);
         void SetGraphicsRootSrvCbvBuffers();
         void TransitionGraphicsViewResources();
         void SetDescriptorHeaps();
+
+        void SetResolvedRenderState(const ShaderPassRenderState& state);
+        void SetStencilRef(uint8_t value);
+
+        void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value);
     };
 }

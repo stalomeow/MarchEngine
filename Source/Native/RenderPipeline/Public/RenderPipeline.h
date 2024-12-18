@@ -16,7 +16,7 @@
 namespace march
 {
     class Camera;
-    class RenderObject;
+    class MeshRenderer;
     class RenderGraph;
     class GfxRenderTexture;
 
@@ -52,9 +52,9 @@ namespace march
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
-        void AddRenderObject(RenderObject* obj) { m_RenderObjects.push_back(obj); }
+        void AddMeshRenderer(MeshRenderer* obj) { m_RenderObjects.push_back(obj); }
 
-        void RemoveRenderObject(RenderObject* obj)
+        void RemoveMeshRenderer(MeshRenderer* obj)
         {
             auto it = std::find(m_RenderObjects.begin(), m_RenderObjects.end(), obj);
 
@@ -98,7 +98,7 @@ namespace march
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
 
     private:
-        std::vector<RenderObject*> m_RenderObjects{};
+        std::vector<MeshRenderer*> m_RenderObjects{};
         std::vector<Light*> m_Lights{};
         std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
     };

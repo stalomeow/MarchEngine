@@ -34,6 +34,55 @@ namespace march
             return AppendRange(begin, end);
         }
 
+        template <>
+        void Append(const bool& obj)
+        {
+            Append(static_cast<uint32_t>(obj ? 1u : 0u));
+        }
+
+        template <>
+        void Append(const uint8_t& obj)
+        {
+            Append(static_cast<uint32_t>(obj));
+        }
+
+        template <>
+        void Append(const uint16_t& obj)
+        {
+            Append(static_cast<uint32_t>(obj));
+        }
+
+        template <>
+        void Append(const int8_t& obj)
+        {
+            Append(static_cast<int32_t>(obj));
+        }
+
+        template <>
+        void Append(const int16_t& obj)
+        {
+            Append(static_cast<int32_t>(obj));
+        }
+
+        template <>
+        void Append(const char& obj)
+        {
+            Append(static_cast<uint32_t>(obj));
+        }
+
+        template <>
+        void Append(const wchar_t& obj)
+        {
+            Append(static_cast<uint32_t>(obj));
+        }
+
+        template <typename T>
+        FNV1Hash& operator <<(const T& obj)
+        {
+            Append(obj);
+            return *this;
+        }
+
         void Append(const void* data, size_t sizeInBytes)
         {
             assert((sizeInBytes & 3) == 0 && "sizeInBytes must be a multiple of 4");

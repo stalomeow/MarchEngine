@@ -4,10 +4,10 @@ namespace March.Core.Rendering
 {
     public static partial class RenderPipeline
     {
-        [NativeMethod("AddRenderObject")]
+        [NativeMethod("AddMeshRenderer")]
         public static partial void Add(MeshRenderer renderer);
 
-        [NativeMethod("RemoveRenderObject")]
+        [NativeMethod("RemoveMeshRenderer")]
         public static partial void Remove(MeshRenderer renderer);
 
         [NativeMethod("AddLight")]

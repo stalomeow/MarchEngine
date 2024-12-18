@@ -5,6 +5,12 @@
 
 namespace march
 {
+    GfxBuffer::GfxBuffer()
+        : m_Resource{}
+        , m_MappedData(nullptr)
+    {
+    }
+
     GfxBuffer::GfxBuffer(GfxDevice* device, const std::string& name, const GfxBufferDesc& desc, GfxAllocator allocator)
         : m_Resource{}
         , m_MappedData(nullptr)
@@ -27,7 +33,26 @@ namespace march
         TryMapData(subAllocator);
     }
 
-    GfxBuffer::~GfxBuffer()
+    GfxBuffer::GfxBuffer(GfxBuffer&& other) noexcept
+        : m_Resource(std::move(other.m_Resource))
+        , m_MappedData(std::exchange(other.m_MappedData, nullptr))
+    {
+    }
+
+    GfxBuffer& GfxBuffer::operator=(GfxBuffer&& other)
+    {
+        if (this != &other)
+        {
+            Release();
+
+            m_Resource = std::move(other.m_Resource);
+            m_MappedData = std::exchange(other.m_MappedData, nullptr);
+        }
+
+        return *this;
+    }
+
+    void GfxBuffer::Release()
     {
         if (m_MappedData)
         {

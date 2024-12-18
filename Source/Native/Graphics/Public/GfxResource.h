@@ -30,6 +30,7 @@ namespace march
         GfxDevice* GetDevice() const { return m_Device; }
         GfxResourceAllocator* GetAllocator() const { return m_Allocator; }
         ID3D12Resource* GetD3DResource() const { return m_Resource.Get(); }
+        D3D12_RESOURCE_DESC GetD3DResourceDesc() const { return m_Resource->GetDesc(); }
 
         D3D12_RESOURCE_STATES GetState() const { return m_State; }
         void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
@@ -63,11 +64,15 @@ namespace march
         GfxResourceSpan MakeBufferSlice(uint32_t offset, uint32_t size, GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation) const;
 
         std::shared_ptr<GfxResource> GetResource() const { return m_Resource; }
+        ID3D12Resource* GetD3DResource() const { return m_Resource->GetD3DResource(); }
+        D3D12_RESOURCE_DESC GetD3DResourceDesc() const { return m_Resource->GetD3DResourceDesc(); }
         GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
         GfxResourceAllocator* GetSubAllocator() const { return m_Allocator; }
 
         uint32_t GetBufferOffset() const { return m_BufferOffset; }
         uint32_t GetBufferSize() const { return m_BufferSize; }
+
+        operator bool() const { return m_Resource != nullptr; }
 
         GfxResourceSpan(const GfxResourceSpan&) = delete;
         GfxResourceSpan& operator=(const GfxResourceSpan&) = delete;

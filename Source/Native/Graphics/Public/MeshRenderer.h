@@ -9,19 +9,15 @@ namespace march
     class GfxMesh;
     class Material;
 
-    class RenderObject : public Component
+    class MeshRenderer : public Component
     {
     public:
-        RenderObject() = default;
+        MeshRenderer() = default;
 
         GfxMesh* Mesh = nullptr;
         std::vector<Material*> Materials{};
 
         // 获取世界空间 Bounds
         DirectX::BoundingBox GetBounds() const;
-
-    protected:
-        void OnMount() override;
-        void OnUnmount() override;
     };
 }

@@ -16,6 +16,8 @@ namespace march
     GfxInputDesc::GfxInputDesc(D3D12_PRIMITIVE_TOPOLOGY topology, const std::vector<GfxInputElement>& elements)
         : m_PrimitiveTopology(topology), m_Layout{}
     {
+        DefaultHash hash{};
+
         for (const GfxInputElement& input : elements)
         {
             D3D12_INPUT_ELEMENT_DESC& desc = m_Layout.emplace_back();
@@ -91,11 +93,12 @@ namespace march
             desc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
             desc.InputSlotClass = input.InputSlotClass;
             desc.InstanceDataStepRate = static_cast<UINT>(input.InstanceDataStepRate);
+
+            hash.Append(input);
         }
 
-        D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType = GetPrimitiveTopologyType();
-        m_Hash = HashUtils::FNV1(elements.data(), elements.size());
-        m_Hash = HashUtils::FNV1(&topologyType, 1, m_Hash); // PSO 里用的是 D3D12_PRIMITIVE_TOPOLOGY_TYPE
+        hash.Append(GetPrimitiveTopologyType()); // PSO 里用的是 D3D12_PRIMITIVE_TOPOLOGY_TYPE
+        m_Hash = *hash;
     }
 
     D3D12_PRIMITIVE_TOPOLOGY_TYPE GfxInputDesc::GetPrimitiveTopologyType() const
@@ -104,7 +107,8 @@ namespace march
     }
 
     GfxOutputDesc::GfxOutputDesc()
-        : RTVFormats{}
+        : NumRTV(0)
+        , RTVFormats{}
         , DSVFormat(DXGI_FORMAT_UNKNOWN)
         , SampleCount(1)
         , SampleQuality(0)
@@ -123,16 +127,15 @@ namespace march
     {
         if (m_IsDirty)
         {
+            DefaultHash hash{};
+            hash.Append(RTVFormats, sizeof(DXGI_FORMAT) * static_cast<size_t>(NumRTV));
+            hash.Append(DSVFormat);
+            hash.Append(SampleCount);
+            hash.Append(SampleQuality);
+            hash.Append(Wireframe);
+
+            m_Hash = *hash;
             m_IsDirty = false;
-
-            m_Hash = HashUtils::FNV1(RTVFormats.data(), RTVFormats.size());
-            m_Hash = HashUtils::FNV1(&DSVFormat, 1, m_Hash);
-            m_Hash = HashUtils::FNV1(&SampleCount, 1, m_Hash);
-            m_Hash = HashUtils::FNV1(&SampleQuality, 1, m_Hash);
-
-            // bool 不够 4 字节
-            uint32_t wireframe = Wireframe ? 1 : 0;
-            m_Hash = HashUtils::FNV1(&wireframe, 1, m_Hash);
         }
 
         return m_Hash;
@@ -175,45 +178,40 @@ namespace march
             return 0.0f;
         };
 
-        size_t hash = HashUtils::FNV1(&ResolveShaderPassVar(state.Cull, resolveInt));
+        DefaultHash hash{};
+        hash << ResolveShaderPassVar(state.Cull, resolveInt);
 
         for (ShaderPassBlendState& blend : state.Blends)
         {
-            uint32_t enabled = blend.Enable ? 1 : 0; // bool 不够 4 字节
-            hash = HashUtils::FNV1(&enabled, 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.WriteMask, resolveInt), 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Rgb.Src, resolveInt), 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Rgb.Dest, resolveInt), 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Rgb.Op, resolveInt), 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Alpha.Src, resolveInt), 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Alpha.Dest, resolveInt), 1, hash);
-            hash = HashUtils::FNV1(&ResolveShaderPassVar(blend.Alpha.Op, resolveInt), 1, hash);
+            hash
+                << blend.Enable
+                << ResolveShaderPassVar(blend.WriteMask, resolveInt)
+                << ResolveShaderPassVar(blend.Rgb.Src, resolveInt)
+                << ResolveShaderPassVar(blend.Rgb.Dest, resolveInt)
+                << ResolveShaderPassVar(blend.Rgb.Op, resolveInt)
+                << ResolveShaderPassVar(blend.Alpha.Src, resolveInt)
+                << ResolveShaderPassVar(blend.Alpha.Dest, resolveInt)
+                << ResolveShaderPassVar(blend.Alpha.Op, resolveInt);
         }
 
-        uint32_t depthEnabled = state.DepthState.Enable ? 1 : 0; // bool 不够 4 字节
-        hash = HashUtils::FNV1(&depthEnabled, 1, hash);
-        uint32_t depthWrite = ResolveShaderPassVar(state.DepthState.Write, resolveBool) ? 1 : 0; // bool 不够 4 字节
-        hash = HashUtils::FNV1(&depthWrite, 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.DepthState.Compare, resolveInt), 1, hash);
+        hash
+            << state.DepthState.Enable
+            << ResolveShaderPassVar(state.DepthState.Write, resolveBool)
+            << ResolveShaderPassVar(state.DepthState.Compare, resolveInt)
+            << state.StencilState.Enable
+            << ResolveShaderPassVar(state.StencilState.Ref, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.ReadMask, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.WriteMask, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.FrontFace.Compare, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.FrontFace.PassOp, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.FrontFace.FailOp, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.FrontFace.DepthFailOp, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.BackFace.Compare, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.BackFace.PassOp, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.BackFace.FailOp, resolveInt)
+            << ResolveShaderPassVar(state.StencilState.BackFace.DepthFailOp, resolveInt);
 
-        uint32_t stencilEnabled = state.StencilState.Enable ? 1 : 0; // bool 不够 4 字节
-        hash = HashUtils::FNV1(&stencilEnabled, 1, hash);
-        uint32_t stencilRef = ResolveShaderPassVar(state.StencilState.Ref, resolveInt); // uint8_t 不够 4 字节
-        hash = HashUtils::FNV1(&stencilRef, 1, hash);
-        uint32_t stencilReadMask = ResolveShaderPassVar(state.StencilState.ReadMask, resolveInt); // uint8_t 不够 4 字节
-        hash = HashUtils::FNV1(&stencilReadMask, 1, hash);
-        uint32_t stencilWriteMask = ResolveShaderPassVar(state.StencilState.WriteMask, resolveInt); // uint8_t 不够 4 字节
-        hash = HashUtils::FNV1(&stencilWriteMask, 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.Compare, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.PassOp, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.FailOp, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.FrontFace.DepthFailOp, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.Compare, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.PassOp, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.FailOp, resolveInt), 1, hash);
-        hash = HashUtils::FNV1(&ResolveShaderPassVar(state.StencilState.BackFace.DepthFailOp, resolveInt), 1, hash);
-
-        return hash;
+        return *hash;
     }
 
     static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, ShaderPass* pass, ShaderProgramType type, const ShaderKeywordSet& keywords)
@@ -270,22 +268,22 @@ namespace march
         ShaderPass* pass = shader->GetPass(passIndex);
         const ShaderKeywordSet& keywords = material->GetKeywords();
 
-        size_t hash = 0;
-        const ShaderPassRenderState& rs = material->GetResolvedRenderState(passIndex, &hash);
-        size_t programsHash = pass->GetProgramMatch(keywords).Hash;
-        hash = HashUtils::FNV1(&programsHash, 1, hash);
-        size_t inputDescHash = inputDesc.GetHash();
-        hash = HashUtils::FNV1(&inputDescHash, 1, hash);
-        size_t outputDescHash = outputDesc.GetHash();
-        hash = HashUtils::FNV1(&outputDescHash, 1, hash);
+        size_t renderStateHash = 0;
+        const ShaderPassRenderState& rs = material->GetResolvedRenderState(passIndex, &renderStateHash);
 
-        ComPtr<ID3D12PipelineState>& result = pass->m_PipelineStates[hash];
+        DefaultHash hash{};
+        hash.Append(renderStateHash);
+        hash.Append(pass->GetProgramMatch(keywords).Hash);
+        hash.Append(inputDesc.GetHash());
+        hash.Append(outputDesc.GetHash());
+
+        ComPtr<ID3D12PipelineState>& result = pass->m_PipelineStates[*hash];
 
         if (result == nullptr)
         {
-            D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+            D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
-            psoDesc.pRootSignature = pass->GetRootSignature(keywords);
+            psoDesc.pRootSignature = pass->GetRootSignature(keywords)->GetD3DRootSignature();
 
             SetShaderProgramIfExists(psoDesc.VS, pass, ShaderProgramType::Vertex, keywords);
             SetShaderProgramIfExists(psoDesc.PS, pass, ShaderProgramType::Pixel, keywords);
@@ -339,8 +337,8 @@ namespace march
             psoDesc.InputLayout.pInputElementDescs = inputDesc.GetLayout().data();
             psoDesc.PrimitiveTopologyType = inputDesc.GetPrimitiveTopologyType();
 
-            psoDesc.NumRenderTargets = static_cast<UINT>(outputDesc.RTVFormats.size());
-            std::copy_n(outputDesc.RTVFormats.data(), outputDesc.RTVFormats.size(), psoDesc.RTVFormats);
+            psoDesc.NumRenderTargets = static_cast<UINT>(outputDesc.NumRTV);
+            std::copy_n(outputDesc.RTVFormats, static_cast<size_t>(outputDesc.NumRTV), psoDesc.RTVFormats);
             psoDesc.DSVFormat = outputDesc.DSVFormat;
 
             psoDesc.SampleDesc.Count = static_cast<UINT>(outputDesc.SampleCount);

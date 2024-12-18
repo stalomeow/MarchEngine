@@ -1,23 +1,13 @@
 #include "GfxMesh.h"
 #include "GfxDevice.h"
-#include "GfxCommand.h"
 #include "GfxPipelineState.h"
 #include "DotNetRuntime.h"
 #include "DotNetMarshal.h"
-#include <Windows.h>
 
 using namespace DirectX;
 
 namespace march
 {
-    static GfxInputDesc g_InputDesc(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-        {
-            GfxInputElement(GfxSemantic::Position, DXGI_FORMAT_R32G32B32_FLOAT),
-            GfxInputElement(GfxSemantic::Normal, DXGI_FORMAT_R32G32B32_FLOAT),
-            GfxInputElement(GfxSemantic::Tangent, DXGI_FORMAT_R32G32B32A32_FLOAT),
-            GfxInputElement(GfxSemantic::TexCoord0, DXGI_FORMAT_R32G32_FLOAT),
-        });
-
     GfxMesh* GfxMesh::GetGeometry(GfxMeshGeometry geometry)
     {
         cs<GfxMeshGeometry> csGeometry{};
@@ -25,14 +15,29 @@ namespace march
         return DotNet::RuntimeInvoke<GfxMesh*>(ManagedMethod::Mesh_NativeGetGeometry, csGeometry);
     }
 
-    GfxMesh::GfxMesh()
-        : m_SubMeshes{}
+    GfxMesh::GfxMesh(GfxAllocator allocator)
+        : m_Allocator1(allocator)
+        , m_UseAllocator2(false)
+        , m_SubMeshes{}
         , m_Vertices{}
         , m_Indices{}
         , m_Bounds{}
         , m_IsDirty(false)
-        , m_VertexBuffer(nullptr)
-        , m_IndexBuffer(nullptr)
+        , m_VertexBuffer{}
+        , m_IndexBuffer{}
+    {
+    }
+
+    GfxMesh::GfxMesh(GfxSubAllocator allocator)
+        : m_Allocator2(allocator)
+        , m_UseAllocator2(true)
+        , m_SubMeshes{}
+        , m_Vertices{}
+        , m_Indices{}
+        , m_Bounds{}
+        , m_IsDirty(false)
+        , m_VertexBuffer{}
+        , m_IndexBuffer{}
     {
     }
 
@@ -58,47 +63,43 @@ namespace march
         m_Indices.clear();
     }
 
-    static void UploadToBuffer(GfxBuffer* dest, const void* pData, uint32_t size)
-    {
-        D3D12_SUBRESOURCE_DATA subResData = {};
-        subResData.pData = pData;
-        subResData.RowPitch = static_cast<LONG_PTR>(size);
-        subResData.SlicePitch = static_cast<LONG_PTR>(size);
-
-        GfxDevice* device = GetGfxDevice();
-        GfxUploadMemory m = device->AllocateTransientUploadMemory(size);
-        GfxCommandList* cmdList = device->GetGraphicsCommandList();
-
-        cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_COPY_DEST, true);
-        UpdateSubresources(cmdList->GetD3D12CommandList(), dest->GetD3D12Resource(),
-            m.GetD3D12Resource(), static_cast<UINT64>(m.GetD3D12ResourceOffset(0)), 0, 1, &subResData);
-        cmdList->ResourceBarrier(dest, D3D12_RESOURCE_STATE_GENERIC_READ);
-    }
-
     const GfxInputDesc& GfxMesh::GetInputDesc()
     {
-        return g_InputDesc;
+        static const GfxInputDesc inputDesc(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+            {
+                GfxInputElement(GfxSemantic::Position, DXGI_FORMAT_R32G32B32_FLOAT),
+                GfxInputElement(GfxSemantic::Normal, DXGI_FORMAT_R32G32B32_FLOAT),
+                GfxInputElement(GfxSemantic::Tangent, DXGI_FORMAT_R32G32B32A32_FLOAT),
+                GfxInputElement(GfxSemantic::TexCoord0, DXGI_FORMAT_R32G32_FLOAT),
+            });
+
+        return inputDesc;
     }
 
-    void GfxMesh::GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv)
+    void GfxMesh::GetBufferViews(D3D12_VERTEX_BUFFER_VIEW* pOutVbv, D3D12_INDEX_BUFFER_VIEW* pOutIbv)
     {
-        GfxDevice* device = GetGfxDevice();
-        GfxCommandList* cmdList = device->GetGraphicsCommandList();
-
         if (m_IsDirty)
         {
-            m_VertexBuffer = std::make_unique<GfxVertexBuffer<GfxMeshVertex>>(device, "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()));
-            UploadToBuffer(m_VertexBuffer.get(), m_Vertices.data(), m_VertexBuffer->GetSize());
+            GfxDevice* device = GetGfxDevice();
 
-            m_IndexBuffer = std::make_unique<GfxIndexBuffer<uint16_t>>(device, "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()));
-            UploadToBuffer(m_IndexBuffer.get(), m_Indices.data(), m_IndexBuffer->GetSize());
+            if (m_UseAllocator2)
+            {
+                m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, static_cast<uint32_t>(m_Vertices.size()), m_Allocator2);
+                m_IndexBuffer = GfxIndexBufferUInt16(device, static_cast<uint32_t>(m_Indices.size()), m_Allocator2);
+            }
+            else
+            {
+                m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()), m_Allocator1);
+                m_IndexBuffer = GfxIndexBufferUInt16(device, "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()), m_Allocator1);
+            }
 
-            cmdList->FlushResourceBarriers();
+            m_VertexBuffer.SetData(0, m_Vertices.data(), static_cast<uint32_t>(m_Vertices.size()));
+            m_IndexBuffer.SetData(0, m_Indices.data(), static_cast<uint32_t>(m_Indices.size()));
             m_IsDirty = false;
         }
 
-        vbv = m_VertexBuffer->GetView();
-        ibv = m_IndexBuffer->GetView();
+        *pOutVbv = m_VertexBuffer.GetVbv();
+        *pOutIbv = m_IndexBuffer.GetIbv();
     }
 
     void GfxMesh::RecalculateNormals()

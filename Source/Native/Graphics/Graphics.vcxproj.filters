@@ -60,6 +60,9 @@
     <ClInclude Include="Public\Display.h">
       <Filter>Public</Filter>
     </ClInclude>
+    <ClInclude Include="Public\MeshRenderer.h">
+      <Filter>Public</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\GfxDescriptor.cpp">
@@ -138,6 +141,12 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\GfxFence.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\MeshRenderer.binding.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\MeshRenderer.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

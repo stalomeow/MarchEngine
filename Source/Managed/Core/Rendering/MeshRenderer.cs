@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 
 namespace March.Core.Rendering
 {
-    [NativeTypeName("RenderObject")]
     public partial class MeshRenderer : Component
     {
         private Mesh? m_Mesh;

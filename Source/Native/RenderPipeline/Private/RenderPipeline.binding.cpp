@@ -3,14 +3,14 @@
 #include "Application.h"
 #include "InteropServices.h"
 
-NATIVE_EXPORT_AUTO RenderPipeline_AddRenderObject(cs<RenderObject*> pObject)
+NATIVE_EXPORT_AUTO RenderPipeline_AddMeshRenderer(cs<MeshRenderer*> renderer)
 {
-    GetApp()->GetRenderPipeline()->AddRenderObject(pObject);
+    GetApp()->GetRenderPipeline()->AddMeshRenderer(renderer);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_RemoveRenderObject(cs<RenderObject*> pObject)
+NATIVE_EXPORT_AUTO RenderPipeline_RemoveMeshRenderer(cs<MeshRenderer*> renderer)
 {
-    GetApp()->GetRenderPipeline()->RemoveRenderObject(pObject);
+    GetApp()->GetRenderPipeline()->RemoveMeshRenderer(renderer);
 }
 
 NATIVE_EXPORT_AUTO RenderPipeline_AddLight(cs<Light*> pLight)

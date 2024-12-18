@@ -209,7 +209,9 @@ namespace march
     public:
         virtual ~GfxTexture() = default;
 
-        uint32_t GetMipLevels() const;
+        uint32_t GetMipLevels() const { return m_MipLevels; }
+        uint32_t GetSampleCount() const { return m_Desc.MSAASamples; }
+        uint32_t GetSampleQuality() const { return m_SampleQuality; }
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
         std::shared_ptr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
         GfxDevice* GetDevice() const { return m_Device; }
@@ -258,6 +260,8 @@ namespace march
         GfxDevice* m_Device;
         GfxTextureDesc m_Desc;
         GfxResourceSpan m_Resource;
+        uint32_t m_MipLevels;
+        uint32_t m_SampleQuality;
 
         // Lazy creation
         GfxOfflineDescriptor m_SrvDescriptors[2];

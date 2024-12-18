@@ -405,8 +405,7 @@ namespace march
                 return nullptr;
             }
 
-            std::string cbName = pass->GetName() + "ConstantBuffer";
-            it = m_ConstantBuffers.emplace(passIndex, GfxRawConstantBuffer{ GetGfxDevice() , cbName, bufferSizeInBytes, GfxAllocator::PlacedUpload }).first;
+            it = m_ConstantBuffers.emplace(passIndex, GfxRawConstantBuffer{ GetGfxDevice() , bufferSizeInBytes, GfxSubAllocator::PersistentUpload }).first;
 
             // 初始化 cbuffer
             for (const auto& kv : m_Shader->GetProperties())

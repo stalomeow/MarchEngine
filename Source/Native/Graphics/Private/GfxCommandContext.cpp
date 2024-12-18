@@ -2,8 +2,12 @@
 #include "GfxDevice.h"
 #include "GfxResource.h"
 #include "GfxTexture.h"
+#include "GfxMesh.h"
 #include "Material.h"
+#include "Debug.h"
+#include "RenderDoc.h"
 #include <assert.h>
+#include <unordered_set>
 
 using namespace Microsoft::WRL;
 
@@ -76,6 +80,23 @@ namespace march
         return syncPoint;
     }
 
+    void GfxCommandContext::BeginEvent(const std::string& name)
+    {
+        if (RenderDoc::IsLoaded())
+        {
+            std::wstring wName = StringUtils::Utf8ToUtf16(name);
+            m_CommandList->BeginEvent(0, wName.c_str(), static_cast<UINT>(wName.size() * sizeof(wchar_t))); // 第一个参数貌似是颜色
+        }
+    }
+
+    void GfxCommandContext::EndEvent()
+    {
+        if (RenderDoc::IsLoaded())
+        {
+            m_CommandList->EndEvent();
+        }
+    }
+
     void GfxCommandContext::TransitionResource(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter)
     {
         D3D12_RESOURCE_STATES stateBefore = resource->GetState();
@@ -117,6 +138,268 @@ namespace march
         m_SyncPointsToWait.push_back(syncPoint);
     }
 
+    void GfxCommandContext::SetTexture(const std::string& name, GfxTexture* value)
+    {
+        SetTexture(Shader::GetNameId(name), value);
+    }
+
+    void GfxCommandContext::SetTexture(int32_t id, GfxTexture* value)
+    {
+        m_GlobalTextures[id] = value;
+    }
+
+    void GfxCommandContext::SetBuffer(const std::string& name, GfxBuffer* value)
+    {
+        SetBuffer(Shader::GetNameId(name), value);
+    }
+
+    void GfxCommandContext::SetBuffer(int32_t id, GfxBuffer* value)
+    {
+        m_GlobalBuffers[id] = value;
+    }
+
+    void GfxCommandContext::SetBuffer(const std::string& name, GfxBuffer&& value)
+    {
+        SetBuffer(Shader::GetNameId(name), std::move(value));
+    }
+
+    void GfxCommandContext::SetBuffer(int32_t id, GfxBuffer&& value)
+    {
+        // 临时存储，等到提交时再释放
+        SetBuffer(id, &m_TempBufferStore.emplace_back(std::move(value)));
+    }
+
+    void GfxCommandContext::SetRenderTarget(GfxRenderTexture* colorTarget, GfxRenderTexture* depthStencilTarget)
+    {
+        if (colorTarget == nullptr)
+        {
+            SetRenderTargets(0, nullptr, depthStencilTarget);
+        }
+        else
+        {
+            SetRenderTargets(1, &colorTarget, depthStencilTarget);
+        }
+    }
+
+    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, GfxRenderTexture* const* colorTargets, GfxRenderTexture* depthStencilTarget)
+    {
+        assert(numColorTargets <= std::size(m_ColorTargets));
+
+        if (numColorTargets == 0 && depthStencilTarget == nullptr)
+        {
+            LOG_WARNING("No render target is set");
+            return;
+        }
+
+        // Check if the render targets are dirty
+        if (numColorTargets == m_OutputDesc.NumRTV && depthStencilTarget == m_DepthStencilTarget)
+        {
+            bool isDirty = false;
+
+            for (uint32_t i = 0; i < numColorTargets; i++)
+            {
+                if (colorTargets[i] != m_ColorTargets[i])
+                {
+                    isDirty = true;
+                    break;
+                }
+            }
+
+            if (!isDirty)
+            {
+                return;
+            }
+        }
+
+        m_OutputDesc.MarkDirty();
+        m_OutputDesc.NumRTV = numColorTargets;
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+
+        for (uint32_t i = 0; i < std::size(m_ColorTargets); i++)
+        {
+            if (i < numColorTargets)
+            {
+                GfxRenderTexture* target = colorTargets[i];
+                TransitionResource(target->GetResource().get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+                rtv[i] = target->GetRtvDsv();
+
+                m_ColorTargets[i] = target;
+                m_OutputDesc.RTVFormats[i] = target->GetDesc().GetRtvDsvDXGIFormat();
+                m_OutputDesc.SampleCount = target->GetSampleCount();
+                m_OutputDesc.SampleQuality = target->GetSampleQuality();
+            }
+            else
+            {
+                m_ColorTargets[i] = nullptr;
+                m_OutputDesc.RTVFormats[i] = DXGI_FORMAT_UNKNOWN;
+            }
+        }
+
+        if (m_DepthStencilTarget = depthStencilTarget)
+        {
+            TransitionResource(depthStencilTarget->GetResource().get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+            m_OutputDesc.DSVFormat = depthStencilTarget->GetDesc().GetRtvDsvDXGIFormat();
+            m_OutputDesc.SampleCount = depthStencilTarget->GetSampleCount();
+            m_OutputDesc.SampleQuality = depthStencilTarget->GetSampleQuality();
+
+            D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthStencilTarget->GetRtvDsv();
+            m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, &dsv);
+        }
+        else
+        {
+            m_OutputDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+            m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, nullptr);
+        }
+    }
+
+    void GfxCommandContext::ClearRenderTargets(GfxClearFlags flags, const float color[4], float depth, uint8_t stencil)
+    {
+        bool clearColor = false;
+
+        if (m_OutputDesc.NumRTV > 0 && (flags & GfxClearFlags::Color) == GfxClearFlags::Color)
+        {
+            clearColor = true;
+
+            for (uint32_t i = 0; i < m_OutputDesc.NumRTV; i++)
+            {
+                TransitionResource(m_ColorTargets[i]->GetResource().get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+            }
+        }
+
+        D3D12_CLEAR_FLAGS clearDepthStencil = static_cast<D3D12_CLEAR_FLAGS>(0);
+
+        if (m_DepthStencilTarget != nullptr)
+        {
+            if ((flags & GfxClearFlags::Depth) == GfxClearFlags::Depth)
+            {
+                clearDepthStencil |= D3D12_CLEAR_FLAG_DEPTH;
+            }
+
+            if ((flags & GfxClearFlags::Stencil) == GfxClearFlags::Stencil)
+            {
+                clearDepthStencil |= D3D12_CLEAR_FLAG_STENCIL;
+            }
+
+            if (clearDepthStencil != 0)
+            {
+                TransitionResource(m_DepthStencilTarget->GetResource().get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            }
+        }
+
+        if (clearColor || clearDepthStencil != 0)
+        {
+            FlushResourceBarriers();
+
+            if (clearColor)
+            {
+                for (uint32_t i = 0; i < m_OutputDesc.NumRTV; i++)
+                {
+                    m_CommandList->ClearRenderTargetView(m_ColorTargets[i]->GetRtvDsv(), color, 0, nullptr);
+                }
+            }
+
+            if (clearDepthStencil != 0)
+            {
+                D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsv();
+                m_CommandList->ClearDepthStencilView(dsv, clearDepthStencil, depth, static_cast<UINT8>(stencil), 0, nullptr);
+            }
+        }
+    }
+
+    void GfxCommandContext::SetViewport(const D3D12_VIEWPORT& viewport)
+    {
+        SetViewports(1, &viewport);
+    }
+
+    void GfxCommandContext::SetViewports(uint32_t numViewports, const D3D12_VIEWPORT* viewports)
+    {
+        assert(numViewports <= std::size(m_Viewports));
+
+        const size_t sizeInBytes = static_cast<size_t>(numViewports) * sizeof(D3D12_VIEWPORT);
+
+        if (numViewports != m_NumViewports || memcmp(viewports, m_Viewports, sizeInBytes) != 0)
+        {
+            m_NumViewports = numViewports;
+            memcpy(m_Viewports, viewports, sizeInBytes);
+
+            m_CommandList->RSSetViewports(static_cast<UINT>(numViewports), viewports);
+        }
+    }
+
+    void GfxCommandContext::SetScissorRect(const D3D12_RECT& rect)
+    {
+        SetScissorRects(1, &rect);
+    }
+
+    void GfxCommandContext::SetScissorRects(uint32_t numRects, const D3D12_RECT* rects)
+    {
+        assert(numRects <= std::size(m_ScissorRects));
+
+        const size_t sizeInBytes = static_cast<size_t>(numRects) * sizeof(D3D12_RECT);
+
+        if (numRects != m_NumScissorRects || memcmp(rects, m_ScissorRects, sizeInBytes) != 0)
+        {
+            m_NumScissorRects = numRects;
+            memcpy(m_ScissorRects, rects, sizeInBytes);
+
+            m_CommandList->RSSetScissorRects(static_cast<UINT>(numRects), rects);
+        }
+    }
+
+    void GfxCommandContext::SetDefaultViewport()
+    {
+        GfxRenderTexture* target = GetFirstRenderTarget();
+
+        if (target == nullptr)
+        {
+            LOG_WARNING("Failed to set default viewport: no render target is set");
+            return;
+        }
+
+        D3D12_VIEWPORT viewport{};
+        viewport.TopLeftX = 0;
+        viewport.TopLeftY = 0;
+        viewport.Width = static_cast<float>(target->GetDesc().Width);
+        viewport.Height = static_cast<float>(target->GetDesc().Height);
+        viewport.MinDepth = 0.0f;
+        viewport.MaxDepth = 1.0f;
+        SetViewport(viewport);
+    }
+
+    void GfxCommandContext::SetDefaultScissorRect()
+    {
+        GfxRenderTexture* target = GetFirstRenderTarget();
+
+        if (target == nullptr)
+        {
+            LOG_WARNING("Failed to set default scissor rect: no render target is set");
+            return;
+        }
+
+        D3D12_RECT rect{};
+        rect.left = 0;
+        rect.top = 0;
+        rect.right = static_cast<LONG>(target->GetDesc().Width);
+        rect.bottom = static_cast<LONG>(target->GetDesc().Height);
+        SetScissorRect(rect);
+    }
+
+    void GfxCommandContext::SetWireframe(bool value)
+    {
+        if (m_OutputDesc.Wireframe != value)
+        {
+            m_OutputDesc.Wireframe = value;
+            m_OutputDesc.MarkDirty();
+        }
+    }
+
+    GfxRenderTexture* GfxCommandContext::GetFirstRenderTarget() const
+    {
+        return m_OutputDesc.NumRTV > 0 ? m_ColorTargets[0] : m_DepthStencilTarget;
+    }
+
     GfxTexture* GfxCommandContext::FindTexture(int32_t id, Material* material)
     {
         GfxTexture* texture = nullptr;
@@ -145,6 +428,11 @@ namespace march
         }
 
         return nullptr;
+    }
+
+    ID3D12PipelineState* GfxCommandContext::GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex)
+    {
+        return GfxPipelineState::GetGraphicsPSO(material, passIndex, inputDesc, m_OutputDesc);
     }
 
     void GfxCommandContext::SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer)
@@ -193,8 +481,17 @@ namespace march
         m_GraphicsSamplerCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
     }
 
-    void GfxCommandContext::SetGraphicsRootSignatureAndParameters(GfxRootSignature* rootSignature, Material* material, int32_t passIndex)
+    void GfxCommandContext::SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex)
     {
+        if (m_CurrentPipelineState != pso)
+        {
+            m_CurrentPipelineState = pso;
+            m_CommandList->SetPipelineState(pso);
+        }
+
+        ShaderPass* pass = material->GetShader()->GetPass(passIndex);
+        GfxRootSignature* rootSignature = pass->GetRootSignature(material->GetKeywords());
+
         // GfxRootSignature 本身不复用，但内部的 ID3D12RootSignature 是复用的
         // 如果 ID3D12RootSignature 变了，说明根签名发生了结构上的变化
         if (m_CurrentGraphicsRootSignature != rootSignature->GetD3DRootSignature())
@@ -238,7 +535,6 @@ namespace march
             // TODO uav buffer
             //for (const GfxRootSignature::UavBinding& buf : rootSignature->GetUavBufferTableSlots(programType))
             //{
-
             //}
 
             for (const GfxRootSignature::UavBinding& tex : rootSignature->GetUavTextureTableSlots(programType))
@@ -253,6 +549,7 @@ namespace march
         TransitionGraphicsViewResources();
         SetGraphicsRootDescriptorTablesAndHeaps(rootSignature);
         SetGraphicsRootSrvCbvBuffers();
+        SetResolvedRenderState(material->GetResolvedRenderState(passIndex));
     }
 
     void GfxCommandContext::SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature)
@@ -495,4 +792,55 @@ namespace march
             m_CommandList->SetDescriptorHeaps(1, heaps);
         }
     }
+
+    void GfxCommandContext::SetResolvedRenderState(const ShaderPassRenderState& state)
+    {
+        if (state.StencilState.Enable)
+        {
+            SetStencilRef(state.StencilState.Ref.Value);
+        }
+    }
+
+    void GfxCommandContext::SetStencilRef(uint8_t value)
+    {
+        if (m_CurrentStencilRef != value)
+        {
+            m_CurrentStencilRef = value;
+            m_CommandList->OMSetStencilRef(value);
+        }
+    }
+
+    void GfxCommandContext::SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value)
+    {
+        if (m_CurrentPrimitiveTopology != value)
+        {
+            m_CurrentPrimitiveTopology = value;
+            m_CommandList->IASetPrimitiveTopology(value);
+        }
+    }
+
+    // 相同的可以合批，使用 GPU instancing 绘制
+    struct DrawCall
+    {
+        GfxMesh* Mesh;
+        uint32_t SubMeshIndex;
+        Material* Mat;
+        int32_t ShaderPassIndex;
+
+        bool operator==(const DrawCall& other)
+        {
+            return memcmp(this, &other, sizeof(DrawCall)) == 0;
+        }
+
+        struct Hash
+        {
+            size_t operator()(const DrawCall& drawCall) const
+            {
+                return std::hash<GfxMesh*>{}(drawCall.Mesh)
+                    ^ std::hash<uint32_t>{}(drawCall.SubMeshIndex)
+                    ^ std::hash<Material*>{}(drawCall.Mat)
+                    ^ std::hash<int32_t>{}(drawCall.ShaderPassIndex);
+            };
+        };
+    };
 }

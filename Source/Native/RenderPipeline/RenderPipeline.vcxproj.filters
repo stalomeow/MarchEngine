@@ -12,9 +12,6 @@
     <ClInclude Include="Public\Light.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\RenderObject.h">
-      <Filter>Public</Filter>
-    </ClInclude>
     <ClInclude Include="Public\RenderPipeline.h">
       <Filter>Public</Filter>
     </ClInclude>
@@ -35,9 +32,6 @@
     <ClCompile Include="Private\Light.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\RenderObject.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
     <ClCompile Include="Private\RenderPipeline.binding.cpp">
       <Filter>Private</Filter>
     </ClCompile>
@@ -45,9 +39,6 @@
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Light.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderObject.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Camera.cpp">

@@ -75,7 +75,8 @@ namespace march
         bool IsDirty() const { return m_IsDirty; }
 
     public:
-        std::vector<DXGI_FORMAT> RTVFormats;
+        uint32_t NumRTV;
+        DXGI_FORMAT RTVFormats[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
         DXGI_FORMAT DSVFormat;
 
         uint32_t SampleCount;

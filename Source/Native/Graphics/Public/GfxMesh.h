@@ -6,7 +6,6 @@
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
 #include <vector>
-#include <memory>
 
 namespace march
 {
@@ -45,7 +44,8 @@ namespace march
         friend GfxMeshBinding;
 
     public:
-        GfxMesh();
+        GfxMesh(GfxAllocator allocator);
+        GfxMesh(GfxSubAllocator allocator);
 
         uint32_t GetSubMeshCount() const;
         const GfxSubMesh& GetSubMesh(uint32_t index) const;
@@ -54,7 +54,7 @@ namespace march
         const DirectX::BoundingBox& GetBounds() const { return m_Bounds; }
 
         const GfxInputDesc& GetInputDesc();
-        void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW& vbv, D3D12_INDEX_BUFFER_VIEW& ibv);
+        void GetBufferViews(D3D12_VERTEX_BUFFER_VIEW* pOutVbv, D3D12_INDEX_BUFFER_VIEW* pOutIbv);
         void RecalculateNormals();
         void RecalculateTangents();
         void RecalculateBounds();
@@ -67,13 +67,20 @@ namespace march
         GfxMesh& operator=(const GfxMesh&) = delete;
 
     private:
+        union
+        {
+            GfxAllocator m_Allocator1;
+            GfxSubAllocator m_Allocator2;
+        };
+        bool m_UseAllocator2;
+
         std::vector<GfxSubMesh> m_SubMeshes;
         std::vector<GfxMeshVertex> m_Vertices;
         std::vector<uint16_t> m_Indices;
         DirectX::BoundingBox m_Bounds; // Object space bounds
         bool m_IsDirty;
 
-        std::unique_ptr<GfxVertexBuffer<GfxMeshVertex>> m_VertexBuffer;
-        std::unique_ptr<GfxIndexBuffer<uint16_t>> m_IndexBuffer;
+        GfxVertexBuffer<GfxMeshVertex> m_VertexBuffer;
+        GfxIndexBufferUInt16 m_IndexBuffer;
     };
 }
