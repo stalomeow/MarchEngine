@@ -71,6 +71,7 @@ Shader "BlinnPhong"
             float3 normalOS : NORMAL;
             float4 tangentOS : TANGENT;
             float2 uv : TEXCOORD0;
+            uint instanceID : SV_InstanceID;
         };
 
         struct Varyings
@@ -83,12 +84,12 @@ Shader "BlinnPhong"
 
         Varyings vert(Attributes input)
         {
-            float3 positionWS = TransformObjectToWorld(input.positionOS);
+            float3 positionWS = TransformObjectToWorld(input.instanceID, input.positionOS);
 
             Varyings output;
             output.positionCS = TransformWorldToHClip(positionWS);
-            output.normalWS = TransformObjectToWorldNormal(input.normalOS);
-            output.tangentWS.xyz = TransformObjectToWorldDir(input.tangentOS.xyz);
+            output.normalWS = TransformObjectToWorldNormal(input.instanceID, input.normalOS);
+            output.tangentWS.xyz = TransformObjectToWorldDir(input.instanceID, input.tangentOS.xyz);
             output.tangentWS.w = input.tangentOS.w;
             output.uv = input.uv;
             return output;
@@ -144,6 +145,7 @@ Shader "BlinnPhong"
         {
             float3 positionOS : POSITION;
             float2 uv : TEXCOORD0;
+            uint instanceID : SV_InstanceID;
         };
 
         struct Varyings
@@ -154,7 +156,7 @@ Shader "BlinnPhong"
 
         Varyings vert(Attributes input)
         {
-            float3 positionWS = TransformObjectToWorld(input.positionOS);
+            float3 positionWS = TransformObjectToWorld(input.instanceID, input.positionOS);
 
             Varyings output;
             output.positionCS = TransformWorldToHClip(positionWS);

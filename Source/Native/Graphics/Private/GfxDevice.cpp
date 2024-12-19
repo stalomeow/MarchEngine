@@ -1,11 +1,9 @@
 #include "GfxDevice.h"
 #include "GfxCommand.h"
-#include "GfxFence.h"
 #include "GfxBuffer.h"
 #include "GfxSwapChain.h"
 #include "GfxDescriptor.h"
 #include "Debug.h"
-#include <assert.h>
 
 using namespace Microsoft::WRL;
 
@@ -19,7 +17,7 @@ namespace march
         void* pContext);
 
     GfxDevice::GfxDevice(const GfxDeviceDesc& desc)
-        : m_DescriptorAllocators{}, m_ReleaseQueue{}
+        : m_ReleaseQueue{}
     {
         // 开启调试层
         if (desc.EnableDebugLayer)
@@ -71,20 +69,106 @@ namespace march
             m_DebugInfoQueue = nullptr;
         }
 
-        m_GraphicsCommandQueue = std::make_unique<GfxCommandQueue>(this, GfxCommandListType::Graphics, "GraphicsCommandQueue");
-        m_GraphicsFence = std::make_unique<GfxFence>(this, "GraphicsFence");
-        m_GraphicsCommandAllocatorPool = std::make_unique<GfxCommandAllocatorPool>(this, GfxCommandListType::Graphics);
-        m_GraphicsCommandList = std::make_unique<GfxCommandList>(this, GfxCommandListType::Graphics, "GraphicsCommandList");
-        m_UploadMemoryAllocator = std::make_unique<GfxUploadMemoryAllocator>(this);
+        m_CommandManager = std::make_unique<GfxCommandManager>(this);
+        m_SwapChain = std::make_unique<GfxSwapChain>(this, desc.WindowHandle, desc.WindowWidth, desc.WindowHeight);
 
         for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
         {
-            m_DescriptorAllocators[i] = std::make_unique<GfxDescriptorAllocator>(this, static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i));
+            D3D12_DESCRIPTOR_HEAP_TYPE type = static_cast<D3D12_DESCRIPTOR_HEAP_TYPE>(i);
+            uint32_t pageSize = desc.OfflineDescriptorPageSizes[i];
+            m_OfflineDescriptorAllocators[i] = std::make_unique<GfxOfflineDescriptorAllocator>(this, type, pageSize);
         }
 
-        m_ViewDescriptorTableAllocator = std::make_unique<GfxDescriptorTableAllocator>(this, GfxDescriptorTableType::CbvSrvUav, desc.ViewTableStaticDescriptorCount, desc.ViewTableDynamicDescriptorCapacity);
-        m_SamplerDescriptorTableAllocator = std::make_unique<GfxDescriptorTableAllocator>(this, GfxDescriptorTableType::Sampler, desc.SamplerTableStaticDescriptorCount, desc.SamplerTableDynamicDescriptorCapacity);
-        m_SwapChain = std::make_unique<GfxSwapChain>(this, desc.WindowHandle, desc.WindowWidth, desc.WindowHeight);
+        m_OnlineViewAllocator = std::make_unique<GfxOnlineDescriptorMultiAllocator>(this, [maxSize = desc.OnlineViewDescriptorHeapSize](GfxDevice* device)
+        {
+            return std::make_unique<GfxOnlineViewDescriptorAllocator>(device, maxSize);
+        });
+        m_OnlineSamplerAllocator = std::make_unique<GfxOnlineDescriptorMultiAllocator>(this, [maxSize = desc.OnlineSamplerDescriptorHeapSize](GfxDevice* device)
+        {
+            return std::make_unique<GfxOnlineSamplerDescriptorAllocator>(device, maxSize);
+        });
+
+        GfxCommittedResourceAllocatorDesc committedDefaultDesc{};
+        committedDefaultDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        committedDefaultDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+        m_CommittedDefaultAllocator = std::make_unique<GfxCommittedResourceAllocator>(this, committedDefaultDesc);
+
+        GfxCommittedResourceAllocatorDesc committedUploadDesc{};
+        committedUploadDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        committedUploadDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+        m_CommittedUploadAllocator = std::make_unique<GfxCommittedResourceAllocator>(this, committedUploadDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultBufferDesc{};
+        placedDefaultBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        placedDefaultBufferDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        placedDefaultBufferDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+        placedDefaultBufferDesc.MSAA = false;
+        m_PlacedDefaultAllocatorBuffer = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorBuffer", placedDefaultBufferDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultTextureDesc{};
+        placedDefaultTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        placedDefaultTextureDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        placedDefaultTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+        placedDefaultTextureDesc.MSAA = false;
+        m_PlacedDefaultAllocatorTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorTexture", placedDefaultTextureDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultRenderTextureDesc{};
+        placedDefaultRenderTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        placedDefaultRenderTextureDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        placedDefaultRenderTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+        placedDefaultRenderTextureDesc.MSAA = false;
+        m_PlacedDefaultAllocatorRenderTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorRenderTexture", placedDefaultRenderTextureDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultRenderTextureMSDesc{};
+        placedDefaultRenderTextureMSDesc.DefaultMaxBlockSize = 64 * 1024 * 1024; // 64MB
+        placedDefaultRenderTextureMSDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        placedDefaultRenderTextureMSDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+        placedDefaultRenderTextureMSDesc.MSAA = true;
+        m_PlacedDefaultAllocatorRenderTextureMS = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorRenderTextureMS", placedDefaultRenderTextureMSDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadBufferDesc{};
+        placedUploadBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        placedUploadBufferDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        placedUploadBufferDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+        placedUploadBufferDesc.MSAA = false;
+        m_PlacedUploadAllocatorBuffer = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorBuffer", placedUploadBufferDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadTextureDesc{};
+        placedUploadTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        placedUploadTextureDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        placedUploadTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+        placedUploadTextureDesc.MSAA = false;
+        m_PlacedUploadAllocatorTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorTexture", placedUploadTextureDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadRenderTextureDesc{};
+        placedUploadRenderTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        placedUploadRenderTextureDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        placedUploadRenderTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+        placedUploadRenderTextureDesc.MSAA = false;
+        m_PlacedUploadAllocatorRenderTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorRenderTexture", placedUploadRenderTextureDesc);
+
+        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadRenderTextureMSDesc{};
+        placedUploadRenderTextureMSDesc.DefaultMaxBlockSize = 64 * 1024 * 1024; // 64MB
+        placedUploadRenderTextureMSDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        placedUploadRenderTextureMSDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+        placedUploadRenderTextureMSDesc.MSAA = true;
+        m_PlacedUploadAllocatorRenderTextureMS = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorRenderTextureMS", placedUploadRenderTextureMSDesc);
+
+        GfxBufferLinearSubAllocatorDesc tempUploadDesc{};
+        tempUploadDesc.PageSize = 16 * 1024 * 1024; // 16MB
+        tempUploadDesc.UnorderedAccess = false;
+        tempUploadDesc.InitialResourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
+        m_TempUploadSubAllocator = std::make_unique<GfxBufferLinearSubAllocator>("TempUploadSubAllocator", tempUploadDesc,
+            /* page allocator */ m_CommittedUploadAllocator.get(),
+            /* large page allocator */ m_PlacedUploadAllocatorBuffer.get());
+
+        GfxBufferMultiBuddySubAllocatorDesc persistentUploadDesc{};
+        persistentUploadDesc.MinBlockSize = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT; // 主要用来分配 constant buffer
+        persistentUploadDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        persistentUploadDesc.UnorderedAccess = false;
+        persistentUploadDesc.InitialResourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
+        m_PersistentUploadSubAllocator = std::make_unique<GfxBufferMultiBuddySubAllocator>("PersistentUploadSubAllocator", persistentUploadDesc,
+            /* buffer allocator */ m_CommittedUploadAllocator.get());
 
 //#if defined(DEBUG) || defined(_DEBUG)
 //        LogAdapters(GfxSwapChain::BackBufferFormat);
@@ -93,108 +177,90 @@ namespace march
 
     GfxDevice::~GfxDevice()
     {
-        m_SwapChain.reset(); // SwapChain 依赖下面几个 allocator，所以要先释放
-
-        // 这几个 allocator 里面的资源需要在 ProcessReleaseQueue() 时释放
-        m_UploadMemoryAllocator.reset();
-        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
-        {
-            m_DescriptorAllocators[i].reset();
-        }
-        m_ViewDescriptorTableAllocator.reset();
-        m_SamplerDescriptorTableAllocator.reset();
-
-        WaitForIdleAndReleaseUnusedD3D12Objects();
-        assert(m_ReleaseQueue.empty());
+        WaitForGpuIdle(true);
+        m_SwapChain.reset(); // SwapChain 其他的 allocator，所以先释放
     }
 
     void GfxDevice::BeginFrame()
     {
         m_SwapChain->WaitForFrameLatency();
-        ProcessReleaseQueue();
 
-        m_GraphicsCommandAllocatorPool->BeginFrame();
-        m_UploadMemoryAllocator->BeginFrame();
-
-        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
-        {
-            m_DescriptorAllocators[i]->BeginFrame();
-        }
-
-        m_ViewDescriptorTableAllocator->BeginFrame();
-        m_SamplerDescriptorTableAllocator->BeginFrame();
-
-        ID3D12DescriptorHeap* const descriptorHeaps[] =
-        {
-            m_ViewDescriptorTableAllocator->GetD3D12DescriptorHeap(),
-            m_SamplerDescriptorTableAllocator->GetD3D12DescriptorHeap(),
-        };
-        m_GraphicsCommandList->Begin(m_GraphicsCommandAllocatorPool->Get(),
-            static_cast<uint32_t>(std::size(descriptorHeaps)), descriptorHeaps);
+        ProcessReleaseQueue(); // 这里会更新 frame fence cache，放在最前面
+        m_OnlineViewAllocator->CleanUpAllocations();
+        m_OnlineSamplerAllocator->CleanUpAllocations();
+        m_CommittedDefaultAllocator->CleanUpAllocations();
+        m_CommittedUploadAllocator->CleanUpAllocations();
+        m_PlacedDefaultAllocatorBuffer->CleanUpAllocations();
+        m_PlacedDefaultAllocatorTexture->CleanUpAllocations();
+        m_PlacedDefaultAllocatorRenderTexture->CleanUpAllocations();
+        m_PlacedDefaultAllocatorRenderTextureMS->CleanUpAllocations();
+        m_PlacedUploadAllocatorBuffer->CleanUpAllocations();
+        m_PlacedUploadAllocatorTexture->CleanUpAllocations();
+        m_PlacedUploadAllocatorRenderTexture->CleanUpAllocations();
+        m_PlacedUploadAllocatorRenderTextureMS->CleanUpAllocations();
+        m_TempUploadSubAllocator->CleanUpAllocations();
+        m_PersistentUploadSubAllocator->CleanUpAllocations();
     }
 
     void GfxDevice::EndFrame()
     {
-        m_SwapChain->PreparePresent(m_GraphicsCommandList.get());
-        m_GraphicsCommandList->End();
-        m_GraphicsCommandQueue->ExecuteCommandList(m_GraphicsCommandList.get());
-
-        uint64_t fenceValue = m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
-
-        m_ViewDescriptorTableAllocator->EndFrame(fenceValue);
-        m_SamplerDescriptorTableAllocator->EndFrame(fenceValue);
-
-        for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
-        {
-            m_DescriptorAllocators[i]->EndFrame(fenceValue);
-        }
-
-        m_GraphicsCommandAllocatorPool->EndFrame(fenceValue);
-        m_UploadMemoryAllocator->EndFrame(fenceValue);
-
+        m_CommandManager->SignalNextFrameFence();
         m_SwapChain->Present();
     }
 
-    void GfxDevice::ReleaseD3D12Object(ID3D12Object* object)
+    void GfxDevice::DeferredRelease(ComPtr<ID3D12Object> obj)
     {
-        m_ReleaseQueue.emplace(m_GraphicsFence->GetNextValue(), object);
+        m_ReleaseQueue.emplace(m_CommandManager->GetNextFrameFence(), obj);
+    }
+
+    void GfxDevice::WaitForGpuIdle(bool releaseUnusedObjects)
+    {
+        m_CommandManager->WaitForGpuIdle();
+
+        if (releaseUnusedObjects)
+        {
+            ProcessReleaseQueue();
+        }
     }
 
     void GfxDevice::ProcessReleaseQueue()
     {
-        while (!m_ReleaseQueue.empty() && m_GraphicsFence->IsCompleted(m_ReleaseQueue.front().first))
-        {
-            ID3D12Object* object = m_ReleaseQueue.front().second;
-            m_ReleaseQueue.pop();
+        bool useFenceCache = false;
 
-            // 释放资源较多时，太卡了！
+        while (!m_ReleaseQueue.empty() && IsFrameFenceCompleted(m_ReleaseQueue.front().first, useFenceCache))
+        {
+            // TODO 释放资源较多时，输出名称太卡了！
+
             wchar_t name[256];
             UINT size = sizeof(name);
-            if (SUCCEEDED(object->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
+            if (SUCCEEDED(m_ReleaseQueue.front().second->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
             {
                 LOG_TRACE(L"Release D3D12Object %s", name);
             }
 
-            // 貌似不能 while (object->Release() > 0); 这样一直释放，会报 refCount < 0 的错误
-            object->Release();
+            m_ReleaseQueue.pop();
+            useFenceCache = true;
         }
     }
 
-    bool GfxDevice::IsGraphicsFenceCompleted(uint64_t fenceValue)
+    GfxCommandContext* GfxDevice::RequestContext(GfxCommandType type)
     {
-        return m_GraphicsFence->IsCompleted(fenceValue);
+        return m_CommandManager->RequestAndOpenContext(type);
     }
 
-    void GfxDevice::WaitForIdle()
+    uint64_t GfxDevice::GetCompletedFrameFence(bool useCache)
     {
-        m_GraphicsCommandQueue->SignalNextValue(m_GraphicsFence.get());
-        m_GraphicsFence->Wait();
+        return m_CommandManager->GetCompletedFrameFence(useCache);
     }
 
-    void GfxDevice::WaitForIdleAndReleaseUnusedD3D12Objects()
+    bool GfxDevice::IsFrameFenceCompleted(uint64_t fence, bool useCache)
     {
-        WaitForIdle();
-        ProcessReleaseQueue();
+        return m_CommandManager->IsFrameFenceCompleted(fence, useCache);
+    }
+
+    uint64_t GfxDevice::GetNextFrameFence() const
+    {
+        return m_CommandManager->GetNextFrameFence();
     }
 
     void GfxDevice::ResizeBackBuffer(uint32_t width, uint32_t height)
@@ -212,49 +278,61 @@ namespace march
         return GfxSwapChain::MaxFrameLatency;
     }
 
-    GfxDescriptorHandle GfxDevice::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type)
+    GfxCompleteResourceAllocator* GfxDevice::GetResourceAllocator(GfxAllocator allocator, GfxAllocation allocation) const
     {
-        return m_DescriptorAllocators[static_cast<int>(type)]->Allocate();
-    }
-
-    void GfxDevice::FreeDescriptor(const GfxDescriptorHandle& handle)
-    {
-        int index = static_cast<int>(handle.GetType());
-        m_DescriptorAllocators[index]->Free(handle);
-    }
-
-    GfxUploadMemory GfxDevice::AllocateTransientUploadMemory(uint32_t size, uint32_t count, uint32_t alignment)
-    {
-        return m_UploadMemoryAllocator->Allocate(size, count, alignment);
-    }
-
-    GfxDescriptorTable GfxDevice::AllocateTransientDescriptorTable(GfxDescriptorTableType type, uint32_t descriptorCount)
-    {
-        switch (type)
+        switch (allocator)
         {
-        case GfxDescriptorTableType::CbvSrvUav:
-            return m_ViewDescriptorTableAllocator->AllocateDynamicTable(descriptorCount);
-
-        case GfxDescriptorTableType::Sampler:
-            return m_SamplerDescriptorTableAllocator->AllocateDynamicTable(descriptorCount);
-
+        case GfxAllocator::CommittedDefault:
+            return m_CommittedDefaultAllocator.get();
+        case GfxAllocator::CommittedUpload:
+            return m_CommittedUploadAllocator.get();
+        case GfxAllocator::PlacedDefault:
+        {
+            switch (allocation)
+            {
+            case GfxAllocation::Buffer:
+                return m_PlacedDefaultAllocatorBuffer.get();
+            case GfxAllocation::Texture:
+                return m_PlacedDefaultAllocatorTexture.get();
+            case GfxAllocation::RenderTexture:
+                return m_PlacedDefaultAllocatorRenderTexture.get();
+            case GfxAllocation::RenderTextureMS:
+                return m_PlacedDefaultAllocatorRenderTextureMS.get();
+            default:
+                throw std::invalid_argument("Invalid GfxAllocation");
+            }
+        }
+        case GfxAllocator::PlacedUpload:
+        {
+            switch (allocation)
+            {
+            case GfxAllocation::Buffer:
+                return m_PlacedUploadAllocatorBuffer.get();
+            case GfxAllocation::Texture:
+                return m_PlacedUploadAllocatorTexture.get();
+            case GfxAllocation::RenderTexture:
+                return m_PlacedUploadAllocatorRenderTexture.get();
+            case GfxAllocation::RenderTextureMS:
+                return m_PlacedUploadAllocatorRenderTextureMS.get();
+            default:
+                throw std::invalid_argument("Invalid GfxAllocation");
+            }
+        }
         default:
-            throw GfxException("Invalid D3D12_DESCRIPTOR_HEAP_TYPE");
+            throw std::invalid_argument("Invalid GfxAllocator");
         }
     }
 
-    GfxDescriptorTable GfxDevice::GetStaticDescriptorTable(GfxDescriptorTableType type)
+    GfxBufferSubAllocator* GfxDevice::GetResourceAllocator(GfxSubAllocator subAllocator) const
     {
-        switch (type)
+        switch (subAllocator)
         {
-        case GfxDescriptorTableType::CbvSrvUav:
-            return m_ViewDescriptorTableAllocator->GetStaticTable();
-
-        case GfxDescriptorTableType::Sampler:
-            return m_SamplerDescriptorTableAllocator->GetStaticTable();
-
+        case GfxSubAllocator::TempUpload:
+            return m_TempUploadSubAllocator.get();
+        case GfxSubAllocator::PersistentUpload:
+            return m_PersistentUploadSubAllocator.get();
         default:
-            throw GfxException("Invalid D3D12_DESCRIPTOR_HEAP_TYPE");
+            throw std::invalid_argument("Invalid GfxSubAllocator");
         }
     }
 
@@ -277,7 +355,7 @@ namespace march
         while (m_Factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
         {
             DXGI_ADAPTER_DESC desc;
-            adapter->GetDesc(&desc);
+            GFX_HR(adapter->GetDesc(&desc));
 
             LOG_INFO(L"***Adapter: %s", desc.Description);
 
@@ -294,7 +372,7 @@ namespace march
         while (adapter->EnumOutputs(i, &output) != DXGI_ERROR_NOT_FOUND)
         {
             DXGI_OUTPUT_DESC desc;
-            output->GetDesc(&desc);
+            GFX_HR(output->GetDesc(&desc));
 
             LOG_INFO(L"***Output: %s", desc.DeviceName);
 
@@ -310,10 +388,10 @@ namespace march
         UINT flags = 0;
 
         // Call with nullptr to get list count.
-        output->GetDisplayModeList(format, flags, &count, nullptr);
+        GFX_HR(output->GetDisplayModeList(format, flags, &count, nullptr));
 
         auto modeList = std::make_unique<DXGI_MODE_DESC[]>(count);
-        output->GetDisplayModeList(format, flags, &count, modeList.get());
+        GFX_HR(output->GetDisplayModeList(format, flags, &count, modeList.get()));
 
         for (UINT i = 0; i < count; i++)
         {

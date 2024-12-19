@@ -10,7 +10,6 @@
 namespace march
 {
     class GfxDevice;
-    class GfxCommandList;
     class GfxRenderTexture;
 
     class GfxSwapChain
@@ -23,25 +22,19 @@ namespace march
         void WaitForFrameLatency() const;
         void Present();
 
-        GfxRenderTexture* GetBackBuffer() const;
-        void PreparePresent(GfxCommandList* commandList);
+        GfxRenderTexture* GetBackBuffer() const { return m_BackBuffers[m_CurrentBackBufferIndex].get(); }
 
-    private:
-        static const DXGI_FORMAT m_BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-        void CreateBackBuffers();
-
-    public:
-        static const uint32_t BackBufferCount = 2;
-        static const uint32_t MaxFrameLatency = 3;
+        static constexpr uint32_t BackBufferCount = 2;
+        static constexpr uint32_t MaxFrameLatency = 3;
 
     private:
         GfxDevice* m_Device;
-
         Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain;
         HANDLE m_FrameLatencyHandle;
 
         std::unique_ptr<GfxRenderTexture> m_BackBuffers[BackBufferCount];
         uint32_t m_CurrentBackBufferIndex;
+
+        void CreateBackBuffers();
     };
 }

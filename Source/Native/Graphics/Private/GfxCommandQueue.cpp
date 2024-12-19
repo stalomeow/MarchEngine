@@ -177,7 +177,7 @@ namespace march
         return value;
     }
 
-    void GfxCommandManager::OnFrameEnd()
+    void GfxCommandManager::SignalNextFrameFence()
     {
         SignalNextFence();
     }

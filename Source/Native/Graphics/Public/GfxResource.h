@@ -292,19 +292,23 @@ namespace march
 
     enum class GfxAllocator
     {
-        CommittedDefault,
-        PlacedDefault,
+        CommittedDefault, // Committed Resource, Default Heap
+        CommittedUpload,  // Committed Resource, Upload Heap
+        PlacedDefault,    // Placed Resource, Default Heap
+        PlacedUpload,     // Placed Resource, Upload Heap
+    };
 
-        CommittedUpload,
-        PlacedUpload,
+    enum class GfxAllocation
+    {
+        Buffer,          // BUFFER
+        Texture,         // NON_RT_DS_TEXTURE
+        RenderTexture,   // RT_DS_TEXTURE
+        RenderTextureMS, // RT_DS_TEXTURE, MSAA
     };
 
     enum class GfxSubAllocator
     {
-        // 分配 upload buffer，速度快，但生命周期只有一帧
-        TempUpload,
-
-        // 分配 upload buffer，可以持续使用
-        PersistentUpload,
+        TempUpload,       // 分配 upload buffer，速度快，但生命周期只有一帧
+        PersistentUpload, // 分配 upload buffer，可以持续使用
     };
 }

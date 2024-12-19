@@ -820,7 +820,8 @@ namespace march
             initialState = D3D12_RESOURCE_STATE_COMMON;
         }
 
-        GfxCompleteResourceAllocator* resAllocator = device->GetResourceAllocator(allocator, /* msaa */ desc.MSAASamples > 1);
+        GfxCompleteResourceAllocator* resAllocator = device->GetResourceAllocator(allocator,
+            desc.MSAASamples > 1 ? GfxAllocation::RenderTextureMS : GfxAllocation::RenderTexture);
         Reset(desc, resAllocator->Allocate(name, &resDesc, initialState, &clearValue));
     }
 

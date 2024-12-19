@@ -127,7 +127,7 @@ namespace march
         bool IsFrameFenceCompleted(uint64_t fence, bool useCache);
         uint64_t GetNextFrameFence() const;
 
-        void OnFrameEnd();
+        void SignalNextFrameFence();
         void WaitForGpuIdle();
 
         GfxDevice* GetDevice() const { return m_Device; }
@@ -316,6 +316,7 @@ namespace march
         struct InstanceData
         {
             DirectX::XMFLOAT4X4 Matrix;
+            DirectX::XMFLOAT4X4 MatrixIT; // 逆转置，用于法线变换
         };
 
         GfxStructuredBuffer<InstanceData> m_InstanceBuffer;
@@ -345,5 +346,7 @@ namespace march
         void SetInstanceBuffer(uint32_t numInstances, const InstanceData* instances);
         void DrawSubMesh(GfxMesh* mesh, uint32_t subMeshIndex, uint32_t instanceCount);
         void DrawSubMesh(const GfxMeshData* mesh, uint32_t instanceCount);
+
+        static InstanceData CreateInstanceData(const DirectX::XMFLOAT4X4& matrix);
     };
 }

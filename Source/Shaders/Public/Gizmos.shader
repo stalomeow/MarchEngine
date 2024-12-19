@@ -9,8 +9,9 @@ Shader "Gizmos"
 
     struct Attributes
     {
-        float3 positionWS : POSITION;
+        float3 positionOS : POSITION;
         float4 color : COLOR;
+        uint instanceID : SV_InstanceID;
     };
 
     struct Varyings
@@ -21,8 +22,10 @@ Shader "Gizmos"
 
     Varyings vert(Attributes input)
     {
+        float3 positionWS = TransformObjectToWorld(input.instanceID, input.positionOS);
+
         Varyings output;
-        output.positionCS = TransformWorldToHClip(input.positionWS);
+        output.positionCS = TransformWorldToHClip(positionWS);
         output.color = input.color;
         return output;
     }

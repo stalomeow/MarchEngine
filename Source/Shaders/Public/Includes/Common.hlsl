@@ -8,10 +8,13 @@
 
 #include "Sampler.hlsl"
 
-cbuffer cbObject
+struct InstanceData
 {
     float4x4 _MatrixWorld;
+    float4x4 _MatrixWorldIT; // 逆转置
 };
+
+StructuredBuffer<InstanceData> _InstanceBuffer;
 
 cbuffer cbCamera
 {
@@ -24,15 +27,25 @@ cbuffer cbCamera
     float4 _CameraPositionWS;
 };
 
-float3 TransformObjectToWorld(float3 positionOS)
+float4x4 GetObjectToWorldMatrix(uint instanceID)
 {
-    return mul(_MatrixWorld, float4(positionOS, 1.0)).xyz;
+    return _InstanceBuffer[instanceID]._MatrixWorld;
 }
 
-float3 TransformObjectToWorldDir(float3 dirOS)
+float4x4 GetObjectToWorldMatrixIT(uint instanceID)
+{
+    return _InstanceBuffer[instanceID]._MatrixWorldIT;
+}
+
+float3 TransformObjectToWorld(uint instanceID, float3 positionOS)
+{
+    return mul(GetObjectToWorldMatrix(instanceID), float4(positionOS, 1.0)).xyz;
+}
+
+float3 TransformObjectToWorldDir(uint instanceID, float3 dirOS)
 {
     // Normalize to support uniform scaling
-    return normalize(mul((float3x3) _MatrixWorld, dirOS));
+    return normalize(mul((float3x3) GetObjectToWorldMatrix(instanceID), dirOS));
 }
 
 float3 TransformWorldToView(float3 positionWS)
@@ -56,10 +69,9 @@ float4 TransformWorldToHClip(float3 positionWS)
     return mul(_MatrixViewProjection, float4(positionWS, 1.0));
 }
 
-float3 TransformObjectToWorldNormal(float3 normalOS)
+float3 TransformObjectToWorldNormal(uint instanceID, float3 normalOS)
 {
-    // assume uniform scale
-    return normalize(mul((float3x3) _MatrixWorld, normalOS));
+    return normalize(mul((float3x3) GetObjectToWorldMatrixIT(instanceID), normalOS));
 }
 
 float2 GetFullScreenTriangleTexCoord(uint vertexID)

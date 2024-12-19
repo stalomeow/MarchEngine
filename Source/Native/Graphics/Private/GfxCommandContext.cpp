@@ -948,8 +948,7 @@ namespace march
 
     void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
-        InstanceData instanceData{ matrix };
-        SetInstanceBuffer(1, &instanceData);
+        SetInstanceBuffer(1, &CreateInstanceData(matrix));
 
         ID3D12PipelineState* pso = GetGraphicsPipelineState(mesh->GetInputDesc(), material, shaderPassIndex);
         SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
@@ -964,8 +963,7 @@ namespace march
 
     void GfxCommandContext::DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix)
     {
-        InstanceData instanceData{ matrix };
-        SetInstanceBuffer(1, &instanceData);
+        SetInstanceBuffer(1, &CreateInstanceData(matrix));
 
         ID3D12PipelineState* pso = GetGraphicsPipelineState(*mesh->InputDesc, material, shaderPassIndex);
         SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
@@ -1032,7 +1030,7 @@ namespace march
 
                 ID3D12PipelineState* pso = GetGraphicsPipelineState(renderer->Mesh->GetInputDesc(), mat, shaderPassIndex);
                 DrawCall dc{ renderer->Mesh, j, mat, shaderPassIndex };
-                psoMap[pso][dc].emplace_back(InstanceData{ renderer->GetTransform()->GetLocalToWorldMatrix() });
+                psoMap[pso][dc].emplace_back(CreateInstanceData(renderer->GetTransform()->GetLocalToWorldMatrix()));
             }
         }
 
@@ -1046,5 +1044,12 @@ namespace march
                 DrawSubMesh(dc.Mesh, dc.SubMeshIndex, instanceCount);
             }
         }
+    }
+
+    GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& matrix)
+    {
+        XMFLOAT4X4 matrixIT{};
+        XMStoreFloat4x4(&matrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&matrix))));
+        return InstanceData{ matrix, matrixIT };
     }
 }

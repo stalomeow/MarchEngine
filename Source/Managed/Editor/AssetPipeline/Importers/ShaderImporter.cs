@@ -148,9 +148,9 @@ namespace March.Editor.AssetPipeline.Importers
 
 #include ""Includes/Common.hlsl""
 
-float4 vert(float3 positionOS : POSITION) : SV_Position
+float4 vert(float3 positionOS : POSITION, uint instanceID : SV_InstanceID) : SV_Position
 {
-    float3 positionWS = TransformObjectToWorld(positionOS);
+    float3 positionWS = TransformObjectToWorld(instanceID, positionOS);
     return TransformWorldToHClip(positionWS);
 }
 

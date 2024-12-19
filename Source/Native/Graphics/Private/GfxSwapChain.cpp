@@ -7,6 +7,9 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
+    static constexpr DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    static constexpr GfxCommandType CommandType = GfxCommandType::Direct;
+
     GfxSwapChain::GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height)
         : m_Device(device), m_BackBuffers{}, m_CurrentBackBufferIndex(0)
     {
@@ -22,7 +25,7 @@ namespace march
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         swapChainDesc.Width = static_cast<UINT>(width);
         swapChainDesc.Height = static_cast<UINT>(height);
-        swapChainDesc.Format = m_BackBufferFormat;
+        swapChainDesc.Format = BackBufferFormat;
         swapChainDesc.Stereo = FALSE;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
@@ -34,7 +37,7 @@ namespace march
         swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
         IDXGIFactory4* factory = device->GetDXGIFactory();
-        ID3D12CommandQueue* commandQueue = device->GetGraphicsCommandQueue()->GetD3D12CommandQueue();
+        ID3D12CommandQueue* commandQueue = device->GetCommandManager()->GetQueue(CommandType)->GetQueue();
 
         // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgifactory-createswapchain
         // Starting with Direct3D 11.1, we recommend not to use CreateSwapChain anymore to create a swap chain.
@@ -66,7 +69,7 @@ namespace march
             m_BackBuffers[i].reset();
         }
 
-        m_Device->WaitForIdleAndReleaseUnusedD3D12Objects();
+        m_Device->WaitForGpuIdle(/* releaseUnusedObjects */ true);
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         GFX_HR(m_SwapChain->GetDesc1(&swapChainDesc));
@@ -90,7 +93,7 @@ namespace march
 
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
-            ID3D12Resource* backBuffer = nullptr;
+            ComPtr<ID3D12Resource> backBuffer = nullptr;
             GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
 
             m_BackBuffers[i] = std::make_unique<GfxRenderTexture>(m_Device, backBuffer, desc);
@@ -104,17 +107,11 @@ namespace march
 
     void GfxSwapChain::Present()
     {
+        GfxCommandContext* context = m_Device->RequestContext(CommandType);
+        context->TransitionResource(GetBackBuffer()->GetResource().get(), D3D12_RESOURCE_STATE_PRESENT);
+        context->SubmitAndRelease();
+
         GFX_HR(m_SwapChain->Present(0, 0)); // No vsync
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
-    }
-
-    GfxRenderTexture* GfxSwapChain::GetBackBuffer() const
-    {
-        return m_BackBuffers[m_CurrentBackBufferIndex].get();
-    }
-
-    void GfxSwapChain::PreparePresent(GfxCommandList* commandList)
-    {
-        commandList->ResourceBarrier(GetBackBuffer(), D3D12_RESOURCE_STATE_PRESENT);
     }
 }
