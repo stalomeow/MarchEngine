@@ -39,7 +39,7 @@
     <ClCompile Include="Private\AssetManager.cpp">
       <Filter>Private</Filter>
     </ClCompile>
-    <ClCompile Include="Private\imgui_impl_dx12.cpp">
+    <ClCompile Include="Private\ImGuiDX12.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Gizmos.cpp">
@@ -77,7 +77,7 @@
     <ClInclude Include="Public\AssetManger.h">
       <Filter>Public</Filter>
     </ClInclude>
-    <ClInclude Include="Public\imgui_impl_dx12.h">
+    <ClInclude Include="Public\ImGuiDX12.h">
       <Filter>Public</Filter>
     </ClInclude>
     <ClInclude Include="Public\Gizmos.h">

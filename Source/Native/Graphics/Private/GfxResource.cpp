@@ -361,12 +361,14 @@ namespace march
         LinearAllocator::Reset();
     }
 
-    size_t GfxBufferLinearSubAllocator::RequestNewPage(uint32_t sizeInBytes, bool large)
+    size_t GfxBufferLinearSubAllocator::RequestPage(uint32_t sizeInBytes, bool large, bool* pOutIsNew)
     {
         std::vector<GfxResourceSpan>& pages = large ? m_LargePages : m_Pages;
 
         if (!large && !m_ReleaseQueue.empty() && GetDevice()->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
+            *pOutIsNew = false;
+
             GfxResourceSpan& p = m_ReleaseQueue.front().second;
             assert(p.GetBufferSize() == sizeInBytes);
 
@@ -375,6 +377,8 @@ namespace march
         }
         else
         {
+            *pOutIsNew = true;
+
             GfxCompleteResourceAllocator* allocator;
             std::string name;
 

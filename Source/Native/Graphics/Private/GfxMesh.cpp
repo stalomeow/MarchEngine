@@ -1,5 +1,4 @@
 #include "GfxMesh.h"
-#include "GfxDevice.h"
 #include "GfxPipelineState.h"
 #include "DotNetRuntime.h"
 #include "DotNetMarshal.h"
@@ -8,62 +7,7 @@ using namespace DirectX;
 
 namespace march
 {
-    GfxMesh* GfxMesh::GetGeometry(GfxMeshGeometry geometry)
-    {
-        cs<GfxMeshGeometry> csGeometry{};
-        csGeometry.assign(geometry);
-        return DotNet::RuntimeInvoke<GfxMesh*>(ManagedMethod::Mesh_NativeGetGeometry, csGeometry);
-    }
-
-    GfxMesh::GfxMesh(GfxAllocator allocator)
-        : m_Allocator1(allocator)
-        , m_UseAllocator2(false)
-        , m_SubMeshes{}
-        , m_Vertices{}
-        , m_Indices{}
-        , m_Bounds{}
-        , m_IsDirty(false)
-        , m_VertexBuffer{}
-        , m_IndexBuffer{}
-    {
-    }
-
-    GfxMesh::GfxMesh(GfxSubAllocator allocator)
-        : m_Allocator2(allocator)
-        , m_UseAllocator2(true)
-        , m_SubMeshes{}
-        , m_Vertices{}
-        , m_Indices{}
-        , m_Bounds{}
-        , m_IsDirty(false)
-        , m_VertexBuffer{}
-        , m_IndexBuffer{}
-    {
-    }
-
-    uint32_t GfxMesh::GetSubMeshCount() const
-    {
-        return static_cast<uint32_t>(m_SubMeshes.size());
-    }
-
-    const GfxSubMesh& GfxMesh::GetSubMesh(uint32_t index) const
-    {
-        return m_SubMeshes[index];
-    }
-
-    void GfxMesh::ClearSubMeshes()
-    {
-        if (!m_SubMeshes.empty())
-        {
-            m_IsDirty = true;
-        }
-
-        m_SubMeshes.clear();
-        m_Vertices.clear();
-        m_Indices.clear();
-    }
-
-    const GfxInputDesc& GfxMesh::GetInputDesc()
+    const GfxInputDesc& GfxMeshVertex::GetInputDesc()
     {
         static const GfxInputDesc inputDesc(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
             {
@@ -76,41 +20,23 @@ namespace march
         return inputDesc;
     }
 
-    const GfxVertexBuffer<GfxMeshVertex>& GfxMesh::GetVertexBuffer()
+    GfxMesh* GfxMesh::GetGeometry(GfxMeshGeometry geometry)
     {
-        RecreateBuffersIfDirty();
-        return m_VertexBuffer;
+        cs<GfxMeshGeometry> csGeometry{};
+        csGeometry.assign(geometry);
+        return DotNet::RuntimeInvoke<GfxMesh*>(ManagedMethod::Mesh_NativeGetGeometry, csGeometry);
     }
 
-    const GfxIndexBufferUInt16& GfxMesh::GetIndexBuffer()
+    GfxMesh::GfxMesh(GfxAllocator allocator)
+        : GfxBasicMesh(allocator)
+        , m_Bounds{}
     {
-        RecreateBuffersIfDirty();
-        return m_IndexBuffer;
     }
 
-    void GfxMesh::RecreateBuffersIfDirty()
+    GfxMesh::GfxMesh(GfxSubAllocator allocator)
+        : GfxBasicMesh(allocator)
+        , m_Bounds{}
     {
-        if (!m_IsDirty)
-        {
-            return;
-        }
-
-        GfxDevice* device = GetGfxDevice();
-
-        if (m_UseAllocator2)
-        {
-            m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, static_cast<uint32_t>(m_Vertices.size()), m_Allocator2);
-            m_IndexBuffer = GfxIndexBufferUInt16(device, static_cast<uint32_t>(m_Indices.size()), m_Allocator2);
-        }
-        else
-        {
-            m_VertexBuffer = GfxVertexBuffer<GfxMeshVertex>(device, "MeshVertexBuffer", static_cast<uint32_t>(m_Vertices.size()), m_Allocator1);
-            m_IndexBuffer = GfxIndexBufferUInt16(device, "MeshIndexBuffer", static_cast<uint32_t>(m_Indices.size()), m_Allocator1);
-        }
-
-        m_VertexBuffer.SetData(0, m_Vertices.data(), static_cast<uint32_t>(m_Vertices.size()));
-        m_IndexBuffer.SetData(0, m_Indices.data(), static_cast<uint32_t>(m_Indices.size()));
-        m_IsDirty = false;
     }
 
     void GfxMesh::RecalculateNormals()
@@ -243,18 +169,5 @@ namespace march
     void GfxMesh::RecalculateBounds()
     {
         BoundingBox::CreateFromPoints(m_Bounds, m_Vertices.size(), &m_Vertices.data()->Position, sizeof(GfxMeshVertex));
-    }
-
-    void GfxMesh::AddSubMesh(const std::vector<GfxMeshVertex>& vertices, const std::vector<uint16_t>& indices)
-    {
-        GfxSubMesh subMesh = {};
-        subMesh.BaseVertexLocation = static_cast<int32_t>(m_Vertices.size());
-        subMesh.IndexCount = static_cast<uint32_t>(indices.size());
-        subMesh.StartIndexLocation = static_cast<uint32_t>(m_Indices.size());
-
-        m_IsDirty = true;
-        m_SubMeshes.push_back(subMesh);
-        m_Vertices.insert(m_Vertices.end(), vertices.begin(), vertices.end());
-        m_Indices.insert(m_Indices.end(), indices.begin(), indices.end());
     }
 }

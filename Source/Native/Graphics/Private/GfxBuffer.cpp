@@ -97,23 +97,13 @@ namespace march
         else
         {
             GfxDevice* device = GetDevice();
-            GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
+            D3D12_RESOURCE_STATES currentState = GetResource()->GetState();
 
             GfxBuffer tempUpload{ device, sizeInBytes, 0, GfxSubAllocator::TempUpload };
             tempUpload.SetData(0, src, sizeInBytes);
 
-            D3D12_RESOURCE_STATES currentState = GetResource()->GetState();
-            context->TransitionResource(GetResource().get(), D3D12_RESOURCE_STATE_COPY_DEST);
-            context->TransitionResource(tempUpload.GetResource().get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
-            context->FlushResourceBarriers();
-
-            context->GetCommandList()->CopyBufferRegion(
-                GetResource()->GetD3DResource(),
-                static_cast<UINT64>(m_Resource.GetBufferOffset() + destOffset),
-                tempUpload.GetResource()->GetD3DResource(),
-                static_cast<UINT64>(tempUpload.m_Resource.GetBufferOffset()),
-                static_cast<UINT64>(sizeInBytes));
-
+            GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
+            context->CopyBuffer(&tempUpload, 0, this, destOffset, sizeInBytes);
             context->TransitionResource(GetResource().get(), currentState);
             context->SubmitAndRelease().WaitOnCpu();
         }

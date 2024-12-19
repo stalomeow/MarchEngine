@@ -12,9 +12,9 @@
     <None Include="$(MSBuildThisFileDirectory)Public\BlinnPhong.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\DeferredLight.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\Gizmos.shader" />
+    <None Include="$(MSBuildThisFileDirectory)public\DearImGui.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Common.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)Public\BlitImGui.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\GBuffer.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\Packing.hlsl" />

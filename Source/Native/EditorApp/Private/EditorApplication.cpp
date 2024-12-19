@@ -27,6 +27,7 @@
 #include <imgui_freetype.h>
 #include "Shader.h"
 #include "Gizmos.h"
+#include "ImGuiDX12.h"
 
 using namespace DirectX;
 
@@ -80,15 +81,16 @@ namespace march
         desc.WindowHandle = GetWindowHandle();
         desc.WindowWidth = GetClientWidth();
         desc.WindowHeight = GetClientHeight();
-        desc.ViewTableStaticDescriptorCount = 1;
-        desc.ViewTableDynamicDescriptorCapacity = 409600;
-        desc.SamplerTableStaticDescriptorCount = 0;
-        desc.SamplerTableDynamicDescriptorCapacity = 1024;
+        desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
+        desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] = 64;
+        desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_RTV] = 64;
+        desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_DSV] = 64;
+        desc.OnlineViewDescriptorHeapSize = 10000;
+        desc.OnlineSamplerDescriptorHeapSize = 2048;
         InitGfxDevice(desc);
 
-        Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // temp
-        m_ImGuiRenderGraph = std::make_unique<RenderGraph>(false);
-        m_StaticDescriptorViewTable = GetGfxDevice()->GetStaticDescriptorTable(GfxDescriptorTableType::CbvSrvUav);
+        Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // dummy
+        CreateImGuiTempTexture();
 
         InitImGui();
 
@@ -101,7 +103,7 @@ namespace march
             m_RenderPipeline = std::make_unique<RenderPipeline>();
             Gizmos::InitResources();
         }
-        EndFrame(true);
+        EndFrame(false);
     }
 
     static void SetStyles()
@@ -223,10 +225,7 @@ namespace march
 
         ReloadFonts();
 
-        auto device = GetGfxDevice()->GetD3DDevice4();
-        ImGui_ImplDX12_Init(device, GetGfxDevice()->GetMaxFrameLatency(),
-            m_ImGuiRtvFormat, m_StaticDescriptorViewTable.GetD3D12DescriptorHeap(),
-            m_StaticDescriptorViewTable.GetCpuHandle(0), m_StaticDescriptorViewTable.GetGpuHandle(0));
+        ImGui_ImplDX12_Init(GetGfxDevice(), "Engine/Shaders/DearImGui.shader");
 
         ImGuizmo::GetStyle().RotationLineThickness = 3.0f;
         ImGuizmo::GetStyle().RotationOuterLineThickness = 2.0f;
@@ -236,9 +235,11 @@ namespace march
     {
         BeginFrame();
         {
-            m_BlitImGuiShader.reset();
-            m_BlitImGuiMaterial.reset();
+            ImGui_ImplDX12_Shutdown();
+            ImGui_ImplWin32_Shutdown();
+            ImGui::DestroyContext();
 
+            m_TempImGuiTexture.reset();
             m_RenderPipeline->ReleaseAssets();
             Gizmos::ReleaseResources();
 
@@ -251,13 +252,8 @@ namespace march
         EndFrame(true);
 
         DotNet::DestroyRuntime();
+        GetGfxDevice()->WaitForGpuIdle();
 
-        GetGfxDevice()->WaitForIdle();
-        ImGui_ImplDX12_Shutdown();
-        ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
-
-        m_ImGuiRenderGraph.reset();
         Shader::ClearRootSignatureCache();
         Display::DestroyMainDisplay();
         DestroyGfxDevice();
@@ -322,22 +318,8 @@ namespace march
             DotNet::RuntimeInvoke(ManagedMethod::Application_OnTick);
             DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnTick);
 
-            GfxDevice* device = GetGfxDevice();
-
-            // Render Dear ImGui graphics
-            int32_t tempRenderTargetId = Shader::GetNameId("_TempImGuiRenderTarget");
-            int32_t backBufferId = Shader::GetNameId("_BackBuffer");
-
-            if (!m_BlitImGuiShader)
-            {
-                m_BlitImGuiShader.reset("Engine/Shaders/BlitImGui.shader");
-                m_BlitImGuiMaterial = std::make_unique<Material>();
-                m_BlitImGuiMaterial->SetShader(m_BlitImGuiShader.get());
-            }
-
-            DrawImGuiRenderGraph(device, tempRenderTargetId);
-            BlitImGuiToBackBuffer(device, tempRenderTargetId, backBufferId);
-            m_ImGuiRenderGraph->CompileAndExecute();
+            ImGui::Render();
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_TempImGuiTexture.get(), GetGfxDevice()->GetBackBuffer());
         }
         EndFrame(false);
     }
@@ -350,60 +332,19 @@ namespace march
         CalculateFrameStats();
 
         // Start the Dear ImGui frame
-        ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
     }
 
     void EditorApplication::EndFrame(bool discardImGui)
     {
-        if (discardImGui)
+        if (!discardImGui)
         {
             ImGui::EndFrame();
         }
 
         GfxDevice* device = GetGfxDevice();
         device->EndFrame();
-    }
-
-    void EditorApplication::DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId)
-    {
-        auto builder = m_ImGuiRenderGraph->AddPass("DrawImGui");
-
-        GfxTextureDesc desc = device->GetBackBuffer()->GetDesc();
-        desc.SetResDXGIFormat(m_ImGuiRtvFormat);
-        desc.Flags = GfxTextureFlags::None;
-
-        builder.CreateTransientTexture(renderTargetId, desc);
-        builder.SetColorTarget(renderTargetId, false);
-        builder.ClearRenderTargets(ClearFlags::Color);
-
-        builder.SetRenderFunc([=](RenderGraphContext& context)
-        {
-            ImGui::Render();
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context.GetD3D12GraphicsCommandList());
-        });
-    }
-
-    void EditorApplication::BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcTextureId, int32_t backBufferId)
-    {
-        auto builder = m_ImGuiRenderGraph->AddPass("BlitImGuiToBackBuffer");
-
-        builder.ImportTexture(backBufferId, device->GetBackBuffer());
-        builder.SetColorTarget(backBufferId, false);
-
-        TextureHandle srcTexture = builder.ReadTexture(srcTextureId, ReadFlags::PixelShader);
-
-        builder.SetRenderFunc([=](RenderGraphContext& context)
-        {
-            context.SetTexture("_SrcTex", srcTexture.Get());
-            context.DrawMesh(GetFullScreenTriangleMesh(), m_BlitImGuiMaterial.get());
-        });
-    }
-
-    GfxMesh* EditorApplication::GetFullScreenTriangleMesh()
-    {
-        return m_RenderPipeline->m_FullScreenTriangleMesh;
     }
 
     const std::string& EditorApplication::GetDataPath() const
@@ -419,6 +360,7 @@ namespace march
     void EditorApplication::OnResize()
     {
         GetGfxDevice()->ResizeBackBuffer(GetClientWidth(), GetClientHeight());
+        CreateImGuiTempTexture();
     }
 
     std::string EditorApplication::GetFontPath(std::string fontName) const
@@ -479,7 +421,24 @@ namespace march
         LOG_TRACE("DPI Changed: %f", GetDisplayScale());
 
         ReloadFonts();
-        ImGui_ImplDX12_InvalidateDeviceObjects();
+        ImGui_ImplDX12_RecreateFontsTexture();
+    }
+
+    void EditorApplication::CreateImGuiTempTexture()
+    {
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R11G11B10_Float;
+        desc.Flags = GfxTextureFlags::None;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = GetClientWidth();
+        desc.Height = GetClientHeight();
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Point;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0;
+
+        m_TempImGuiTexture = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "TempImGui", desc, GfxAllocator::CommittedDefault);
     }
 
     void EditorApplication::OnPaint()

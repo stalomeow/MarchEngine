@@ -34,9 +34,5 @@ namespace march
         DirectX::XMFLOAT4 Color;
         DirectX::XMFLOAT2 FalloffRange;
         float SpotPower;
-
-    protected:
-        void OnMount() override;
-        void OnUnmount() override;
     };
 }

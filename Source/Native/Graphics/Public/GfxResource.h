@@ -276,7 +276,7 @@ namespace march
         void CleanUpAllocations() override;
 
     protected:
-        size_t RequestNewPage(uint32_t sizeInBytes, bool large) override;
+        size_t RequestPage(uint32_t sizeInBytes, bool large, bool* pOutIsNew) override;
 
     private:
         const bool m_UnorderedAccess;

@@ -27,10 +27,14 @@ namespace march
     {
         if (sizeInBytes > m_PageSize)
         {
-            outPageIndex = RequestNewPage(sizeInBytes, true);
+            bool isNew = false;
+            outPageIndex = RequestPage(sizeInBytes, true, &isNew);
             outLarge = true;
 
-            LOG_TRACE("%s creates new LARGE page; Size=%u", m_Name.c_str(), sizeInBytes);
+            if (isNew)
+            {
+                LOG_TRACE("%s creates new LARGE page; Size=%u", m_Name.c_str(), sizeInBytes);
+            }
             return 0;
         }
 
@@ -43,10 +47,14 @@ namespace march
 
         if (m_CurrentPageIndex == std::numeric_limits<size_t>::max() || offset + sizeInBytes > m_PageSize)
         {
-            m_CurrentPageIndex = RequestNewPage(m_PageSize, false);
+            bool isNew = false;
+            m_CurrentPageIndex = RequestPage(m_PageSize, false, &isNew);
             offset = 0; // AlignUp already done
 
-            LOG_TRACE("%s creates new page; Size=%u", m_Name.c_str(), m_PageSize);
+            if (isNew)
+            {
+                LOG_TRACE("%s creates new page; Size=%u", m_Name.c_str(), m_PageSize);
+            }
         }
 
         m_NextAllocOffset = offset + sizeInBytes;
@@ -90,7 +98,7 @@ namespace march
     void BuddyAllocator::Reset()
     {
         m_FreeBlocks.clear();
-        m_FreeBlocks.reserve(static_cast<size_t>(m_MaxOrder) + 1);
+        m_FreeBlocks.resize(static_cast<size_t>(m_MaxOrder) + 1);
         m_FreeBlocks[m_MaxOrder].insert(0);
     }
 

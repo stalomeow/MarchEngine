@@ -123,7 +123,7 @@ namespace march
             }
 
             m_Num = std::max(m_Num, index + 1);
-            m_Descriptors[index] = descriptor;
+            m_Descriptors[index] = handle;
             m_IsDirty = true;
         }
 
@@ -237,6 +237,7 @@ namespace march
 
         void Rollover();
 
+        GfxOnlineDescriptorAllocator* GetCurrentAllocator() const { return m_CurrentAllocator; }
         GfxDevice* GetDevice() const { return m_Device; }
 
     private:

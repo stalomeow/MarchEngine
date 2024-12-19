@@ -19,7 +19,7 @@
     <ClCompile Include="Private\EngineTimer.cpp" />
     <ClCompile Include="Private\Gizmos.binding.cpp" />
     <ClCompile Include="Private\Gizmos.cpp" />
-    <ClCompile Include="Private\imgui_impl_dx12.cpp" />
+    <ClCompile Include="Private\ImGuiDX12.cpp" />
     <ClCompile Include="Private\Transform.binding.cpp" />
     <ClCompile Include="Private\Transform.cpp" />
     <ClCompile Include="Private\Application.binding.cpp" />
@@ -32,7 +32,7 @@
     <ClInclude Include="Public\Debug.h" />
     <ClInclude Include="Public\EngineTimer.h" />
     <ClInclude Include="Public\Gizmos.h" />
-    <ClInclude Include="Public\imgui_impl_dx12.h" />
+    <ClInclude Include="Public\ImGuiDX12.h" />
     <ClInclude Include="Public\Transform.h" />
     <ClInclude Include="Public\Application.h" />
     <ClInclude Include="ThirdParty\IconsFontAwesome6.h" />

@@ -10,7 +10,6 @@
 #include <string>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
-#include "imgui_impl_dx12.h"
 #include "RenderGraph.h"
 #include "AssetManger.h"
 #include "Shader.h"
@@ -41,23 +40,17 @@ namespace march
         std::string GetFontAwesomePath(std::string fontName) const;
         void ReloadFonts();
 
+        void CreateImGuiTempTexture();
+
         void BeginFrame();
         void EndFrame(bool discardImGui);
 
-        void DrawImGuiRenderGraph(GfxDevice* device, int32_t renderTargetId);
-        void BlitImGuiToBackBuffer(GfxDevice* device, int32_t srcId, int32_t backBufferId);
-        GfxMesh* GetFullScreenTriangleMesh();
-
-        asset_ptr<Shader> m_BlitImGuiShader = nullptr;
-        std::unique_ptr<Material> m_BlitImGuiMaterial = nullptr;
         std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
-        std::unique_ptr<RenderGraph> m_ImGuiRenderGraph = nullptr;
-        GfxDescriptorTable m_StaticDescriptorViewTable;
+        std::unique_ptr<GfxRenderTexture> m_TempImGuiTexture = nullptr;
 
         std::string m_DataPath;
         std::string m_ImGuiIniFilename{};
 
-        const DXGI_FORMAT m_ImGuiRtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;
         const float m_FontSizeIcon = 13.0f;

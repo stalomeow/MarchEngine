@@ -22,7 +22,7 @@ namespace march
 
     protected:
         // 返回 page index
-        virtual size_t RequestNewPage(uint32_t sizeInBytes, bool large) = 0;
+        virtual size_t RequestPage(uint32_t sizeInBytes, bool large, bool* pOutIsNew) = 0;
 
     private:
         const std::string m_Name;

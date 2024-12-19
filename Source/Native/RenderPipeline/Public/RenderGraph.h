@@ -31,9 +31,12 @@ namespace march
 
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex); }
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, matrix); }
-        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(mesh, material, shaderPassIndex); }
-        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(mesh, material, shaderPassIndex, matrix); }
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(subMesh, material, shaderPassIndex); }
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(subMesh, material, shaderPassIndex, matrix); }
         void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode) { m_Context->DrawMeshRenderers(numRenderers, renderers, lightMode); }
+
+        void ResolveTexture(GfxTexture* source, GfxTexture* destination) { m_Context->ResolveTexture(source, destination); }
+        void CopyBuffer(GfxBuffer* source, uint32_t sourceOffset, GfxBuffer* destination, uint32_t destinationOffset, uint32_t sizeInBytes) { m_Context->CopyBuffer(source, sourceOffset, destination, destinationOffset, sizeInBytes); }
 
         GfxDevice* GetDevice() const { return m_Context->GetDevice(); }
         ID3D12GraphicsCommandList* GetCommandList() const { return m_Context->GetCommandList(); }

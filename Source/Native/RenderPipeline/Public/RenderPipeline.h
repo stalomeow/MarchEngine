@@ -2,6 +2,7 @@
 
 #include "Light.h"
 #include "GfxMesh.h"
+#include "GfxBuffer.h"
 #include "AssetManger.h"
 #include "Material.h"
 #include "Shader.h"
@@ -52,15 +53,15 @@ namespace march
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
-        void AddMeshRenderer(MeshRenderer* obj) { m_RenderObjects.push_back(obj); }
+        void AddMeshRenderer(MeshRenderer* obj) { m_Renderers.push_back(obj); }
 
         void RemoveMeshRenderer(MeshRenderer* obj)
         {
-            auto it = std::find(m_RenderObjects.begin(), m_RenderObjects.end(), obj);
+            auto it = std::find(m_Renderers.begin(), m_Renderers.end(), obj);
 
-            if (it != m_RenderObjects.end())
+            if (it != m_Renderers.end())
             {
-                m_RenderObjects.erase(it);
+                m_Renderers.erase(it);
             }
         }
 
@@ -77,17 +78,16 @@ namespace march
         }
 
         void ImportTextures(int32_t id, GfxRenderTexture* texture);
-        void SetCameraGlobalConstantBuffer(const std::string& passName, Camera* camera);
-        void SetCameraGlobalConstantBuffer(const std::string& passName, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
+        void SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera);
+        void SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         void SetLightGlobalConstantBuffer(int32_t id);
-        void ResolveMSAA(int32_t id, int32_t resolvedId);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DrawShadowCasters(int32_t targetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
         void DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId);
-        void PrepareTextureForImGui(int32_t id);
+        void ResolveMSAA(int32_t sourceId, int32_t destinationId);
 
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
@@ -97,8 +97,12 @@ namespace march
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
 
+        GfxConstantBuffer<CameraConstants> m_CameraConstantBuffer{};
+        GfxConstantBuffer<CameraConstants> m_ShadowCameraConstantBuffer{};
+        GfxConstantBuffer<LightConstants> m_LightConstantBuffer{};
+
     private:
-        std::vector<MeshRenderer*> m_RenderObjects{};
+        std::vector<MeshRenderer*> m_Renderers{};
         std::vector<Light*> m_Lights{};
         std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
     };

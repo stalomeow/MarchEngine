@@ -333,6 +333,11 @@ namespace march
 
     void RenderGraph::SetPassRenderTargets(GfxCommandContext* context, RenderGraphPass& pass)
     {
+        if (pass.NumColorTargets == 0 && !pass.DepthStencilTarget.IsSet)
+        {
+            return;
+        }
+
         GfxRenderTexture* colorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
         GfxRenderTexture* depthStencilTarget = nullptr;
 

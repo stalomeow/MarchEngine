@@ -10,7 +10,6 @@
 #include "RenderDoc.h"
 #include "Transform.h"
 #include <assert.h>
-#include <stdexcept>
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -899,46 +898,19 @@ namespace march
         m_InstanceBuffer.SetData(0, instances, static_cast<uint32_t>(sizeof(InstanceData)) * numInstances);
     }
 
-    void GfxCommandContext::DrawSubMesh(GfxMesh* mesh, uint32_t subMeshIndex, uint32_t instanceCount)
+    void GfxCommandContext::DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount)
     {
-        SetPrimitiveTopology(mesh->GetInputDesc().GetPrimitiveTopology());
-
-        const auto& vertexBuffer = mesh->GetVertexBuffer();
-        SetVertexBuffer(vertexBuffer.GetResource(), vertexBuffer.GetVbv());
-
-        const auto& indexBuffer = mesh->GetIndexBuffer();
-        SetIndexBuffer(indexBuffer.GetResource(), indexBuffer.GetIbv());
-
+        SetPrimitiveTopology(subMesh.InputDesc.GetPrimitiveTopology());
+        SetVertexBuffer(subMesh.VertexBufferResource, subMesh.VertexBufferView);
+        SetIndexBuffer(subMesh.IndexBufferResource, subMesh.IndexBufferView);
         FlushResourceBarriers();
 
-        const GfxSubMesh& subMesh = mesh->GetSubMesh(subMeshIndex);
-        m_CommandList->DrawIndexedInstanced(static_cast<UINT>(subMesh.IndexCount), static_cast<UINT>(instanceCount),
-            static_cast<UINT>(subMesh.StartIndexLocation), static_cast<INT>(subMesh.BaseVertexLocation), 0);
-    }
-
-    void GfxCommandContext::DrawSubMesh(const GfxMeshData* mesh, uint32_t instanceCount)
-    {
-        SetPrimitiveTopology(mesh->InputDesc->GetPrimitiveTopology());
-        SetVertexBuffer(mesh->VertexBufferResource, mesh->VertexBufferView);
-        SetIndexBuffer(mesh->IndexBufferResource, mesh->IndexBufferView);
-
-        FlushResourceBarriers();
-
-        UINT indexStride;
-        switch (mesh->IndexBufferView.Format)
-        {
-        case DXGI_FORMAT_R16_UINT:
-            indexStride = 2;
-            break;
-        case DXGI_FORMAT_R32_UINT:
-            indexStride = 4;
-            break;
-        default:
-            throw std::runtime_error("Unsupported index buffer format");
-        }
-
-        UINT indexCount = mesh->IndexBufferView.SizeInBytes / indexStride;
-        m_CommandList->DrawIndexedInstanced(indexCount, static_cast<UINT>(instanceCount), 0, 0, 0);
+        m_CommandList->DrawIndexedInstanced(
+            static_cast<UINT>(subMesh.SubMesh.IndexCount),
+            static_cast<UINT>(instanceCount),
+            static_cast<UINT>(subMesh.SubMesh.StartIndexLocation),
+            static_cast<INT>(subMesh.SubMesh.BaseVertexLocation),
+            0);
     }
 
     void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex)
@@ -948,27 +920,22 @@ namespace march
 
     void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
-        SetInstanceBuffer(1, &CreateInstanceData(matrix));
-
-        ID3D12PipelineState* pso = GetGraphicsPipelineState(mesh->GetInputDesc(), material, shaderPassIndex);
-        SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
-
-        DrawSubMesh(mesh, subMeshIndex, 1);
+        DrawMesh(mesh->GetSubMeshDesc(subMeshIndex), material, shaderPassIndex, matrix);
     }
 
-    void GfxCommandContext::DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex)
+    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex)
     {
-        DrawMesh(mesh, material, shaderPassIndex, MathUtils::Identity4x4());
+        DrawMesh(subMesh, material, shaderPassIndex, MathUtils::Identity4x4());
     }
 
-    void GfxCommandContext::DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix)
+    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix)
     {
         SetInstanceBuffer(1, &CreateInstanceData(matrix));
 
-        ID3D12PipelineState* pso = GetGraphicsPipelineState(*mesh->InputDesc, material, shaderPassIndex);
+        ID3D12PipelineState* pso = GetGraphicsPipelineState(subMesh.InputDesc, material, shaderPassIndex);
         SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
 
-        DrawSubMesh(mesh, 1);
+        DrawSubMesh(subMesh, 1);
     }
 
     // 相同的可以合批，使用 GPU instancing 绘制
@@ -979,7 +946,7 @@ namespace march
         Material* Mat;
         int32_t ShaderPassIndex;
 
-        bool operator==(const DrawCall& other)
+        bool operator==(const DrawCall& other) const
         {
             return memcmp(this, &other, sizeof(DrawCall)) == 0;
         }
@@ -1041,7 +1008,7 @@ namespace march
                 uint32_t instanceCount = static_cast<uint32_t>(instances.size());
                 SetInstanceBuffer(instanceCount, instances.data());
                 SetGraphicsPipelineParameters(pso, dc.Mat, dc.ShaderPassIndex);
-                DrawSubMesh(dc.Mesh, dc.SubMeshIndex, instanceCount);
+                DrawSubMesh(dc.Mesh->GetSubMeshDesc(dc.SubMeshIndex), instanceCount);
             }
         }
     }
@@ -1051,5 +1018,31 @@ namespace march
         XMFLOAT4X4 matrixIT{};
         XMStoreFloat4x4(&matrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&matrix))));
         return InstanceData{ matrix, matrixIT };
+    }
+
+    void GfxCommandContext::ResolveTexture(GfxTexture* source, GfxTexture* destination)
+    {
+        TransitionResource(source->GetResource().get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+        TransitionResource(destination->GetResource().get(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
+        FlushResourceBarriers();
+
+        m_CommandList->ResolveSubresource(
+            destination->GetResource()->GetD3DResource(), 0,
+            source->GetResource()->GetD3DResource(), 0,
+            source->GetDesc().GetResDXGIFormat());
+    }
+
+    void GfxCommandContext::CopyBuffer(GfxBuffer* source, uint32_t sourceOffset, GfxBuffer* destination, uint32_t destinationOffset, uint32_t sizeInBytes)
+    {
+        TransitionResource(source->GetResource().get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+        TransitionResource(destination->GetResource().get(), D3D12_RESOURCE_STATE_COPY_DEST);
+        FlushResourceBarriers();
+
+        m_CommandList->CopyBufferRegion(
+            destination->GetResource()->GetD3DResource(),
+            static_cast<UINT64>(destination->GetResourceOffset() + destinationOffset),
+            source->GetResource()->GetD3DResource(),
+            static_cast<UINT64>(source->GetResourceOffset() + sourceOffset),
+            static_cast<UINT64>(sizeInBytes));
     }
 }

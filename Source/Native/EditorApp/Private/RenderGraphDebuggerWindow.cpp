@@ -50,7 +50,7 @@ namespace march
                 nextNodePos.x += 250;
             }
 
-            for (int32_t i = 0; i < pass.NumColorTargets; i++)
+            for (uint32_t i = 0; i < pass.NumColorTargets; i++)
             {
                 if (!pass.ColorTargets[i].IsSet)
                 {
@@ -77,16 +77,16 @@ namespace march
                 }
             }
 
-            for (auto& kv : pass.ResourcesRead)
+            for (int32_t res : pass.ResourcesRead)
             {
-                node.Resources.push_back(Shader::GetIdName(kv.first) + " (R)");
-                tempData.InputIndexMap[kv.first] = static_cast<int32_t>(node.Resources.size() - 1);
+                node.Resources.push_back(Shader::GetIdName(res) + " (R)");
+                tempData.InputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
             }
 
-            for (auto& kv : pass.ResourcesWritten)
+            for (int32_t res : pass.ResourcesWritten)
             {
-                node.Resources.push_back(Shader::GetIdName(kv.first) + " (W)");
-                tempData.OutputIndexMap[kv.first] = static_cast<int32_t>(node.Resources.size() - 1);
+                node.Resources.push_back(Shader::GetIdName(res) + " (W)");
+                tempData.OutputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
             }
         }
 

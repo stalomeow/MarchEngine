@@ -43,6 +43,18 @@ namespace March.Core.Rendering
         [NativeProperty]
         public partial float SpotPower { get; set; }
 
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            RenderPipeline.Add(this);
+        }
+
+        protected override void OnDisable()
+        {
+            RenderPipeline.Remove(this);
+            base.OnDisable();
+        }
+
         protected override void OnDrawGizmos(bool isSelected)
         {
             base.OnDrawGizmos(isSelected);

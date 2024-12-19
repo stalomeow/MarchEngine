@@ -5,7 +5,7 @@
 
 namespace march
 {
-    class GfxDescriptorTableAllocator;
+    class GfxOnlineViewDescriptorAllocator;
 
     class DescriptorHeapDebuggerWindow : public EditorWindow
     {
@@ -19,6 +19,6 @@ namespace march
         void OnDraw() override;
 
     private:
-        void DrawHeapInfo(const std::string& name, GfxDescriptorTableAllocator* allocator);
+        void DrawHeapInfo(const std::string& name, GfxOnlineViewDescriptorAllocator* allocator);
     };
 }

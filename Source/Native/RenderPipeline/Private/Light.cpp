@@ -1,7 +1,5 @@
 #include "Light.h"
 #include "Transform.h"
-#include "RenderPipeline.h"
-#include "Application.h"
 
 using namespace DirectX;
 
@@ -58,17 +56,5 @@ namespace march
         data.Falloff.y = FalloffRange.y;
         data.Falloff.z = 0;
         data.Falloff.w = 0;
-    }
-
-    void Light::OnMount()
-    {
-        Component::OnMount();
-        GetApp()->GetRenderPipeline()->AddLight(this);
-    }
-
-    void Light::OnUnmount()
-    {
-        GetApp()->GetRenderPipeline()->RemoveLight(this);
-        Component::OnUnmount();
     }
 }

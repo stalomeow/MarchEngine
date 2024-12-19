@@ -13,12 +13,10 @@ namespace march
         base::OnDraw();
 
         GfxDevice* device = GetGfxDevice();
-        DrawHeapInfo("CBV, SRV, UAV", device->GetViewDescriptorTableAllocator());
-        ImGui::Spacing();
-        DrawHeapInfo("Sampler", device->GetSamplerDescriptorTableAllocator());
+        DrawHeapInfo("CBV, SRV, UAV", reinterpret_cast<GfxOnlineViewDescriptorAllocator*>(device->GetOnlineViewDescriptorAllocator()->GetCurrentAllocator()));
     }
 
-    void DescriptorHeapDebuggerWindow::DrawHeapInfo(const std::string& name, GfxDescriptorTableAllocator* allocator)
+    void DescriptorHeapDebuggerWindow::DrawHeapInfo(const std::string& name, GfxOnlineViewDescriptorAllocator* allocator)
     {
         if (!ImGui::TreeNodeEx(name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
@@ -30,19 +28,16 @@ namespace march
         const float height = 50.0f; // 固定高度
 
         const uint64_t currentFrame = GetApp()->GetFrameCount();
-        const UINT dynamicCapacity = allocator->GetDynamicDescriptorCapacity();
-        const UINT staticCount = allocator->GetStaticDescriptorCount();
-        const UINT capacity = dynamicCapacity + staticCount;
+        const UINT capacity = allocator->GetNumMaxDescriptors();
         const float columnWidth = width / static_cast<float>(capacity);
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        // 动态区域用绿色表示，静态区域用灰色表示
-        drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + dynamicCapacity * columnWidth, p.y + height), IM_COL32(0, 255, 0, 80));
-        drawList->AddRectFilled(ImVec2(p.x + dynamicCapacity * columnWidth, p.y), ImVec2(p.x + width, p.y + height), IM_COL32(192, 192, 192, 80));
+        // 动态区域用绿色表示
+        drawList->AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + capacity * columnWidth, p.y + height), IM_COL32(0, 255, 0, 80));
 
-        uint32_t front = allocator->GetDynamicFront();
-        uint32_t rear = allocator->GetDynamicRear();
+        uint32_t front = allocator->GetFront();
+        uint32_t rear = allocator->GetRear();
 
         if (front < rear)
         {
@@ -62,21 +57,14 @@ namespace march
             drawList->AddRectFilled(ImVec2(x1, p.y), ImVec2(p.x + width, p.y + height), color);
         }
 
-        int dynamicDescriptorCount = static_cast<int>((rear + dynamicCapacity - front) % dynamicCapacity);
+        int descriptorCount = static_cast<int>((rear + capacity - front) % capacity);
 
         // 让 ImGui 知道这个区域是有内容的
         ImGui::Dummy(ImVec2(width, height));
 
-        float dynamicDescriptorUsage = dynamicDescriptorCount / static_cast<float>(dynamicCapacity) * 100;
-        std::string label1 = StringUtils::Format("Dynamic Capacity: %d / %d (%.2f%% Used)", dynamicDescriptorCount, static_cast<int>(dynamicCapacity), dynamicDescriptorUsage);
-        std::string label2 = StringUtils::Format("Static Count: %d", staticCount);
-
-        float startX = ImGui::GetCursorPosX();
+        float descriptorUsage = descriptorCount / static_cast<float>(capacity) * 100;
+        std::string label1 = StringUtils::Format("Capacity: %d / %d (%.2f%% Used)", descriptorCount, static_cast<int>(capacity), descriptorUsage);
         ImGui::TextUnformatted(label1.c_str());
-        ImGui::SameLine();
-        ImVec2 label2Size = ImGui::CalcTextSize(label2.c_str());
-        ImGui::SetCursorPosX(startX + width - label2Size.x);
-        ImGui::TextUnformatted(label2.c_str());
 
         ImGui::TreePop();
     }

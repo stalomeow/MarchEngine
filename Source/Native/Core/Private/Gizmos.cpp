@@ -1,6 +1,7 @@
 #include "Gizmos.h"
 #include "GfxUtils.h"
 #include "GfxPipelineState.h"
+#include "GfxMesh.h"
 #include "RenderGraph.h"
 #include "Debug.h"
 #include "AssetManger.h"
@@ -27,17 +28,21 @@ namespace march
         XMFLOAT4 Color;
 
         constexpr Vertex(const XMFLOAT3& positionWS, const XMFLOAT4& color) : PositionWS(positionWS), Color(color) {}
-    };
 
-    static GfxInputDesc g_InputDesc(D3D_PRIMITIVE_TOPOLOGY_LINELIST,
+        static const GfxInputDesc& GetInputDesc()
         {
-            GfxInputElement(GfxSemantic::Position, DXGI_FORMAT_R32G32B32_FLOAT),
-            GfxInputElement(GfxSemantic::Color, DXGI_FORMAT_R32G32B32A32_FLOAT),
-        });
+            static GfxInputDesc desc(D3D_PRIMITIVE_TOPOLOGY_LINELIST,
+                {
+                    GfxInputElement(GfxSemantic::Position, DXGI_FORMAT_R32G32B32_FLOAT),
+                    GfxInputElement(GfxSemantic::Color, DXGI_FORMAT_R32G32B32A32_FLOAT),
+                });
+            return desc;
+        }
+    };
 
     // Gizmos 由一组 LineList 构成
     static std::vector<Vertex> g_LineListVertices{};
-    static std::vector<size_t> g_LineListVertexEnds{};
+    static GfxBasicMesh<Vertex> g_LineListMesh{ GfxSubAllocator::PersistentUpload };
     static asset_ptr<Shader> g_LineListShader = nullptr;
     static std::unique_ptr<Material> g_LineListMaterial = nullptr;
 
@@ -95,7 +100,7 @@ namespace march
     void Gizmos::Clear()
     {
         g_LineListVertices.clear();
-        g_LineListVertexEnds.clear();
+        g_LineListMesh.ClearSubMeshes();
     }
 
     void Gizmos::PushMatrix(const XMFLOAT4X4& matrix)
@@ -177,15 +182,19 @@ namespace march
     {
         size_t meshVertexCount = g_LineListVertices.size();
 
-        if (!g_LineListVertexEnds.empty())
-        {
-            meshVertexCount -= g_LineListVertexEnds.back();
-        }
-
         // Gizmos 使用 uint16_t 类型的 index，顶点数量不能超过 65535
         if (meshVertexCount >= 60000 || (force && meshVertexCount > 0))
         {
-            g_LineListVertexEnds.push_back(g_LineListVertices.size());
+            static std::vector<uint16_t> indices{};
+
+            while (indices.size() < meshVertexCount)
+            {
+                indices.push_back(static_cast<uint16_t>(indices.size()));
+            }
+
+            uint32_t vertexCount = static_cast<uint32_t>(meshVertexCount);
+            g_LineListMesh.AddSubMesh(vertexCount, g_LineListVertices.data(), vertexCount, indices.data());
+            g_LineListVertices.clear();
         }
     }
 
@@ -367,42 +376,16 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            std::vector<MeshDesc> meshes{};
-            std::vector<uint16_t> indices{};
-            size_t vertexOffset = 0;
-
-            for (size_t i = 0; i < g_LineListVertexEnds.size(); i++)
-            {
-                size_t vertexEnd = g_LineListVertexEnds[i];
-                size_t vertexCount = vertexEnd - vertexOffset;
-
-                if (vertexCount <= 0)
-                {
-                    continue;
-                }
-
-                while (indices.size() < vertexCount)
-                {
-                    indices.push_back(static_cast<uint16_t>(indices.size()));
-                }
-
-                MeshDesc& meshDesc = meshes.emplace_back();
-                meshDesc.InputDesc = &g_InputDesc;
-                meshDesc.VertexBufferView = context.CreateTransientVertexBuffer(vertexCount, sizeof(Vertex), alignof(Vertex), g_LineListVertices.data() + vertexOffset);
-                meshDesc.IndexBufferView = context.CreateTransientIndexBuffer(vertexCount, indices.data());
-                vertexOffset = vertexEnd;
-            }
-
             // Visible part
-            for (const MeshDesc& mesh : meshes)
+            for (uint32_t i = 0; i < g_LineListMesh.GetSubMeshCount(); i++)
             {
-                context.DrawMesh(&mesh, g_LineListMaterial.get(), 0);
+                context.DrawMesh(g_LineListMesh.GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
             }
 
             // Invisible part
-            for (const MeshDesc& mesh : meshes)
+            for (uint32_t i = 0; i < g_LineListMesh.GetSubMeshCount(); i++)
             {
-                context.DrawMesh(&mesh, g_LineListMaterial.get(), 1);
+                context.DrawMesh(g_LineListMesh.GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
             }
         });
     }

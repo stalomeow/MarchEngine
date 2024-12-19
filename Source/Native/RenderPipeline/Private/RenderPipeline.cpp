@@ -1,6 +1,7 @@
 #include "RenderPipeline.h"
 #include "Debug.h"
 #include "GfxTexture.h"
+#include "MeshRenderer.h"
 #include "GfxDevice.h"
 #include "GfxMesh.h"
 #include "GfxDescriptor.h"
@@ -68,7 +69,7 @@ namespace march
 
             DrawShadowCasters(Shader::GetNameId("ShadowMap"));
 
-            SetCameraGlobalConstantBuffer("CameraConstantBuffer", camera);
+            SetCameraGlobalConstantBuffer("CameraConstantBuffer", &m_CameraConstantBuffer, camera);
             SetLightGlobalConstantBuffer(Shader::GetNameId("cbLight"));
 
             ClearTargets(colorTargetId, depthStencilTargetId);
@@ -86,11 +87,6 @@ namespace march
             if (display->GetEnableMSAA())
             {
                 ResolveMSAA(colorTargetId, colorTargetResolvedId);
-                PrepareTextureForImGui(colorTargetResolvedId);
-            }
-            else
-            {
-                PrepareTextureForImGui(colorTargetId);
             }
 
             m_RenderGraph->CompileAndExecute();
@@ -107,13 +103,15 @@ namespace march
         builder.ImportTexture(id, texture);
     }
 
-    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, Camera* camera)
+    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera)
     {
-        SetCameraGlobalConstantBuffer(passName, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
+        SetCameraGlobalConstantBuffer(passName, buffer, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
     }
 
-    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
+    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
     {
+        static int32_t bufferId = Shader::GetNameId("cbCamera");
+
         auto builder = m_RenderGraph->AddPass(passName);
 
         builder.AllowPassCulling(false);
@@ -123,10 +121,7 @@ namespace march
             XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
             XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
 
-            GfxDevice* device = context.GetDevice();
-            auto cb = device->AllocateTransientUploadMemory(sizeof(CameraConstants), 1, GfxConstantBuffer::Alignment);
-
-            CameraConstants& consts = *reinterpret_cast<CameraConstants*>(cb.GetMappedData(0));
+            CameraConstants consts{};
             XMStoreFloat4x4(&consts.ViewMatrix, view);
             XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, view));
             XMStoreFloat4x4(&consts.ProjectionMatrix, proj);
@@ -135,7 +130,9 @@ namespace march
             XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
             consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
 
-            context.SetGlobalConstantBuffer("cbCamera", cb.GetGpuVirtualAddress(0));
+            *buffer = GfxConstantBuffer<CameraConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
+            buffer->SetData(0, &consts, sizeof(consts));
+            context.SetBuffer(bufferId, buffer);
         });
     }
 
@@ -146,10 +143,7 @@ namespace march
         builder.AllowPassCulling(false);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            GfxDevice* device = context.GetDevice();
-            auto cb = device->AllocateTransientUploadMemory(sizeof(LightConstants), 1, GfxConstantBuffer::Alignment);
-
-            LightConstants& consts = *reinterpret_cast<LightConstants*>(cb.GetMappedData(0));
+            LightConstants consts{};
             consts.LightCount = static_cast<int32_t>(m_Lights.size());
 
             for (int i = 0; i < m_Lights.size(); i++)
@@ -162,21 +156,9 @@ namespace march
                 m_Lights[i]->FillLightData(consts.Lights[i]);
             }
 
-            context.SetGlobalConstantBuffer(id, cb.GetGpuVirtualAddress(0));
-        });
-    }
-
-    void RenderPipeline::ResolveMSAA(int32_t id, int32_t resolvedId)
-    {
-        auto builder = m_RenderGraph->AddPass("ResolveMSAA");
-
-        TextureHandle tex = builder.ReadTexture(id, ReadFlags::Resolve);
-        TextureHandle resolvedTex = builder.WriteTexture(resolvedId, WriteFlags::Resolve);
-
-        builder.SetRenderFunc([=](RenderGraphContext& context)
-        {
-            ID3D12GraphicsCommandList* cmd = context.GetD3D12GraphicsCommandList();
-            cmd->ResolveSubresource(resolvedTex->GetD3D12Resource(), 0, tex->GetD3D12Resource(), 0, tex->GetDXGIFormat());
+            m_LightConstantBuffer = GfxConstantBuffer<LightConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
+            m_LightConstantBuffer.SetData(0, &consts, sizeof(consts));
+            context.SetBuffer(id, &m_LightConstantBuffer);
         });
     }
 
@@ -195,7 +177,7 @@ namespace march
 
         GfxTextureDesc desc = builder.GetTextureDesc(colorTargetId);
 
-        for (int32_t i = 0; i < m_GBuffers.size(); i++)
+        for (uint32_t i = 0; i < m_GBuffers.size(); i++)
         {
             auto& [id, format, sRGB] = m_GBuffers[i];
 
@@ -210,7 +192,7 @@ namespace march
         builder.SetWireframe(wireframe);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), "GBuffer");
+            context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "GBuffer");
         });
     }
 
@@ -241,12 +223,12 @@ namespace march
 
     void RenderPipeline::DrawShadowCasters(int32_t targetId)
     {
-        if (m_Lights.empty() || m_RenderObjects.empty())
+        if (m_Lights.empty() || m_Renderers.empty())
         {
             return;
         }
 
-        BoundingBox aabb = m_RenderObjects[0]->GetBounds();
+        BoundingBox aabb = m_Renderers[0]->GetBounds();
 
         BoundingSphere sphere = {};
         BoundingSphere::CreateFromBoundingBox(sphere, aabb);
@@ -265,7 +247,7 @@ namespace march
 
         XMFLOAT4X4 proj = {};
         XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(sphere.Radius * 2, sphere.Radius * 2, sphere.Radius * 2 + 1.0f, 1.0f));
-        SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", pos, view, proj);
+        SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", &m_ShadowCameraConstantBuffer, pos, view, proj);
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 
@@ -284,11 +266,11 @@ namespace march
         builder.AllowPassCulling(false);
         builder.CreateTransientTexture(targetId, desc);
         builder.SetDepthStencilTarget(targetId);
-        builder.ClearRenderTargets(ClearFlags::DepthStencil);
+        builder.ClearRenderTargets(GfxClearFlags::DepthStencil);
 
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawObjects(m_RenderObjects.size(), m_RenderObjects.data(), "ShadowCaster");
+            context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
         });
     }
 
@@ -316,11 +298,15 @@ namespace march
         });
     }
 
-    void RenderPipeline::PrepareTextureForImGui(int32_t id)
+    void RenderPipeline::ResolveMSAA(int32_t sourceId, int32_t destinationId)
     {
-        auto builder = m_RenderGraph->AddPass("PrepareTextureForImGui");
+        auto builder = m_RenderGraph->AddPass("ResolveMSAA");
 
-        builder.AllowPassCulling(false);
-        builder.ReadTexture(id);
+        TextureHandle source = builder.ReadTexture(sourceId);
+        TextureHandle destination = builder.WriteTexture(destinationId);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            context.ResolveTexture(source.Get(), destination.Get());
+        });
     }
 }

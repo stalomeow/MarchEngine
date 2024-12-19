@@ -94,7 +94,7 @@ namespace march
         }
 
         DefaultHash hash{};
-        hash.Append(bufferPointer, bufferSize / 4);
+        hash.Append(bufferPointer, bufferSize);
         ComPtr<ID3D12RootSignature>& result = g_GlobalRootSignaturePool[*hash];
 
         if (result == nullptr)

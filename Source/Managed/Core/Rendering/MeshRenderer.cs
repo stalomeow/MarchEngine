@@ -53,6 +53,18 @@ namespace March.Core.Rendering
             SetNativeMaterials(materials.Data);
         }
 
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            RenderPipeline.Add(this);
+        }
+
+        protected override void OnDisable()
+        {
+            RenderPipeline.Remove(this);
+            base.OnDisable();
+        }
+
         /// <summary>
         /// 获取世界空间 Bounds
         /// </summary>

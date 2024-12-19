@@ -1,10 +1,13 @@
 #include "EditorGUI.h"
 #include "GfxDevice.h"
-#include "GfxDescriptor.h"
 #include "GfxTexture.h"
 #include <utility>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
+#include <algorithm>
+
+#undef min
+#undef max
 
 namespace march
 {
@@ -29,8 +32,8 @@ namespace march
     void EditorGUI::PrefixLabel(const std::string& label, const std::string& tooltip)
     {
         float width = ImGui::GetContentRegionMax().x;
-        float fieldWidth = min(max(width - MinLabelWidth, 0), MaxFieldWidth);
-        float labelWidth = max(width - fieldWidth, 0);
+        float fieldWidth = std::min(std::max(width - MinLabelWidth, 0.0f), MaxFieldWidth);
+        float labelWidth = std::max(width - fieldWidth, 0.0f);
 
         ImVec2 pos = ImGui::GetCursorPos();
 
@@ -152,11 +155,11 @@ namespace march
     {
         auto windowWidth = ImGui::GetWindowSize().x;
         auto textWidth = ImGui::CalcTextSize(label.c_str()).x;
-        auto padding = (min(windowWidth, width) - textWidth) * 0.5f;
-        auto cursorPosX = (windowWidth - max(textWidth, width)) * 0.5f;
+        auto padding = (std::min(windowWidth, width) - textWidth) * 0.5f;
+        auto cursorPosX = (windowWidth - std::max(textWidth, width)) * 0.5f;
 
-        ImGui::SetCursorPosX(max(0, cursorPosX));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(max(0, padding), ImGui::GetStyle().FramePadding.y));
+        ImGui::SetCursorPosX(std::max(0.0f, cursorPosX));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(std::max(0.0f, padding), ImGui::GetStyle().FramePadding.y));
         bool ret = ImGui::Button(label.c_str(), ImVec2(0, 0));
         ImGui::PopStyleVar();
         return ret;
@@ -168,7 +171,7 @@ namespace march
         auto textWidth = ImGui::CalcTextSize(text.c_str()).x;
         auto cursorPosX = (windowWidth - textWidth) * 0.5f;
 
-        ImGui::SetCursorPosX(max(0, cursorPosX));
+        ImGui::SetCursorPosX(std::max(0.0f, cursorPosX));
         ImGui::TextUnformatted(text.c_str());
     }
 
@@ -524,12 +527,9 @@ namespace march
 
     void EditorGUI::DrawTexture(GfxTexture* texture)
     {
-        GfxDescriptorTable table = GetGfxDevice()->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, 1);
-        table.Copy(0, texture->GetSrv());
-        auto id = (ImTextureID)table.GetGpuHandle(0).ptr;
         ImVec2 region = ImGui::GetContentRegionAvail();
         ImVec2 size = { region.x, static_cast<float>(texture->GetDesc().Height) / texture->GetDesc().Width * region.x };
-        ImGui::Image(id, size);
+        ImGui::Image(static_cast<ImTextureID>(texture), size);
     }
 
     bool EditorGUI::Button(const std::string& label)

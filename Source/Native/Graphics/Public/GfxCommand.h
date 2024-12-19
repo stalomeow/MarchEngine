@@ -24,9 +24,10 @@ namespace march
     class GfxResource;
     class GfxTexture;
     class GfxRenderTexture;
-    class GfxMesh;
     class Material;
     class MeshRenderer;
+    class GfxMesh;
+    struct GfxSubMeshDesc;
 
     class GfxFence final
     {
@@ -190,10 +191,10 @@ namespace march
         bool IsDirty(size_t index) const { return m_IsDirty.test(index); }
 
     private:
-        size_t m_Num; // 设置的最大 index + 1
-        D3D12_GPU_VIRTUAL_ADDRESS m_Addresses[Capacity];
-        std::bitset<Capacity> m_IsConstantBuffer;
-        std::bitset<Capacity> m_IsDirty;
+        size_t m_Num{}; // 设置的最大 index + 1
+        D3D12_GPU_VIRTUAL_ADDRESS m_Addresses[Capacity]{};
+        std::bitset<Capacity> m_IsConstantBuffer{};
+        std::bitset<Capacity> m_IsDirty{};
     };
 
     enum class GfxClearFlags
@@ -208,14 +209,7 @@ namespace march
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxClearFlags);
 
-    struct GfxMeshData
-    {
-        const GfxInputDesc* InputDesc;
-        std::shared_ptr<GfxResource> VertexBufferResource;
-        D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
-        std::shared_ptr<GfxResource> IndexBufferResource;
-        D3D12_INDEX_BUFFER_VIEW IndexBufferView;
-    };
+    
 
     // 不要跨帧使用
     class GfxCommandContext final
@@ -254,9 +248,13 @@ namespace march
 
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex);
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
-        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex);
-        void DrawMesh(const GfxMeshData* mesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex);
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+
         void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode);
+
+        void ResolveTexture(GfxTexture* source, GfxTexture* destination);
+        void CopyBuffer(GfxBuffer* source, uint32_t sourceOffset, GfxBuffer* destination, uint32_t destinationOffset, uint32_t sizeInBytes);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxCommandType GetType() const { return m_Type; }
@@ -344,8 +342,7 @@ namespace march
         void SetVertexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_VERTEX_BUFFER_VIEW& value);
         void SetIndexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_INDEX_BUFFER_VIEW& value);
         void SetInstanceBuffer(uint32_t numInstances, const InstanceData* instances);
-        void DrawSubMesh(GfxMesh* mesh, uint32_t subMeshIndex, uint32_t instanceCount);
-        void DrawSubMesh(const GfxMeshData* mesh, uint32_t instanceCount);
+        void DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount);
 
         static InstanceData CreateInstanceData(const DirectX::XMFLOAT4X4& matrix);
     };

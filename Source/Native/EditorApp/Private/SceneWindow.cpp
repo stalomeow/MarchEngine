@@ -129,15 +129,11 @@ namespace march
 
     void SceneWindow::DrawSceneView()
     {
-        GfxDevice* device = GetGfxDevice();
+        GfxRenderTexture* colorBuffer = m_EnableMSAA ? m_Display->GetResolvedColorBuffer() : m_Display->GetColorBuffer();
         ImVec2 size = ImGui::GetContentRegionAvail();
 
-        GfxRenderTexture* colorBuffer = m_EnableMSAA ? m_Display->GetResolvedColorBuffer() : m_Display->GetColorBuffer();
-        GfxDescriptorTable srv = device->AllocateTransientDescriptorTable(GfxDescriptorTableType::CbvSrvUav, 1);
-        srv.Copy(0, colorBuffer->GetSrv());
-
         // TODO image 不能有 alpha
-        ImGui::Image(reinterpret_cast<ImTextureID>(srv.GetGpuHandle(0).ptr), size);
+        ImGui::Image(reinterpret_cast<ImTextureID>(colorBuffer), size);
     }
 
     void SceneWindow::TravelScene(XMFLOAT3& cameraPosition, XMFLOAT4& cameraRotation)

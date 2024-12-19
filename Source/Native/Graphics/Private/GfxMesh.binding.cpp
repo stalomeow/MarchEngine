@@ -189,7 +189,7 @@ NATIVE_EXPORT_AUTO GfxMesh_AddSubMesh(cs<GfxMesh*> pObject, cs<CSharpMeshVertex[
         indexVec.push_back(indices[i]);
     }
 
-    pObject->AddSubMesh(vertexVec, indexVec);
+    pObject->AddSubMesh(static_cast<uint32_t>(vertexVec.size()), vertexVec.data(), static_cast<uint32_t>(indexVec.size()), indexVec.data());
 }
 
 NATIVE_EXPORT_AUTO GfxMesh_GetVertices(cs<GfxMesh*> pObject)
