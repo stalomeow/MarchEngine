@@ -203,7 +203,7 @@ namespace march
         }
         context->EndEvent();
 
-        context->BeginEvent("Blit ImGui");
+        context->BeginEvent("BlitImGui");
         {
             context->SetRenderTarget(destination);
             context->SetDefaultViewport();
