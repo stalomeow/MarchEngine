@@ -8,6 +8,7 @@
 #include "StringUtils.h"
 #include "DotNetRuntime.h"
 #include "DotNetMarshal.h"
+#include "Debug.h"
 #include <DirectXColors.h>
 #include <filesystem>
 
@@ -355,11 +356,11 @@ namespace march
         }
     }
 
+    // 根据 hash 复用 sampler
+    static std::unordered_map<size_t, GfxOfflineDescriptor> g_SamplerCache{};
+
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSampler()
     {
-        // 根据 hash 复用
-        static std::unordered_map<size_t, GfxOfflineDescriptor> samplerCache{};
-
         if (!m_SamplerDescriptor)
         {
             D3D12_SAMPLER_DESC samplerDesc = {};
@@ -438,18 +439,29 @@ namespace march
 
             DefaultHash hash{};
             hash.Append(samplerDesc);
-            auto [it, isNew] = samplerCache.try_emplace(*hash);
+            auto [it, isNew] = g_SamplerCache.try_emplace(*hash);
 
             if (isNew)
             {
                 it->second = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->Allocate();
                 m_Device->GetD3DDevice4()->CreateSampler(&samplerDesc, it->second.GetHandle());
+
+                LOG_TRACE("Create new sampler");
+            }
+            else
+            {
+                LOG_TRACE("Reuse sampler");
             }
 
             m_SamplerDescriptor = it->second.GetHandle();
         }
 
         return *m_SamplerDescriptor;
+    }
+
+    void GfxTexture::ClearSamplerCache()
+    {
+        g_SamplerCache.clear();
     }
 
     void GfxTexture::ReleaseDescriptors()

@@ -16,17 +16,16 @@ namespace march
     // pair.first 是 type name，pair.second 是 method name
     const std::unordered_map<ManagedMethod, std::pair<LPCWSTR, LPCWSTR>> g_ManagedMethodConfig =
     {
-        { ManagedMethod::Application_OnStart                      , { L"March.Core.Application,March.Core"          , L"OnStart"                 } },
-        { ManagedMethod::Application_OnTick                       , { L"March.Core.Application,March.Core"          , L"OnTick"                  } },
-        { ManagedMethod::Application_OnQuit                       , { L"March.Core.Application,March.Core"          , L"OnQuit"                  } },
-        { ManagedMethod::EditorApplication_OnStart                , { L"March.Editor.EditorApplication,March.Editor", L"OnStart"                 } },
-        { ManagedMethod::EditorApplication_OnTick                 , { L"March.Editor.EditorApplication,March.Editor", L"OnTick"                  } },
-        { ManagedMethod::EditorApplication_OnQuit                 , { L"March.Editor.EditorApplication,March.Editor", L"OnQuit"                  } },
-        { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { L"March.Editor.EditorApplication,March.Editor", L"OpenConsoleWindowIfNot"  } },
-        { ManagedMethod::AssetManager_NativeLoadAsset             , { L"March.Core.AssetManager,March.Core"         , L"NativeLoadAsset"         } },
-        { ManagedMethod::AssetManager_NativeUnloadAsset           , { L"March.Core.AssetManager,March.Core"         , L"NativeUnloadAsset"       } },
-        { ManagedMethod::Mesh_NativeGetGeometry                   , { L"March.Core.Rendering.Mesh,March.Core"       , L"NativeGetGeometry"       } },
-        { ManagedMethod::Texture_NativeGetDefault                 , { L"March.Core.Rendering.Texture,March.Core"    , L"NativeGetDefault"        } },
+        { ManagedMethod::Application_Initialize                   , { L"March.Core.Application,March.Core"           , L"Initialize"             } },
+        { ManagedMethod::Application_Tick                         , { L"March.Core.Application,March.Core"           , L"Tick"                   } },
+        { ManagedMethod::Application_Quit                         , { L"March.Core.Application,March.Core"           , L"Quit"                   } },
+        { ManagedMethod::Application_FullGC                       , { L"March.Core.Application,March.Core"           , L"FullGC"                 } },
+        { ManagedMethod::EditorApplication_Initialize             , { L"March.Editor.EditorApplication,March.Editor" , L"Initialize"             } },
+        { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { L"March.Editor.EditorApplication,March.Editor" , L"OpenConsoleWindowIfNot" } },
+        { ManagedMethod::AssetManager_NativeLoadAsset             , { L"March.Core.AssetManager,March.Core"          , L"NativeLoadAsset"        } },
+        { ManagedMethod::AssetManager_NativeUnloadAsset           , { L"March.Core.AssetManager,March.Core"          , L"NativeUnloadAsset"      } },
+        { ManagedMethod::Mesh_NativeGetGeometry                   , { L"March.Core.Rendering.Mesh,March.Core"        , L"NativeGetGeometry"      } },
+        { ManagedMethod::Texture_NativeGetDefault                 , { L"March.Core.Rendering.Texture,March.Core"     , L"NativeGetDefault"       } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";

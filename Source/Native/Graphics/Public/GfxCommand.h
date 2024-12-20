@@ -28,6 +28,7 @@ namespace march
     class MeshRenderer;
     class GfxMesh;
     struct GfxSubMeshDesc;
+    enum class GfxMeshGeometry;
 
     class GfxFence final
     {
@@ -246,6 +247,8 @@ namespace march
         void SetDefaultScissorRect();
         void SetWireframe(bool value);
 
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex);
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex);
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
         void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex);

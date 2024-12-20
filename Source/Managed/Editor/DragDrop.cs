@@ -20,6 +20,17 @@ namespace March.Editor
     {
         private static MarchObject? s_Payload;
 
+        static DragDrop()
+        {
+            Application.OnTick += () =>
+            {
+                if (!IsActive)
+                {
+                    s_Payload = null;
+                }
+            };
+        }
+
         [NativeMethod]
         public static partial bool BeginSource();
 
@@ -78,13 +89,5 @@ namespace March.Editor
 
         [NativeProperty]
         public static partial bool IsActive { get; }
-
-        internal static void Update()
-        {
-            if (!IsActive)
-            {
-                s_Payload = null;
-            }
-        }
     }
 }

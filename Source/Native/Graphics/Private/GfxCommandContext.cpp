@@ -913,6 +913,16 @@ namespace march
             0);
     }
 
+    void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex)
+    {
+        DrawMesh(geometry, material, shaderPassIndex, MathUtils::Identity4x4());
+    }
+
+    void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
+    {
+        DrawMesh(GfxMesh::GetGeometry(geometry), 0, material, shaderPassIndex, matrix);
+    }
+
     void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex)
     {
         DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, MathUtils::Identity4x4());
@@ -928,7 +938,7 @@ namespace march
         DrawMesh(subMesh, material, shaderPassIndex, MathUtils::Identity4x4());
     }
 
-    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix)
+    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
         SetInstanceBuffer(1, &CreateInstanceData(matrix));
 

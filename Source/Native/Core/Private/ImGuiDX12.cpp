@@ -6,7 +6,6 @@
 #include "AssetManger.h"
 #include "Material.h"
 #include "Shader.h"
-#include "Debug.h"
 #include "GfxMesh.h"
 #include <directx/d3dx12.h>
 #include <memory>
@@ -16,6 +15,69 @@ using namespace DirectX;
 
 namespace march
 {
+    class ImGuiBackendData final
+    {
+    public:
+        ImGuiBackendData(GfxDevice* device, const std::string& shaderAssetPath)
+            : m_Device(device)
+            , m_ShaderAssetPath(shaderAssetPath)
+            , m_FontTexture(nullptr)
+            , m_Shader(nullptr)
+            , m_Material(nullptr)
+        {
+            ReloadFontTexture();
+        }
+
+        void ReloadFontTexture()
+        {
+            ImGuiIO& io = ImGui::GetIO();
+
+            unsigned char* pixels = nullptr;
+            int width = 0;
+            int height = 0;
+            int bytesPerPixel = 0;
+            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytesPerPixel);
+
+            GfxTextureDesc desc{};
+            desc.Format = GfxTextureFormat::R8G8B8A8_UNorm;
+            desc.Flags = GfxTextureFlags::SRGB;
+            desc.Dimension = GfxTextureDimension::Tex2D;
+            desc.Width = static_cast<uint32_t>(width);
+            desc.Height = static_cast<uint32_t>(height);
+            desc.DepthOrArraySize = 1;
+            desc.MSAASamples = 1;
+            desc.Filter = GfxTextureFilterMode::Bilinear;
+            desc.Wrap = GfxTextureWrapMode::Repeat;
+            desc.MipmapBias = 0;
+
+            m_FontTexture = std::make_unique<GfxExternalTexture>(m_Device);
+            m_FontTexture->LoadFromPixels("ImGuiFonts", desc, pixels, width * height * bytesPerPixel, 1);
+            io.Fonts->SetTexID(static_cast<ImTextureID>(m_FontTexture.get()));
+        }
+
+        Material* GetMaterial()
+        {
+            if (m_Material == nullptr)
+            {
+                m_Shader.reset(m_ShaderAssetPath);
+                m_Material = std::make_unique<Material>(m_Shader.get());
+            }
+
+            return m_Material.get();
+        }
+
+        GfxDevice* GetDevice() const { return m_Device; }
+
+    private:
+        GfxDevice* m_Device;
+        std::string m_ShaderAssetPath;
+
+        std::unique_ptr<GfxExternalTexture> m_FontTexture;
+
+        asset_ptr<Shader> m_Shader;
+        std::unique_ptr<Material> m_Material;
+    };
+
     struct ImGuiVertex : public ImDrawVert
     {
         static const GfxInputDesc& GetInputDesc()
@@ -30,51 +92,122 @@ namespace march
         }
     };
 
-    // DirectX data
-    struct ImGui_ImplDX12_Data
-    {
-        GfxDevice* Device;
-        std::string ShaderAssetPath;
-        std::unique_ptr<GfxExternalTexture> FontTexture;
-
-        asset_ptr<Shader> ShaderAsset;
-        std::unique_ptr<Material> Mat;
-
-        bool IsLoaded;
-
-        ImGui_ImplDX12_Data()
-            : Device(nullptr)
-            , FontTexture(nullptr)
-            , ShaderAsset(nullptr)
-            , Mat(nullptr)
-            , IsLoaded(false)
-        {
-        }
-    };
-
-    // Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts
-    // It is STRONGLY preferred that you use docking branch with multi-viewports (== single Dear ImGui context + multiple windows) instead of multiple Dear ImGui contexts.
-    static ImGui_ImplDX12_Data* ImGui_ImplDX12_GetBackendData()
-    {
-        return ImGui::GetCurrentContext() ? (ImGui_ImplDX12_Data*)ImGui::GetIO().BackendRendererUserData : nullptr;
-    }
-
-    struct Constants
+    struct ImGuiConstants
     {
         XMFLOAT4X4 MVP;
     };
 
-    // Helper structure we store in the void* RendererUserData field of each ImGuiViewport to easily retrieve our backend data.
-    // Main viewport created by application will only use the Resources field.
-    // Secondary viewports created by this backend will use all the fields (including Window fields),
-    struct ImGui_ImplDX12_ViewportData
+    class ImGuiViewportData
     {
-        GfxBasicMesh<ImGuiVertex> Mesh;
+    public:
+        ImGuiViewportData()
+            : m_Mesh(GfxSubAllocator::TempUpload)
+            , m_Intermediate(nullptr)
+        {
+        }
 
-        ImGui_ImplDX12_ViewportData() : Mesh(GfxSubAllocator::PersistentUpload) {}
+        GfxBasicMesh<ImGuiVertex>& GetMesh()
+        {
+            return m_Mesh;
+        }
+
+        GfxRenderTexture* GetIntermediateTarget(GfxDevice* device, GfxRenderTexture* target)
+        {
+            bool needRecreate;
+
+            if (m_Intermediate == nullptr)
+            {
+                needRecreate = true;
+            }
+            else
+            {
+                const GfxTextureDesc& desc1 = target->GetDesc();
+                const GfxTextureDesc& desc2 = m_Intermediate->GetDesc();
+                needRecreate = desc1.Width != desc2.Width || desc1.Height != desc2.Height;
+            }
+
+            if (needRecreate)
+            {
+                GfxTextureDesc desc{};
+                desc.Format = GfxTextureFormat::R11G11B10_Float;
+                desc.Flags = GfxTextureFlags::None;
+                desc.Dimension = GfxTextureDimension::Tex2D;
+                desc.Width = target->GetDesc().Width;
+                desc.Height = target->GetDesc().Height;
+                desc.DepthOrArraySize = 1;
+                desc.MSAASamples = 1;
+                desc.Filter = GfxTextureFilterMode::Point;
+                desc.Wrap = GfxTextureWrapMode::Clamp;
+                desc.MipmapBias = 0;
+                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGui", desc, GfxAllocator::CommittedDefault);
+            }
+
+            return m_Intermediate.get();
+        }
+
+    private:
+        GfxBasicMesh<ImGuiVertex> m_Mesh;
+        std::unique_ptr<GfxRenderTexture> m_Intermediate;
     };
 
-    static GfxConstantBuffer<Constants> CreateConstantBuffer(GfxDevice* device, ImDrawData* drawData)
+    // Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts
+    // It is STRONGLY preferred that you use docking branch with multi-viewports (== single Dear ImGui context + multiple windows) instead of multiple Dear ImGui contexts.
+    static ImGuiBackendData* ImGui_ImplDX12_GetBackendData()
+    {
+        return ImGui::GetCurrentContext() ? static_cast<ImGuiBackendData*>(ImGui::GetIO().BackendRendererUserData) : nullptr;
+    }
+
+    void ImGui_ImplDX12_Init(GfxDevice* device, const std::string& shaderAssetPath)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        IMGUI_CHECKVERSION();
+        IM_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
+
+        // Setup backend capabilities flags
+        ImGuiBackendData* bd = IM_NEW(ImGuiBackendData)(device, shaderAssetPath);
+        io.BackendRendererUserData = (void*)bd;
+        io.BackendRendererName = "imgui_march_dx12";
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+
+        ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+        mainViewport->RendererUserData = IM_NEW(ImGuiViewportData)();
+    }
+
+    void ImGui_ImplDX12_Shutdown()
+    {
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+        IM_ASSERT(bd != nullptr && "No renderer backend to shutdown, or already shutdown?");
+        ImGuiIO& io = ImGui::GetIO();
+
+        // Manually delete main viewport render resources in-case we haven't initialized for viewports
+        ImGuiViewport* mainViewport = ImGui::GetMainViewport();
+        if (ImGuiViewportData* vd = (ImGuiViewportData*)mainViewport->RendererUserData)
+        {
+            IM_DELETE(vd);
+            mainViewport->RendererUserData = nullptr;
+        }
+
+        io.Fonts->SetTexID(0);
+        io.BackendRendererName = nullptr;
+        io.BackendRendererUserData = nullptr;
+        io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset;
+        IM_DELETE(bd);
+    }
+
+    void ImGui_ImplDX12_ReloadFontTexture()
+    {
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+        IM_ASSERT(bd != nullptr && "Context or backend not initialized! Did you call ImGui_ImplDX12_Init()?");
+        bd->ReloadFontTexture();
+    }
+
+    void ImGui_ImplDX12_NewFrame()
+    {
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+        IM_ASSERT(bd != nullptr && "Context or backend not initialized! Did you call ImGui_ImplDX12_Init()?");
+    }
+
+    static GfxConstantBuffer<ImGuiConstants> CreateConstantBuffer(GfxDevice* device, ImDrawData* drawData)
     {
         // Ref: https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_dx12.cpp
 
@@ -84,43 +217,36 @@ namespace march
         float B = drawData->DisplayPos.y + drawData->DisplaySize.y;
         float mvp[4][4] =
         {
-            { 2.0f / (R - L),   0.0f,           0.0f,       0.0f },
-            { 0.0f,         2.0f / (T - B),     0.0f,       0.0f },
-            { 0.0f,         0.0f,           0.5f,       0.0f },
-            { (R + L) / (L - R),  (T + B) / (B - T),    0.5f,       1.0f },
+            { 2.0f / (R - L)   , 0.0f             , 0.0f, 0.0f },
+            { 0.0f             , 2.0f / (T - B)   , 0.0f, 0.0f },
+            { 0.0f             , 0.0f             , 0.5f, 0.0f },
+            { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
         };
 
-        Constants constants{};
+        ImGuiConstants constants{};
         memcpy(&constants.MVP.m, mvp, sizeof(mvp));
 
-        GfxConstantBuffer<Constants> buffer{ device, GfxSubAllocator::TempUpload };
+        GfxConstantBuffer<ImGuiConstants> buffer{ device, GfxSubAllocator::TempUpload };
         buffer.SetData(0, &constants, sizeof(constants));
         return buffer;
     }
 
-    // Render function
-    void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxRenderTexture* intermediate, GfxRenderTexture* destination)
+    void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxRenderTexture* target)
     {
         // Avoid rendering when minimized
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
             return;
 
-        ImGui_ImplDX12_Data* bd = ImGui_ImplDX12_GetBackendData();
-        ImGui_ImplDX12_ViewportData* vd = static_cast<ImGui_ImplDX12_ViewportData*>(drawData->OwnerViewport->RendererUserData);
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+        ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(drawData->OwnerViewport->RendererUserData);
 
-        if (!bd->IsLoaded)
-        {
-            bd->IsLoaded = true;
-            bd->ShaderAsset.reset(bd->ShaderAssetPath);
-            bd->Mat = std::make_unique<Material>();
-            bd->Mat->SetShader(bd->ShaderAsset.get());
-        }
-
-        vd->Mesh.ClearSubMeshes();
+        GfxBasicMesh<ImGuiVertex>& mesh = vd->GetMesh();
+        GfxRenderTexture* intermediate = vd->GetIntermediateTarget(bd->GetDevice(), target);
 
         // (Because we merged all buffers into a single one, we maintain our own offset into them)
         uint32_t globalVtxOffset = 0;
         uint32_t globalIdxOffset = 0;
+        mesh.ClearSubMeshes();
 
         for (int n = 0; n < drawData->CmdListsCount; n++)
         {
@@ -129,8 +255,8 @@ namespace march
             static_assert(sizeof(ImDrawVert) == sizeof(ImGuiVertex) && alignof(ImDrawVert) == alignof(ImGuiVertex));
             static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t) && alignof(ImDrawIdx) == alignof(uint16_t));
 
-            vd->Mesh.AddRawVertices(static_cast<uint32_t>(list->VtxBuffer.Size), static_cast<ImGuiVertex*>(list->VtxBuffer.Data));
-            vd->Mesh.AddRawIndices(static_cast<uint32_t>(list->IdxBuffer.Size), static_cast<uint16_t*>(list->IdxBuffer.Data));
+            mesh.AddRawVertices(static_cast<uint32_t>(list->VtxBuffer.Size), static_cast<ImGuiVertex*>(list->VtxBuffer.Data));
+            mesh.AddRawIndices(static_cast<uint32_t>(list->IdxBuffer.Size), static_cast<uint16_t*>(list->IdxBuffer.Data));
 
             for (int cmdIndex = 0; cmdIndex < list->CmdBuffer.Size; cmdIndex++)
             {
@@ -140,32 +266,46 @@ namespace march
                 subMesh.BaseVertexLocation = static_cast<int32_t>(cmd->VtxOffset + globalVtxOffset);
                 subMesh.StartIndexLocation = static_cast<uint32_t>(cmd->IdxOffset + globalIdxOffset);
                 subMesh.IndexCount = static_cast<uint32_t>(cmd->ElemCount);
-                vd->Mesh.AddRawSubMesh(subMesh);
+                mesh.AddRawSubMesh(subMesh);
             }
 
             globalVtxOffset += static_cast<uint32_t>(list->VtxBuffer.Size);
             globalIdxOffset += static_cast<uint32_t>(list->IdxBuffer.Size);
         }
 
-        GfxCommandContext* context = bd->Device->RequestContext(GfxCommandType::Direct);
+        static int32_t cbufferId = Shader::GetNameId("ImGuiConstants");
+        static int32_t textureId = Shader::GetNameId("_Texture");
+
+        GfxCommandContext* context = bd->GetDevice()->RequestContext(GfxCommandType::Direct);
+        GfxConstantBuffer<ImGuiConstants> cbuffer = CreateConstantBuffer(bd->GetDevice(), drawData);
 
         context->BeginEvent("DrawImGui");
         {
-            context->SetRenderTarget(intermediate);
-            context->SetDefaultViewport();
-            context->SetDefaultScissorRect();
-            context->ClearRenderTargets(GfxClearFlags::Color);
+            auto setRenderState = [&]()
+            {
+                D3D12_VIEWPORT vp{};
+                vp.TopLeftX = 0.0f;
+                vp.TopLeftY = 0.0f;
+                vp.Width = drawData->DisplaySize.x;
+                vp.Height = drawData->DisplaySize.y;
+                vp.MinDepth = 0.0f;
+                vp.MaxDepth = 1.0f;
 
-            GfxConstantBuffer<Constants> cbuffer = CreateConstantBuffer(bd->Device, drawData);
-            context->SetBuffer("cbImGui", &cbuffer);
+                context->SetRenderTarget(intermediate);
+                context->SetViewport(vp);
+                context->SetDefaultScissorRect();
+                context->ClearRenderTargets(GfxClearFlags::Color);
+                context->SetBuffer(cbufferId, &cbuffer);
+            };
 
             uint32_t subMeshIndex = 0;
+            setRenderState();
 
             for (int n = 0; n < drawData->CmdListsCount; n++)
             {
                 const ImDrawList* list = drawData->CmdLists[n];
 
-                for (int cmdIndex = 0; cmdIndex < list->CmdBuffer.Size; cmdIndex++)
+                for (int cmdIndex = 0; cmdIndex < list->CmdBuffer.Size; cmdIndex++, subMeshIndex++)
                 {
                     const ImDrawCmd* cmd = &list->CmdBuffer[cmdIndex];
 
@@ -175,7 +315,7 @@ namespace march
                         // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
                         if (cmd->UserCallback == ImDrawCallback_ResetRenderState)
                         {
-                            LOG_WARNING("ImDrawCallback_ResetRenderState is not supported");
+                            setRenderState();
                         }
                         else
                         {
@@ -193,11 +333,9 @@ namespace march
                             continue;
 
                         context->SetScissorRect({ (LONG)clipMin.x, (LONG)clipMin.y, (LONG)clipMax.x, (LONG)clipMax.y });
-                        context->SetTexture("_Texture", static_cast<GfxTexture*>(cmd->GetTexID()));
-                        context->DrawMesh(vd->Mesh.GetSubMeshDesc(subMeshIndex), bd->Mat.get(), 0);
+                        context->SetTexture(textureId, static_cast<GfxTexture*>(cmd->GetTexID()));
+                        context->DrawMesh(mesh.GetSubMeshDesc(subMeshIndex), bd->GetMaterial(), 0);
                     }
-
-                    subMeshIndex++;
                 }
             }
         }
@@ -205,85 +343,14 @@ namespace march
 
         context->BeginEvent("BlitImGui");
         {
-            context->SetRenderTarget(destination);
+            context->SetRenderTarget(target);
             context->SetDefaultViewport();
             context->SetDefaultScissorRect();
-            context->SetTexture("_Texture", intermediate);
-            context->DrawMesh(GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle), 0, bd->Mat.get(), 1);
+            context->SetTexture(textureId, intermediate);
+            context->DrawMesh(GfxMeshGeometry::FullScreenTriangle, bd->GetMaterial(), 1);
         }
         context->EndEvent();
 
         context->SubmitAndRelease();
-    }
-
-    void ImGui_ImplDX12_RecreateFontsTexture()
-    {
-        ImGuiIO& io = ImGui::GetIO();
-
-        unsigned char* pixels = nullptr;
-        int width = 0;
-        int height = 0;
-        int bytesPerPixel = 0;
-        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytesPerPixel);
-
-        ImGui_ImplDX12_Data* bd = ImGui_ImplDX12_GetBackendData();
-        bd->FontTexture = std::make_unique<GfxExternalTexture>(bd->Device);
-
-        GfxTextureDesc desc{};
-        desc.Format = GfxTextureFormat::R8G8B8A8_UNorm;
-        desc.Flags = GfxTextureFlags::None;
-        desc.Dimension = GfxTextureDimension::Tex2D;
-        desc.Width = static_cast<uint32_t>(width);
-        desc.Height = static_cast<uint32_t>(height);
-        desc.DepthOrArraySize = 1;
-        desc.MSAASamples = 1;
-        desc.Filter = GfxTextureFilterMode::Bilinear;
-        desc.Wrap = GfxTextureWrapMode::Repeat;
-        desc.MipmapBias = 0;
-        bd->FontTexture->LoadFromPixels("ImGuiFonts", desc, pixels, width * height * bytesPerPixel, 1);
-
-        io.Fonts->SetTexID(static_cast<ImTextureID>(bd->FontTexture.get()));
-    }
-
-    void ImGui_ImplDX12_Init(GfxDevice* device, const std::string& shaderAssetPath)
-    {
-        ImGuiIO& io = ImGui::GetIO();
-        IMGUI_CHECKVERSION();
-        IM_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
-
-        // Setup backend capabilities flags
-        ImGui_ImplDX12_Data* bd = IM_NEW(ImGui_ImplDX12_Data)();
-        io.BackendRendererUserData = (void*)bd;
-        io.BackendRendererName = "imgui_impl_dx12";
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
-
-        bd->Device = device;
-        bd->ShaderAssetPath = shaderAssetPath;
-
-        ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-        main_viewport->RendererUserData = IM_NEW(ImGui_ImplDX12_ViewportData)();
-
-        ImGui_ImplDX12_RecreateFontsTexture();
-    }
-
-    void ImGui_ImplDX12_Shutdown()
-    {
-        ImGui_ImplDX12_Data* bd = ImGui_ImplDX12_GetBackendData();
-        IM_ASSERT(bd != nullptr && "No renderer backend to shutdown, or already shutdown?");
-        ImGuiIO& io = ImGui::GetIO();
-
-        // Manually delete main viewport render resources in-case we haven't initialized for viewports
-        ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-        if (ImGui_ImplDX12_ViewportData* vd = (ImGui_ImplDX12_ViewportData*)main_viewport->RendererUserData)
-        {
-            IM_DELETE(vd);
-            main_viewport->RendererUserData = nullptr;
-        }
-
-        io.Fonts->SetTexID(0);
-        io.BackendRendererName = nullptr;
-        io.BackendRendererUserData = nullptr;
-        io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset;
-        IM_DELETE(bd);
     }
 }

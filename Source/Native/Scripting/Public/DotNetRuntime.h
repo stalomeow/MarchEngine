@@ -4,12 +4,11 @@ namespace march
 {
     enum class ManagedMethod : int
     {
-        Application_OnStart,
-        Application_OnTick,
-        Application_OnQuit,
-        EditorApplication_OnStart,
-        EditorApplication_OnTick,
-        EditorApplication_OnQuit,
+        Application_Initialize,
+        Application_Tick,
+        Application_Quit,
+        Application_FullGC,
+        EditorApplication_Initialize,
         EditorApplication_OpenConsoleWindowIfNot,
         AssetManager_NativeLoadAsset,
         AssetManager_NativeUnloadAsset,

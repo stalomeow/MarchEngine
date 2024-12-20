@@ -1,36 +1,27 @@
 using March.Core.Interop;
-using March.Core.Rendering;
 using System.Runtime.InteropServices;
+
+#pragma warning disable IDE0051 // Remove unused private members
 
 namespace March.Core
 {
-    public static partial class Application
+    public partial class Application
     {
-        [UnmanagedCallersOnly]
-        private static void OnStart()
+        public static event Action? OnTick;
+
+        #region OnQuit
+
+        private static Action? s_OnQuitAction;
+
+        public static event Action? OnQuit
         {
-            foreach (var gameObject in SceneManager.CurrentScene.RootGameObjects)
-            {
-                gameObject.AwakeRecursive();
-            }
+            add => s_OnQuitAction = value + s_OnQuitAction; // 退出时要从后往前调用
+            remove => s_OnQuitAction -= value;
         }
 
-        [UnmanagedCallersOnly]
-        private static void OnTick()
-        {
-            SceneManager.CurrentScene.Update();
-        }
+        #endregion
 
-        [UnmanagedCallersOnly]
-        private static void OnQuit()
-        {
-            SceneManager.CurrentScene.Dispose();
-            Mesh.DestroyGeometries();
-            Texture.DestroyDefaults();
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-        }
+        #region DataPath
 
         private static string? s_CachedDataPath;
 
@@ -39,7 +30,25 @@ namespace March.Core
         [NativeMethod]
         private static partial string GetDataPath();
 
-        [NativeMethod]
-        public static partial string SaveFilePanelInProject(string title, string defaultName, string extension, string path = "Assets");
+        #endregion
+
+        [UnmanagedCallersOnly]
+        private static void Initialize()
+        {
+            SceneManager.Initialize();
+        }
+
+        [UnmanagedCallersOnly]
+        private static void Tick() => OnTick?.Invoke();
+
+        [UnmanagedCallersOnly]
+        private static void Quit() => s_OnQuitAction?.Invoke();
+
+        [UnmanagedCallersOnly]
+        private static void FullGC()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
     }
 }

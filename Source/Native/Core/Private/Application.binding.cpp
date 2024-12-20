@@ -20,8 +20,3 @@ NATIVE_EXPORT_AUTO Application_GetDataPath()
 {
     retcs GetApp()->GetDataPath();
 }
-
-NATIVE_EXPORT_AUTO Application_SaveFilePanelInProject(cs_string title, cs_string defaultName, cs_string extension, cs_string path)
-{
-    retcs GetApp()->SaveFilePanelInProject(title, defaultName, extension, path);
-}

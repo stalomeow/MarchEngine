@@ -1,27 +1,24 @@
 #pragma once
 
 #include "Application.h"
-#include <directx/d3dx12.h>
-#include "RenderPipeline.h"
-#include "GfxDescriptor.h"
 #include <vector>
-#include <wrl.h>
 #include <memory>
 #include <string>
-#include <imgui.h>
-#include <imgui_impl_win32.h>
-#include "RenderGraph.h"
-#include "AssetManger.h"
-#include "Shader.h"
-#include "Material.h"
 
 namespace march
 {
+    class GfxSwapChain;
+    class RenderPipeline;
+
     class EditorApplication : public Application
     {
     public:
-        const std::string& GetDataPath() const override;
-        RenderPipeline* GetRenderPipeline() const override;
+        EditorApplication();
+        ~EditorApplication() override;
+
+        const std::string& GetDataPath() const override { return m_DataPath; }
+        RenderPipeline* GetRenderPipeline() const override { return m_RenderPipeline.get(); }
+        std::string SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const;
 
     protected:
         bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
@@ -36,20 +33,13 @@ namespace march
         void InitImGui();
         void DrawBaseImGui();
         void CalculateFrameStats();
-        std::string GetFontPath(std::string fontName) const;
-        std::string GetFontAwesomePath(std::string fontName) const;
         void ReloadFonts();
 
-        void CreateImGuiTempTexture();
-
-        void BeginFrame();
-        void EndFrame(bool discardImGui);
-
-        std::unique_ptr<RenderPipeline> m_RenderPipeline = nullptr;
-        std::unique_ptr<GfxRenderTexture> m_TempImGuiTexture = nullptr;
+        std::unique_ptr<GfxSwapChain> m_SwapChain;
+        std::unique_ptr<RenderPipeline> m_RenderPipeline;
 
         std::string m_DataPath;
-        std::string m_ImGuiIniFilename{};
+        std::string m_ImGuiIniFilename;
 
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;

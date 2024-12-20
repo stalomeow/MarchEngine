@@ -237,14 +237,13 @@ namespace march
 
         void Rollover();
 
-        GfxOnlineDescriptorAllocator* GetCurrentAllocator() const { return m_CurrentAllocator; }
+        GfxOnlineDescriptorAllocator* GetCurrentAllocator() const { return m_CurrentAllocator.get(); }
         GfxDevice* GetDevice() const { return m_Device; }
 
     private:
         GfxDevice* m_Device;
         Factory m_Factory;
-        std::vector<std::unique_ptr<GfxOnlineDescriptorAllocator>> m_Allocators;
-        std::queue<std::pair<uint64_t, GfxOnlineDescriptorAllocator*>> m_ReleaseQueue;
-        GfxOnlineDescriptorAllocator* m_CurrentAllocator;
+        std::unique_ptr<GfxOnlineDescriptorAllocator> m_CurrentAllocator;
+        std::queue<std::pair<uint64_t, std::unique_ptr<GfxOnlineDescriptorAllocator>>> m_ReleaseQueue;
     };
 }

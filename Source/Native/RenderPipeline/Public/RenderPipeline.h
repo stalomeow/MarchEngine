@@ -44,13 +44,6 @@ namespace march
         RenderPipeline();
         ~RenderPipeline();
 
-        void ReleaseAssets()
-        {
-            m_DeferredLitMaterial.reset();
-            m_DeferredLitShader.reset();
-            m_SkyboxMaterial.reset();
-        }
-
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
         void AddMeshRenderer(MeshRenderer* obj) { m_Renderers.push_back(obj); }

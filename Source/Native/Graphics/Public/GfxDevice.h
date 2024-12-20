@@ -12,8 +12,9 @@
 
 namespace march
 {
-    class GfxSwapChain;
-    class GfxRenderTexture;
+    enum class GfxCommandType;
+    class GfxCommandManager;
+    class GfxCommandContext;
 
     class GfxOfflineDescriptorAllocator;
     class GfxOnlineDescriptorMultiAllocator;
@@ -24,16 +25,9 @@ namespace march
     enum class GfxAllocation;
     enum class GfxSubAllocator;
 
-    enum class GfxCommandType;
-    class GfxCommandManager;
-    class GfxCommandContext;
-
     struct GfxDeviceDesc
     {
         bool EnableDebugLayer;
-        HWND WindowHandle;
-        uint32_t WindowWidth;
-        uint32_t WindowHeight;
         uint32_t OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
         uint32_t OnlineViewDescriptorHeapSize;
         uint32_t OnlineSamplerDescriptorHeapSize;
@@ -48,7 +42,6 @@ namespace march
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
 
-        void BeginFrame();
         void EndFrame();
         void DeferredRelease(Microsoft::WRL::ComPtr<ID3D12Object> obj);
         void WaitForGpuIdle(bool releaseUnusedObjects = true);
@@ -56,13 +49,9 @@ namespace march
         GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
         GfxCommandContext* RequestContext(GfxCommandType type);
 
-        uint64_t GetCompletedFrameFence(bool useCache = false);
-        bool IsFrameFenceCompleted(uint64_t fence, bool useCache = false);
-        uint64_t GetNextFrameFence() const;
-
-        void ResizeBackBuffer(uint32_t width, uint32_t height);
-        GfxRenderTexture* GetBackBuffer() const;
-        uint32_t GetMaxFrameLatency() const;
+        uint64_t GetCompletedFence(bool useCache = false);
+        bool IsFenceCompleted(uint64_t fence, bool useCache = false);
+        uint64_t GetNextFence() const;
 
         GfxOfflineDescriptorAllocator* GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type) const { return m_OfflineDescriptorAllocators[type].get(); }
         GfxOnlineDescriptorMultiAllocator* GetOnlineViewDescriptorAllocator() const { return m_OnlineViewAllocator.get(); }
@@ -81,7 +70,9 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 
         std::unique_ptr<GfxCommandManager> m_CommandManager;
-        std::unique_ptr<GfxSwapChain> m_SwapChain;
+        std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
+
+        // 下面的 allocator 在析构时会使用 m_ReleaseQueue
 
         std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
         std::unique_ptr<GfxOnlineDescriptorMultiAllocator> m_OnlineViewAllocator;
@@ -99,8 +90,6 @@ namespace march
         std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocatorRenderTextureMS;
         std::unique_ptr<GfxBufferSubAllocator> m_TempUploadSubAllocator;
         std::unique_ptr<GfxBufferSubAllocator> m_PersistentUploadSubAllocator;
-
-        std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
 
         void ProcessReleaseQueue();
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);
@@ -130,7 +119,7 @@ namespace march
     };
 
     GfxDevice* GetGfxDevice();
-    void InitGfxDevice(const GfxDeviceDesc& desc);
+    GfxDevice* InitGfxDevice(const GfxDeviceDesc& desc);
     void DestroyGfxDevice();
 }
 

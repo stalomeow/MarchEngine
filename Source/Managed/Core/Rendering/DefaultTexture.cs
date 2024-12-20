@@ -20,6 +20,19 @@ namespace March.Core.Rendering
 
         private static readonly Dictionary<DefaultTexQuery, ExternalTexture> s_Textures = new();
 
+        static Texture()
+        {
+            Application.OnQuit += () =>
+            {
+                foreach (KeyValuePair<DefaultTexQuery, ExternalTexture> kv in s_Textures)
+                {
+                    kv.Value.Dispose();
+                }
+
+                s_Textures.Clear();
+            };
+        }
+
         public static Texture GetDefault(DefaultTexture @default, TextureDimension dimension = TextureDimension.Tex2D)
         {
             var query = new DefaultTexQuery(@default, dimension);
@@ -38,16 +51,6 @@ namespace March.Core.Rendering
         private static nint NativeGetDefault(DefaultTexture texture, TextureDimension dimension)
         {
             return GetDefault(texture, dimension).NativePtr;
-        }
-
-        internal static void DestroyDefaults()
-        {
-            foreach (KeyValuePair<DefaultTexQuery, ExternalTexture> kv in s_Textures)
-            {
-                kv.Value.Dispose();
-            }
-
-            s_Textures.Clear();
         }
 
         private static void Load(ExternalTexture texture, DefaultTexture @default, TextureDimension dimension)

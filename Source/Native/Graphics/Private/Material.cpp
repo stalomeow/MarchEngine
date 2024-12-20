@@ -25,6 +25,11 @@ namespace march
     {
     }
 
+    Material::Material(Shader* shader) : Material()
+    {
+        SetShader(shader);
+    }
+
     void Material::Reset()
     {
         m_Shader = nullptr;

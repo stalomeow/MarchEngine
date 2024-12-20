@@ -223,6 +223,7 @@ namespace march
         D3D12_CPU_DESCRIPTOR_HANDLE GetSampler();
 
         static GfxTexture* GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension);
+        static void ClearSamplerCache();
 
         virtual bool AllowRendering() const = 0;
 

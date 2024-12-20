@@ -1,33 +1,27 @@
 #include "EditorApplication.h"
 #include "GfxDevice.h"
 #include "EditorGUI.h"
-#include "GfxCommand.h"
-#include "GfxBuffer.h"
 #include "Debug.h"
 #include "StringUtils.h"
 #include "RenderDoc.h"
 #include "DotNetRuntime.h"
 #include "PathUtils.h"
-#include "EditorGUI.h"
 #include "GfxUtils.h"
-#include "Camera.h"
 #include "Display.h"
 #include "GfxTexture.h"
-#include "Transform.h"
-#include "GfxMesh.h"
-#include <DirectXMath.h>
-#include <stdint.h>
-#include <imgui_stdlib.h>
-#include <imgui_internal.h>
-#include <tuple>
-#include <ImGuizmo.h>
 #include "ConsoleWindow.h"
 #include "IconsFontAwesome6.h"
 #include "IconsFontAwesome6Brands.h"
-#include <imgui_freetype.h>
 #include "Shader.h"
 #include "Gizmos.h"
 #include "ImGuiDX12.h"
+#include "GfxSwapChain.h"
+#include "RenderPipeline.h"
+#include <directx/d3dx12.h>
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <ImGuizmo.h>
+#include <algorithm>
 
 using namespace DirectX;
 
@@ -36,6 +30,16 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 namespace march
 {
+    EditorApplication::EditorApplication()
+        : m_SwapChain(nullptr)
+        , m_RenderPipeline(nullptr)
+        , m_DataPath{}
+        , m_ImGuiIniFilename{}
+    {
+    }
+
+    EditorApplication::~EditorApplication() {}
+
     // Win32 message handler
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -78,32 +82,26 @@ namespace march
             desc.EnableDebugLayer = true;
         }
 
-        desc.WindowHandle = GetWindowHandle();
-        desc.WindowWidth = GetClientWidth();
-        desc.WindowHeight = GetClientHeight();
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] = 64;
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_RTV] = 64;
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_DSV] = 64;
         desc.OnlineViewDescriptorHeapSize = 10000;
         desc.OnlineSamplerDescriptorHeapSize = 2048;
-        InitGfxDevice(desc);
+        GfxDevice* device = InitGfxDevice(desc);
 
+        m_SwapChain = std::make_unique<GfxSwapChain>(device, GetWindowHandle(), GetClientWidth(), GetClientHeight());
         Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // dummy
-        CreateImGuiTempTexture();
 
         InitImGui();
 
-        BeginFrame();
-        {
-            // 初始化代码可能也会用到 GfxDevice
-            DotNet::RuntimeInvoke(ManagedMethod::Application_OnStart);
-            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnStart);
+        // 初始化代码可能也会用到 GfxDevice
+        DotNet::RuntimeInvoke(ManagedMethod::Application_Initialize);
+        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_Initialize);
 
-            m_RenderPipeline = std::make_unique<RenderPipeline>();
-            Gizmos::InitResources();
-        }
-        EndFrame(false);
+        // 需要用到 managed method
+        m_RenderPipeline = std::make_unique<RenderPipeline>();
+        Gizmos::InitResources();
     }
 
     static void SetStyles()
@@ -233,29 +231,24 @@ namespace march
 
     void EditorApplication::OnQuit()
     {
-        BeginFrame();
-        {
-            ImGui_ImplDX12_Shutdown();
-            ImGui_ImplWin32_Shutdown();
-            ImGui::DestroyContext();
+        // 退出代码可能也会用到 GfxDevice
+        DotNet::RuntimeInvoke(ManagedMethod::Application_Quit);
 
-            m_TempImGuiTexture.reset();
-            m_RenderPipeline->ReleaseAssets();
-            Gizmos::ReleaseResources();
+        ImGui_ImplDX12_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext();
 
-            // 退出代码可能也会用到 GfxDevice
-            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnQuit);
-            DotNet::RuntimeInvoke(ManagedMethod::Application_OnQuit);
+        m_RenderPipeline.reset();
+        m_SwapChain.reset();
 
-            m_RenderPipeline.reset();
-        }
-        EndFrame(true);
-
-        DotNet::DestroyRuntime();
-        GetGfxDevice()->WaitForGpuIdle();
-
-        Shader::ClearRootSignatureCache();
+        Gizmos::ReleaseResources();
         Display::DestroyMainDisplay();
+        GfxTexture::ClearSamplerCache();
+        Shader::ClearRootSignatureCache();
+
+        DotNet::RuntimeInvoke(ManagedMethod::Application_FullGC);
+        DotNet::DestroyRuntime();
+
         DestroyGfxDevice();
         GfxUtils::ReportLiveObjects();
     }
@@ -312,64 +305,39 @@ namespace march
 
     void EditorApplication::OnTick()
     {
-        BeginFrame();
-        {
-            DrawBaseImGui();
-            DotNet::RuntimeInvoke(ManagedMethod::Application_OnTick);
-            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_OnTick);
-
-            ImGui::Render();
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_TempImGuiTexture.get(), GetGfxDevice()->GetBackBuffer());
-        }
-        EndFrame(false);
-    }
-
-    void EditorApplication::BeginFrame()
-    {
-        GfxDevice* device = GetGfxDevice();
-
-        device->BeginFrame();
+        m_SwapChain->WaitForFrameLatency();
         CalculateFrameStats();
 
         // Start the Dear ImGui frame
+        ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
-    }
 
-    void EditorApplication::EndFrame(bool discardImGui)
-    {
-        if (!discardImGui)
         {
-            ImGui::EndFrame();
+            DrawBaseImGui();
+            DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
+
+            ImGui::Render();
+            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_SwapChain->GetBackBuffer());
         }
 
-        GfxDevice* device = GetGfxDevice();
-        device->EndFrame();
-    }
-
-    const std::string& EditorApplication::GetDataPath() const
-    {
-        return m_DataPath;
-    }
-
-    RenderPipeline* EditorApplication::GetRenderPipeline() const
-    {
-        return m_RenderPipeline.get();
+        ImGui::EndFrame();
+        GetGfxDevice()->EndFrame();
+        m_SwapChain->Present();
     }
 
     void EditorApplication::OnResize()
     {
-        GetGfxDevice()->ResizeBackBuffer(GetClientWidth(), GetClientHeight());
-        CreateImGuiTempTexture();
+        m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
     }
 
-    std::string EditorApplication::GetFontPath(std::string fontName) const
+    static std::string GetFontPath(std::string fontName)
     {
         std::string basePath = PathUtils::GetWorkingDirectoryUtf8();
         return basePath + "\\Resources\\Fonts\\" + fontName;
     }
 
-    std::string EditorApplication::GetFontAwesomePath(std::string fontName) const
+    static std::string GetFontAwesomePath(std::string fontName)
     {
         std::string basePath = PathUtils::GetWorkingDirectoryUtf8();
         return basePath + "\\Resources\\FontAwesome\\" + fontName;
@@ -421,24 +389,7 @@ namespace march
         LOG_TRACE("DPI Changed: %f", GetDisplayScale());
 
         ReloadFonts();
-        ImGui_ImplDX12_RecreateFontsTexture();
-    }
-
-    void EditorApplication::CreateImGuiTempTexture()
-    {
-        GfxTextureDesc desc{};
-        desc.Format = GfxTextureFormat::R11G11B10_Float;
-        desc.Flags = GfxTextureFlags::None;
-        desc.Dimension = GfxTextureDimension::Tex2D;
-        desc.Width = GetClientWidth();
-        desc.Height = GetClientHeight();
-        desc.DepthOrArraySize = 1;
-        desc.MSAASamples = 1;
-        desc.Filter = GfxTextureFilterMode::Point;
-        desc.Wrap = GfxTextureWrapMode::Clamp;
-        desc.MipmapBias = 0;
-
-        m_TempImGuiTexture = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "TempImGui", desc, GfxAllocator::CommittedDefault);
+        ImGui_ImplDX12_ReloadFontTexture();
     }
 
     void EditorApplication::OnPaint()
@@ -471,5 +422,62 @@ namespace march
             frameCnt = 0;
             timeElapsed += 1.0f;
         }
+    }
+
+    std::string EditorApplication::SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const
+    {
+        std::wstring wBasePathWinStyle = StringUtils::Utf8ToUtf16(GetDataPath());
+        if (!path.empty())
+        {
+            wBasePathWinStyle += L'\\';
+            wBasePathWinStyle += StringUtils::Utf8ToUtf16(path);
+
+            if (wBasePathWinStyle.back() == L'\\' || wBasePathWinStyle.back() == L'/')
+            {
+                wBasePathWinStyle.pop_back();
+            }
+        }
+        std::replace(wBasePathWinStyle.begin(), wBasePathWinStyle.end(), L'/', L'\\');
+
+        std::wstring wExtension = StringUtils::Utf8ToUtf16(extension);
+
+        std::vector<wchar_t> filter{};
+        filter.insert(filter.end(), wExtension.begin(), wExtension.end());
+        filter.push_back(L' ');
+        filter.push_back(L'F');
+        filter.push_back(L'i');
+        filter.push_back(L'l');
+        filter.push_back(L'e');
+        filter.push_back(L'\0');
+        filter.push_back(L'*');
+        filter.push_back(L'.');
+        filter.insert(filter.end(), wExtension.begin(), wExtension.end());
+        filter.push_back(L'\0');
+        filter.push_back(L'\0');
+
+        std::wstring fileNameBuffer = StringUtils::Utf8ToUtf16(defaultName);
+        fileNameBuffer.resize(MAX_PATH);
+
+        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
+
+        OPENFILENAMEW ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = GetWindowHandle();
+        ofn.lpstrFilter = filter.data();
+        ofn.lpstrFile = fileNameBuffer.data();
+        ofn.nMaxFile = static_cast<DWORD>(fileNameBuffer.size());
+        ofn.lpstrTitle = wTitle.c_str();
+        ofn.lpstrInitialDir = wBasePathWinStyle.c_str();
+        ofn.lpstrDefExt = wExtension.c_str();
+        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+
+        if (GetSaveFileNameW(&ofn) && fileNameBuffer.find(wBasePathWinStyle) != std::wstring::npos)
+        {
+            std::string result = StringUtils::Utf16ToUtf8(fileNameBuffer.c_str()); // 使用 c_str 忽略 buffer 后面大量 '\0'
+            std::replace(result.begin(), result.end(), '\\', '/');
+            return result.substr(GetDataPath().size() + 1); // 返回相对 Data 目录的路径
+        }
+
+        return "";
     }
 }

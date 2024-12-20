@@ -1,4 +1,8 @@
 #include "EngineTimer.h"
+#include <algorithm>
+
+#undef min
+#undef max
 
 namespace march
 {
@@ -56,7 +60,7 @@ namespace march
         LONGLONG timestamp;
         QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&timestamp));
 
-        LONGLONG delta = max(timestamp - m_LastTickTimestamp, 0);
+        LONGLONG delta = std::max(timestamp - m_LastTickTimestamp, 0LL);
         m_Elapsed += delta;
 
         m_ElapsedTime = static_cast<float>(m_Elapsed * m_Count2Seconds);

@@ -53,6 +53,9 @@ namespace March.Editor.AssetPipeline
 
             SetupFileSystemWatcher(s_ProjectAssetFileWatcher);
             SetupFileSystemWatcher(s_EngineShaderWatcher);
+
+            Application.OnTick += Update;
+            Application.OnQuit += Dispose;
         }
 
         private static void PreImportAllAssets()
@@ -96,7 +99,7 @@ namespace March.Editor.AssetPipeline
             watcher.Renamed += (_, e) => s_FileSystemEvents.Enqueue(e);
         }
 
-        internal static void Update()
+        private static void Update()
         {
             while (s_FileSystemEvents.TryDequeue(out FileSystemEventArgs? e))
             {
@@ -126,7 +129,7 @@ namespace March.Editor.AssetPipeline
             }
         }
 
-        internal static void Dispose()
+        private static void Dispose()
         {
             s_ProjectAssetFileWatcher.Dispose();
             s_EngineShaderWatcher.Dispose();

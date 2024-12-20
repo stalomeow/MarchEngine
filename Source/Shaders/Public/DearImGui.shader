@@ -19,11 +19,6 @@ Shader "DearImGui"
 
         #include "Includes/ColorSpace.hlsl"
 
-        cbuffer cbImGui
-        {
-            float4x4 _MatrixMVP;
-        };
-
         struct Attributes
         {
             float2 positionOS : POSITION;
@@ -36,6 +31,11 @@ Shader "DearImGui"
             float4 positionCS : SV_POSITION;
             float4 color : COLOR0;
             float2 uv  : TEXCOORD0;
+        };
+
+        cbuffer ImGuiConstants
+        {
+            float4x4 _MatrixMVP;
         };
 
         Texture2D _Texture;
@@ -81,7 +81,7 @@ Shader "DearImGui"
 
         struct Varyings
         {
-            float4 positionCS : SV_Position;
+            float4 positionCS : SV_POSITION;
             float2 uv : TEXCOORD0;
         };
 

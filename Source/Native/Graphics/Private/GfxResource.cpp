@@ -141,12 +141,12 @@ namespace march
 
     void GfxCompleteResourceAllocator::DeferredRelease(const GfxResourceAllocation& allocation)
     {
-        m_ReleaseQueue.emplace(GetDevice()->GetNextFrameFence(), allocation);
+        m_ReleaseQueue.emplace(GetDevice()->GetNextFence(), allocation);
     }
 
     void GfxCompleteResourceAllocator::CleanUpAllocations()
     {
-        while (!m_ReleaseQueue.empty() && GetDevice()->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        while (!m_ReleaseQueue.empty() && GetDevice()->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
             Release(m_ReleaseQueue.front().second);
             m_ReleaseQueue.pop();
@@ -304,12 +304,12 @@ namespace march
 
     void GfxBufferMultiBuddySubAllocator::DeferredRelease(const GfxResourceAllocation& allocation)
     {
-        m_ReleaseQueue.emplace(GetDevice()->GetNextFrameFence(), allocation);
+        m_ReleaseQueue.emplace(GetDevice()->GetNextFence(), allocation);
     }
 
     void GfxBufferMultiBuddySubAllocator::CleanUpAllocations()
     {
-        while (!m_ReleaseQueue.empty() && GetDevice()->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        while (!m_ReleaseQueue.empty() && GetDevice()->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
             const GfxResourceAllocation& allocation = m_ReleaseQueue.front().second;
             BuddyAllocator* allocator = allocation.Buddy.Owner;
@@ -353,7 +353,7 @@ namespace march
     {
         for (GfxResourceSpan& page : m_Pages)
         {
-            m_ReleaseQueue.emplace(GetDevice()->GetNextFrameFence(), std::move(page));
+            m_ReleaseQueue.emplace(GetDevice()->GetNextFence(), std::move(page));
         }
 
         m_Pages.clear();
@@ -365,7 +365,7 @@ namespace march
     {
         std::vector<GfxResourceSpan>& pages = large ? m_LargePages : m_Pages;
 
-        if (!large && !m_ReleaseQueue.empty() && GetDevice()->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        if (!large && !m_ReleaseQueue.empty() && GetDevice()->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
             *pOutIsNew = false;
 

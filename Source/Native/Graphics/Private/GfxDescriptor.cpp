@@ -102,7 +102,7 @@ namespace march
     {
         D3D12_CPU_DESCRIPTOR_HANDLE handle;
 
-        if (!m_ReleaseQueue.empty() && m_Device->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        if (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
             handle = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
@@ -132,7 +132,7 @@ namespace march
 
     void GfxOfflineDescriptorAllocator::Release(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
-        m_ReleaseQueue.emplace(m_Device->GetNextFrameFence(), handle);
+        m_ReleaseQueue.emplace(m_Device->GetNextFence(), handle);
     }
 
     GfxOfflineDescriptor::GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle, GfxOfflineDescriptorAllocator* allocator)
@@ -282,14 +282,14 @@ namespace march
     {
         GfxDevice* device = m_Heap->GetDevice();
 
-        while (!m_ReleaseQueue.empty() && device->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        while (!m_ReleaseQueue.empty() && device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
             m_Front = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
         }
 
         // 每帧回收一次
-        m_ReleaseQueue.emplace(device->GetNextFrameFence(), m_Rear);
+        m_ReleaseQueue.emplace(device->GetNextFence(), m_Rear);
     }
 
     GfxOnlineSamplerDescriptorAllocator::GfxOnlineSamplerDescriptorAllocator(GfxDevice* device, uint32_t numMaxDescriptors)
@@ -381,7 +381,7 @@ namespace march
             }
         }
 
-        uint64_t fence = m_Heap->GetDevice()->GetNextFrameFence();
+        uint64_t fence = m_Heap->GetDevice()->GetNextFence();
 
         for (size_t i = 0; i < numAllocations; i++)
         {
@@ -420,7 +420,7 @@ namespace march
         {
             auto it = m_BlockMap.find(m_Blocks.back());
 
-            if (!device->IsFrameFenceCompleted(it->second.Fence))
+            if (!device->IsFenceCompleted(it->second.Fence))
             {
                 break;
             }
@@ -434,9 +434,8 @@ namespace march
     GfxOnlineDescriptorMultiAllocator::GfxOnlineDescriptorMultiAllocator(GfxDevice* device, const Factory& factory)
         : m_Device(device)
         , m_Factory(factory)
-        , m_Allocators{}
-        , m_ReleaseQueue{}
         , m_CurrentAllocator(nullptr)
+        , m_ReleaseQueue{}
     {
         Rollover();
     }
@@ -470,12 +469,12 @@ namespace march
             // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/shader-visible-descriptor-heaps
 
             LOG_WARNING("DescriptorHeapRollover detected! Type: %s", to_string(m_CurrentAllocator->GetHeap()->GetType()));
-            m_ReleaseQueue.emplace(m_Device->GetNextFrameFence(), m_CurrentAllocator);
+            m_ReleaseQueue.emplace(m_Device->GetNextFence(), std::move(m_CurrentAllocator));
         }
 
-        if (!m_ReleaseQueue.empty() && m_Device->IsFrameFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        if (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
         {
-            m_CurrentAllocator = m_ReleaseQueue.front().second;
+            m_CurrentAllocator = std::move(m_ReleaseQueue.front().second);
             m_ReleaseQueue.pop();
 
             // 回收空间
@@ -483,7 +482,7 @@ namespace march
         }
         else
         {
-            m_CurrentAllocator = m_Allocators.emplace_back(m_Factory(m_Device)).get();
+            m_CurrentAllocator = m_Factory(m_Device);
         }
     }
 }

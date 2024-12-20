@@ -19,6 +19,7 @@ namespace march
 
     public:
         Material();
+        Material(Shader* shader);
 
         void Reset();
 

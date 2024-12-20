@@ -22,12 +22,12 @@ using namespace DirectX;
 
 namespace march
 {
-    struct Vertex
+    struct GizmosVertex
     {
         XMFLOAT3 PositionWS;
         XMFLOAT4 Color;
 
-        constexpr Vertex(const XMFLOAT3& positionWS, const XMFLOAT4& color) : PositionWS(positionWS), Color(color) {}
+        constexpr GizmosVertex(const XMFLOAT3& positionWS, const XMFLOAT4& color) : PositionWS(positionWS), Color(color) {}
 
         static const GfxInputDesc& GetInputDesc()
         {
@@ -41,8 +41,8 @@ namespace march
     };
 
     // Gizmos 由一组 LineList 构成
-    static std::vector<Vertex> g_LineListVertices{};
-    static GfxBasicMesh<Vertex> g_LineListMesh{ GfxSubAllocator::PersistentUpload };
+    static std::vector<GizmosVertex> g_LineListVertices{};
+    static GfxBasicMesh<GizmosVertex> g_LineListMesh{ GfxSubAllocator::PersistentUpload };
     static asset_ptr<Shader> g_LineListShader = nullptr;
     static std::unique_ptr<Material> g_LineListMaterial = nullptr;
 

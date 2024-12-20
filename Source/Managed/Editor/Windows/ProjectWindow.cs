@@ -88,7 +88,7 @@ namespace March.Editor.Windows
         {
             s_ContextMenu.AddMenuItem("Create/Shader", (ref object? arg) =>
             {
-                string path = Application.SaveFilePanelInProject("Create Shader", "NewShader", "shader");
+                string path = EditorApplication.SaveFilePanelInProject("Create Shader", "NewShader", "shader");
 
                 if (!string.IsNullOrEmpty(path))
                 {
@@ -99,7 +99,7 @@ namespace March.Editor.Windows
 
             s_ContextMenu.AddMenuItem("Create/Material", (ref object? arg) =>
             {
-                string path = Application.SaveFilePanelInProject("Create Material", "NewMaterial", "mat");
+                string path = EditorApplication.SaveFilePanelInProject("Create Material", "NewMaterial", "mat");
 
                 if (!string.IsNullOrEmpty(path))
                 {

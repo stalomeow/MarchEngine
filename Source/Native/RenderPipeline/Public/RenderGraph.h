@@ -29,6 +29,8 @@ namespace march
         void SetBuffer(const std::string& name, GfxBuffer* value) { m_Context->SetBuffer(name, value); }
         void SetBuffer(int32_t id, GfxBuffer* value) { m_Context->SetBuffer(id, value); }
 
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(geometry, material, shaderPassIndex); }
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(geometry, material, shaderPassIndex, matrix); }
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex); }
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, matrix); }
         void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex) { m_Context->DrawMesh(subMesh, material, shaderPassIndex); }

@@ -14,6 +14,19 @@ namespace March.Core.Rendering
     {
         private static readonly Dictionary<MeshGeometry, Mesh> s_Geometries = new();
 
+        static Mesh()
+        {
+            Application.OnQuit += () =>
+            {
+                foreach (KeyValuePair<MeshGeometry, Mesh> kv in s_Geometries)
+                {
+                    kv.Value.Dispose();
+                }
+
+                s_Geometries.Clear();
+            };
+        }
+
         public static Mesh GetGeometry(MeshGeometry geometry)
         {
             if (!s_Geometries.TryGetValue(geometry, out Mesh? mesh))
@@ -30,16 +43,6 @@ namespace March.Core.Rendering
         private static nint NativeGetGeometry(MeshGeometry geometry)
         {
             return GetGeometry(geometry).NativePtr;
-        }
-
-        internal static void DestroyGeometries()
-        {
-            foreach (KeyValuePair<MeshGeometry, Mesh> kv in s_Geometries)
-            {
-                kv.Value.Dispose();
-            }
-
-            s_Geometries.Clear();
         }
 
         private void AddDefaultGeometry(MeshGeometry geometry)

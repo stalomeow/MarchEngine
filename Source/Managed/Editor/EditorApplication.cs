@@ -1,7 +1,7 @@
 using March.Core;
 using March.Core.Diagnostics;
+using March.Core.Interop;
 using March.Core.Pool;
-using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline;
 using March.Editor.Windows;
@@ -9,9 +9,11 @@ using Newtonsoft.Json;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
+#pragma warning disable IDE0051 // Remove unused private members
+
 namespace March.Editor
 {
-    public static class EditorApplication
+    public partial class EditorApplication : Application
     {
         private sealed class WindowData : MarchObject
         {
@@ -27,34 +29,24 @@ namespace March.Editor
         private static int? s_LastTypeCacheVersion;
 
         [UnmanagedCallersOnly]
-        private static void OnStart()
+        private static void Initialize()
         {
             AssetDatabase.Initialize();
+            SceneManager.InitializeEditor(selected: go => Selection.Active == go);
+
             LoadWindows();
-        }
 
-        [UnmanagedCallersOnly]
-        private static void OnTick()
-        {
-            AssetDatabase.Update();
-            DragDrop.Update();
+            OnTick += () =>
+            {
+                ShowWindowMenu();
+                DrawWindows();
+            };
 
-            Gizmos.Clear();
-            SceneManager.CurrentScene.DrawGizmos(selected: go => Selection.Active == go);
-
-            ShowWindowMenu();
-            DrawWindows();
-        }
-
-        [UnmanagedCallersOnly]
-        private static void OnQuit()
-        {
-            SaveWindows();
-            DisposeWindows();
-            AssetDatabase.Dispose();
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+            OnQuit += () =>
+            {
+                SaveWindows();
+                DisposeWindows();
+            };
         }
 
         [UnmanagedCallersOnly]
@@ -243,5 +235,8 @@ namespace March.Editor
                 window.Dispose();
             }
         }
+
+        [NativeMethod]
+        public static partial string SaveFilePanelInProject(string title, string defaultName, string extension, string path = "Assets");
     }
 }

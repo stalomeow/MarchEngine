@@ -10,6 +10,7 @@ namespace march
 
     IMGUI_IMPL_API void ImGui_ImplDX12_Init(GfxDevice* device, const std::string& shaderAssetPath);
     IMGUI_IMPL_API void ImGui_ImplDX12_Shutdown();
-    IMGUI_IMPL_API void ImGui_ImplDX12_RenderDrawData(ImDrawData* draw_data, GfxRenderTexture* intermediate, GfxRenderTexture* destination);
-    IMGUI_IMPL_API void ImGui_ImplDX12_RecreateFontsTexture();
+    IMGUI_IMPL_API void ImGui_ImplDX12_ReloadFontTexture();
+    IMGUI_IMPL_API void ImGui_ImplDX12_NewFrame();
+    IMGUI_IMPL_API void ImGui_ImplDX12_RenderDrawData(ImDrawData* draw_data, GfxRenderTexture* target);
 }

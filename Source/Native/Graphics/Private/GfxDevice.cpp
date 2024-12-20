@@ -1,7 +1,6 @@
 #include "GfxDevice.h"
 #include "GfxCommand.h"
 #include "GfxBuffer.h"
-#include "GfxSwapChain.h"
 #include "GfxDescriptor.h"
 #include "Debug.h"
 
@@ -70,7 +69,6 @@ namespace march
         }
 
         m_CommandManager = std::make_unique<GfxCommandManager>(this);
-        m_SwapChain = std::make_unique<GfxSwapChain>(this, desc.WindowHandle, desc.WindowWidth, desc.WindowHeight);
 
         for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; i++)
         {
@@ -169,23 +167,18 @@ namespace march
         persistentUploadDesc.InitialResourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
         m_PersistentUploadSubAllocator = std::make_unique<GfxBufferMultiBuddySubAllocator>("PersistentUploadSubAllocator", persistentUploadDesc,
             /* buffer allocator */ m_CommittedUploadAllocator.get());
-
-//#if defined(DEBUG) || defined(_DEBUG)
-//        LogAdapters(GfxSwapChain::BackBufferFormat);
-//#endif
     }
 
     GfxDevice::~GfxDevice()
     {
         WaitForGpuIdle(true);
-        m_SwapChain.reset(); // SwapChain 其他的 allocator，所以先释放
+        ProcessReleaseQueue();
     }
 
-    void GfxDevice::BeginFrame()
+    void GfxDevice::EndFrame()
     {
-        m_SwapChain->WaitForFrameLatency();
-
         ProcessReleaseQueue(); // 这里会更新 frame fence cache，放在最前面
+
         m_OnlineViewAllocator->CleanUpAllocations();
         m_OnlineSamplerAllocator->CleanUpAllocations();
         m_CommittedDefaultAllocator->CleanUpAllocations();
@@ -200,12 +193,8 @@ namespace march
         m_PlacedUploadAllocatorRenderTextureMS->CleanUpAllocations();
         m_TempUploadSubAllocator->CleanUpAllocations();
         m_PersistentUploadSubAllocator->CleanUpAllocations();
-    }
 
-    void GfxDevice::EndFrame()
-    {
         m_CommandManager->SignalNextFrameFence();
-        m_SwapChain->Present();
     }
 
     void GfxDevice::DeferredRelease(ComPtr<ID3D12Object> obj)
@@ -227,7 +216,7 @@ namespace march
     {
         bool useFenceCache = false;
 
-        while (!m_ReleaseQueue.empty() && IsFrameFenceCompleted(m_ReleaseQueue.front().first, useFenceCache))
+        while (!m_ReleaseQueue.empty() && IsFenceCompleted(m_ReleaseQueue.front().first, useFenceCache))
         {
             // TODO 释放资源较多时，输出名称太卡了！
 
@@ -248,34 +237,19 @@ namespace march
         return m_CommandManager->RequestAndOpenContext(type);
     }
 
-    uint64_t GfxDevice::GetCompletedFrameFence(bool useCache)
+    uint64_t GfxDevice::GetCompletedFence(bool useCache)
     {
         return m_CommandManager->GetCompletedFrameFence(useCache);
     }
 
-    bool GfxDevice::IsFrameFenceCompleted(uint64_t fence, bool useCache)
+    bool GfxDevice::IsFenceCompleted(uint64_t fence, bool useCache)
     {
         return m_CommandManager->IsFrameFenceCompleted(fence, useCache);
     }
 
-    uint64_t GfxDevice::GetNextFrameFence() const
+    uint64_t GfxDevice::GetNextFence() const
     {
         return m_CommandManager->GetNextFrameFence();
-    }
-
-    void GfxDevice::ResizeBackBuffer(uint32_t width, uint32_t height)
-    {
-        m_SwapChain->Resize(width, height);
-    }
-
-    GfxRenderTexture* GfxDevice::GetBackBuffer() const
-    {
-        return m_SwapChain->GetBackBuffer();
-    }
-
-    uint32_t GfxDevice::GetMaxFrameLatency() const
-    {
-        return GfxSwapChain::MaxFrameLatency;
     }
 
     GfxCompleteResourceAllocator* GfxDevice::GetResourceAllocator(GfxAllocator allocator, GfxAllocation allocation) const
@@ -439,9 +413,10 @@ namespace march
         return g_GfxDevice.get();
     }
 
-    void InitGfxDevice(const GfxDeviceDesc& desc)
+    GfxDevice* InitGfxDevice(const GfxDeviceDesc& desc)
     {
         g_GfxDevice = std::make_unique<GfxDevice>(desc);
+        return g_GfxDevice.get();
     }
 
     void DestroyGfxDevice()
