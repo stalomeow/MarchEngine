@@ -139,7 +139,7 @@ namespace march
                 desc.Filter = GfxTextureFilterMode::Point;
                 desc.Wrap = GfxTextureWrapMode::Clamp;
                 desc.MipmapBias = 0;
-                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGui", desc, GfxAllocator::CommittedDefault);
+                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGuiIntermediate", desc, GfxAllocator::CommittedDefault);
             }
 
             return m_Intermediate.get();

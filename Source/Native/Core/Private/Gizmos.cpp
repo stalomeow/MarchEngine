@@ -10,7 +10,6 @@
 #include "Application.h"
 #include "Shader.h"
 #include <memory>
-#include <math.h>
 #include <vector>
 #include <deque>
 
@@ -42,7 +41,7 @@ namespace march
 
     // Gizmos 由一组 LineList 构成
     static std::vector<GizmosVertex> g_LineListVertices{};
-    static GfxBasicMesh<GizmosVertex> g_LineListMesh{ GfxSubAllocator::PersistentUpload };
+    static std::unique_ptr<GfxBasicMesh<GizmosVertex>> g_LineListMesh = nullptr;
     static asset_ptr<Shader> g_LineListShader = nullptr;
     static std::unique_ptr<Material> g_LineListMaterial = nullptr;
 
@@ -100,7 +99,7 @@ namespace march
     void Gizmos::Clear()
     {
         g_LineListVertices.clear();
-        g_LineListMesh.ClearSubMeshes();
+        g_LineListMesh->ClearSubMeshes();
     }
 
     void Gizmos::PushMatrix(const XMFLOAT4X4& matrix)
@@ -193,7 +192,7 @@ namespace march
             }
 
             uint32_t vertexCount = static_cast<uint32_t>(meshVertexCount);
-            g_LineListMesh.AddSubMesh(vertexCount, g_LineListVertices.data(), vertexCount, indices.data());
+            g_LineListMesh->AddSubMesh(vertexCount, g_LineListVertices.data(), vertexCount, indices.data());
             g_LineListVertices.clear();
         }
     }
@@ -355,6 +354,7 @@ namespace march
 
     void Gizmos::InitResources()
     {
+        g_LineListMesh = std::make_unique<GfxBasicMesh<GizmosVertex>>(GfxSubAllocator::PersistentUpload);
         g_LineListShader.reset("Engine/Shaders/Gizmos.shader");
         g_LineListMaterial = std::make_unique<Material>();
         g_LineListMaterial->SetShader(g_LineListShader.get());
@@ -362,6 +362,7 @@ namespace march
 
     void Gizmos::ReleaseResources()
     {
+        g_LineListMesh.reset();
         g_LineListMaterial.reset();
         g_LineListShader.reset();
     }
@@ -377,15 +378,15 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             // Visible part
-            for (uint32_t i = 0; i < g_LineListMesh.GetSubMeshCount(); i++)
+            for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
             {
-                context.DrawMesh(g_LineListMesh.GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
+                context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
             }
 
             // Invisible part
-            for (uint32_t i = 0; i < g_LineListMesh.GetSubMeshCount(); i++)
+            for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
             {
-                context.DrawMesh(g_LineListMesh.GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
+                context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
             }
         });
     }

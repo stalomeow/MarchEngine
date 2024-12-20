@@ -47,6 +47,11 @@ namespace March.Core
         [UnmanagedCallersOnly]
         private static void FullGC()
         {
+            // GC 两次，保证有 Finalizer 的对象被回收
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
