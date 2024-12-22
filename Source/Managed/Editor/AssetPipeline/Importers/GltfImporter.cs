@@ -215,19 +215,19 @@ namespace March.Editor.AssetPipeline.Importers
                     if (i < positions.Value.Count)
                     {
                         v.Position = positions.Value[i];
-                        v.Position.X = -v.Position.X; // glTF 是左手坐标系
+                        v.Position.X = -v.Position.X; // glTF 是右手坐标系
                     }
 
                     if (i < normals.Value.Count)
                     {
                         v.Normal = normals.Value[i];
-                        v.Normal.X = -v.Normal.X; // glTF 是左手坐标系
+                        v.Normal.X = -v.Normal.X; // glTF 是右手坐标系
                     }
 
                     if (i < tangents.Value.Count)
                     {
                         v.Tangent = tangents.Value[i];
-                        v.Tangent.X = -v.Tangent.X; // glTF 是左手坐标系
+                        v.Tangent.X = -v.Tangent.X; // glTF 是右手坐标系
                         v.Tangent.W = -v.Tangent.W;
                     }
 
