@@ -9,6 +9,14 @@ using System.Runtime.Serialization;
 
 namespace March.Editor.AssetPipeline
 {
+    public enum AssetReimportMode
+    {
+        FastCheck,
+        FullCheck,
+        Force,
+        Dont,
+    }
+
     public abstract class AssetImporter : MarchObject
     {
         [JsonProperty, HideInInspector] private int m_SerializedVersion; // 序列化时使用的 AssetImporter 代码版本号
@@ -47,7 +55,7 @@ namespace March.Editor.AssetPipeline
         {
             DeleteImporterFile();
             InitLocation(location);
-            ReimportAndSave(force: true);
+            ReimportAndSave(AssetReimportMode.Force);
         }
 
         internal void DeleteImporterFile()
@@ -80,11 +88,14 @@ namespace March.Editor.AssetPipeline
             m_GuidToAssetMap.Add(data.Guid, data);
         }
 
-        public bool ReimportAndSave(bool force)
+        public bool ReimportAndSave(AssetReimportMode mode)
         {
-            if (!force && !NeedReimport)
+            switch (mode)
             {
-                return false;
+                case AssetReimportMode.Dont:
+                case AssetReimportMode.FastCheck when !CheckNeedReimport(fullCheck: false):
+                case AssetReimportMode.FullCheck when !CheckNeedReimport(fullCheck: true):
+                    return false;
             }
 
             Log.Message(LogLevel.Trace, "Reimport asset", $"{Location.AssetPath}");
@@ -100,7 +111,7 @@ namespace March.Editor.AssetPipeline
                 m_DependentImporterLastWriteTimeUtc.Clear();
                 foreach (string dependency in context.Dependencies)
                 {
-                    AssetImporter importer = AssetDatabase.GetAssetImporter(dependency, ReimportAssetMode.Dont)!;
+                    AssetImporter importer = AssetDatabase.GetAssetImporter(dependency, AssetReimportMode.Dont)!;
                     m_DependentImporterLastWriteTimeUtc.Add(dependency, File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath));
                 }
 
@@ -158,11 +169,11 @@ namespace March.Editor.AssetPipeline
 
         public MarchObject? GetAsset(string guid)
         {
-            bool forceReimport = false;
+            AssetReimportMode mode = AssetReimportMode.FastCheck;
 
             for (int retry = 0; retry < 2; retry++)
             {
-                ReimportAndSave(forceReimport);
+                ReimportAndSave(mode);
 
                 if (!m_GuidToAssetMap.TryGetValue(guid, out AssetData? data))
                 {
@@ -181,14 +192,14 @@ namespace March.Editor.AssetPipeline
                         // 假设一个资产里有 a 和 b 两个子资产，a 依赖 b
                         // 加载 a 时，需要加载 b，但是**递归**加载 b 时发现 b 的缓存文件没了
                         // 这时要重新导入 a 和 b，但是 a 的缓存文件还在被占用（读），无法写入，所以会抛出异常
-                        forceReimport = true;
+                        mode = AssetReimportMode.Force;
                         continue;
                     }
 
                     // 可能是缓存文件被删除了，重新导入再试一次
                     if (asset == null)
                     {
-                        forceReimport = true;
+                        mode = AssetReimportMode.Force;
                         continue;
                     }
 
@@ -226,7 +237,7 @@ namespace March.Editor.AssetPipeline
 
         public void GetAssets(List<MarchObject> assetList)
         {
-            ReimportAndSave(force: false);
+            ReimportAndSave(AssetReimportMode.FastCheck);
 
             // GetAsset 可能会修改 m_GuidToAssetMap，所以先复制一份
             // 因为之前 Reimport 过了，所以 Guid 一定是下面列表里的这些
@@ -251,42 +262,54 @@ namespace March.Editor.AssetPipeline
 
         private int Version => GetCustomAttribute().Version + 8;
 
-        protected virtual bool NeedReimport
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fullCheck">如果为 <see langword="true"/> 则会以性能为代价，进行更全面的检查</param>
+        /// <returns></returns>
+        protected virtual bool CheckNeedReimport(bool fullCheck)
         {
-            get
+            if (string.IsNullOrEmpty(m_MainAssetGuid))
             {
-                if (string.IsNullOrEmpty(m_MainAssetGuid))
-                {
-                    return true;
-                }
+                return true;
+            }
 
-                if (m_SerializedVersion != Version)
-                {
-                    return true;
-                }
+            if (m_SerializedVersion != Version)
+            {
+                return true;
+            }
+
+            if (fullCheck)
+            {
+                // 部分系统调用的速度比较慢，所以只在 fullCheck 模式下检查
 
                 if (m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(Location.AssetFullPath))
                 {
                     return true;
                 }
+            }
 
-                foreach (KeyValuePair<string, DateTime> kv in m_DependentImporterLastWriteTimeUtc)
+            foreach (KeyValuePair<string, DateTime> kv in m_DependentImporterLastWriteTimeUtc)
+            {
+                AssetImporter? importer = AssetDatabase.GetAssetImporter(kv.Key, AssetReimportMode.Dont);
+
+                if (importer == null || importer.CheckNeedReimport(fullCheck))
                 {
-                    AssetImporter? importer = AssetDatabase.GetAssetImporter(kv.Key, ReimportAssetMode.Dont);
+                    return true;
+                }
 
-                    if (importer == null || importer.NeedReimport)
-                    {
-                        return true;
-                    }
+                if (fullCheck)
+                {
+                    // 部分系统调用的速度比较慢，所以只在 fullCheck 模式下检查
 
-                    if (File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath) != kv.Value)
+                    if (kv.Value != File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath))
                     {
                         return true;
                     }
                 }
-
-                return false;
             }
+
+            return false;
         }
 
         protected abstract void OnImportAssets(ref AssetImportContext context);
@@ -521,7 +544,7 @@ namespace March.Editor.AssetPipeline
 
         protected virtual void ApplyChanges()
         {
-            Target.ReimportAndSave(force: true);
+            Target.ReimportAndSave(AssetReimportMode.Force);
         }
 
         protected virtual void RevertChanges()
@@ -550,7 +573,7 @@ namespace March.Editor.AssetPipeline
 
         protected override void RevertChanges()
         {
-            Target.ReimportAndSave(force: true);
+            Target.ReimportAndSave(AssetReimportMode.Force);
         }
     }
 

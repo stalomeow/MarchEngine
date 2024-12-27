@@ -23,11 +23,11 @@ namespace March.Editor.AssetPipeline.Importers
         [HideInInspector]
         private GraphicsColorSpace m_ColorSpace = GraphicsSettings.ColorSpace;
 
-        protected override bool NeedReimport
+        protected override bool CheckNeedReimport(bool fullCheck)
         {
-            get => m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer
+            return m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer
                 || m_ColorSpace != GraphicsSettings.ColorSpace
-                || base.NeedReimport;
+                || base.CheckNeedReimport(fullCheck);
         }
 
         protected override void OnImportAssets(ref AssetImportContext context)

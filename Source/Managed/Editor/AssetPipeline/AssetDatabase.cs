@@ -9,13 +9,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor.AssetPipeline
 {
-    public enum ReimportAssetMode
-    {
-        Auto,
-        Dont,
-        Force,
-    }
-
     public static class AssetDatabase
     {
         private struct NativeReference
@@ -68,7 +61,8 @@ namespace March.Editor.AssetPipeline
 
             foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
             {
-                kv.Value.ReimportAndSave(force: false);
+                // 第一次导入时，进行完整检查
+                kv.Value.ReimportAndSave(AssetReimportMode.FullCheck);
             }
 
             static void CreateImportersOnly(string directoryFullPath)
@@ -81,7 +75,7 @@ namespace March.Editor.AssetPipeline
 
                     // 仅创建 importer，不导入资产，构建一张 guid 到 importer 的表
                     // 资产间的依赖是用 guid 记录的，只有构建完 guid 表才能正确导入资产
-                    GetAssetImporter(location.AssetPath, ReimportAssetMode.Dont);
+                    GetAssetImporter(location.AssetPath, AssetReimportMode.Dont);
                 }
             }
         }
@@ -159,7 +153,7 @@ namespace March.Editor.AssetPipeline
             }
 
             AssetImporter? importer = GetAssetImporter(path);
-            importer?.ReimportAndSave(force: false); // 保证拿到新的资产
+            importer?.ReimportAndSave(AssetReimportMode.FastCheck); // 保证拿到新的资产
             return importer?.MainAsset as T;
         }
 
@@ -176,7 +170,7 @@ namespace March.Editor.AssetPipeline
             }
 
             AssetImporter? importer = GetAssetImporter(path);
-            importer?.ReimportAndSave(force: false); // 保证拿到新的资产
+            importer?.ReimportAndSave(AssetReimportMode.FastCheck); // 保证拿到新的资产
             return importer?.GetAsset(guid) as T;
         }
 
@@ -236,7 +230,7 @@ namespace March.Editor.AssetPipeline
 
             AssetImporter? importer = GetAssetImporter(location.AssetPath);
 
-            if (importer != null && importer.ReimportAndSave(force: false))
+            if (importer != null && importer.ReimportAndSave(AssetReimportMode.FullCheck))
             {
                 OnChanged?.Invoke(location);
             }
@@ -365,7 +359,7 @@ namespace March.Editor.AssetPipeline
 
         public static bool IsAsset(string path) => GetAssetImporter(path) != null;
 
-        public static AssetImporter? GetAssetImporter(MarchObject asset, ReimportAssetMode mode = ReimportAssetMode.Auto)
+        public static AssetImporter? GetAssetImporter(MarchObject asset, AssetReimportMode mode = AssetReimportMode.FastCheck)
         {
             if (asset.PersistentGuid == null)
             {
@@ -382,16 +376,13 @@ namespace March.Editor.AssetPipeline
             return GetAssetImporter(path, mode);
         }
 
-        public static AssetImporter? GetAssetImporter(string path, ReimportAssetMode mode = ReimportAssetMode.Auto)
+        public static AssetImporter? GetAssetImporter(string path, AssetReimportMode mode = AssetReimportMode.FastCheck)
         {
             AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
 
             if (importer != null)
             {
-                if (mode != ReimportAssetMode.Dont)
-                {
-                    importer.ReimportAndSave(force: mode == ReimportAssetMode.Force);
-                }
+                importer.ReimportAndSave(mode);
 
                 if (isNewlyCreated)
                 {
@@ -474,7 +465,7 @@ namespace March.Editor.AssetPipeline
 
                 foreach (string d in myDependerList.Value)
                 {
-                    GetAssetImporter(d, ReimportAssetMode.Auto);
+                    GetAssetImporter(d, AssetReimportMode.FullCheck);
                 }
             }
         }
