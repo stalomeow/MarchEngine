@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Internal\pch.h" />
+    <ClInclude Include="Public\Engine\Allocator.h" />
+    <ClInclude Include="Public\Engine\Application.h" />
+    <ClInclude Include="Public\Engine\AssetManger.h" />
+    <ClInclude Include="Public\Engine\Component.h" />
+    <ClInclude Include="Public\Engine\Debug.h" />
+    <ClInclude Include="Public\Engine\EngineTimer.h" />
+    <ClInclude Include="Public\Engine\Gizmos.h" />
+    <ClInclude Include="Public\Engine\Graphics\Display.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxBuffer.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxCommand.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxDescriptor.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxDevice.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxMesh.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxPipelineState.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxResource.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxSettings.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxSwapChain.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxTexture.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxUtils.h" />
+    <ClInclude Include="Public\Engine\Graphics\Material.h" />
+    <ClInclude Include="Public\Engine\Graphics\MeshRenderer.h" />
+    <ClInclude Include="Public\Engine\Graphics\RenderDoc.h" />
+    <ClInclude Include="Public\Engine\Graphics\Shader.h" />
+    <ClInclude Include="Public\Engine\HashUtils.h" />
+    <ClInclude Include="Public\Engine\IconsFontAwesome6.h" />
+    <ClInclude Include="Public\Engine\IconsFontAwesome6Brands.h" />
+    <ClInclude Include="Public\Engine\ImGuiDX12.h" />
+    <ClInclude Include="Public\Engine\Ints.h" />
+    <ClInclude Include="Public\Engine\MathUtils.h" />
+    <ClInclude Include="Public\Engine\PathUtils.h" />
+    <ClInclude Include="Public\Engine\Rendering\Camera.h" />
+    <ClInclude Include="Public\Engine\Rendering\Light.h" />
+    <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
+    <ClInclude Include="Public\Engine\Rendering\RenderGraphResource.h" />
+    <ClInclude Include="Public\Engine\Rendering\RenderPipeline.h" />
+    <ClInclude Include="Public\Engine\Scripting\DotNetMarshal.h" />
+    <ClInclude Include="Public\Engine\Scripting\DotNetRuntime.h" />
+    <ClInclude Include="Public\Engine\Scripting\DotNetTypeTraits.h" />
+    <ClInclude Include="Public\Engine\Scripting\InteropServices.h" />
+    <ClInclude Include="Public\Engine\StringUtils.h" />
+    <ClInclude Include="Public\Engine\Transform.h" />
+    <ClInclude Include="ThirdParty\coreclr_delegates.h" />
+    <ClInclude Include="ThirdParty\hostfxr.h" />
+    <ClInclude Include="ThirdParty\renderdoc_app.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\Allocator.cpp" />
+    <ClCompile Include="Private\Application.binding.cpp" />
+    <ClCompile Include="Private\Application.cpp" />
+    <ClCompile Include="Private\AssetManager.cpp" />
+    <ClCompile Include="Private\Component.binding.cpp" />
+    <ClCompile Include="Private\Debug.binding.cpp" />
+    <ClCompile Include="Private\Debug.cpp" />
+    <ClCompile Include="Private\EngineTimer.cpp" />
+    <ClCompile Include="Private\Gizmos.binding.cpp" />
+    <ClCompile Include="Private\Gizmos.cpp" />
+    <ClCompile Include="Private\Graphics\Display.cpp" />
+    <ClCompile Include="Private\Graphics\GfxBuffer.cpp" />
+    <ClCompile Include="Private\Graphics\GfxCommandContext.cpp" />
+    <ClCompile Include="Private\Graphics\GfxCommandQueue.cpp" />
+    <ClCompile Include="Private\Graphics\GfxDescriptor.cpp" />
+    <ClCompile Include="Private\Graphics\GfxDevice.cpp" />
+    <ClCompile Include="Private\Graphics\GfxException.cpp" />
+    <ClCompile Include="Private\Graphics\GfxFence.cpp" />
+    <ClCompile Include="Private\Graphics\GfxMesh.binding.cpp" />
+    <ClCompile Include="Private\Graphics\GfxMesh.cpp" />
+    <ClCompile Include="Private\Graphics\GfxPipelineState.cpp" />
+    <ClCompile Include="Private\Graphics\GfxResource.cpp" />
+    <ClCompile Include="Private\Graphics\GfxSettings.binding.cpp" />
+    <ClCompile Include="Private\Graphics\GfxSwapChain.cpp" />
+    <ClCompile Include="Private\Graphics\GfxTexture.binding.cpp" />
+    <ClCompile Include="Private\Graphics\GfxTexture.cpp" />
+    <ClCompile Include="Private\Graphics\GfxTextureDesc.cpp" />
+    <ClCompile Include="Private\Graphics\GfxUtils.cpp" />
+    <ClCompile Include="Private\Graphics\Material.binding.cpp" />
+    <ClCompile Include="Private\Graphics\Material.cpp" />
+    <ClCompile Include="Private\Graphics\MeshRenderer.binding.cpp" />
+    <ClCompile Include="Private\Graphics\MeshRenderer.cpp" />
+    <ClCompile Include="Private\Graphics\RenderDoc.cpp" />
+    <ClCompile Include="Private\Graphics\Shader.binding.cpp" />
+    <ClCompile Include="Private\Graphics\Shader.cpp" />
+    <ClCompile Include="Private\Graphics\ShaderKeyword.cpp" />
+    <ClCompile Include="Private\Graphics\ShaderProgram.cpp" />
+    <ClCompile Include="Private\Graphics\ShaderRootSignature.cpp" />
+    <ClCompile Include="Private\ImGuiDX12.cpp" />
+    <ClCompile Include="Private\MathUtils.cpp" />
+    <ClCompile Include="Private\PathUtils.cpp" />
+    <ClCompile Include="Private\pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Private\Rendering\Camera.binding.cpp" />
+    <ClCompile Include="Private\Rendering\Camera.cpp" />
+    <ClCompile Include="Private\Rendering\Light.binding.cpp" />
+    <ClCompile Include="Private\Rendering\Light.cpp" />
+    <ClCompile Include="Private\Rendering\RenderGraph.cpp" />
+    <ClCompile Include="Private\Rendering\RenderGraphResource.cpp" />
+    <ClCompile Include="Private\Rendering\RenderPipeline.binding.cpp" />
+    <ClCompile Include="Private\Rendering\RenderPipeline.cpp" />
+    <ClCompile Include="Private\Scripting\DotNetRuntime.cpp" />
+    <ClCompile Include="Private\Scripting\InteropServices.binding.cpp" />
+    <ClCompile Include="Private\Scripting\InteropServices.cpp" />
+    <ClCompile Include="Private\StringUtils.cpp" />
+    <ClCompile Include="Private\Transform.binding.cpp" />
+    <ClCompile Include="Private\Transform.cpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{cf8cbf0a-0df9-4f7d-b7ed-b8cb6e83dc59}</ProjectGuid>
+    <RootNamespace>Engine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\Common.Cpp.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\Common.Cpp.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;_LIB;ENABLE_GFX_DEBUG_NAME;ENGINE_SHADER_UNIX_PATH="$(SolutionDir.Replace('\', '/'))Source/Shaders/Public";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>.\Internal;.\Public;.\ThirdParty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>.\Internal;.\Public;.\ThirdParty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>
+      </SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib />
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

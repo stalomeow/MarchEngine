@@ -1,5 +1,6 @@
-#include "RenderGraphDebuggerWindow.h"
-#include "IconsFontAwesome6.h"
+#include "pch.h"
+#include "Editor/RenderGraphDebuggerWindow.h"
+#include "Engine/IconsFontAwesome6.h"
 #include <math.h>
 
 namespace march

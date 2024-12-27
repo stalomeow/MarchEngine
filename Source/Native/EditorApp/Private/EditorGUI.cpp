@@ -1,13 +1,11 @@
-#include "EditorGUI.h"
-#include "GfxDevice.h"
-#include "GfxTexture.h"
+#include "pch.h"
+#include "Editor/EditorGUI.h"
+#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Graphics/GfxTexture.h"
 #include <utility>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
 #include <algorithm>
-
-#undef min
-#undef max
 
 namespace march
 {

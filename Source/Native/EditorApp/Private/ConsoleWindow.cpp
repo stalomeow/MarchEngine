@@ -1,7 +1,8 @@
-#include "ConsoleWindow.h"
-#include "Debug.h"
-#include "EditorGUI.h"
-#include "DotNetRuntime.h"
+#include "pch.h"
+#include "Editor/ConsoleWindow.h"
+#include "Editor/EditorGUI.h"
+#include "Engine/Debug.h"
+#include "Engine/Scripting/DotNetRuntime.h"
 #include <time.h>
 
 namespace march

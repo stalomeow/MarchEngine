@@ -1,102 +1,38 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Public">
-      <UniqueIdentifier>{fa792cc7-79d5-4be7-92e8-3f3b5e4838db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Private">
-      <UniqueIdentifier>{5f9eb7b5-3db0-46a2-a2ab-0475e3a14c02}</UniqueIdentifier>
-    </Filter>
+    <ClCompile Include="Private\ConsoleWindow.binding.cpp" />
+    <ClCompile Include="Private\ConsoleWindow.cpp" />
+    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.binding.cpp" />
+    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.cpp" />
+    <ClCompile Include="Private\DragDrop.binding.cpp" />
+    <ClCompile Include="Private\EditorApplication.binding.cpp" />
+    <ClCompile Include="Private\EditorApplication.cpp" />
+    <ClCompile Include="Private\EditorGUI.binding.cpp" />
+    <ClCompile Include="Private\EditorGUI.cpp" />
+    <ClCompile Include="Private\EditorWindow.binding.cpp" />
+    <ClCompile Include="Private\EditorWindow.cpp" />
+    <ClCompile Include="Private\GraphicsDebuggerWindow.binding.cpp" />
+    <ClCompile Include="Private\GraphicsDebuggerWindow.cpp" />
+    <ClCompile Include="Private\ImGuiDemoWindow.binding.cpp" />
+    <ClCompile Include="Private\ImGuiDemoWindow.cpp" />
+    <ClCompile Include="Private\RenderGraphDebuggerWindow.binding.cpp" />
+    <ClCompile Include="Private\RenderGraphDebuggerWindow.cpp" />
+    <ClCompile Include="Private\SceneWindow.binding.cpp" />
+    <ClCompile Include="Private\SceneWindow.cpp" />
+    <ClCompile Include="Private\WinMain.cpp" />
+    <ClCompile Include="Private\pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\EditorGUI.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\EditorGUI.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\EditorApplication.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\WinMain.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\SceneWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\SceneWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\EditorWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\EditorWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\ConsoleWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\ConsoleWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\ImGuiDemoWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\ImGuiDemoWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderGraphDebuggerWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RenderGraphDebuggerWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GraphicsDebuggerWindow.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GraphicsDebuggerWindow.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\DragDrop.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\EditorApplication.binding.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Public\EditorGUI.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\EditorApplication.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\SceneWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\EditorWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\ConsoleWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\DescriptorHeapDebuggerWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\ImGuiDemoWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RenderGraphDebuggerWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\GraphicsDebuggerWindow.h">
-      <Filter>Public</Filter>
-    </ClInclude>
+    <ClInclude Include="Internal\Editor\ConsoleWindow.h" />
+    <ClInclude Include="Internal\Editor\DescriptorHeapDebuggerWindow.h" />
+    <ClInclude Include="Internal\Editor\EditorApplication.h" />
+    <ClInclude Include="Internal\Editor\EditorGUI.h" />
+    <ClInclude Include="Internal\Editor\EditorWindow.h" />
+    <ClInclude Include="Internal\Editor\GraphicsDebuggerWindow.h" />
+    <ClInclude Include="Internal\Editor\ImGuiDemoWindow.h" />
+    <ClInclude Include="Internal\Editor\RenderGraphDebuggerWindow.h" />
+    <ClInclude Include="Internal\Editor\SceneWindow.h" />
+    <ClInclude Include="Internal\pch.h" />
   </ItemGroup>
 </Project>

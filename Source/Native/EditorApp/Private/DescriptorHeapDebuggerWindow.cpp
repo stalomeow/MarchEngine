@@ -1,8 +1,9 @@
-#include "DescriptorHeapDebuggerWindow.h"
-#include "GfxDevice.h"
-#include "GfxDescriptor.h"
-#include "Application.h"
-#include "StringUtils.h"
+#include "pch.h"
+#include "Editor/DescriptorHeapDebuggerWindow.h"
+#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Graphics/GfxDescriptor.h"
+#include "Engine/Application.h"
+#include "Engine/StringUtils.h"
 #include <imgui.h>
 #include <stdint.h>
 

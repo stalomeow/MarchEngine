@@ -1,5 +1,6 @@
-#include "ImGuiDemoWindow.h"
-#include "InteropServices.h"
+#include "pch.h"
+#include "Editor/ImGuiDemoWindow.h"
+#include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO ImGuiDemoWindow_New()
 {

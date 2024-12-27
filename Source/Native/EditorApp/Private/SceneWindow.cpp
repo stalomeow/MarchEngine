@@ -1,20 +1,18 @@
-#include "SceneWindow.h"
-#include "Application.h"
-#include "Display.h"
-#include "Camera.h"
-#include "GfxDevice.h"
-#include "GfxTexture.h"
-#include "GfxDescriptor.h"
-#include "Debug.h"
-#include "IconsFontAwesome6.h"
-#include "EditorGUI.h"
-#include "Gizmos.h"
+#include "pch.h"
+#include "Editor/SceneWindow.h"
+#include "Editor/EditorGUI.h"
+#include "Engine/Application.h"
+#include "Engine/Graphics/Display.h"
+#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Graphics/GfxTexture.h"
+#include "Engine/Graphics/GfxDescriptor.h"
+#include "Engine/Rendering/Camera.h"
+#include "Engine/Debug.h"
+#include "Engine/IconsFontAwesome6.h"
+#include "Engine/Gizmos.h"
 #include <stdint.h>
 #include <ImGuizmo.h>
 #include <string>
-
-#undef min
-#undef max
 
 using namespace DirectX;
 

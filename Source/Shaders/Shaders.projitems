@@ -9,20 +9,20 @@
     <Import_RootNamespace>Shaders</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)Public\BlinnPhong.shader" />
-    <None Include="$(MSBuildThisFileDirectory)public\DeferredLight.shader" />
-    <None Include="$(MSBuildThisFileDirectory)public\Gizmos.shader" />
-    <None Include="$(MSBuildThisFileDirectory)public\DearImGui.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Common.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)public\includes\GBuffer.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Includes\GBuffer.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)public\includes\Packing.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)public\includes\Sampler.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Includes\Packing.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Includes\Sampler.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)Public\BlinnPhong.shader" />
+    <None Include="$(MSBuildThisFileDirectory)Public\DearImGui.shader" />
+    <None Include="$(MSBuildThisFileDirectory)Public\DeferredLight.shader" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Gizmos.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
-    <None Include="$(MSBuildThisFileDirectory)public\Skybox.shader" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Skybox.shader" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Public\Includes\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Public\" />
   </ItemGroup>
 </Project>

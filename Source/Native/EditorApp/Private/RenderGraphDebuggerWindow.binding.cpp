@@ -1,5 +1,6 @@
-#include "RenderGraphDebuggerWindow.h"
-#include "InteropServices.h"
+#include "pch.h"
+#include "Editor/RenderGraphDebuggerWindow.h"
+#include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO RenderGraphDebuggerWindow_New()
 {

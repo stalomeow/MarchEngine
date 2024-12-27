@@ -1,5 +1,6 @@
-#include "EditorWindow.h"
-#include "InteropServices.h"
+#include "pch.h"
+#include "Editor/EditorWindow.h"
+#include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO EditorWindow_CreateDefault()
 {

@@ -1,5 +1,6 @@
-#include "DescriptorHeapDebuggerWindow.h"
-#include "InteropServices.h"
+#include "pch.h"
+#include "Editor/DescriptorHeapDebuggerWindow.h"
+#include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO DescriptorHeapDebuggerWindow_New()
 {

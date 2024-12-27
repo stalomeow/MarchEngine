@@ -1,5 +1,6 @@
-#include "EditorGUI.h"
-#include "InteropServices.h"
+#include "pch.h"
+#include "Editor/EditorGUI.h"
+#include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO EditorGUI_PrefixLabel(cs_string label, cs_string tooltip)
 {
