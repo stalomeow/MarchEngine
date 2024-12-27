@@ -225,7 +225,7 @@ namespace march
             UINT size = sizeof(name);
             if (SUCCEEDED(m_ReleaseQueue.front().second->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
             {
-                LOG_TRACE(L"Release D3D12Object %s", name);
+                LOG_TRACE(L"Release D3D12Object {}", name);
             }
 
             m_ReleaseQueue.pop();
@@ -332,7 +332,7 @@ namespace march
             DXGI_ADAPTER_DESC desc;
             GFX_HR(adapter->GetDesc(&desc));
 
-            LOG_INFO(L"***Adapter: %s", desc.Description);
+            LOG_INFO(L"***Adapter: {}", desc.Description);
 
             LogAdapterOutputs(adapter, format);
             adapter->Release();
@@ -349,7 +349,7 @@ namespace march
             DXGI_OUTPUT_DESC desc;
             GFX_HR(output->GetDesc(&desc));
 
-            LOG_INFO(L"***Output: %s", desc.DeviceName);
+            LOG_INFO(L"***Output: {}", desc.DeviceName);
 
             LogOutputDisplayModes(output, format);
             output->Release();
@@ -374,7 +374,7 @@ namespace march
             UINT n = x.RefreshRate.Numerator;
             UINT d = x.RefreshRate.Denominator;
 
-            LOG_INFO(L"Width = %d, Height = %d, Refresh = %d/%d", x.Width, x.Height, n, d);
+            LOG_INFO(L"Width = {}, Height = {}, Refresh = {}/{}", x.Width, x.Height, n, d);
         }
     }
 
@@ -389,20 +389,20 @@ namespace march
         {
         case D3D12_MESSAGE_SEVERITY_INFO:
         case D3D12_MESSAGE_SEVERITY_MESSAGE:
-            LOG_INFO("%s", pDescription);
+            LOG_INFO("{}", pDescription);
             break;
 
         case D3D12_MESSAGE_SEVERITY_WARNING:
-            LOG_WARNING("%s", pDescription);
+            LOG_WARNING("{}", pDescription);
             break;
 
         case D3D12_MESSAGE_SEVERITY_CORRUPTION:
         case D3D12_MESSAGE_SEVERITY_ERROR:
-            LOG_ERROR("%s", pDescription);
+            LOG_ERROR("{}", pDescription);
             break;
 
         default:
-            LOG_WARNING("Unknown D3D12_MESSAGE_SEVERITY: %d; %s", Severity, pDescription);
+            LOG_WARNING("Unknown D3D12_MESSAGE_SEVERITY: {}; {}", static_cast<int>(Severity), pDescription);
             break;
         }
     }

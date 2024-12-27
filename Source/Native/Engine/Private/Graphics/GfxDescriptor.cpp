@@ -122,7 +122,7 @@ namespace march
                 m_Pages.push_back(std::make_unique<GfxDescriptorHeap>(m_Device, heapName, heapDesc));
                 m_NextDescriptorIndex = 0;
 
-                LOG_TRACE("Create %s; Size: %u; Type: %s", heapName.c_str(), m_PageSize, to_string(m_Type).c_str());
+                LOG_TRACE("Create {}; Size: {}; Type: {}", heapName, m_PageSize, to_string(m_Type));
             }
 
             handle = m_Pages.back()->GetCpuHandle(m_NextDescriptorIndex++);
@@ -469,7 +469,7 @@ namespace march
             // 切换 descriptor heap 会有性能开销
             // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3d12/shader-visible-descriptor-heaps
 
-            LOG_WARNING("DescriptorHeapRollover detected! Type: %s", to_string(m_CurrentAllocator->GetHeap()->GetType()));
+            LOG_WARNING("DescriptorHeapRollover detected! Type: {}", to_string(m_CurrentAllocator->GetHeap()->GetType()));
             m_ReleaseQueue.emplace(m_Device->GetNextFence(), std::move(m_CurrentAllocator));
         }
 

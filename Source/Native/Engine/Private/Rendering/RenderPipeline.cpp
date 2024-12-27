@@ -94,7 +94,7 @@ namespace march
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR("error: %s", e.what());
+            LOG_ERROR("error: {}", e.what());
         }
     }
 

@@ -8,6 +8,8 @@
 #include <mutex>
 #include <deque>
 #include <functional>
+#include <fmt/core.h>
+#include <fmt/xchar.h>
 
 namespace march
 {
@@ -60,15 +62,15 @@ namespace march
     };
 }
 
-#define LOG_MSG(level, fmt, ...) \
+#define LOG_MSG(level, f, ...) \
     if (::march::Log::IsLevelEnabled(level)) \
-        ::march::Log::Message(level, ::march::StringUtils::Format(fmt, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
+        ::march::Log::Message(level, ::fmt::format(f, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
 
-#define LOG_TRACE(fmt, ...) LOG_MSG(::march::LogLevel::Trace, fmt, __VA_ARGS__)
-#define LOG_DEBUG(fmt, ...) LOG_MSG(::march::LogLevel::Debug, fmt, __VA_ARGS__)
-#define LOG_INFO(fmt, ...) LOG_MSG(::march::LogLevel::Info, fmt, __VA_ARGS__)
-#define LOG_WARNING(fmt, ...) LOG_MSG(::march::LogLevel::Warning, fmt, __VA_ARGS__)
-#define LOG_ERROR(fmt, ...) LOG_MSG(::march::LogLevel::Error, fmt, __VA_ARGS__)
+#define LOG_TRACE(format, ...)   LOG_MSG(::march::LogLevel::Trace, format, __VA_ARGS__)
+#define LOG_DEBUG(format, ...)   LOG_MSG(::march::LogLevel::Debug, format, __VA_ARGS__)
+#define LOG_INFO(format, ...)    LOG_MSG(::march::LogLevel::Info, format, __VA_ARGS__)
+#define LOG_WARNING(format, ...) LOG_MSG(::march::LogLevel::Warning, format, __VA_ARGS__)
+#define LOG_ERROR(format, ...)   LOG_MSG(::march::LogLevel::Error, format, __VA_ARGS__)
 
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/find-memory-leaks-using-the-crt-library?view=msvc-170
 #ifdef _DEBUG

@@ -239,7 +239,7 @@ namespace march
 
         if (error != nullptr)
         {
-            LOG_ERROR(reinterpret_cast<char*>(error->GetBufferPointer()));
+            LOG_ERROR("{}", reinterpret_cast<char*>(error->GetBufferPointer()));
         }
 
         GFX_HR(hr);

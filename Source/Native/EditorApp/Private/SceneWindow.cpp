@@ -317,7 +317,7 @@ namespace march
             operation = ImGuizmo::SCALE;
             break;
         default:
-            LOG_ERROR("Unknown gizmo operation: %d", static_cast<int>(m_GizmoOperation));
+            LOG_ERROR("Unknown gizmo operation: {}", static_cast<int>(m_GizmoOperation));
             return false;
         }
 
@@ -330,7 +330,7 @@ namespace march
             mode = ImGuizmo::WORLD;
             break;
         default:
-            LOG_ERROR("Unknown gizmo mode: %d", static_cast<int>(m_GizmoMode));
+            LOG_ERROR("Unknown gizmo mode: {}", static_cast<int>(m_GizmoMode));
             return false;
         }
 

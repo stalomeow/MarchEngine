@@ -348,7 +348,7 @@ namespace march
             GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
             GfxUtils::SetName(result.Get(), shader->GetName() + " - " + pass->GetName());
 
-            LOG_TRACE("Create Graphics PSO for '%s' Pass of '%s' Shader", pass->GetName().c_str(), shader->GetName().c_str());
+            LOG_TRACE("Create Graphics PSO for '{}' Pass of '{}' Shader", pass->GetName(), shader->GetName());
         }
 
         return result.Get();

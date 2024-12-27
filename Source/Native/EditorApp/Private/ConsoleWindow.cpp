@@ -4,6 +4,7 @@
 #include "Engine/Debug.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include <time.h>
+#include <fmt/core.h>
 
 namespace march
 {
@@ -79,7 +80,7 @@ namespace march
             ImGui::EndPopup();
         }
 
-        ImGui::SeparatorText(StringUtils::Format("%d Trace | %d Debug | %d Info | %d Warning | %d Error",
+        ImGui::SeparatorText(fmt::format("{} Trace | {} Debug | {} Info | {} Warning | {} Error",
             Log::GetCount(LogLevel::Trace),
             Log::GetCount(LogLevel::Debug),
             Log::GetCount(LogLevel::Info),

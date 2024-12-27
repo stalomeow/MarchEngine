@@ -387,7 +387,7 @@ namespace march
 
     void EditorApplication::OnDisplayScaleChange()
     {
-        LOG_TRACE("DPI Changed: %f", GetDisplayScale());
+        LOG_TRACE("DPI Changed: {}", GetDisplayScale());
 
         ReloadFonts();
         ImGui_ImplDX12_ReloadFontTexture();

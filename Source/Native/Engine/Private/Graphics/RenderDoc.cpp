@@ -40,7 +40,7 @@ namespace march
         if (ret != 1)
         {
             g_Api = nullptr;
-            LOG_ERROR("Failed to get RenderDoc API. Return Code: %d", ret);
+            LOG_ERROR("Failed to get RenderDoc API. Return Code: {}", ret);
             return;
         }
 

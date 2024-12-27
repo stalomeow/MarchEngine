@@ -90,7 +90,7 @@ namespace march
         }
         catch (std::exception& e)
         {
-            LOG_ERROR("error: %s", e.what());
+            LOG_ERROR("error: {}", e.what());
         }
 
         // TODO check resource leaks
@@ -211,7 +211,7 @@ namespace march
 
         if (outdegree < 0 || outdegree > static_cast<int32_t>(pass.NextPasses.size()))
         {
-            LOG_ERROR("Invalid outdegree %d for pass %s", outdegree, pass.Name.c_str());
+            LOG_ERROR("Invalid outdegree {} for pass {}", outdegree, pass.Name);
             return false;
         }
 
@@ -254,7 +254,7 @@ namespace march
             {
                 if (!pass.ColorTargets[j].IsSet)
                 {
-                    LOG_ERROR("Color target %d is not set", i);
+                    LOG_ERROR("Color target {} is not set", i);
                     continue;
                 }
 
@@ -292,7 +292,7 @@ namespace march
     {
         if (auto it = m_ResourceDataMap.find(resourceId); it == m_ResourceDataMap.end())
         {
-            LOG_ERROR("Failed to find resource data for resource %d", resourceId);
+            LOG_ERROR("Failed to find resource data for resource {}", resourceId);
             return false;
         }
         else
@@ -308,7 +308,7 @@ namespace march
         {
             if (auto it = m_ResourceDataMap.find(id); it == m_ResourceDataMap.end())
             {
-                LOG_ERROR("Failed to find resource data for resource %d", id);
+                LOG_ERROR("Failed to find resource data for resource {}", id);
                 return false;
             }
             else
@@ -343,7 +343,7 @@ namespace march
         {
             if (!pass.ColorTargets[i].IsSet)
             {
-                LOG_ERROR("Color target %d is not set", i);
+                LOG_ERROR("Color target {} is not set", i);
                 continue;
             }
 
@@ -419,7 +419,7 @@ namespace march
 
         if (resMap.find(id) != resMap.end())
         {
-            LOG_ERROR("Resource %d already exists", id);
+            LOG_ERROR("Resource {} already exists", id);
             return;
         }
 
@@ -432,7 +432,7 @@ namespace march
 
         if (resMap.find(id) != resMap.end())
         {
-            LOG_ERROR("Resource %d already exists", id);
+            LOG_ERROR("Resource {} already exists", id);
             return;
         }
 
@@ -463,7 +463,7 @@ namespace march
         {
             if (pass.ResourcesWritten.count(id) > 0)
             {
-                LOG_ERROR("Resource %d is both read and written in pass %s", id, pass.Name.c_str());
+                LOG_ERROR("Resource {} is both read and written in pass {}", id, pass.Name);
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -476,7 +476,7 @@ namespace march
             int32_t producerPassIndex = resIt->second.GetLastProducerPass();
             if (producerPassIndex < 0)
             {
-                LOG_ERROR("Failed to find producer pass for resource %d in pass %s", id, pass.Name.c_str());
+                LOG_ERROR("Failed to find producer pass for resource {} in pass {}", id, pass.Name);
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -499,7 +499,7 @@ namespace march
         {
             if (pass.ResourcesRead.count(id) > 0)
             {
-                LOG_ERROR("Resource %d is both read and written in pass %s", id, pass.Name.c_str());
+                LOG_ERROR("Resource {} is both read and written in pass {}", id, pass.Name);
                 return TextureHandle(m_Graph, -1);
             }
 

@@ -97,7 +97,7 @@ namespace march
 
         if (m_NextIndex >= 128)
         {
-            LOG_WARNING("Keyword count exceeds 128; '%s' is ignored!", keyword.c_str());
+            LOG_WARNING("Keyword count exceeds 128; '{}' is ignored!", keyword);
             return AddKeywordResult::OutOfSpace;
         }
 

@@ -3,9 +3,9 @@
 #include "Engine/Graphics/GfxDevice.h"
 #include "Engine/Graphics/GfxDescriptor.h"
 #include "Engine/Application.h"
-#include "Engine/StringUtils.h"
 #include <imgui.h>
 #include <stdint.h>
+#include <fmt/core.h>
 
 namespace march
 {
@@ -64,7 +64,7 @@ namespace march
         ImGui::Dummy(ImVec2(width, height));
 
         float descriptorUsage = descriptorCount / static_cast<float>(capacity) * 100;
-        std::string label1 = StringUtils::Format("Capacity: %d / %d (%.2f%% Used)", descriptorCount, static_cast<int>(capacity), descriptorUsage);
+        std::string label1 = fmt::format("Capacity: {} / {} ({:.2f}% Used)", descriptorCount, capacity, descriptorUsage);
         ImGui::TextUnformatted(label1.c_str());
 
         ImGui::TreePop();

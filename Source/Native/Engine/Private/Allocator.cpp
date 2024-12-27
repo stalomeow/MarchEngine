@@ -31,7 +31,7 @@ namespace march
 
             if (isNew)
             {
-                LOG_TRACE("%s creates new LARGE page; Size=%u", m_Name.c_str(), sizeInBytes);
+                LOG_TRACE("{} creates new LARGE page; Size={}", m_Name, sizeInBytes);
             }
             return 0;
         }
@@ -51,7 +51,7 @@ namespace march
 
             if (isNew)
             {
-                LOG_TRACE("%s creates new page; Size=%u", m_Name.c_str(), m_PageSize);
+                LOG_TRACE("{} creates new page; Size={}", m_Name, m_PageSize);
             }
         }
 
@@ -235,7 +235,7 @@ namespace march
 
     void MultiBuddyAllocator::AppendNewAllocator(uint32_t maxBlockSize)
     {
-        LOG_TRACE("%s creates new buddy allocator; MinBlockSize=%u; MaxBlockSize=%u", m_Name.c_str(), m_MinBlockSize, maxBlockSize);
+        LOG_TRACE("{} creates new buddy allocator; MinBlockSize={}; MaxBlockSize={}", m_Name, m_MinBlockSize, maxBlockSize);
         m_Allocators.emplace_back(std::make_unique<BuddyAllocator>(m_MinBlockSize, maxBlockSize));
     }
 }
