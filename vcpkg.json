@@ -16,6 +16,7 @@
         "win32-binding"
       ]
     },
-    "imguizmo"
+    "imguizmo",
+    "fmt"
   ]
 }

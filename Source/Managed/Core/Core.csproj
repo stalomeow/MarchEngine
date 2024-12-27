@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>$(SolutionDir)Build\ManagedOutput\Core\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(SolutionDir)Build\ManagedIntermediate\Core\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(SolutionDir)Build\Output\Managed\Core\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Build\Intermediate\Managed\Core\</BaseIntermediateOutputPath>
     <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 

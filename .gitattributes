@@ -1,6 +1,12 @@
 * text=auto
+
 Source/Managed/Editor/ShaderLab/Internal/** linguist-generated
 Runtime/** linguist-vendored
+
+*.h   linguist-language=cpp
+*.hpp linguist-language=cpp
+*.cpp linguist-language=cpp
+*.cxx linguist-language=cpp
 
 vcpkg.json   text eol=lf
 

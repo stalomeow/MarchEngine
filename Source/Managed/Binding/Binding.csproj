@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>$(SolutionDir)Build\ManagedOutput\Binding\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(SolutionDir)Build\ManagedIntermediate\Binding\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(SolutionDir)Build\Output\Managed\Binding\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Build\Intermediate\Managed\Binding\</BaseIntermediateOutputPath>
     <Configurations>Release</Configurations>
   </PropertyGroup>
 
