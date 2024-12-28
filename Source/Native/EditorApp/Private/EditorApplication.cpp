@@ -9,6 +9,7 @@
 #include "Engine/Graphics/GfxTexture.h"
 #include "Engine/Graphics/GfxSwapChain.h"
 #include "Engine/Graphics/Shader.h"
+#include "Engine/Graphics/ImGuiDX12.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Rendering/RenderPipeline.h"
 #include "Engine/Debug.h"
@@ -17,7 +18,6 @@
 #include "Engine/IconsFontAwesome6.h"
 #include "Engine/IconsFontAwesome6Brands.h"
 #include "Engine/Gizmos.h"
-#include "Engine/ImGuiDX12.h"
 #include <directx/d3dx12.h>
 #include <imgui.h>
 #include <imgui_impl_win32.h>

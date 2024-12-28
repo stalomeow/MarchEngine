@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/ImGuiDX12.h"
+#include "Engine/Graphics/ImGuiDX12.h"
 #include "Engine/Graphics/GfxPipelineState.h"
 #include "Engine/Graphics/GfxCommand.h"
 #include "Engine/Graphics/GfxTexture.h"
@@ -53,7 +53,7 @@ namespace march
 
             m_FontTexture = std::make_unique<GfxExternalTexture>(m_Device);
             m_FontTexture->LoadFromPixels("ImGuiFonts", desc, pixels, width * height * bytesPerPixel, 1);
-            io.Fonts->SetTexID(static_cast<ImTextureID>(m_FontTexture.get()));
+            io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_FontTexture.get()));
         }
 
         Material* GetMaterial()
@@ -334,7 +334,7 @@ namespace march
                             continue;
 
                         context->SetScissorRect({ (LONG)clipMin.x, (LONG)clipMin.y, (LONG)clipMax.x, (LONG)clipMax.y });
-                        context->SetTexture(textureId, static_cast<GfxTexture*>(cmd->GetTexID()));
+                        context->SetTexture(textureId, reinterpret_cast<GfxTexture*>(cmd->GetTexID()));
                         context->DrawMesh(mesh.GetSubMeshDesc(subMeshIndex), bd->GetMaterial(), 0);
                     }
                 }

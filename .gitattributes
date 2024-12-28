@@ -8,7 +8,12 @@ Runtime/** linguist-vendored
 *.cpp linguist-language=cpp
 *.cxx linguist-language=cpp
 
-vcpkg.json   text eol=lf
+vcpkg.json                                                     text eol=lf
+vcpkg-configuration.json                                       text eol=lf
+Resources/FontAwesome/LICENSE.txt                              text eol=lf
+Resources/Fonts/Inter-LICENSE.txt                              text eol=lf
+Source/Managed/Editor/ShaderLab/Internal/ShaderLab.interp      text eol=lf
+Source/Managed/Editor/ShaderLab/Internal/ShaderLabLexer.interp text eol=lf
 
 # https://github.com/gitattributes/gitattributes/blob/master/Global/VisualStudio.gitattributes
 

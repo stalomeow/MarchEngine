@@ -20,7 +20,7 @@ namespace march
         {
             ImGuiContext* context = ImGui::GetCurrentContext();
 
-            if ((context->NextItemData.Flags & ImGuiNextItemDataFlags_HasWidth) != ImGuiNextItemDataFlags_HasWidth)
+            if ((context->NextItemData.HasFlags & ImGuiNextItemDataFlags_HasWidth) != ImGuiNextItemDataFlags_HasWidth)
             {
                 ImGui::SetNextItemWidth(-1);
             }
@@ -527,7 +527,7 @@ namespace march
     {
         ImVec2 region = ImGui::GetContentRegionAvail();
         ImVec2 size = { region.x, static_cast<float>(texture->GetDesc().Height) / texture->GetDesc().Width * region.x };
-        ImGui::Image(static_cast<ImTextureID>(texture), size);
+        ImGui::Image(reinterpret_cast<ImTextureID>(texture), size);
     }
 
     bool EditorGUI::Button(const std::string& label)

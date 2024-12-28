@@ -14,7 +14,7 @@
     <ClInclude Include="Public\Engine\HashUtils.h" />
     <ClInclude Include="Public\Engine\IconsFontAwesome6.h" />
     <ClInclude Include="Public\Engine\IconsFontAwesome6Brands.h" />
-    <ClInclude Include="Public\Engine\ImGuiDX12.h" />
+    <ClInclude Include="Public\Engine\Graphics\ImGuiDX12.h" />
     <ClInclude Include="Public\Engine\Ints.h" />
     <ClInclude Include="Public\Engine\MathUtils.h" />
     <ClInclude Include="Public\Engine\PathUtils.h" />
@@ -58,7 +58,7 @@
     <ClCompile Include="Private\EngineTimer.cpp" />
     <ClCompile Include="Private\Gizmos.binding.cpp" />
     <ClCompile Include="Private\Gizmos.cpp" />
-    <ClCompile Include="Private\ImGuiDX12.cpp" />
+    <ClCompile Include="Private\Graphics\ImGuiDX12.cpp" />
     <ClCompile Include="Private\MathUtils.cpp" />
     <ClCompile Include="Private\PathUtils.cpp" />
     <ClCompile Include="Private\StringUtils.cpp" />
