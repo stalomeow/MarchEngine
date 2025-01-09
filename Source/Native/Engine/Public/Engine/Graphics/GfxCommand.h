@@ -210,8 +210,6 @@ namespace march
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxClearFlags);
 
-    
-
     // 不要跨帧使用
     class GfxCommandContext final
     {

@@ -46,6 +46,7 @@
     <ClInclude Include="Public\Engine\Graphics\RenderDoc.h" />
     <ClInclude Include="Public\Engine\Graphics\Shader.h" />
     <ClInclude Include="Internal\pch.h" />
+    <ClInclude Include="Public\Engine\JobManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Allocator.cpp" />
@@ -104,5 +105,7 @@
     <ClCompile Include="Private\Graphics\ShaderProgram.cpp" />
     <ClCompile Include="Private\Graphics\ShaderRootSignature.cpp" />
     <ClCompile Include="Private\pch.cpp" />
+    <ClCompile Include="Private\JobManager.cpp" />
+    <ClCompile Include="JobManager.binding.cpp" />
   </ItemGroup>
 </Project>

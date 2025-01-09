@@ -27,6 +27,8 @@ namespace march
         { ManagedMethod::AssetManager_NativeUnloadAsset           , { L"March.Core.AssetManager,March.Core"          , L"NativeUnloadAsset"      } },
         { ManagedMethod::Mesh_NativeGetGeometry                   , { L"March.Core.Rendering.Mesh,March.Core"        , L"NativeGetGeometry"      } },
         { ManagedMethod::Texture_NativeGetDefault                 , { L"March.Core.Rendering.Texture,March.Core"     , L"NativeGetDefault"       } },
+        { ManagedMethod::JobManager_NativeSchedule                , { L"March.Core.JobManager,March.Core"            , L"NativeSchedule"         } },
+        { ManagedMethod::JobManager_NativeComplete                , { L"March.Core.JobManager,March.Core"            , L"NativeComplete"         } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";

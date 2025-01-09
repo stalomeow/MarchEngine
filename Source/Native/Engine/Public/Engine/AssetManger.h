@@ -5,9 +5,8 @@
 
 namespace march
 {
-    class AssetManager final
+    struct AssetManager final
     {
-    public:
         static void* LoadAsset(const std::string& path);
         static void UnloadAsset(void* asset);
     };
