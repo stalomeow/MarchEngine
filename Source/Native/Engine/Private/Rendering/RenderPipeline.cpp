@@ -15,6 +15,7 @@
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
 #include "Engine/Gizmos.h"
+#include "Engine/MathUtils.h"
 #include <DirectXColors.h>
 #include <D3Dcompiler.h>
 #include <vector>
@@ -39,6 +40,8 @@ namespace march
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
         m_SkyboxMaterial.reset("Assets/skybox.mat");
+        m_ScreenSpaceShadowShader.reset("Engine/Shaders/ScreenSpaceShadow.shader");
+        m_ScreenSpaceShadowMaterial = std::make_unique<Material>(m_ScreenSpaceShadowShader.get());
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -68,13 +71,18 @@ namespace march
                 ImportTextures(colorTargetResolvedId, display->GetResolvedColorBuffer());
             }
 
-            DrawShadowCasters(Shader::GetNameId("ShadowMap"));
+            static int32 shadowMapId = Shader::GetNameId("_ShadowMap");
+            XMFLOAT4X4 shadowMatrix = DrawShadowCasters(shadowMapId);
 
             SetCameraGlobalConstantBuffer("CameraConstantBuffer", &m_CameraConstantBuffer, camera);
             SetLightGlobalConstantBuffer(Shader::GetNameId("cbLight"));
 
             ClearTargets(colorTargetId, depthStencilTargetId);
             DrawObjects(colorTargetId, depthStencilTargetId, camera->GetEnableWireframe());
+
+            static int32 screenSpaceShadowMapId = Shader::GetNameId("_ScreenSpaceShadowMap");
+            ScreenSpaceShadow(shadowMatrix, colorTargetId, shadowMapId, screenSpaceShadowMapId);
+
             DeferredLighting(colorTargetId, depthStencilTargetId);
 
             DrawSkybox(colorTargetId, depthStencilTargetId);
@@ -104,37 +112,39 @@ namespace march
         builder.ImportTexture(id, texture);
     }
 
-    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera)
+    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera)
     {
-        SetCameraGlobalConstantBuffer(passName, buffer, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
+        return SetCameraGlobalConstantBuffer(passName, buffer, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
     }
 
-    void RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
+    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
     {
         static int32_t bufferId = Shader::GetNameId("cbCamera");
 
         auto builder = m_RenderGraph->AddPass(passName);
 
+        XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
+        XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
+        XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
+
+        CameraConstants consts{};
+        XMStoreFloat4x4(&consts.ViewMatrix, view);
+        XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, view));
+        XMStoreFloat4x4(&consts.ProjectionMatrix, proj);
+        XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
+        XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
+        XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
+        consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
+
         builder.AllowPassCulling(false);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
-            XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
-            XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
-
-            CameraConstants consts{};
-            XMStoreFloat4x4(&consts.ViewMatrix, view);
-            XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, view));
-            XMStoreFloat4x4(&consts.ProjectionMatrix, proj);
-            XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
-            XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
-            XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
-            consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
-
             *buffer = GfxConstantBuffer<CameraConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
             buffer->SetData(0, &consts, sizeof(consts));
             context.SetBuffer(bufferId, buffer);
         });
+
+        return consts.ViewProjectionMatrix;
     }
 
     void RenderPipeline::SetLightGlobalConstantBuffer(int32_t id)
@@ -222,11 +232,11 @@ namespace march
         });
     }
 
-    void RenderPipeline::DrawShadowCasters(int32_t targetId)
+    XMFLOAT4X4 RenderPipeline::DrawShadowCasters(int32_t targetId)
     {
         if (m_Lights.empty() || m_Renderers.empty())
         {
-            return;
+            return MathUtils::Identity4x4();
         }
 
         BoundingBox aabb = m_Renderers[0]->GetBounds();
@@ -248,7 +258,7 @@ namespace march
 
         XMFLOAT4X4 proj = {};
         XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(sphere.Radius * 2, sphere.Radius * 2, sphere.Radius * 2 + 1.0f, 1.0f));
-        SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", &m_ShadowCameraConstantBuffer, pos, view, proj);
+        XMFLOAT4X4 viewProj = SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", &m_ShadowCameraConstantBuffer, pos, view, proj);
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 
@@ -273,6 +283,14 @@ namespace march
         {
             context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
         });
+
+        XMMATRIX vp = XMLoadFloat4x4(&viewProj);
+        XMMATRIX scale = XMMatrixScaling(0.5f, -0.5f, 1.0f);
+        XMMATRIX trans = XMMatrixTranslation(0.5f, 0.5f, 0.0f);
+
+        XMFLOAT4X4 shadowMatrix{};
+        XMStoreFloat4x4(&shadowMatrix, XMMatrixMultiply(XMMatrixMultiply(vp, scale), trans)); // DirectX 用的行向量
+        return shadowMatrix;
     }
 
     void RenderPipeline::DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId)
@@ -308,6 +326,61 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             context.ResolveTexture(source.Get(), destination.Get());
+        });
+    }
+
+    void RenderPipeline::ScreenSpaceShadow(const XMFLOAT4X4& shadowMatrix, int32_t cameraColorTargetId, int32_t shadowMapId, int32_t destinationId)
+    {
+        if (m_Lights.empty() || m_Renderers.empty())
+        {
+            return;
+        }
+
+        auto builder = m_RenderGraph->AddPass("ScreenSpaceShadow");
+
+        const GfxTextureDesc& cameraTargetDesc = builder.GetTextureDesc(cameraColorTargetId);
+
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R8_UNorm;
+        desc.Flags = GfxTextureFlags::None;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = cameraTargetDesc.Width;
+        desc.Height = cameraTargetDesc.Height;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Point;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0.0f;
+        builder.CreateTransientTexture(destinationId, desc);
+
+        int32_t numGBuffers = 0;
+        TextureHandle gBuffers[8];
+
+        for (auto& [id, format, sRGB] : m_GBuffers)
+        {
+            gBuffers[numGBuffers++] = builder.ReadTexture(id);
+        }
+
+        static int32_t bufferId = Shader::GetNameId("cbShadow");
+
+        TextureHandle shadowMap = builder.ReadTexture(shadowMapId);
+
+        builder.SetColorTarget(destinationId, false);
+        builder.AllowPassCulling(false);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            ShadowConstants consts{ shadowMatrix };
+            m_ShadowConstantBuffer = GfxConstantBuffer<ShadowConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
+            m_ShadowConstantBuffer.SetData(0, &consts, sizeof(consts));
+            context.SetBuffer(bufferId, &m_ShadowConstantBuffer);
+
+            for (int32_t i = 0; i < numGBuffers; i++)
+            {
+                context.SetTexture(gBuffers[i].Id(), gBuffers[i].Get());
+            }
+
+            context.SetTexture(shadowMapId, shadowMap.Get());
+            context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_ScreenSpaceShadowMaterial.get(), 0);
         });
     }
 }

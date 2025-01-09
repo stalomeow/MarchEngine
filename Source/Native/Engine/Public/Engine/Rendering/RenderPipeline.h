@@ -7,6 +7,7 @@
 #include "Engine/Graphics/Shader.h"
 #include "Engine/Graphics/GfxUtils.h"
 #include "Engine/AssetManger.h"
+#include "Engine/Ints.h"
 #include <vector>
 #include <memory>
 #include <stdint.h>
@@ -36,6 +37,11 @@ namespace march
     {
         LightData Lights[LightData::MaxCount];
         int32_t LightCount;
+    };
+
+    struct ShadowConstants
+    {
+        DirectX::XMFLOAT4X4 ShadowMatrix;
     };
 
     class RenderPipeline
@@ -71,16 +77,18 @@ namespace march
         }
 
         void ImportTextures(int32_t id, GfxRenderTexture* texture);
-        void SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera);
-        void SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
+        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera);
+        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         void SetLightGlobalConstantBuffer(int32_t id);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId);
-        void DrawShadowCasters(int32_t targetId);
+        DirectX::XMFLOAT4X4 DrawShadowCasters(int32_t targetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
         void DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId);
         void ResolveMSAA(int32_t sourceId, int32_t destinationId);
+
+        void ScreenSpaceShadow(const DirectX::XMFLOAT4X4& shadowMatrix, int32_t cameraColorTargetId, int32_t shadowMapId, int32_t destinationId);
 
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
@@ -89,10 +97,13 @@ namespace march
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
+        asset_ptr<Shader> m_ScreenSpaceShadowShader = nullptr;
+        std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
 
         GfxConstantBuffer<CameraConstants> m_CameraConstantBuffer{};
         GfxConstantBuffer<CameraConstants> m_ShadowCameraConstantBuffer{};
         GfxConstantBuffer<LightConstants> m_LightConstantBuffer{};
+        GfxConstantBuffer<ShadowConstants> m_ShadowConstantBuffer{};
 
     private:
         std::vector<MeshRenderer*> m_Renderers{};

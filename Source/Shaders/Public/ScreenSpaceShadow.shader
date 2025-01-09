@@ -1,22 +1,12 @@
-Shader "DeferredLight"
+Shader "ScreenSpaceShadow"
 {
     Pass
     {
-        Name "Lit"
+        Name "Shadow"
 
         Cull Off
         ZTest Always
         ZWrite Off
-
-        Stencil
-        {
-            Ref 1
-
-            Comp Equal
-            Pass Keep
-            Fail Keep
-            ZFail Keep
-        }
 
         HLSLPROGRAM
         #pragma target 6.0
@@ -25,7 +15,7 @@ Shader "DeferredLight"
 
         #include "Includes/Common.hlsl"
         #include "Includes/GBuffer.hlsl"
-        #include "Includes/Lighting.hlsl"
+        #include "Includes/Shadow.hlsl"
 
         struct Varyings
         {
@@ -47,10 +37,8 @@ Shader "DeferredLight"
             GBufferData gbuffer = LoadGBufferData(location);
 
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
-            float3 viewDirWS = normalize(_CameraPositionWS.xyz - positionWS);
-
-            float3 color = BlinnPhong(positionWS, gbuffer.normalWS, viewDirWS, gbuffer.albedo, gbuffer.fresnelR0, gbuffer.shininess);
-            return float4(color, 1.0);
+            float4 shadowCoord = TransformWorldToShadowCoord(positionWS);
+            return SampleShadowMap(shadowCoord);
         }
         ENDHLSL
     }

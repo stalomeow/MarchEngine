@@ -386,7 +386,7 @@ namespace March.Editor.AssetPipeline
 
                 if (isNewlyCreated)
                 {
-                    RegisterAssetImporterData(importer);
+                    RegisterAssetImporterData(importer, mode);
                     AddImporterEventHandlers(importer);
                 }
             }
@@ -435,6 +435,11 @@ namespace March.Editor.AssetPipeline
 
         private static void RegisterAssetImporterData(AssetImporter importer)
         {
+            RegisterAssetImporterData(importer, AssetReimportMode.FullCheck);
+        }
+
+        private static void RegisterAssetImporterData(AssetImporter importer, AssetReimportMode mode)
+        {
             using var guids = ListPool<string>.Get();
             importer.GetAssetGuids(guids);
 
@@ -465,7 +470,7 @@ namespace March.Editor.AssetPipeline
 
                 foreach (string d in myDependerList.Value)
                 {
-                    GetAssetImporter(d, AssetReimportMode.FullCheck);
+                    GetAssetImporter(d, mode);
                 }
             }
         }

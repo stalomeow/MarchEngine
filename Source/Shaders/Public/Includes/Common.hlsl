@@ -90,4 +90,16 @@ float4 GetFullScreenTriangleVertexPositionCS(uint vertexID, float z = MARCH_NEAR
     return float4(uv * 2.0 - 1.0, z, 1.0);
 }
 
+float3 ComputeWorldSpacePosition(float2 screenUV, float ndcDepth)
+{
+    // screen uv 原点在左上角，xy 范围是 [0, 1]，y 轴朝下
+    // ndc 原点在中心，xy 范围是 [-1, 1]，z 范围是 [0, 1]，y 轴朝上
+
+    float4 ndc = float4(screenUV.x, 1 - screenUV.y, ndcDepth, 1);
+    ndc.xy = ndc.xy * 2 - 1;
+
+    float4 positionWS = mul(_MatrixInvViewProjection, ndc);
+    return positionWS.xyz / positionWS.w;
+}
+
 #endif

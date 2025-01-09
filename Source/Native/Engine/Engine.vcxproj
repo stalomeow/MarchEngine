@@ -59,7 +59,7 @@
     <ClInclude Include="ThirdParty\renderdoc_app.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="JobManager.binding.cpp" />
+    <ClCompile Include="Private\JobManager.binding.cpp" />
     <ClCompile Include="Private\Allocator.cpp" />
     <ClCompile Include="Private\Application.binding.cpp" />
     <ClCompile Include="Private\Application.cpp" />

@@ -106,6 +106,6 @@
     <ClCompile Include="Private\Graphics\ShaderRootSignature.cpp" />
     <ClCompile Include="Private\pch.cpp" />
     <ClCompile Include="Private\JobManager.cpp" />
-    <ClCompile Include="JobManager.binding.cpp" />
+    <ClCompile Include="Private\JobManager.binding.cpp" />
   </ItemGroup>
 </Project>
