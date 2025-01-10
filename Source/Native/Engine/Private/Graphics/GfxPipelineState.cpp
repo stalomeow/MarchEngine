@@ -112,6 +112,9 @@ namespace march
         , DSVFormat(DXGI_FORMAT_UNKNOWN)
         , SampleCount(1)
         , SampleQuality(0)
+        , DepthBias(D3D12_DEFAULT_DEPTH_BIAS)
+        , DepthBiasClamp(D3D12_DEFAULT_DEPTH_BIAS_CLAMP)
+        , SlopeScaledDepthBias(D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS)
         , Wireframe(false)
         , m_IsDirty(true)
         , m_Hash(0)
@@ -132,6 +135,9 @@ namespace march
             hash.Append(DSVFormat);
             hash.Append(SampleCount);
             hash.Append(SampleQuality);
+            hash.Append(DepthBias);
+            hash.Append(DepthBiasClamp);
+            hash.Append(SlopeScaledDepthBias);
             hash.Append(Wireframe);
 
             m_Hash = *hash;
@@ -230,7 +236,19 @@ namespace march
         }
     }
 
-    static inline void ApplyReversedZBuffer(D3D12_DEPTH_STENCIL_DESC& depthStencil)
+    static __forceinline void ApplyReversedZBuffer(D3D12_RASTERIZER_DESC& raster)
+    {
+        if constexpr (!GfxSettings::UseReversedZBuffer)
+        {
+            return;
+        }
+
+        raster.DepthBias = -raster.DepthBias;
+        raster.DepthBiasClamp = -raster.DepthBiasClamp;
+        raster.SlopeScaledDepthBias = -raster.SlopeScaledDepthBias;
+    }
+
+    static __forceinline void ApplyReversedZBuffer(D3D12_DEPTH_STENCIL_DESC& depthStencil)
     {
         if constexpr (!GfxSettings::UseReversedZBuffer)
         {
@@ -315,6 +333,10 @@ namespace march
             psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
             psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(rs.Cull.Value) + 1);
             psoDesc.RasterizerState.FillMode = outputDesc.Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
+            psoDesc.RasterizerState.DepthBias = static_cast<INT>(outputDesc.DepthBias);
+            psoDesc.RasterizerState.DepthBiasClamp = outputDesc.DepthBiasClamp;
+            psoDesc.RasterizerState.SlopeScaledDepthBias = outputDesc.SlopeScaledDepthBias;
+            ApplyReversedZBuffer(psoDesc.RasterizerState);
 
             psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
             psoDesc.DepthStencilState.DepthEnable = rs.DepthState.Enable;

@@ -40,6 +40,10 @@ namespace march
         , CustomViewport{}
         , HasCustomScissorRect(false)
         , CustomScissorRect{}
+        , HashCustomDepthBias(false)
+        , DepthBias(D3D12_DEFAULT_DEPTH_BIAS)
+        , DepthBiasClamp(D3D12_DEFAULT_DEPTH_BIAS_CLAMP)
+        , SlopeScaledDepthBias(D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS)
         , Wireframe(false)
         , SortState(RenderGraphPassSortState::None)
         , NextPasses{}
@@ -140,6 +144,15 @@ namespace march
             {
                 SetPassRenderTargets(context.GetCommandContext(), pass);
                 context.GetCommandContext()->SetWireframe(pass.Wireframe);
+
+                if (pass.HashCustomDepthBias)
+                {
+                    context.GetCommandContext()->SetDepthBias(pass.DepthBias, pass.SlopeScaledDepthBias, pass.DepthBiasClamp);
+                }
+                else
+                {
+                    context.GetCommandContext()->SetDefaultDepthBias();
+                }
 
                 if (pass.RenderFunc)
                 {
@@ -634,6 +647,16 @@ namespace march
         pass.CustomScissorRect.top = static_cast<LONG>(top);
         pass.CustomScissorRect.right = static_cast<LONG>(right);
         pass.CustomScissorRect.bottom = static_cast<LONG>(bottom);
+    }
+
+    void RenderGraphBuilder::SetDepthBias(int32_t bias, float slopeScaledBias, float clamp)
+    {
+        RenderGraphPass& pass = GetPass();
+
+        pass.HashCustomDepthBias = true;
+        pass.DepthBias = bias;
+        pass.DepthBiasClamp = clamp;
+        pass.SlopeScaledDepthBias = slopeScaledBias;
     }
 
     void RenderGraphBuilder::SetWireframe(bool value)

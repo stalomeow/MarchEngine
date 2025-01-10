@@ -83,7 +83,7 @@ namespace march
             static int32 screenSpaceShadowMapId = Shader::GetNameId("_ScreenSpaceShadowMap");
             ScreenSpaceShadow(shadowMatrix, colorTargetId, shadowMapId, screenSpaceShadowMapId);
 
-            DeferredLighting(colorTargetId, depthStencilTargetId);
+            DeferredLighting(colorTargetId, depthStencilTargetId, screenSpaceShadowMapId);
 
             DrawSkybox(colorTargetId, depthStencilTargetId);
 
@@ -207,7 +207,7 @@ namespace march
         });
     }
 
-    void RenderPipeline::DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId)
+    void RenderPipeline::DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId, int32 screenSpaceShadowMapId)
     {
         auto builder = m_RenderGraph->AddPass("DeferredLighting");
 
@@ -219,6 +219,14 @@ namespace march
             gBuffers[numGBuffers++] = builder.ReadTexture(id);
         }
 
+        bool hasShadow = !m_Lights.empty() && !m_Renderers.empty();
+        TextureHandle shadowMap;
+
+        if (hasShadow)
+        {
+            shadowMap = builder.ReadTexture(screenSpaceShadowMapId);
+        }
+
         builder.SetColorTarget(colorTargetId);
         builder.SetDepthStencilTarget(depthStencilTargetId);
         builder.SetRenderFunc([=](RenderGraphContext& context)
@@ -226,6 +234,11 @@ namespace march
             for (int32_t i = 0; i < numGBuffers; i++)
             {
                 context.SetTexture(gBuffers[i].Id(), gBuffers[i].Get());
+            }
+
+            if (hasShadow)
+            {
+                context.SetTexture(shadowMap.Id(), shadowMap.Get());
             }
 
             context.DrawMesh(m_FullScreenTriangleMesh, 0, m_DeferredLitMaterial.get(), 0);
@@ -274,9 +287,9 @@ namespace march
         desc.Wrap = GfxTextureWrapMode::Clamp;
         desc.MipmapBias = 0.0f;
 
-        builder.AllowPassCulling(false);
         builder.CreateTransientTexture(targetId, desc);
         builder.SetDepthStencilTarget(targetId);
+        builder.SetDepthBias(10000, 10.0f);
         builder.ClearRenderTargets(GfxClearFlags::DepthStencil);
 
         builder.SetRenderFunc([=](RenderGraphContext& context)

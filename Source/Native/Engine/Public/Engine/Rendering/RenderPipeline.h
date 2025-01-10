@@ -81,7 +81,7 @@ namespace march
         DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         void SetLightGlobalConstantBuffer(int32_t id);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
-        void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId);
+        void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId, int32 screenSpaceShadowMapId);
         DirectX::XMFLOAT4X4 DrawShadowCasters(int32_t targetId);
         void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);

@@ -58,23 +58,31 @@ namespace march
                     continue;
                 }
 
-                node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i].Id) + " (T)");
-                tempData.OutputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size() - 1);
+                tempData.OutputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
 
                 if (pass.ColorTargets[i].Load)
                 {
-                    tempData.InputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size() - 1);
+                    tempData.InputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
+                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i].Id) + " (RW)");
+                }
+                else
+                {
+                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i].Id) + " (W)");
                 }
             }
 
             if (pass.DepthStencilTarget.IsSet)
             {
-                node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget.Id) + " (T)");
-                tempData.OutputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size() - 1);
+                tempData.OutputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
 
                 if (pass.DepthStencilTarget.Load)
                 {
-                    tempData.InputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size() - 1);
+                    tempData.InputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
+                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget.Id) + " (RW)");
+                }
+                else
+                {
+                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget.Id) + " (W)");
                 }
             }
 
@@ -106,7 +114,7 @@ namespace march
                     if (auto it = dstData.InputIndexMap.find(kv.first); it != dstData.InputIndexMap.end())
                     {
                         m_Links.emplace_back(srcData.NodeIndex, kv.second, dstData.NodeIndex, it->second);
-                        break;
+                        //break;
                     }
                 }
             }

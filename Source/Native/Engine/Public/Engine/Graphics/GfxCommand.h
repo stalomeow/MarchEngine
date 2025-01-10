@@ -243,6 +243,8 @@ namespace march
         void SetScissorRects(uint32_t numRects, const D3D12_RECT* rects);
         void SetDefaultViewport();
         void SetDefaultScissorRect();
+        void SetDepthBias(int32_t bias, float slopeScaledBias, float clamp);
+        void SetDefaultDepthBias();
         void SetWireframe(bool value);
 
         void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex);

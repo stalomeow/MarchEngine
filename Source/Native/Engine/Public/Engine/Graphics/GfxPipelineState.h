@@ -82,6 +82,10 @@ namespace march
         uint32_t SampleCount;
         uint32_t SampleQuality;
 
+        int32_t DepthBias;
+        float DepthBiasClamp;
+        float SlopeScaledDepthBias;
+
         bool Wireframe;
 
     private:

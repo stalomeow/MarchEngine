@@ -422,6 +422,22 @@ namespace march
         SetScissorRect(rect);
     }
 
+    void GfxCommandContext::SetDepthBias(int32_t bias, float slopeScaledBias, float clamp)
+    {
+        if (m_OutputDesc.DepthBias != bias || m_OutputDesc.SlopeScaledDepthBias != slopeScaledBias || m_OutputDesc.DepthBiasClamp != clamp)
+        {
+            m_OutputDesc.DepthBias = bias;
+            m_OutputDesc.SlopeScaledDepthBias = slopeScaledBias;
+            m_OutputDesc.DepthBiasClamp = clamp;
+            m_OutputDesc.MarkDirty();
+        }
+    }
+
+    void GfxCommandContext::SetDefaultDepthBias()
+    {
+        SetDepthBias(D3D12_DEFAULT_DEPTH_BIAS, D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS, D3D12_DEFAULT_DEPTH_BIAS_CLAMP);
+    }
+
     void GfxCommandContext::SetWireframe(bool value)
     {
         if (m_OutputDesc.Wireframe != value)
