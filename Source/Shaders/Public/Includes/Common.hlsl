@@ -1,11 +1,6 @@
 #ifndef _COMMON_INCLUDED
 #define _COMMON_INCLUDED
 
-// 内置宏
-// MARCH_REVERSED_Z         在开启 Reversed-Z Buffer 时定义
-// MARCH_NEAR_CLIP_VALUE    近裁剪平面的深度
-// MARCH_FAR_CLIP_VALUE     远裁剪平面的深度
-
 #include "Sampler.hlsl"
 
 struct InstanceData

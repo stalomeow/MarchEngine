@@ -1,9 +1,6 @@
 #ifndef _COLOR_SPACE_INCLUDED
 #define _COLOR_SPACE_INCLUDED
 
-// 内置宏
-// MARCH_COLORSPACE_GAMMA 在使用 Gamma (sRGB) 颜色空间时定义
-
 // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/ColorSpaceUtility.hlsli
 
 float3 LinearToSRGB(float3 x)

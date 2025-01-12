@@ -12,6 +12,7 @@
 #include "Engine/Graphics/Material.h"
 #include "Engine/Graphics/Display.h"
 #include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Graphics/GfxSettings.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
 #include "Engine/Gizmos.h"
@@ -289,7 +290,7 @@ namespace march
 
         builder.CreateTransientTexture(targetId, desc);
         builder.SetDepthStencilTarget(targetId);
-        builder.SetDepthBias(10000, 10.0f);
+        builder.SetDepthBias(GfxSettings::ShadowDepthBias, GfxSettings::ShadowSlopeScaledDepthBias, GfxSettings::ShadowDepthBiasClamp);
         builder.ClearRenderTargets(GfxClearFlags::DepthStencil);
 
         builder.SetRenderFunc([=](RenderGraphContext& context)

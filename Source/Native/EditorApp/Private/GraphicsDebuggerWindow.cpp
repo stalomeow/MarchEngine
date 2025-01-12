@@ -25,6 +25,10 @@ namespace march
             {
                 EditorGUI::LabelField("Color Space", "", "Unknown");
             }
+
+            EditorGUI::IntField("Shadow Depth Bias", "", &GfxSettings::ShadowDepthBias);
+            EditorGUI::FloatField("Shadow Slope Bias", "", &GfxSettings::ShadowSlopeScaledDepthBias);
+            EditorGUI::FloatField("Shadow Bias Clamp", "", &GfxSettings::ShadowDepthBiasClamp);
         }
 
         EditorGUI::Space();
