@@ -34,5 +34,6 @@
     <ClInclude Include="Internal\Editor\RenderGraphDebuggerWindow.h" />
     <ClInclude Include="Internal\Editor\SceneWindow.h" />
     <ClInclude Include="Internal\pch.h" />
+    <ClInclude Include="ThirdParty\imoguizmo.hpp" />
   </ItemGroup>
 </Project>

@@ -102,7 +102,8 @@ namespace March.Editor.Windows
 
             try
             {
-                if (Begin())
+                // Begin 可能修改 IsOpen 的值
+                if (Begin() && IsOpen)
                 {
                     OnDraw();
                 }

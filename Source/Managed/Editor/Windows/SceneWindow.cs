@@ -204,9 +204,9 @@ namespace March.Editor.Windows
             if (WindowMode == SceneWindowMode.SceneView)
             {
                 DrawScene();
-                TravelScene();
                 DrawGizmosGUI();
                 ManipulateTransform();
+                TravelScene();
                 HandleDragDrop();
             }
             else

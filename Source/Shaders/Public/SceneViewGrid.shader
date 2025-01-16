@@ -2,9 +2,9 @@ Shader "SceneViewGrid"
 {
     Properties
     {
-        _XAxisColor("X Axis Color", Color) = (0.5, 0.0, 0.0, 0.5)
-        _ZAxisColor("Z Axis Color", Color) = (0.0, 0.0, 0.5, 0.5)
-        _LineColor("Line Color", Color) = (0.3, 0.3, 0.3, 0.4)
+        _XAxisColor("X Axis Color", Color) = (0.5, 0.0, 0.0, 0.7)
+        _ZAxisColor("Z Axis Color", Color) = (0.0, 0.0, 0.5, 0.7)
+        _LineColor("Line Color", Color) = (0.3, 0.3, 0.3, 0.6)
         [Range(0, 1)] _Antialiasing("Anti-aliasing", Float) = 0.5
         [Range(0, 1)] _FadeOut("Fade Out", Float) = 0.8
     }

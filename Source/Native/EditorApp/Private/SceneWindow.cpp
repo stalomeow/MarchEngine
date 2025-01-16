@@ -12,6 +12,7 @@
 #include "Engine/Gizmos.h"
 #include <stdint.h>
 #include <ImGuizmo.h>
+#include <imoguizmo.hpp>
 #include <string>
 
 using namespace DirectX;
@@ -136,116 +137,154 @@ namespace march
 
     void SceneWindow::TravelScene(XMFLOAT3& cameraPosition, XMFLOAT4& cameraRotation)
     {
+        XMVECTOR cameraPos = XMLoadFloat3(&cameraPosition);
+        XMVECTOR cameraRot = XMLoadFloat4(&cameraRotation);
+        XMMATRIX viewMat = XMMatrixInverse(nullptr, XMMatrixMultiply(XMMatrixRotationQuaternion(cameraRot), XMMatrixTranslationFromVector(cameraPos)));
+
+        // Ref: https://github.com/fknfilewalker/imoguizmo
+        // it is recommended to use a separate projection matrix since the values that work best
+        // can be very different from what works well with normal renderings
+        // e.g., with glm -> glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
+        XMMATRIX projMat = XMMatrixPerspectiveFovLH(XMConvertToRadians(90), 1.0f, 0.1f, 1000.0f);
+
+        XMFLOAT4X4 viewMatrix{};
+        XMStoreFloat4x4(&viewMatrix, viewMat);
+
+        XMFLOAT4X4 projMatrix{};
+        XMStoreFloat4x4(&projMatrix, projMat);
+
+        const float axisGizmoSize = 120.0f;
+        const float axisGizmoMargin = 10.0f;
+        const float dpiScale = GetApp()->GetDisplayScale();
+        const ImRect rect = GetSceneViewImageRect();
+
+        ImOGuizmo::SetRect(rect.Max.x - axisGizmoSize - axisGizmoMargin, rect.Min.y + axisGizmoMargin, axisGizmoSize);
+        ImOGuizmo::config.lineThicknessScale = 0.017f * dpiScale;
+        ImOGuizmo::config.positiveRadiusScale = 0.075f * dpiScale;
+        ImOGuizmo::config.negativeRadiusScale = 0.05f * dpiScale;
+        ImOGuizmo::config.hoverCircleRadiusScale = 0.88f * dpiScale;
+        bool isViewChangedByGizmo = ImOGuizmo::DrawGizmo(
+            reinterpret_cast<float*>(viewMatrix.m),
+            reinterpret_cast<const float*>(projMatrix.m),
+            10.0f);
+
         if (!AllowTravellingScene())
         {
             return;
         }
 
-        XMVECTOR cameraPos = XMLoadFloat3(&cameraPosition);
-        XMVECTOR cameraRot = XMLoadFloat4(&cameraRotation);
-
-        float mouseDeltaX = ImGui::GetIO().MouseDelta.x * m_MouseSensitivity;
-        float mouseDeltaY = ImGui::GetIO().MouseDelta.y * m_MouseSensitivity;
-        float mouseWheel = ImGui::GetIO().MouseWheel * m_MouseSensitivity;
-        float deltaTime = GetApp()->GetDeltaTime();
-
-        bool isRotating = false;
-
-        // Rotate
-        if (IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Right))
+        if (isViewChangedByGizmo)
         {
-            isRotating = true;
-            float rotateSpeed = XMConvertToRadians(m_RotateDegSpeed);
+            viewMat = XMLoadFloat4x4(&viewMatrix);
 
-            // 绕本地空间 X 轴旋转，再绕世界空间 Y 轴旋转
-            XMVECTOR rotX = XMQuaternionRotationRollPitchYaw(mouseDeltaY * rotateSpeed, 0, 0);
-            XMVECTOR rotY = XMQuaternionRotationRollPitchYaw(0, mouseDeltaX * rotateSpeed, 0);
-            cameraRot = XMQuaternionMultiply(XMQuaternionMultiply(rotX, cameraRot), rotY);
-        }
-
-        // 必须在 Rotate 之后计算方向
-        XMVECTOR cameraForward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), cameraRot);
-        XMVECTOR cameraRight = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), cameraRot);
-        XMVECTOR cameraUp = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), cameraRot);
-
-        bool isSceneViewImageHovered = IsSceneViewImageHovered();
-
-        // Move
-        if (isRotating || (isSceneViewImageHovered && ImGui::IsMouseDown(ImGuiMouseButton_Right)))
-        {
-            float translation = (ImGui::IsKeyDown(ImGuiMod_Shift) ? m_FastMoveSpeed : m_NormalMoveSpeed) * deltaTime;
-
-            if (ImGui::IsKeyDown(ImGuiKey_W))
-            {
-                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, translation));
-            }
-
-            if (ImGui::IsKeyDown(ImGuiKey_S))
-            {
-                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, -translation));
-            }
-
-            if (ImGui::IsKeyDown(ImGuiKey_D))
-            {
-                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, translation));
-            }
-
-            if (ImGui::IsKeyDown(ImGuiKey_A))
-            {
-                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -translation));
-            }
-
-            if (ImGui::IsKeyDown(ImGuiKey_E))
-            {
-                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, translation));
-            }
-
-            if (ImGui::IsKeyDown(ImGuiKey_Q))
-            {
-                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, -translation));
-            }
+            XMVECTOR tempScale{};
+            XMMatrixDecompose(&tempScale, &cameraRot, &cameraPos, XMMatrixInverse(nullptr, viewMat));
         }
         else
         {
-            if (ImGui::IsKeyPressed(ImGuiKey_Q, false))
+            float mouseDeltaX = ImGui::GetIO().MouseDelta.x * m_MouseSensitivity;
+            float mouseDeltaY = ImGui::GetIO().MouseDelta.y * m_MouseSensitivity;
+            float mouseWheel = ImGui::GetIO().MouseWheel * m_MouseSensitivity;
+            float deltaTime = GetApp()->GetDeltaTime();
+
+            bool isRotating = false;
+
+            // Rotate
+            if (IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Right))
             {
-                m_GizmoOperation = SceneGizmoOperation::Pan;
+                isRotating = true;
+                float rotateSpeed = XMConvertToRadians(m_RotateDegSpeed);
+
+                // 绕本地空间 X 轴旋转，再绕世界空间 Y 轴旋转
+                XMVECTOR rotX = XMQuaternionRotationRollPitchYaw(mouseDeltaY * rotateSpeed, 0, 0);
+                XMVECTOR rotY = XMQuaternionRotationRollPitchYaw(0, mouseDeltaX * rotateSpeed, 0);
+                cameraRot = XMQuaternionMultiply(XMQuaternionMultiply(rotX, cameraRot), rotY);
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_W, false))
+            // 必须在 Rotate 之后计算方向
+            XMVECTOR cameraForward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), cameraRot);
+            XMVECTOR cameraRight = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), cameraRot);
+            XMVECTOR cameraUp = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), cameraRot);
+
+            bool isSceneViewImageHovered = IsSceneViewImageHovered();
+
+            // Move
+            if (isRotating || (isSceneViewImageHovered && ImGui::IsMouseDown(ImGuiMouseButton_Right)))
             {
-                m_GizmoOperation = SceneGizmoOperation::Translate;
+                float translation = (ImGui::IsKeyDown(ImGuiMod_Shift) ? m_FastMoveSpeed : m_NormalMoveSpeed) * deltaTime;
+
+                if (ImGui::IsKeyDown(ImGuiKey_W))
+                {
+                    cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, translation));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_S))
+                {
+                    cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, -translation));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_D))
+                {
+                    cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, translation));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_A))
+                {
+                    cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -translation));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_E))
+                {
+                    cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, translation));
+                }
+
+                if (ImGui::IsKeyDown(ImGuiKey_Q))
+                {
+                    cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, -translation));
+                }
+            }
+            else
+            {
+                if (ImGui::IsKeyPressed(ImGuiKey_Q, false))
+                {
+                    m_GizmoOperation = SceneGizmoOperation::Pan;
+                }
+
+                if (ImGui::IsKeyPressed(ImGuiKey_W, false))
+                {
+                    m_GizmoOperation = SceneGizmoOperation::Translate;
+                }
+
+                if (ImGui::IsKeyPressed(ImGuiKey_E, false))
+                {
+                    m_GizmoOperation = SceneGizmoOperation::Rotate;
+                }
+
+                if (ImGui::IsKeyPressed(ImGuiKey_R, false))
+                {
+                    m_GizmoOperation = SceneGizmoOperation::Scale;
+                }
+
+                if (ImGui::IsKeyPressed(ImGuiKey_X, false))
+                {
+                    m_GizmoMode = (m_GizmoMode == SceneGizmoMode::Local) ?
+                        SceneGizmoMode::World : SceneGizmoMode::Local;
+                }
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_E, false))
+            // Zoom
+            if (isSceneViewImageHovered)
             {
-                m_GizmoOperation = SceneGizmoOperation::Rotate;
+                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_R, false))
+            // Pan
+            if (IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Middle) ||
+                (m_GizmoOperation == SceneGizmoOperation::Pan && IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Left)))
             {
-                m_GizmoOperation = SceneGizmoOperation::Scale;
+                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -mouseDeltaX * m_PanSpeed));
+                cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, mouseDeltaY * m_PanSpeed));
             }
-
-            if (ImGui::IsKeyPressed(ImGuiKey_X, false))
-            {
-                m_GizmoMode = (m_GizmoMode == SceneGizmoMode::Local) ?
-                    SceneGizmoMode::World : SceneGizmoMode::Local;
-            }
-        }
-
-        // Zoom
-        if (isSceneViewImageHovered)
-        {
-            cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraForward, mouseWheel * m_ZoomSpeed));
-        }
-
-        // Pan
-        if (IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Middle) ||
-            (m_GizmoOperation == SceneGizmoOperation::Pan && IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton_Left)))
-        {
-            cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraRight, -mouseDeltaX * m_PanSpeed));
-            cameraPos = XMVectorAdd(cameraPos, XMVectorScale(cameraUp, mouseDeltaY * m_PanSpeed));
         }
 
         XMStoreFloat3(&cameraPosition, cameraPos);
