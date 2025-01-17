@@ -105,7 +105,7 @@ namespace march
 
             GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
             context->CopyBuffer(&tempUpload, 0, this, destOffset, sizeInBytes);
-            context->TransitionResource(GetResource().get(), currentState);
+            context->TransitionResource(GetResource().Get(), currentState);
             context->SubmitAndRelease().WaitOnCpu();
         }
     }

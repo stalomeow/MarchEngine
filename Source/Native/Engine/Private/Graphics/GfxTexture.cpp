@@ -753,7 +753,7 @@ namespace march
         GfxUtils::SetName(resource.Get(), m_Name);
 
         // CreateTextureEx 使用 D3D12_RESOURCE_STATE_COMMON
-        Reset(desc, std::make_shared<GfxResource>(device, resource, D3D12_RESOURCE_STATE_COMMON));
+        Reset(desc, MARCH_MAKE_REF(GfxResource, device, resource, D3D12_RESOURCE_STATE_COMMON));
 
         std::vector<D3D12_SUBRESOURCE_DATA> subresources{};
         GFX_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
@@ -871,6 +871,6 @@ namespace march
             throw GfxException("Invalid resource dimension");
         }
 
-        Reset(desc, std::make_shared<GfxResource>(device, resource, resDesc.State));
+        Reset(desc, MARCH_MAKE_REF(GfxResource, device, resource, resDesc.State));
     }
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include "Engine/Graphics/GfxDescriptor.h"
 #include "Engine/Graphics/GfxPipelineState.h"
 #include "Engine/Graphics/GfxBuffer.h"
@@ -290,7 +291,7 @@ namespace march
 
         GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[ShaderProgram::NumTypes];
         GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[ShaderProgram::NumTypes];
-        std::unordered_map<std::shared_ptr<GfxResource>, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
+        std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
@@ -328,9 +329,9 @@ namespace march
 
         ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex);
 
-        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer);
-        void SetGraphicsSrv(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
-        void SetGraphicsUav(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer);
+        void SetGraphicsSrv(ShaderProgramType type, uint32_t index, RefCountPtr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
+        void SetGraphicsUav(ShaderProgramType type, uint32_t index, RefCountPtr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
         void SetGraphicsSampler(ShaderProgramType type, uint32_t index, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor);
         void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex);
         void SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature);
@@ -342,8 +343,8 @@ namespace march
         void SetStencilRef(uint8_t value);
 
         void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value);
-        void SetVertexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_VERTEX_BUFFER_VIEW& value);
-        void SetIndexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_INDEX_BUFFER_VIEW& value);
+        void SetVertexBuffer(RefCountPtr<GfxResource> resource, const D3D12_VERTEX_BUFFER_VIEW& value);
+        void SetIndexBuffer(RefCountPtr<GfxResource> resource, const D3D12_INDEX_BUFFER_VIEW& value);
         void SetInstanceBuffer(uint32_t numInstances, const InstanceData* instances);
         void DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount);
 

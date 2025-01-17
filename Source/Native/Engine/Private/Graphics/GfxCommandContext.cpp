@@ -257,7 +257,7 @@ namespace march
             if (i < numColorTargets)
             {
                 GfxRenderTexture* target = colorTargets[i];
-                TransitionResource(target->GetResource().get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+                TransitionResource(target->GetResource().Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
 
                 rtv[i] = target->GetRtvDsv();
 
@@ -275,7 +275,7 @@ namespace march
 
         if (m_DepthStencilTarget = depthStencilTarget)
         {
-            TransitionResource(depthStencilTarget->GetResource().get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            TransitionResource(depthStencilTarget->GetResource().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
             m_OutputDesc.DSVFormat = depthStencilTarget->GetDesc().GetRtvDsvDXGIFormat();
             m_OutputDesc.SampleCount = depthStencilTarget->GetSampleCount();
@@ -301,7 +301,7 @@ namespace march
 
             for (uint32_t i = 0; i < m_OutputDesc.NumRTV; i++)
             {
-                TransitionResource(m_ColorTargets[i]->GetResource().get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+                TransitionResource(m_ColorTargets[i]->GetResource().Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
             }
         }
 
@@ -321,7 +321,7 @@ namespace march
 
             if (clearDepthStencil != 0)
             {
-                TransitionResource(m_DepthStencilTarget->GetResource().get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                TransitionResource(m_DepthStencilTarget->GetResource().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
             }
         }
 
@@ -500,7 +500,7 @@ namespace march
         return GfxPipelineState::GetGraphicsPSO(material, passIndex, inputDesc, m_OutputDesc);
     }
 
-    void GfxCommandContext::SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer)
+    void GfxCommandContext::SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxResource> resource, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer)
     {
         m_GraphicsSrvCbvBufferCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), address, isConstantBuffer);
 
@@ -518,7 +518,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetGraphicsSrv(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    void GfxCommandContext::SetGraphicsSrv(ShaderProgramType type, uint32_t index, RefCountPtr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
     {
         m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
 
@@ -533,7 +533,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetGraphicsUav(ShaderProgramType type, uint32_t index, std::shared_ptr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
+    void GfxCommandContext::SetGraphicsUav(ShaderProgramType type, uint32_t index, RefCountPtr<GfxResource> resource, D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor)
     {
         m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
 
@@ -833,7 +833,7 @@ namespace march
     {
         for (const auto& [resource, state] : m_GraphicsViewResourceRequiredStates)
         {
-            TransitionResource(resource.get(), state);
+            TransitionResource(resource.Get(), state);
         }
 
         m_GraphicsViewResourceRequiredStates.clear();
@@ -884,9 +884,9 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetVertexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_VERTEX_BUFFER_VIEW& value)
+    void GfxCommandContext::SetVertexBuffer(RefCountPtr<GfxResource> resource, const D3D12_VERTEX_BUFFER_VIEW& value)
     {
-        TransitionResource(resource.get(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+        TransitionResource(resource.Get(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
         if (m_CurrentVertexBuffer.BufferLocation != value.BufferLocation ||
             m_CurrentVertexBuffer.SizeInBytes != value.SizeInBytes ||
@@ -897,9 +897,9 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetIndexBuffer(std::shared_ptr<GfxResource> resource, const D3D12_INDEX_BUFFER_VIEW& value)
+    void GfxCommandContext::SetIndexBuffer(RefCountPtr<GfxResource> resource, const D3D12_INDEX_BUFFER_VIEW& value)
     {
-        TransitionResource(resource.get(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
+        TransitionResource(resource.Get(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
         if (m_CurrentIndexBuffer.BufferLocation != value.BufferLocation ||
             m_CurrentIndexBuffer.SizeInBytes != value.SizeInBytes ||
@@ -1050,8 +1050,8 @@ namespace march
 
     void GfxCommandContext::ResolveTexture(GfxTexture* source, GfxTexture* destination)
     {
-        TransitionResource(source->GetResource().get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-        TransitionResource(destination->GetResource().get(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
+        TransitionResource(source->GetResource().Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+        TransitionResource(destination->GetResource().Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
         FlushResourceBarriers();
 
         m_CommandList->ResolveSubresource(
@@ -1062,8 +1062,8 @@ namespace march
 
     void GfxCommandContext::CopyBuffer(GfxBuffer* source, uint32_t sourceOffset, GfxBuffer* destination, uint32_t destinationOffset, uint32_t sizeInBytes)
     {
-        TransitionResource(source->GetResource().get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
-        TransitionResource(destination->GetResource().get(), D3D12_RESOURCE_STATE_COPY_DEST);
+        TransitionResource(source->GetResource().Get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+        TransitionResource(destination->GetResource().Get(), D3D12_RESOURCE_STATE_COPY_DEST);
         FlushResourceBarriers();
 
         m_CommandList->CopyBufferRegion(

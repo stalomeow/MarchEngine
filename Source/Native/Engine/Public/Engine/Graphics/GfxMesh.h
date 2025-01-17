@@ -25,10 +25,10 @@ namespace march
         const GfxInputDesc& InputDesc;
         const GfxSubMesh& SubMesh;
 
-        std::shared_ptr<GfxResource> VertexBufferResource;
+        RefCountPtr<GfxResource> VertexBufferResource;
         D3D12_VERTEX_BUFFER_VIEW VertexBufferView;
 
-        std::shared_ptr<GfxResource> IndexBufferResource;
+        RefCountPtr<GfxResource> IndexBufferResource;
         D3D12_INDEX_BUFFER_VIEW IndexBufferView;
     };
 

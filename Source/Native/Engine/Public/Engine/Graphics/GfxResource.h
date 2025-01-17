@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include "Engine/Allocator.h"
 #include <directx/d3dx12.h>
 #include <wrl.h>
@@ -20,12 +21,12 @@ namespace march
         BuddyAllocation Buddy;
     };
 
-    class GfxResource final
+    class GfxResource final : public MarchObject
     {
     public:
         GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
         GfxResource(Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state, GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation);
-        ~GfxResource() { Release(); }
+        ~GfxResource();
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxResourceAllocator* GetAllocator() const { return m_Allocator; }
@@ -38,8 +39,8 @@ namespace march
         GfxResource(const GfxResource&) = delete;
         GfxResource& operator=(const GfxResource&) = delete;
 
-        GfxResource(GfxResource&&) noexcept;
-        GfxResource& operator=(GfxResource&&);
+        GfxResource(GfxResource&&) = delete;
+        GfxResource& operator=(GfxResource&&) = delete;
 
     private:
         GfxDevice* m_Device;
@@ -49,21 +50,19 @@ namespace march
         // 分配整个资源使用的 allocator，可以没有
         GfxResourceAllocator* m_Allocator;
         GfxResourceAllocation m_Allocation;
-
-        void Release();
     };
 
     class GfxResourceSpan final
     {
     public:
-        GfxResourceSpan(std::shared_ptr<GfxResource> resource, uint32_t bufferOffset, uint32_t bufferSize);
-        GfxResourceSpan(std::shared_ptr<GfxResource> resource) : GfxResourceSpan(resource, 0, 0) {}
+        GfxResourceSpan(RefCountPtr<GfxResource> resource, uint32_t bufferOffset, uint32_t bufferSize);
+        GfxResourceSpan(RefCountPtr<GfxResource> resource) : GfxResourceSpan(resource, 0, 0) {}
         GfxResourceSpan() : GfxResourceSpan(nullptr, 0, 0) {}
         ~GfxResourceSpan() { Release(); }
 
         GfxResourceSpan MakeBufferSlice(uint32_t offset, uint32_t size, GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation) const;
 
-        std::shared_ptr<GfxResource> GetResource() const { return m_Resource; }
+        RefCountPtr<GfxResource> GetResource() const { return m_Resource; }
         ID3D12Resource* GetD3DResource() const { return m_Resource->GetD3DResource(); }
         D3D12_RESOURCE_DESC GetD3DResourceDesc() const { return m_Resource->GetD3DResourceDesc(); }
         GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
@@ -81,7 +80,7 @@ namespace march
         GfxResourceSpan& operator=(GfxResourceSpan&&);
 
     private:
-        std::shared_ptr<GfxResource> m_Resource;
+        RefCountPtr<GfxResource> m_Resource;
 
         // 分配部分资源 (suballocation) 使用的 allocator，可以没有
         GfxResourceAllocator* m_Allocator;

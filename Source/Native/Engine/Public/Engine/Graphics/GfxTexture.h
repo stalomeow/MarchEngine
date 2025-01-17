@@ -214,7 +214,7 @@ namespace march
         uint32_t GetSampleCount() const { return m_Desc.MSAASamples; }
         uint32_t GetSampleQuality() const { return m_SampleQuality; }
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
-        std::shared_ptr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
+        RefCountPtr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
         GfxDevice* GetDevice() const { return m_Device; }
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default);

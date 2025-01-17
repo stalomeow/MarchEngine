@@ -27,32 +27,7 @@ namespace march
     {
     }
 
-    GfxResource::GfxResource(GfxResource&& other) noexcept
-        : m_Device(std::exchange(other.m_Device, nullptr))
-        , m_Resource(std::move(other.m_Resource))
-        , m_State(other.m_State)
-        , m_Allocator(std::exchange(other.m_Allocator, nullptr))
-        , m_Allocation(other.m_Allocation)
-    {
-    }
-
-    GfxResource& GfxResource::operator=(GfxResource&& other)
-    {
-        if (this != &other)
-        {
-            Release();
-
-            m_Device = std::exchange(other.m_Device, nullptr);
-            m_Resource = std::move(other.m_Resource);
-            m_State = other.m_State;
-            m_Allocator = std::exchange(other.m_Allocator, nullptr);
-            m_Allocation = other.m_Allocation;
-        }
-
-        return *this;
-    }
-
-    void GfxResource::Release()
+    GfxResource::~GfxResource()
     {
         if (m_Device && m_Resource)
         {
@@ -69,7 +44,7 @@ namespace march
         }
     }
 
-    GfxResourceSpan::GfxResourceSpan(std::shared_ptr<GfxResource> resource, uint32_t bufferOffset, uint32_t bufferSize)
+    GfxResourceSpan::GfxResourceSpan(RefCountPtr<GfxResource> resource, uint32_t bufferOffset, uint32_t bufferSize)
         : m_Resource(resource)
         , m_Allocator(nullptr)
         , m_Allocation{}
@@ -170,7 +145,7 @@ namespace march
             bufferSize = 0;
         }
 
-        return GfxResourceSpan{ std::make_shared<GfxResource>(resource, initialState, this, allocation), 0, bufferSize };
+        return GfxResourceSpan{ MARCH_MAKE_REF(GfxResource, resource, initialState, this, allocation), 0, bufferSize };
     }
 
     static constexpr uint32_t GetResourcePlacementAlignment(bool msaa)

@@ -31,7 +31,7 @@ namespace march
 
         uint32_t GetResourceOffset() const { return m_Resource.GetBufferOffset(); }
         uint32_t GetSize() const { return m_Resource.GetBufferSize(); }
-        std::shared_ptr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
+        RefCountPtr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
         GfxDevice* GetDevice() const { return m_Resource.GetDevice(); }
 
         GfxBuffer(const GfxBuffer&) = delete;

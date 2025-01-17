@@ -67,7 +67,8 @@ namespace march
 
         RefCountPtr(RefCountPtr&& other) noexcept : m_Ptr(nullptr)
         {
-            if (this != &other)
+            // 下面定义了 operator&，所以这里取 other 的地址要先转成其他类型
+            if (this != reinterpret_cast<RefCountPtr*>(&reinterpret_cast<uint8&>(other)))
             {
                 Swap(other);
             }
@@ -161,9 +162,29 @@ namespace march
             return m_Ptr == nullptr;
         }
 
+        bool operator==(const RefCountPtr& other) const noexcept
+        {
+            return m_Ptr == other.m_Ptr;
+        }
+
+        bool operator==(T* ptr) const noexcept
+        {
+            return m_Ptr == ptr;
+        }
+
         bool operator!=(std::nullptr_t) const noexcept
         {
             return m_Ptr != nullptr;
+        }
+
+        bool operator!=(const RefCountPtr& other) const noexcept
+        {
+            return m_Ptr != other.m_Ptr;
+        }
+
+        bool operator!=(T* ptr) const noexcept
+        {
+            return m_Ptr != ptr;
         }
 
         template <typename U>
@@ -221,3 +242,12 @@ namespace march
 #endif
 
 #define MARCH_MAKE_REF(T, ...) ::march::RefCountPtr<T>().Attach(MARCH_NEW T(__VA_ARGS__))
+
+template <typename T>
+struct std::hash<march::RefCountPtr<T>>
+{
+    auto operator()(const march::RefCountPtr<T>& ptr) const noexcept
+    {
+        return std::hash<T*>{}(ptr.Get());
+    }
+};
