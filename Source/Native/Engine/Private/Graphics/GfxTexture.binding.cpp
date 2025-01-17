@@ -58,12 +58,7 @@ NATIVE_EXPORT_AUTO GfxTexture_GetAllowRendering(cs<GfxTexture*> t)
 
 NATIVE_EXPORT_AUTO GfxExternalTexture_New()
 {
-    retcs DBG_NEW GfxExternalTexture(GetGfxDevice());
-}
-
-NATIVE_EXPORT_AUTO GfxExternalTexture_Delete(cs<GfxExternalTexture*> t)
-{
-    delete t;
+    retcs MARCH_NEW GfxExternalTexture(GetGfxDevice());
 }
 
 NATIVE_EXPORT_AUTO GfxExternalTexture_GetName(cs<GfxExternalTexture*> t)

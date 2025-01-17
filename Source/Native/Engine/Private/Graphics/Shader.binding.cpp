@@ -545,12 +545,7 @@ namespace march
 
 NATIVE_EXPORT_AUTO Shader_New()
 {
-    retcs DBG_NEW Shader();
-}
-
-NATIVE_EXPORT_AUTO Shader_Delete(cs<Shader*> pShader)
-{
-    delete pShader;
+    retcs MARCH_NEW Shader();
 }
 
 NATIVE_EXPORT_AUTO Shader_GetName(cs<Shader*> pShader)

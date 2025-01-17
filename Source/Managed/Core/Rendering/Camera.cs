@@ -10,12 +10,6 @@ namespace March.Core.Rendering
     {
         public Camera() : base(New()) { }
 
-        protected override void DisposeNative()
-        {
-            Delete();
-            base.DisposeNative();
-        }
-
         [NativeProperty]
         public partial int PixelWidth { get; }
 
@@ -118,8 +112,5 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
     }
 }

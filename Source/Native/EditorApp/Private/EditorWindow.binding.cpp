@@ -2,14 +2,9 @@
 #include "Editor/EditorWindow.h"
 #include "Engine/Scripting/InteropServices.h"
 
-NATIVE_EXPORT_AUTO EditorWindow_CreateDefault()
+NATIVE_EXPORT_AUTO EditorWindow_NewDefault()
 {
-    retcs DBG_NEW EditorWindow();
-}
-
-NATIVE_EXPORT_AUTO EditorWindow_DeleteDefault(cs<EditorWindow*> w)
-{
-    delete w;
+    retcs MARCH_NEW EditorWindow();
 }
 
 NATIVE_EXPORT_AUTO EditorWindow_GetTitle(cs<EditorWindow*> w)

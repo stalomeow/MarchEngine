@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include "Engine/Graphics/GfxResource.h"
 #include "Engine/Graphics/GfxDescriptor.h"
 #include <directx/d3dx12.h>
@@ -204,7 +205,7 @@ namespace march
         Grey = Gray,
     };
 
-    class GfxTexture
+    class GfxTexture : public MarchObject
     {
     public:
         virtual ~GfxTexture() = default;

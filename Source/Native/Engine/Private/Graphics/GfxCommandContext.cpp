@@ -10,6 +10,7 @@
 #include "Engine/MathUtils.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
+#include "Engine/StringUtils.h"
 #include <assert.h>
 
 using namespace DirectX;

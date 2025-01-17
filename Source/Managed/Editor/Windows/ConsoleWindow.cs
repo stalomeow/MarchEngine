@@ -13,12 +13,6 @@ namespace March.Editor.Windows
             DefaultSize = new Vector2(850.0f, 400.0f);
         }
 
-        protected override void OnDispose(bool disposing)
-        {
-            Delete();
-            base.OnDispose(disposing);
-        }
-
         [JsonProperty]
         [NativeProperty]
         public partial int LogTypeFilter { get; set; }
@@ -29,8 +23,5 @@ namespace March.Editor.Windows
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
     }
 }

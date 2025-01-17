@@ -5,12 +5,7 @@
 
 NATIVE_EXPORT_AUTO Material_New()
 {
-    retcs DBG_NEW Material();
-}
-
-NATIVE_EXPORT_AUTO Material_Delete(cs<Material*> pMaterial)
-{
-    delete pMaterial;
+    retcs MARCH_NEW Material();
 }
 
 NATIVE_EXPORT_AUTO Material_Reset(cs<Material*> pMaterial)

@@ -1,3 +1,4 @@
+using March.Core.Interop;
 using March.Core.Serialization;
 using Newtonsoft.Json;
 
@@ -27,7 +28,7 @@ namespace March.Core
         }
     }
 
-    public abstract class NativeMarchObject(nint nativePtr) : MarchObject, IDisposable
+    public abstract partial class NativeMarchObject(nint nativePtr) : MarchObject, IDisposable
     {
         [JsonIgnore]
         private bool m_IsDisposed;
@@ -35,24 +36,28 @@ namespace March.Core
         [JsonIgnore]
         public nint NativePtr { get; private set; } = nativePtr;
 
-        ~NativeMarchObject() => DisposeImpl(disposing: false);
+        ~NativeMarchObject() => Dispose(disposing: false);
 
         public void Dispose()
         {
-            DisposeImpl(disposing: true);
+            Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
 
-        private void DisposeImpl(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!m_IsDisposed)
             {
-                Dispose(disposing);
+                OnDispose(disposing);
+                DeleteNativeObject();
                 NativePtr = nint.Zero;
                 m_IsDisposed = true;
             }
         }
 
-        protected abstract void Dispose(bool disposing);
+        protected virtual void OnDispose(bool disposing) { }
+
+        [NativeMethod("Delete")]
+        private partial void DeleteNativeObject();
     }
 }

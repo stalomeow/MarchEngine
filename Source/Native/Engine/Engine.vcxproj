@@ -51,6 +51,7 @@
     <ClInclude Include="Public\Engine\Scripting\DotNetRuntime.h" />
     <ClInclude Include="Public\Engine\Scripting\DotNetTypeTraits.h" />
     <ClInclude Include="Public\Engine\Scripting\InteropServices.h" />
+    <ClInclude Include="Public\Engine\Object.h" />
     <ClInclude Include="Public\Engine\StringUtils.h" />
     <ClInclude Include="Public\Engine\Transform.h" />
     <ClInclude Include="Public\Engine\JobManager.h" />
@@ -106,6 +107,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Private\Object.binding.cpp" />
     <ClCompile Include="Private\Rendering\Camera.binding.cpp" />
     <ClCompile Include="Private\Rendering\Camera.cpp" />
     <ClCompile Include="Private\Rendering\Light.binding.cpp" />

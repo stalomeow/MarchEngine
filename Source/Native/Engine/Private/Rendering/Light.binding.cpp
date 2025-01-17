@@ -4,12 +4,7 @@
 
 NATIVE_EXPORT_AUTO Light_New()
 {
-    retcs DBG_NEW Light();
-}
-
-NATIVE_EXPORT_AUTO Light_Delete(cs<Light*> pLight)
-{
-    delete pLight;
+    retcs MARCH_NEW Light();
 }
 
 NATIVE_EXPORT_AUTO Light_GetType(cs<Light*> pLight)

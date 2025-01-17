@@ -31,11 +31,6 @@ namespace March.Core.Rendering
     {
         public Mesh() : base(New()) { }
 
-        protected override void Dispose(bool disposing)
-        {
-            Delete();
-        }
-
         [NativeProperty]
         public partial int SubMeshCount { get; }
 
@@ -172,9 +167,6 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
 
         [NativeMethod]
         private partial void AddSubMesh(nint vertices, nint indices);

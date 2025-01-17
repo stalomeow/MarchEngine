@@ -10,12 +10,6 @@ namespace March.Core.Rendering
 
         public MeshRenderer() : base(New()) { }
 
-        protected override void DisposeNative()
-        {
-            Delete();
-            base.DisposeNative();
-        }
-
         [JsonProperty]
         public Mesh? Mesh
         {
@@ -73,9 +67,6 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
 
         [NativeMethod("SetMesh")]
         private partial void SetNativeMesh(Mesh? mesh);

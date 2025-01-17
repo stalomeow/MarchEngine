@@ -8,41 +8,33 @@ namespace March.Editor.Windows
 {
     public abstract partial class EditorWindow : NativeMarchObject
     {
-        private readonly bool m_IsDefaultNativeWindow;
         private bool m_IsOnOpenInvoked = false;
 
-        private EditorWindow(nint nativePtr, bool isDefaultNativeWindow, string? titleIcon, string? titleContent) : base(nativePtr)
+        protected EditorWindow(nint nativePtr, string titleIcon, string titleContent) : base(nativePtr)
         {
-            m_IsDefaultNativeWindow = isDefaultNativeWindow;
-
-            titleContent ??= GetType().Name;
-
-            if (titleIcon == null)
-            {
-                SetTitle(titleContent);
-            }
-            else
-            {
-                SetTitle(titleIcon, titleContent);
-            }
-
-            using var id = GuidUtility.BuildNew();
-            SetId(id);
+            SetTitle(titleIcon, titleContent);
+            SetRandomId();
         }
 
-        protected EditorWindow(string titleIcon, string titleContent) : this(CreateDefault(), true, titleIcon, titleContent) { }
+        protected EditorWindow(nint nativePtr, string title) : base(nativePtr)
+        {
+            SetTitle(title);
+            SetRandomId();
+        }
 
-        protected EditorWindow(string title) : this(CreateDefault(), true, null, title) { }
+        protected EditorWindow(nint nativePtr) : base(nativePtr)
+        {
+            SetTitle(GetType().Name);
+            SetRandomId();
+        }
 
-        protected EditorWindow() : this(CreateDefault(), true, null, null) { }
+        protected EditorWindow(string titleIcon, string titleContent) : this(NewDefault(), titleIcon, titleContent) { }
 
-        protected EditorWindow(nint nativePtr, string titleIcon, string titleContent) : this(nativePtr, false, titleIcon, titleContent) { }
+        protected EditorWindow(string title) : this(NewDefault(), title) { }
 
-        protected EditorWindow(nint nativePtr, string title) : this(nativePtr, false, null, title) { }
+        protected EditorWindow() : this(NewDefault()) { }
 
-        protected EditorWindow(nint nativePtr) : this(nativePtr, false, null, null) { }
-
-        protected sealed override void Dispose(bool disposing)
+        protected sealed override void OnDispose(bool disposing)
         {
             if (m_IsOnOpenInvoked && IsOpen)
             {
@@ -50,15 +42,7 @@ namespace March.Editor.Windows
                 OnClose();
             }
 
-            OnDispose(disposing);
-        }
-
-        protected virtual void OnDispose(bool disposing)
-        {
-            if (m_IsDefaultNativeWindow)
-            {
-                DeleteDefault();
-            }
+            base.OnDispose(disposing);
         }
 
         [NativeProperty]
@@ -83,6 +67,12 @@ namespace March.Editor.Windows
 
         [NativeMethod]
         protected partial void SetTitle(StringLike value);
+
+        private void SetRandomId()
+        {
+            using var id = GuidUtility.BuildNew();
+            SetId(id);
+        }
 
         [NativeMethod]
         protected internal partial void SetId(StringLike value);
@@ -129,10 +119,7 @@ namespace March.Editor.Windows
         protected virtual partial void OnDraw();
 
         [NativeMethod]
-        private static partial nint CreateDefault();
-
-        [NativeMethod]
-        private partial void DeleteDefault();
+        private static partial nint NewDefault();
 
         [NativeMethod]
         private partial bool Begin();

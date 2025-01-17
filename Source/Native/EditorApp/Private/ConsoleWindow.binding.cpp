@@ -4,12 +4,7 @@
 
 NATIVE_EXPORT_AUTO ConsoleWindow_New()
 {
-    retcs DBG_NEW ConsoleWindow();
-}
-
-NATIVE_EXPORT_AUTO ConsoleWindow_Delete(cs<ConsoleWindow*> w)
-{
-    delete w;
+    retcs MARCH_NEW ConsoleWindow();
 }
 
 NATIVE_EXPORT_AUTO ConsoleWindow_GetLogTypeFilter(cs<ConsoleWindow*> w)

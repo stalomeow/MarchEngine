@@ -4,10 +4,5 @@
 
 NATIVE_EXPORT_AUTO ImGuiDemoWindow_New()
 {
-    retcs DBG_NEW ImGuiDemoWindow();
-}
-
-NATIVE_EXPORT_AUTO ImGuiDemoWindow_Delete(cs<ImGuiDemoWindow*> w)
-{
-    delete w;
+    retcs MARCH_NEW ImGuiDemoWindow();
 }

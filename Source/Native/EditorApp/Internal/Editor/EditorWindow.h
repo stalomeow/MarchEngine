@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include <string>
 #include <imgui.h>
 
@@ -7,7 +8,7 @@ namespace march
 {
     class EditorWindowInternalUtility;
 
-    class EditorWindow
+    class EditorWindow : public MarchObject
     {
         friend EditorWindowInternalUtility;
 

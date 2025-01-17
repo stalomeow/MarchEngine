@@ -51,14 +51,13 @@ namespace March.Editor.Windows
             m_GridMaterial.Shader = AssetDatabase.Load<Shader>("Engine/Shaders/SceneViewGrid.shader")!;
         }
 
-        protected override void OnDispose(bool disposing)
+        protected override void OnClose()
         {
             m_GridMaterial.Shader = null;
             m_GridMaterial.Dispose();
             m_DummyScene.Dispose();
 
-            Delete();
-            base.OnDispose(disposing);
+            base.OnClose();
         }
 
         [JsonProperty]
@@ -309,9 +308,6 @@ namespace March.Editor.Windows
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
 
         [NativeMethod]
         private partial void DrawMenuBar();

@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Engine/Object.h"
+
 namespace march
 {
     class Transform;
     class ComponentInternalUtility;
 
-    class Component
+    class Component : public MarchObject
     {
         friend ComponentInternalUtility;
 

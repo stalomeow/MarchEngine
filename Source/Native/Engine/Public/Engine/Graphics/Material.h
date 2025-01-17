@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include "Engine/Graphics/Shader.h"
 #include "Engine/Graphics/GfxBuffer.h"
 #include <DirectXMath.h>
@@ -13,7 +14,7 @@ namespace march
     class GfxTexture;
     class MaterialInternalUtility;
 
-    class Material final
+    class Material final : public MarchObject
     {
         friend MaterialInternalUtility;
 

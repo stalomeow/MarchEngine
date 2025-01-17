@@ -5,12 +5,7 @@
 
 NATIVE_EXPORT_AUTO MeshRenderer_New()
 {
-    retcs DBG_NEW MeshRenderer();
-}
-
-NATIVE_EXPORT_AUTO MeshRenderer_Delete(cs<MeshRenderer*> self)
-{
-    delete self;
+    retcs MARCH_NEW MeshRenderer();
 }
 
 NATIVE_EXPORT_AUTO MeshRenderer_SetMesh(cs<MeshRenderer*> self, cs<GfxMesh*> pMesh)

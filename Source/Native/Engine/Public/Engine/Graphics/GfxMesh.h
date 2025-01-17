@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include "Engine/Graphics/GfxDevice.h"
 #include "Engine/Graphics/GfxBuffer.h"
 #include <directx/d3dx12.h>
@@ -32,7 +33,7 @@ namespace march
     };
 
     template <typename TVertex>
-    class GfxBasicMesh
+    class GfxBasicMesh : public MarchObject
     {
     public:
         GfxBasicMesh(GfxAllocator allocator)

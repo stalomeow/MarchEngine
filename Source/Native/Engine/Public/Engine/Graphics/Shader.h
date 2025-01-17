@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <vector>
@@ -400,7 +401,7 @@ namespace march
         std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_PipelineStates;
     };
 
-    class Shader
+    class Shader : public MarchObject
     {
         friend ShaderPass;
         friend ShaderBinding;

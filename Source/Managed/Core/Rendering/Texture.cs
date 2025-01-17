@@ -202,8 +202,6 @@ namespace March.Core.Rendering
     {
         public ExternalTexture() : base(New()) { }
 
-        protected override void Dispose(bool disposing) => Delete();
-
         public byte[] Pixels
         {
             get
@@ -258,9 +256,6 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
 
         [NativeMethod]
         private partial void* GetPixelsData();

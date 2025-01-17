@@ -17,12 +17,6 @@ namespace March.Core.Rendering
     {
         public Light() : base(New()) { }
 
-        protected override void DisposeNative()
-        {
-            Delete();
-            base.DisposeNative();
-        }
-
         [JsonProperty]
         [Tooltip("The type of light.")]
         [NativeProperty]
@@ -153,8 +147,5 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
     }
 }

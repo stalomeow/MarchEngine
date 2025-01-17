@@ -14,13 +14,7 @@ namespace March.Core
         private List<Transform> m_Children = [];
         private Transform? m_Parent = null;
 
-        public Transform() : base(Create()) { }
-
-        protected override void DisposeNative()
-        {
-            Delete();
-            base.DisposeNative();
-        }
+        public Transform() : base(New()) { }
 
         [JsonProperty]
         [NativeProperty]
@@ -180,10 +174,7 @@ namespace March.Core
         }
 
         [NativeMethod]
-        private static partial nint Create();
-
-        [NativeMethod]
-        private partial void Delete();
+        private static partial nint New();
 
         [NativeMethod("SetParent")]
         private partial void SetNativeParent(Transform? parent);

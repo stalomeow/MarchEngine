@@ -6,7 +6,6 @@ namespace March.Core
 {
     public abstract partial class Component : NativeMarchObject
     {
-        private readonly bool m_IsDefaultNativeComponent;
         private bool m_IsMounted;
 
         [JsonProperty]
@@ -17,16 +16,11 @@ namespace March.Core
         [HideInInspector]
         private bool m_IsEnabled = true;
 
-        protected Component() : base(CreateDefault()) => m_IsDefaultNativeComponent = true;
+        protected Component() : base(NewDefault()) { }
 
-        /// <summary>
-        /// 初始化一个自定义的 Native Component
-        /// </summary>
-        /// <param name="nativePtr"></param>
-        /// <remarks>如果使用这个构造方法，必须重写 <see cref="DisposeNative"/> 释放非托管资源</remarks>
-        protected Component(nint nativePtr) : base(nativePtr) => m_IsDefaultNativeComponent = false;
+        protected Component(nint nativePtr) : base(nativePtr) { }
 
-        protected sealed override void Dispose(bool disposing)
+        protected sealed override void OnDispose(bool disposing)
         {
             IsEnabled = false;
 
@@ -36,15 +30,7 @@ namespace March.Core
                 OnUnmount();
             }
 
-            DisposeNative();
-        }
-
-        protected virtual void DisposeNative()
-        {
-            if (m_IsDefaultNativeComponent)
-            {
-                DeleteDefault();
-            }
+            base.OnDispose(disposing);
         }
 
         public bool IsEnabled
@@ -165,10 +151,7 @@ namespace March.Core
         protected virtual partial void OnDrawGizmosGUI(bool isSelected);
 
         [NativeMethod]
-        private static partial nint CreateDefault();
-
-        [NativeMethod]
-        private partial void DeleteDefault();
+        private static partial nint NewDefault();
 
         [NativeMethod("SetTransform")]
         private partial void SetNativeTransform(Transform transform);

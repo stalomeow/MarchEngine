@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Engine/Debug.h"
+#include "Engine/StringUtils.h"
 #include <Windows.h>
 
 namespace march

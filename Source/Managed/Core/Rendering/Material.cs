@@ -24,11 +24,6 @@ namespace March.Core.Rendering
 
         public Material() : base(New()) { }
 
-        protected override void Dispose(bool disposing)
-        {
-            Delete();
-        }
-
         [OnDeserializing]
         private void OnDeserializingCallback(StreamingContext context)
         {
@@ -325,9 +320,6 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
 
         [NativeMethod("Reset")]
         private partial void ResetNative();

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Engine/StringUtils.h"
 #include <string>
 #include <time.h>
 #include <vector>
@@ -71,12 +70,3 @@ namespace march
 #define LOG_INFO(format, ...)    LOG_MSG(::march::LogLevel::Info, format, __VA_ARGS__)
 #define LOG_WARNING(format, ...) LOG_MSG(::march::LogLevel::Warning, format, __VA_ARGS__)
 #define LOG_ERROR(format, ...)   LOG_MSG(::march::LogLevel::Error, format, __VA_ARGS__)
-
-// https://learn.microsoft.com/en-us/cpp/c-runtime-library/find-memory-leaks-using-the-crt-library?view=msvc-170
-#ifdef _DEBUG
-    #include <crtdbg.h>
-    #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
-    // Replace _NORMAL_BLOCK with _CLIENT_BLOCK if you want the allocations to be of _CLIENT_BLOCK type
-#else
-    #define DBG_NEW new
-#endif

@@ -2,14 +2,9 @@
 #include "Engine/Component.h"
 #include "Engine/Scripting/InteropServices.h"
 
-NATIVE_EXPORT_AUTO Component_CreateDefault()
+NATIVE_EXPORT_AUTO Component_NewDefault()
 {
-    retcs DBG_NEW Component();
-}
-
-NATIVE_EXPORT_AUTO Component_DeleteDefault(cs<Component*> component)
-{
-    delete component;
+    retcs MARCH_NEW Component();
 }
 
 NATIVE_EXPORT_AUTO Component_GetIsActiveAndEnabled(cs<Component*> component)

@@ -47,6 +47,7 @@
     <ClInclude Include="Public\Engine\Graphics\Shader.h" />
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Public\Engine\JobManager.h" />
+    <ClInclude Include="Public\Engine\Object.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Allocator.cpp" />
@@ -107,5 +108,6 @@
     <ClCompile Include="Private\pch.cpp" />
     <ClCompile Include="Private\JobManager.cpp" />
     <ClCompile Include="Private\JobManager.binding.cpp" />
+    <ClCompile Include="Private\Object.binding.cpp" />
   </ItemGroup>
 </Project>

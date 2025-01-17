@@ -4,12 +4,7 @@
 
 NATIVE_EXPORT_AUTO Camera_New()
 {
-    retcs DBG_NEW Camera();
-}
-
-NATIVE_EXPORT_AUTO Camera_Delete(cs<Camera*> camera)
-{
-    delete camera;
+    retcs MARCH_NEW Camera();
 }
 
 NATIVE_EXPORT_AUTO Camera_GetPixelWidth(cs<Camera*> camera)

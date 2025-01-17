@@ -4,6 +4,7 @@
 #include "Engine/Scripting/DotNetMarshal.h"
 #include "Engine/StringUtils.h"
 #include "Engine/Debug.h"
+#include "Engine/Object.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 

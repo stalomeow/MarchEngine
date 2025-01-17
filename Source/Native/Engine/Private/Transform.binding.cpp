@@ -2,14 +2,9 @@
 #include "Engine/Transform.h"
 #include "Engine/Scripting/InteropServices.h"
 
-NATIVE_EXPORT_AUTO Transform_Create()
+NATIVE_EXPORT_AUTO Transform_New()
 {
-    retcs DBG_NEW Transform();
-}
-
-NATIVE_EXPORT_AUTO Transform_Delete(cs<Transform*> transform)
-{
-    delete transform;
+    retcs MARCH_NEW Transform();
 }
 
 NATIVE_EXPORT_AUTO Transform_SetParent(cs<Transform*> transform, cs<Transform*> parent)

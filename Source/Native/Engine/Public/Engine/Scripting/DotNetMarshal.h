@@ -257,17 +257,17 @@ namespace march
 
         static managed_type create_data()
         {
-            return DBG_NEW typename std::remove_pointer_t<managed_type>();
+            return MARCH_NEW typename std::remove_pointer_t<managed_type>();
         }
 
         static managed_type create_data(const std::string& value)
         {
-            return DBG_NEW typename std::remove_pointer_t<managed_type>(value);
+            return MARCH_NEW typename std::remove_pointer_t<managed_type>(value);
         }
 
         static managed_type create_data(std::string&& value)
         {
-            return DBG_NEW typename std::remove_pointer_t<managed_type>(value);
+            return MARCH_NEW typename std::remove_pointer_t<managed_type>(value);
         }
 
         static void destroy(cs value)
@@ -322,7 +322,7 @@ namespace march
         static managed_type create_data(int32_t length)
         {
             int32_t byteCount = sizeof(T) * length;
-            auto result = static_cast<managed_type>(malloc(sizeof(int32_t) + static_cast<size_t>(byteCount)));
+            auto result = reinterpret_cast<managed_type>(MARCH_NEW uint8_t[sizeof(int32_t) + static_cast<size_t>(byteCount)]);
 
             if (result != nullptr)
             {
@@ -336,7 +336,7 @@ namespace march
         {
             if (value.data != nullptr)
             {
-                free(value.data);
+                delete[] reinterpret_cast<uint8_t*>(value.data);
             }
         }
     };

@@ -4,12 +4,7 @@
 
 NATIVE_EXPORT_AUTO SceneWindow_New()
 {
-    retcs DBG_NEW SceneWindow();
-}
-
-NATIVE_EXPORT_AUTO SceneWindow_Delete(cs<SceneWindow*> w)
-{
-    delete w;
+    retcs MARCH_NEW SceneWindow();
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_DrawMenuBar(cs<SceneWindow*> w)

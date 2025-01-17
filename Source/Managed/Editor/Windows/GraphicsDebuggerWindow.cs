@@ -7,16 +7,7 @@ namespace March.Editor.Windows
     {
         public GraphicsDebuggerWindow() : base(New(), "Graphics Debugger") { }
 
-        protected override void OnDispose(bool disposing)
-        {
-            Delete();
-            base.OnDispose(disposing);
-        }
-
         [NativeMethod]
         private static partial nint New();
-
-        [NativeMethod]
-        private partial void Delete();
     }
 }
