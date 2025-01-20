@@ -85,13 +85,13 @@ NATIVE_EXPORT_AUTO EditorGUI_TextField(cs_string label, cs_string tooltip, cs_st
     retcs false;
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_Checkbox(cs_string label, cs_string tooltip, cs<cs_bool_t*> value)
+NATIVE_EXPORT_AUTO EditorGUI_Checkbox(cs_string label, cs_string tooltip, cs<cs_bool*> value)
 {
     bool v = *value;
 
     if (EditorGUI::Checkbox(label, tooltip, v))
     {
-        *value = v;
+        value->assign(v);
         retcs true;
     }
 
@@ -133,11 +133,11 @@ NATIVE_EXPORT_AUTO EditorGUI_Foldout(cs_string label, cs_string tooltip, cs_bool
     retcs EditorGUI::Foldout(label, tooltip, defaultOpen);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_FoldoutClosable(cs_string label, cs_string tooltip, cs<cs_bool_t*> pVisible)
+NATIVE_EXPORT_AUTO EditorGUI_FoldoutClosable(cs_string label, cs_string tooltip, cs<cs_bool*> pVisible)
 {
     bool visible = *pVisible;
     bool open = EditorGUI::FoldoutClosable(label, tooltip, &visible);
-    *pVisible = visible;
+    pVisible->assign(visible);
     retcs open;
 }
 

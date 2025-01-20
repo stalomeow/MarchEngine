@@ -24,7 +24,7 @@ namespace March.Core.Rendering
             public nint Name;
             public uint ShaderRegisterTexture;
             public uint RegisterSpaceTexture;
-            public bool HasSampler;
+            public NativeBool HasSampler;
             public uint ShaderRegisterSampler;
             public uint RegisterSpaceSampler;
         }
@@ -313,7 +313,7 @@ namespace March.Core.Rendering
     [JsonConverter(typeof(OptionalShaderPropertyIdJsonConverter))]
     internal struct OptionalShaderPropertyId(string propertyName)
     {
-        public bool HasValue = true;
+        public NativeBool HasValue = true;
         public int Value = Shader.GetNameId(propertyName);
     }
 
@@ -434,7 +434,7 @@ namespace March.Core.Rendering
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassBlendState : IEquatable<ShaderPassBlendState>
     {
-        public bool Enable;
+        public NativeBool Enable;
         public ShaderPassVar<ColorWriteMask> WriteMask;
         public ShaderPassBlendFormula Rgb;
         public ShaderPassBlendFormula Alpha;
@@ -469,7 +469,7 @@ namespace March.Core.Rendering
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassDepthState
     {
-        public bool Enable;
+        public NativeBool Enable;
         public ShaderPassVar<bool> Write;
         public ShaderPassVar<CompareFunction> Compare;
     }
@@ -486,7 +486,7 @@ namespace March.Core.Rendering
     [StructLayout(LayoutKind.Sequential)]
     internal struct ShaderPassStencilState
     {
-        public bool Enable;
+        public NativeBool Enable;
         public ShaderPassVar<byte> Ref;
         public ShaderPassVar<byte> ReadMask;
         public ShaderPassVar<byte> WriteMask;

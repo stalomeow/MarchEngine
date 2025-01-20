@@ -63,6 +63,18 @@ namespace march
     };
 
     template<>
+    struct cs<bool> final
+    {
+        using managed_type = int32_t;
+
+        managed_type data;
+
+        constexpr void assign(bool value) { data = value ? 1 : 0; }
+
+        constexpr operator bool () const { return data != 0; }
+    };
+
+    template<>
     struct cs<DirectX::XMFLOAT2> final
     {
         using managed_type = struct

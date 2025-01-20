@@ -206,6 +206,12 @@ namespace March.Binding
 
             builder.AppendLine();
 
+            if (!methodSymbol.ReturnsVoid)
+            {
+                ITypeSymbol returnType = marshals[marshals.Count - 1].GetNativeType(builder.Context);
+                builder.AppendLine($"{returnType.GetFullQualifiedNameIncludeGlobal()} __ret;");
+            }
+
             var argNames = new List<string>();
 
             for (int i = 0; i < marshals.Count - 1; i++)
@@ -221,13 +227,17 @@ namespace March.Binding
             }
             else
             {
-                invoke = marshals[marshals.Count - 1].UnmarshalReturnValue(builder, invoke);
-                builder.AppendLine($"return {invoke};");
+                builder.AppendLine($"__ret = {invoke};");
             }
 
             for (int i = 0; i < marshals.Count - 1; i++)
             {
                 marshals[i].EndMarshalArgument(builder, paramNames[i]);
+            }
+
+            if (!methodSymbol.ReturnsVoid)
+            {
+                builder.AppendLine($"return {marshals[marshals.Count - 1].UnmarshalReturnValue(builder, "__ret")};");
             }
         }
 

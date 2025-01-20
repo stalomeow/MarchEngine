@@ -139,7 +139,6 @@ namespace March.Binding
 
             switch (type.SpecialType)
             {
-                case SpecialType.System_Boolean:
                 case SpecialType.System_Char:
                 case SpecialType.System_SByte:
                 case SpecialType.System_Byte:
@@ -190,6 +189,10 @@ namespace March.Binding
             if (IsNativeMarchObject(symbol))
             {
                 marshal = new NativeMarchObjectMarshal();
+            }
+            else if (symbol.SpecialType == SpecialType.System_Boolean)
+            {
+                marshal = new BoolMarshal();
             }
             else if (symbol.SpecialType == SpecialType.System_String)
             {

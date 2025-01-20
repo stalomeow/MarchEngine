@@ -1,4 +1,5 @@
 {
+  "builtin-baseline": "6f29f12e82a8293156836ad81cc9bf5af41fe836",
   "dependencies": [
     "directx-dxc",
     "directx-headers",
@@ -8,6 +9,7 @@
         "dx12"
       ]
     },
+    "fmt",
     {
       "name": "imgui",
       "features": [
@@ -16,8 +18,6 @@
         "win32-binding"
       ]
     },
-    "imguizmo",
-    "fmt"
-  ],
-  "builtin-baseline": "b322364f06308bdd24823f9d8f03fe0cc86fd46f"
+    "imguizmo"
+  ]
 }
