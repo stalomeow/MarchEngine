@@ -5,17 +5,20 @@
 
 namespace march
 {
-    // 引擎对象基类，提供引用计数功能
     class MarchObject
     {
     public:
-        // 添加引用计数，并返回新的引用计数（线程安全）
+        virtual ~MarchObject() = default;
+    };
+
+    class ThreadSafeRefCountedObject
+    {
+    public:
         uint32 AddRef() noexcept
         {
             return ++m_RefCount;
         }
 
-        // 释放引用计数，并返回新的引用计数（线程安全）
         uint32 Release() noexcept
         {
             uint32 refCount = --m_RefCount;
@@ -28,22 +31,22 @@ namespace march
             return refCount;
         }
 
-        MarchObject(const MarchObject&) = delete;
-        MarchObject& operator=(const MarchObject&) = delete;
+        ThreadSafeRefCountedObject(const ThreadSafeRefCountedObject&) = delete;
+        ThreadSafeRefCountedObject& operator=(const ThreadSafeRefCountedObject&) = delete;
 
-        MarchObject(MarchObject&&) = delete;
-        MarchObject& operator=(MarchObject&&) = delete;
+        ThreadSafeRefCountedObject(ThreadSafeRefCountedObject&&) = delete;
+        ThreadSafeRefCountedObject& operator=(ThreadSafeRefCountedObject&&) = delete;
 
-        virtual ~MarchObject() = default;
+        virtual ~ThreadSafeRefCountedObject() = default;
 
     protected:
-        MarchObject() noexcept : m_RefCount(1) {}
+        ThreadSafeRefCountedObject() noexcept : m_RefCount(1) {}
 
     private:
         std::atomic<uint32> m_RefCount;
     };
 
-    template <typename T, typename = std::enable_if_t<std::is_base_of_v<MarchObject, T>>>
+    template <typename T, typename = std::enable_if_t<std::is_base_of_v<ThreadSafeRefCountedObject, T>>>
     class RefCountPtr final
     {
     public:
