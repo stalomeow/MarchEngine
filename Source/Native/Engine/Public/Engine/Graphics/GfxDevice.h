@@ -43,7 +43,6 @@ namespace march
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
 
         void EndFrame();
-        void DeferredRelease(Microsoft::WRL::ComPtr<ID3D12Object> obj);
         void WaitForGpuIdle(bool releaseUnusedObjects = true);
 
         GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }

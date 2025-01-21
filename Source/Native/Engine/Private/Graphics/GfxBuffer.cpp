@@ -6,6 +6,143 @@
 
 namespace march
 {
+    RefCountPtr<GfxResource> GfxBufferResource::GetUnderlyingResource(GfxBufferElement element) const
+    {
+        switch (element)
+        {
+        case GfxBufferElement::Data:
+            return m_DataResource;
+        case GfxBufferElement::Counter:
+            return m_CounterResource;
+        default:
+            throw GfxException("Invalid buffer element");
+        }
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS GfxBufferResource::GetGpuVirtualAddress(GfxBufferElement element) const
+    {
+        ID3D12Resource* resource;
+        uint32_t offsetInBytes;
+
+        switch (element)
+        {
+        case GfxBufferElement::Data:
+            resource = m_DataResource->GetD3DResource();
+            offsetInBytes = m_DataResourceOffsetInBytes;
+            break;
+        case GfxBufferElement::Counter:
+            resource = m_CounterResource->GetD3DResource();
+            offsetInBytes = m_CounterResourceOffsetInBytes;
+            break;
+        default:
+            throw GfxException("Invalid buffer element");
+        }
+
+        D3D12_GPU_VIRTUAL_ADDRESS baseAddress = resource->GetGPUVirtualAddress();
+        return baseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(offsetInBytes);
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxBufferResource::GetUav()
+    {
+        if (!m_UavDescriptor)
+        {
+            D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
+            desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+
+            switch (m_Desc.UnorderedAccessMode)
+            {
+            case GfxBufferUnorderedAccessMode::Structured:
+                desc.Format = DXGI_FORMAT_UNKNOWN;
+                desc.Buffer.FirstElement = static_cast<UINT64>(m_DataResourceOffsetInBytes / m_Desc.Stride);
+                desc.Buffer.NumElements = static_cast<UINT>(m_Desc.Count);
+                desc.Buffer.StructureByteStride = static_cast<UINT>(m_Desc.Stride);
+                desc.Buffer.CounterOffsetInBytes = 0;
+                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+                break;
+            case GfxBufferUnorderedAccessMode::StructuredWithCounter:
+                desc.Format = DXGI_FORMAT_UNKNOWN;
+                desc.Buffer.FirstElement = static_cast<UINT64>(m_DataResourceOffsetInBytes / m_Desc.Stride);
+                desc.Buffer.NumElements = static_cast<UINT>(m_Desc.Count);
+                desc.Buffer.StructureByteStride = static_cast<UINT>(m_Desc.Stride);
+                desc.Buffer.CounterOffsetInBytes = m_CounterResourceOffsetInBytes;
+                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+                break;
+            case GfxBufferUnorderedAccessMode::Raw:
+                desc.Format = DXGI_FORMAT_R32_TYPELESS;
+                desc.Buffer.FirstElement = static_cast<UINT64>(m_DataResourceOffsetInBytes / sizeof(uint32_t));
+                desc.Buffer.NumElements = static_cast<UINT>(m_Desc.Count * m_Desc.Stride / sizeof(uint32_t));
+                desc.Buffer.StructureByteStride = 0;
+                desc.Buffer.CounterOffsetInBytes = 0;
+                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+                break;
+            case GfxBufferUnorderedAccessMode::Disabled:
+                throw GfxException("Buffer UAV is disabled");
+            default:
+                throw GfxException("Invalid buffer unordered access mode");
+            }
+
+            ID3D12Resource* pCounterResource;
+
+            if (m_Desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::StructuredWithCounter)
+            {
+                pCounterResource = m_CounterResource->GetD3DResource();
+            }
+            else
+            {
+                pCounterResource = nullptr;
+            }
+
+            GfxDevice* device = GetDevice();
+            m_UavDescriptor = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
+            device->GetD3DDevice4()->CreateUnorderedAccessView(m_DataResource->GetD3DResource(), pCounterResource, &desc, m_UavDescriptor.GetHandle());
+        }
+
+        return m_UavDescriptor.GetHandle();
+    }
+
+    D3D12_VERTEX_BUFFER_VIEW GfxBufferResource::GetVbv() const
+    {
+        D3D12_VERTEX_BUFFER_VIEW view{};
+        view.BufferLocation = GetGpuVirtualAddress(GfxBufferElement::Data);
+        view.SizeInBytes = static_cast<UINT>(m_Desc.Count * m_Desc.Stride);
+        view.StrideInBytes = static_cast<UINT>(m_Desc.Stride);
+        return view;
+    }
+
+    D3D12_INDEX_BUFFER_VIEW GfxBufferResource::GetIbv() const
+    {
+        D3D12_INDEX_BUFFER_VIEW view{};
+        view.BufferLocation = GetGpuVirtualAddress(GfxBufferElement::Data);
+        view.SizeInBytes = static_cast<UINT>(m_Desc.Count * m_Desc.Stride);
+
+        switch (m_Desc.Stride)
+        {
+        case 2:
+            view.Format = DXGI_FORMAT_R16_UINT;
+            break;
+        case 4:
+            view.Format = DXGI_FORMAT_R32_UINT;
+            break;
+        default:
+            throw GfxException("Invalid index buffer stride");
+        }
+
+        return view;
+    }
+
+    RefCountPtr<GfxResource> GfxBufferDataDirectAllocator::Allocate(
+        uint32_t sizeInBytes,
+        uint32_t dataPlacementAlignment,
+        uint32_t* pOutOffsetInBytes,
+        GfxBufferDataAllocation* pOutAllocation)
+    {
+        *pOutOffsetInBytes = 0;
+
+        GfxResourceAllocator* allocator = GetBaseAllocator();
+        UINT64 width = static_cast<UINT64>(sizeInBytes);
+        return allocator->Allocate("DirectBufferData", &CD3DX12_RESOURCE_DESC::Buffer(width), D3D12_RESOURCE_STATE_GENERIC_READ);
+    }
+
     GfxBuffer::GfxBuffer()
         : m_Resource{}
         , m_MappedData(nullptr)

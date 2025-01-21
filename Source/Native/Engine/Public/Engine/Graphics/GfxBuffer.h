@@ -1,184 +1,185 @@
 #pragma once
 
+#include "Engine/Object.h"
+#include "Engine/Allocator.h"
 #include "Engine/Graphics/GfxResource.h"
+#include "Engine/Graphics/GfxDescriptor.h"
 #include <directx/d3dx12.h>
 #include <string>
 #include <stdint.h>
+#include <vector>
+#include <queue>
 
 namespace march
 {
     class GfxDevice;
+    class GfxBufferDataAllocator;
+    class GfxBufferCounterAllocator;
+
+    // 记录不同分配器分配的信息
+    union GfxBufferDataAllocation
+    {
+        BuddyAllocation Buddy;
+    };
+
+    enum class GfxBufferUsages
+    {
+        Vertex = 1 << 0,
+        Index = 1 << 1,
+        Constant = 1 << 2,
+        Structured = 1 << 3,
+        Raw = 1 << 4,
+    };
+
+    DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsages);
+
+    enum class GfxBufferUnorderedAccessMode
+    {
+        // Disable Unordered Access
+        Disabled,
+
+        // RWStructuredBuffer without IncrementCounter and DecrementCounter functions
+        Structured,
+
+        // AppendStructuredBuffer, ConsumeStructuredBuffer, RWStructuredBuffer
+        StructuredWithCounter,
+
+        // RWByteAddressBuffer
+        Raw,
+    };
+
+    enum class GfxBufferElement
+    {
+        Data,
+        Counter,
+    };
 
     struct GfxBufferDesc
     {
-        uint32_t SizeInBytes;
-        bool UnorderedAccess;
-        D3D12_RESOURCE_STATES InitialState;
+        uint32_t Stride;
+        uint32_t Count;
+        GfxBufferUsages Usages;
+        GfxBufferUnorderedAccessMode UnorderedAccessMode;
+    };
+
+    enum class GfxBufferAllocationStrategy
+    {
+        DefaultHeapCommitted,
+        DefaultHeapPlaced,
+        UploadHeapPlaced,
+        UploadHeapSubAlloc,
+        UploadHeapFastOneFrame,
     };
 
     // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
     // 但 RootUav 无法使用 Counter，所以 Buffer 会提供 Uav
-    class GfxBuffer
+    class GfxBufferResource final : public ThreadSafeRefCountedObject
     {
     public:
-        GfxBuffer();
-        GfxBuffer(GfxDevice* device, const std::string& name, const GfxBufferDesc& desc, GfxAllocator allocator);
-        GfxBuffer(GfxDevice* device, uint32_t sizeInBytes, uint32_t dataPlacementAlignment, GfxSubAllocator allocator);
-        virtual ~GfxBuffer() { Release(); }
+        GfxBufferResource(
+            const GfxBufferDesc& desc,
+            GfxBufferDataAllocator* dataAllocator,
+            const GfxBufferDataAllocation& dataAllocation,
+            RefCountPtr<GfxResource> dataResource,
+            uint32_t dataResourceOffsetInBytes,
+            GfxBufferCounterAllocator* counterAllocator,
+            RefCountPtr<GfxResource> counterResource,
+            uint32_t counterResourceOffsetInBytes);
 
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(uint32_t offset = 0) const;
-        void SetData(uint32_t destOffset, const void* src, uint32_t sizeInBytes);
+        ~GfxBufferResource();
 
-        uint32_t GetResourceOffset() const { return m_Resource.GetBufferOffset(); }
-        uint32_t GetSize() const { return m_Resource.GetBufferSize(); }
-        RefCountPtr<GfxResource> GetResource() const { return m_Resource.GetResource(); }
-        GfxDevice* GetDevice() const { return m_Resource.GetDevice(); }
+        RefCountPtr<GfxResource> GetUnderlyingResource(GfxBufferElement element = GfxBufferElement::Data) const;
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element = GfxBufferElement::Data) const;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetUav();
+        D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
+        D3D12_INDEX_BUFFER_VIEW GetIbv() const;
 
-        GfxBuffer(const GfxBuffer&) = delete;
-        GfxBuffer& operator=(const GfxBuffer&) = delete;
-
-        GfxBuffer(GfxBuffer&&) noexcept;
-        GfxBuffer& operator=(GfxBuffer&&);
+        GfxDevice* GetDevice() const { return m_DataResource->GetDevice(); }
+        const GfxBufferDesc& GetDesc() const { return m_Desc; }
 
     private:
-        GfxResourceSpan m_Resource;
-        uint8_t* m_MappedData;
+        GfxBufferDesc m_Desc;
 
-        void Release();
-        void TryMapData(GfxResourceAllocator* allocator);
+        GfxBufferDataAllocator* m_DataAllocator;
+        GfxBufferDataAllocation m_DataAllocation;
+        RefCountPtr<GfxResource> m_DataResource;
+        uint32_t m_DataResourceOffsetInBytes;
+
+        // 可能没有 Counter
+        GfxBufferCounterAllocator* m_CounterAllocator;
+        RefCountPtr<GfxResource> m_CounterResource;
+        uint32_t m_CounterResourceOffsetInBytes;
+
+        // Lazy creation
+        GfxOfflineDescriptor m_UavDescriptor;
     };
 
-    template <typename T>
-    class GfxVertexBuffer : public GfxBuffer
+    class GfxBufferDataAllocator
     {
     public:
-        GfxVertexBuffer() : GfxBuffer() {}
+        virtual ~GfxBufferDataAllocator() = default;
 
-        GfxVertexBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
-            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
-        {
-        }
+        virtual RefCountPtr<GfxResource> Allocate(
+            uint32_t sizeInBytes,
+            uint32_t dataPlacementAlignment,
+            uint32_t* pOutOffsetInBytes,
+            GfxBufferDataAllocation* pOutAllocation) = 0;
 
-        // TODO 我不清楚 vertex buffer 有没有 dataPlacementAlignment
+        virtual void Release(const GfxBufferDataAllocation& allocation) = 0;
 
-        GfxVertexBuffer(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
-            : GfxBuffer(device, static_cast<uint32_t>(sizeof(T)) * count, /* dataPlacementAlignment */ 0, allocator)
-        {
-        }
+        bool IsHeapCpuAccessible() const { return m_BaseAllocator->IsHeapCpuAccessible(); }
 
-        D3D12_VERTEX_BUFFER_VIEW GetVbv() const
-        {
-            D3D12_VERTEX_BUFFER_VIEW view{};
-            view.BufferLocation = GetGpuVirtualAddress();
-            view.SizeInBytes = static_cast<UINT>(GetSize());
-            view.StrideInBytes = sizeof(T);
-            return view;
-        }
+    protected:
+        GfxBufferDataAllocator(GfxResourceAllocator* baseAllocator) : m_BaseAllocator(baseAllocator) {}
+
+        GfxResourceAllocator* GetBaseAllocator() const { return m_BaseAllocator; }
+
+    private:
+        GfxResourceAllocator* m_BaseAllocator;
     };
 
-    class GfxIndexBufferUInt16 : public GfxBuffer
+    class GfxBufferDataDirectAllocator : public GfxBufferDataAllocator
     {
     public:
-        GfxIndexBufferUInt16() : GfxBuffer() {}
+        GfxBufferDataDirectAllocator(GfxResourceAllocator* bufferAllocator) : GfxBufferDataAllocator(bufferAllocator) {}
 
-        GfxIndexBufferUInt16(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
-            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(uint16_t)) * count, false, D3D12_RESOURCE_STATE_INDEX_BUFFER }, allocator)
-        {
-        }
+        RefCountPtr<GfxResource> Allocate(
+            uint32_t sizeInBytes,
+            uint32_t dataPlacementAlignment,
+            uint32_t* pOutOffsetInBytes,
+            GfxBufferDataAllocation* pOutAllocation) override;
 
-        // TODO 我不清楚 index buffer 有没有 dataPlacementAlignment
-
-        GfxIndexBufferUInt16(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
-            : GfxBuffer(device, static_cast<uint32_t>(sizeof(uint16_t)) * count, /* dataPlacementAlignment */ 0, allocator)
-        {
-        }
-
-        D3D12_INDEX_BUFFER_VIEW GetIbv() const
-        {
-            D3D12_INDEX_BUFFER_VIEW view{};
-            view.BufferLocation = GetGpuVirtualAddress();
-            view.SizeInBytes = static_cast<UINT>(GetSize());
-            view.Format = DXGI_FORMAT_R16_UINT;
-            return view;
-        }
+        void Release(const GfxBufferDataAllocation& allocation) override {}
     };
 
-    class GfxIndexBufferUInt32 : public GfxBuffer
+    class GfxBufferCounterAllocator final
     {
     public:
-        GfxIndexBufferUInt32() : GfxBuffer() {}
 
-        GfxIndexBufferUInt32(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
-            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(uint32_t)) * count, false, D3D12_RESOURCE_STATE_INDEX_BUFFER }, allocator)
-        {
-        }
-
-        // TODO 我不清楚 index buffer 有没有 dataPlacementAlignment
-
-        GfxIndexBufferUInt32(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
-            : GfxBuffer(device, static_cast<uint32_t>(sizeof(uint32_t)) * count, /* dataPlacementAlignment */ 0, allocator)
-        {
-        }
-
-        D3D12_INDEX_BUFFER_VIEW GetIbv() const
-        {
-            D3D12_INDEX_BUFFER_VIEW view{};
-            view.BufferLocation = GetGpuVirtualAddress();
-            view.SizeInBytes = static_cast<UINT>(GetSize());
-            view.Format = DXGI_FORMAT_R32_UINT;
-            return view;
-        }
+    private:
+        uint32_t m_NumElementsPerPage;
+        uint32_t m_NextElementIndex;
+        std::vector<RefCountPtr<GfxResource>> m_Pages;
+        std::queue<std::pair<RefCountPtr<GfxResource>, uint32_t>> m_FreeElements;
     };
 
-    template <typename T>
-    class GfxConstantBuffer : public GfxBuffer
+    class GfxBuffer final
     {
     public:
-        GfxConstantBuffer() : GfxBuffer() {}
+        void SetData(const GfxBufferDesc& desc, const void* src = nullptr, uint32_t counter = 0xFFFFFFFF);
 
-        GfxConstantBuffer(GfxDevice* device, const std::string& name, GfxAllocator allocator)
-            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)), false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
-        {
-        }
+        RefCountPtr<GfxBufferResource> GetResource() const { return m_Resource; }
 
-        GfxConstantBuffer(GfxDevice* device, GfxSubAllocator allocator)
-            : GfxBuffer(device, static_cast<uint32_t>(sizeof(T)), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, allocator)
-        {
-        }
-    };
+        GfxBuffer() = default;
+        ~GfxBuffer() = default;
 
-    class GfxRawConstantBuffer : public GfxBuffer
-    {
-    public:
-        GfxRawConstantBuffer() : GfxBuffer() {}
+        GfxBuffer(const GfxBuffer&) = default;
+        GfxBuffer& operator=(const GfxBuffer&) = default;
 
-        GfxRawConstantBuffer(GfxDevice* device, const std::string& name, uint32_t sizeInBytes, GfxAllocator allocator)
-            : GfxBuffer(device, name, GfxBufferDesc{ sizeInBytes, false, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER }, allocator)
-        {
-        }
+        GfxBuffer(GfxBuffer&&) = default;
+        GfxBuffer& operator=(GfxBuffer&&) = default;
 
-        GfxRawConstantBuffer(GfxDevice* device, uint32_t sizeInBytes, GfxSubAllocator allocator)
-            : GfxBuffer(device, sizeInBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, allocator)
-        {
-        }
-    };
-
-    template <typename T>
-    class GfxStructuredBuffer : public GfxBuffer
-    {
-    public:
-        GfxStructuredBuffer() : GfxBuffer() {}
-
-        GfxStructuredBuffer(GfxDevice* device, const std::string& name, uint32_t count, GfxAllocator allocator)
-            : GfxBuffer(device, name, GfxBufferDesc{ static_cast<uint32_t>(sizeof(T)) * count, false, D3D12_RESOURCE_STATE_GENERIC_READ }, allocator)
-        {
-        }
-
-        // TODO 我不清楚 structured buffer 有没有 dataPlacementAlignment
-
-        GfxStructuredBuffer(GfxDevice* device, uint32_t count, GfxSubAllocator allocator)
-            : GfxBuffer(device, static_cast<uint32_t>(sizeof(T)) * count, /* dataPlacementAlignment */ 0, allocator)
-        {
-        }
+    private:
+        RefCountPtr<GfxBufferResource> m_Resource;
     };
 }

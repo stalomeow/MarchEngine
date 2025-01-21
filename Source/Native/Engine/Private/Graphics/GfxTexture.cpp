@@ -19,17 +19,18 @@ namespace fs = std::filesystem;
 
 namespace march
 {
-    GfxTexture::GfxTexture(GfxDevice* device)
-        : m_Device(device)
-        , m_Desc{}
-        , m_Resource{}
-        , m_MipLevels{}
-        , m_SampleQuality{}
+    GfxTextureResource::GfxTextureResource(const GfxTextureDesc& desc, RefCountPtr<GfxResource> underlyingResource, bool allowRendering)
+        : m_Resource(underlyingResource)
+        , m_Desc(desc)
+        , m_AllowRendering(allowRendering)
         , m_SrvDescriptors{}
         , m_UavDescriptors{}
         , m_RtvDsvDescriptors{}
         , m_SamplerDescriptor{}
     {
+        D3D12_RESOURCE_DESC resDesc = m_Resource->GetD3DResourceDesc();
+        m_MipLevels = static_cast<uint32_t>(resDesc.MipLevels);
+        m_SampleQuality = static_cast<uint32_t>(resDesc.SampleDesc.Quality);
     }
 
     static size_t GetSrvUavIndex(const GfxTextureDesc& desc, GfxTextureElement element)
@@ -53,7 +54,7 @@ namespace march
         throw GfxException("Invalid texture element");
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSrv(GfxTextureElement element)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetSrv(GfxTextureElement element)
     {
         GfxOfflineDescriptor& srv = m_SrvDescriptors[GetSrvUavIndex(m_Desc, element)];
 
@@ -124,14 +125,15 @@ namespace march
                 }
             }
 
-            srv = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
-            m_Device->GetD3DDevice4()->CreateShaderResourceView(GetResource()->GetD3DResource(), &srvDesc, srv.GetHandle());
+            GfxDevice* device = GetDevice();
+            srv = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
+            device->GetD3DDevice4()->CreateShaderResourceView(m_Resource->GetD3DResource(), &srvDesc, srv.GetHandle());
         }
 
         return srv.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetUav(GfxTextureElement element)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetUav(GfxTextureElement element)
     {
         if (!m_Desc.HasFlag(GfxTextureFlags::UnorderedAccess))
         {
@@ -212,16 +214,17 @@ namespace march
                 }
             }
 
-            uav = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
-            m_Device->GetD3DDevice4()->CreateUnorderedAccessView(GetResource()->GetD3DResource(), nullptr, &uavDesc, uav.GetHandle());
+            GfxDevice* device = GetDevice();
+            uav = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
+            device->GetD3DDevice4()->CreateUnorderedAccessView(m_Resource->GetD3DResource(), nullptr, &uavDesc, uav.GetHandle());
         }
 
         return uav.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
     {
-        if (!AllowRendering())
+        if (!m_AllowRendering)
         {
             throw GfxException("Texture is not allowed for rendering");
         }
@@ -237,16 +240,17 @@ namespace march
         return it->second.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(GfxCubemapFace face, uint32_t faceCount, uint32_t arraySlice, uint32_t mipSlice)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetRtvDsv(GfxCubemapFace face, uint32_t faceCount, uint32_t arraySlice, uint32_t mipSlice)
     {
         uint32_t wOrArraySlice = static_cast<uint32_t>(face) + arraySlice * 6u; // 展开为 Texture2DArray
         uint32_t wOrArraySize = faceCount;
         return GetRtvDsv(wOrArraySlice, wOrArraySize, mipSlice);
     }
 
-    void GfxTexture::CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv)
+    void GfxTextureResource::CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv)
     {
-        ID3D12Device4* d3dDevice = m_Device->GetD3DDevice4();
+        GfxDevice* device = GetDevice();
+        ID3D12Device4* d3dDevice = device->GetD3DDevice4();
 
         if (m_Desc.IsDepthStencil())
         {
@@ -293,8 +297,8 @@ namespace march
                 }
             }
 
-            rtvDsv = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)->Allocate();
-            d3dDevice->CreateDepthStencilView(GetResource()->GetD3DResource(), &dsvDesc, rtvDsv.GetHandle());
+            rtvDsv = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)->Allocate();
+            d3dDevice->CreateDepthStencilView(m_Resource->GetD3DResource(), &dsvDesc, rtvDsv.GetHandle());
         }
         else
         {
@@ -349,15 +353,15 @@ namespace march
                 }
             }
 
-            rtvDsv = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)->Allocate();
-            d3dDevice->CreateRenderTargetView(GetResource()->GetD3DResource(), &rtvDesc, rtvDsv.GetHandle());
+            rtvDsv = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)->Allocate();
+            d3dDevice->CreateRenderTargetView(m_Resource->GetD3DResource(), &rtvDesc, rtvDsv.GetHandle());
         }
     }
 
     // 根据 hash 复用 sampler
     static std::unordered_map<size_t, GfxOfflineDescriptor> g_SamplerCache{};
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSampler()
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetSampler()
     {
         if (!m_SamplerDescriptor)
         {
@@ -441,8 +445,9 @@ namespace march
 
             if (isNew)
             {
-                it->second = m_Device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->Allocate();
-                m_Device->GetD3DDevice4()->CreateSampler(&samplerDesc, it->second.GetHandle());
+                GfxDevice* device = GetDevice();
+                it->second = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->Allocate();
+                device->GetD3DDevice4()->CreateSampler(&samplerDesc, it->second.GetHandle());
 
                 LOG_TRACE("Create new sampler");
             }
@@ -457,39 +462,6 @@ namespace march
         return *m_SamplerDescriptor;
     }
 
-    void GfxTexture::ClearSamplerCache()
-    {
-        g_SamplerCache.clear();
-    }
-
-    void GfxTexture::ReleaseDescriptors()
-    {
-        for (auto& srv : m_SrvDescriptors)
-        {
-            srv.Release();
-        }
-
-        for (auto& uav : m_UavDescriptors)
-        {
-            uav.Release();
-        }
-
-        m_RtvDsvDescriptors.clear();
-        m_SamplerDescriptor = std::nullopt;
-    }
-
-    void GfxTexture::Reset(const GfxTextureDesc& desc, GfxResourceSpan&& resource)
-    {
-        m_Desc = desc;
-        m_Resource = std::move(resource);
-
-        D3D12_RESOURCE_DESC resourceDesc = m_Resource.GetD3DResourceDesc();
-        m_MipLevels = static_cast<uint32_t>(resourceDesc.MipLevels);
-        m_SampleQuality = static_cast<uint32_t>(resourceDesc.SampleDesc.Quality);
-
-        ReleaseDescriptors();
-    }
-
     GfxTexture* GfxTexture::GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension)
     {
         cs<GfxDefaultTexture> csTexture{};
@@ -497,6 +469,11 @@ namespace march
         cs<GfxTextureDimension> csDimension{};
         csDimension.assign(dimension);
         return DotNet::RuntimeInvoke<GfxTexture*>(ManagedMethod::Texture_NativeGetDefault, csTexture, csDimension);
+    }
+
+    void GfxTexture::ClearSamplerCache()
+    {
+        g_SamplerCache.clear();
     }
 
     GfxExternalTexture::GfxExternalTexture(GfxDevice* device) : GfxTexture(device), m_Name{}, m_Image{} {}
