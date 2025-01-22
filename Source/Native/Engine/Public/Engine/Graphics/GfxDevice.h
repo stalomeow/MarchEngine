@@ -19,12 +19,6 @@ namespace march
     class GfxOfflineDescriptorAllocator;
     class GfxOnlineDescriptorMultiAllocator;
 
-    class GfxCompleteResourceAllocator;
-    class GfxBufferSubAllocator;
-    enum class GfxAllocator;
-    enum class GfxAllocation;
-    enum class GfxSubAllocator;
-
     struct GfxDeviceDesc
     {
         bool EnableDebugLayer;

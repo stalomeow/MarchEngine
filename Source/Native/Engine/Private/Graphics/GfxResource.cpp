@@ -3,8 +3,6 @@
 #include "Engine/Graphics/GfxDevice.h"
 #include "Engine/Graphics/GfxUtils.h"
 #include "Engine/Debug.h"
-#include <assert.h>
-#include <stdexcept>
 
 using namespace Microsoft::WRL;
 
@@ -30,7 +28,7 @@ namespace march
 
     GfxResource::~GfxResource()
     {
-#ifdef _DEBUG
+#ifdef ENABLE_GFX_DEBUG_NAME
         if (m_Resource)
         {
             wchar_t name[256];
@@ -50,6 +48,18 @@ namespace march
             m_Allocator->Release(m_Allocation);
             m_Allocator = nullptr;
         }
+    }
+
+    bool GfxResource::IsHeapCpuAccessible() const
+    {
+        D3D12_HEAP_PROPERTIES heapProperties{};
+
+        if (SUCCEEDED(m_Resource->GetHeapProperties(&heapProperties, nullptr)))
+        {
+            return CD3DX12_HEAP_PROPERTIES(heapProperties).IsCPUAccessible();
+        }
+
+        return false;
     }
 
     GfxResourceAllocator::GfxResourceAllocator(GfxDevice* device, D3D12_HEAP_TYPE heapType, D3D12_HEAP_FLAGS heapFlags)
@@ -82,10 +92,10 @@ namespace march
     {
         ID3D12Device4* device = GetDevice()->GetD3DDevice4();
         D3D12_HEAP_PROPERTIES heapProperties = GetHeapProperties();
-        ComPtr<ID3D12Resource> resource = nullptr;
 
+        ComPtr<ID3D12Resource> resource = nullptr;
         GFX_HR(device->CreateCommittedResource(&heapProperties, GetHeapFlags(), pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
-        return MakeResource(name, resource, initialState, {});
+        return MakeResource(name, resource, initialState, GfxResourceAllocation{});
     }
 
     void GfxCommittedResourceAllocator::Release(const GfxResourceAllocation& allocation)
@@ -98,15 +108,29 @@ namespace march
         return msaa ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
     }
 
-    GfxPlacedResourceMultiBuddyAllocator::GfxPlacedResourceMultiBuddyAllocator(GfxDevice* device, const std::string& name, const GfxPlacedResourceMultiBuddyAllocatorDesc& desc)
+    GfxPlacedResourceAllocator::GfxPlacedResourceAllocator(GfxDevice* device, const std::string& name, const GfxPlacedResourceAllocatorDesc& desc)
         : GfxResourceAllocator(device, desc.HeapType, desc.HeapFlags)
-        , MultiBuddyAllocator(name, GetResourcePlacementAlignment(desc.MSAA), desc.DefaultMaxBlockSize)
         , m_MSAA(desc.MSAA)
-        , m_Heaps{}
+        , m_HeapPages{}
     {
+        auto appendPageFunc = [this](uint32_t sizeInBytes)
+        {
+            D3D12_HEAP_DESC desc{};
+            desc.SizeInBytes = static_cast<UINT64>(sizeInBytes);
+            desc.Properties = GetHeapProperties();
+            desc.Alignment = static_cast<UINT64>(GetResourcePlacementAlignment(m_MSAA));
+            desc.Flags = GetHeapFlags();
+
+            ComPtr<ID3D12Heap> heap = nullptr;
+            GFX_HR(GetDevice()->GetD3DDevice4()->CreateHeap(&desc, IID_PPV_ARGS(&heap)));
+            m_HeapPages.push_back(heap);
+        };
+
+        uint32_t minBlockSize = GetResourcePlacementAlignment(desc.MSAA);
+        m_Allocator = std::make_unique<MultiBuddyAllocator>(name, minBlockSize, desc.DefaultMaxBlockSize, appendPageFunc);
     }
 
-    RefCountPtr<GfxResource> GfxPlacedResourceMultiBuddyAllocator::Allocate(
+    RefCountPtr<GfxResource> GfxPlacedResourceAllocator::Allocate(
         const std::string& name,
         const D3D12_RESOURCE_DESC* pDesc,
         D3D12_RESOURCE_STATES initialState,
@@ -117,180 +141,24 @@ namespace march
         uint32_t sizeInBytes = static_cast<uint32_t>(info.SizeInBytes);
         uint32_t alignment = static_cast<uint32_t>(info.Alignment);
 
-        size_t allocatorIndex = 0;
+        size_t pageIndex = 0;
         GfxResourceAllocation allocation{};
 
-        if (std::optional<uint32_t> offset = MultiBuddyAllocator::Allocate(sizeInBytes, alignment, allocatorIndex, allocation.Buddy))
+        if (std::optional<uint32_t> offset = m_Allocator->Allocate(sizeInBytes, alignment, &pageIndex, &allocation.Buddy))
         {
-            ComPtr<ID3D12Resource> resource = nullptr;
-
-            ID3D12Heap* heap = m_Heaps[allocatorIndex].Get();
+            ID3D12Heap* heap = m_HeapPages[pageIndex].Get();
             UINT64 heapOffset = static_cast<UINT64>(*offset);
-            GFX_HR(device->CreatePlacedResource(heap, heapOffset, pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
 
+            ComPtr<ID3D12Resource> resource = nullptr;
+            GFX_HR(device->CreatePlacedResource(heap, heapOffset, pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
             return MakeResource(name, resource, initialState, allocation);
         }
 
         return nullptr;
     }
 
-    void GfxPlacedResourceMultiBuddyAllocator::Release(const GfxResourceAllocation& allocation)
+    void GfxPlacedResourceAllocator::Release(const GfxResourceAllocation& allocation)
     {
-        BuddyAllocator* allocator = allocation.Buddy.Owner;
-        allocator->Release(allocation.Buddy);
-    }
-
-    void GfxPlacedResourceMultiBuddyAllocator::AppendNewAllocator(uint32_t maxBlockSize)
-    {
-        MultiBuddyAllocator::AppendNewAllocator(maxBlockSize); // Call base
-
-        ID3D12Device4* device = GetDevice()->GetD3DDevice4();
-        ComPtr<ID3D12Heap> heap = nullptr;
-
-        D3D12_HEAP_DESC desc{};
-        desc.SizeInBytes = static_cast<UINT64>(maxBlockSize);
-        desc.Properties = GetHeapProperties();
-        desc.Alignment = static_cast<UINT64>(GetResourcePlacementAlignment(m_MSAA));
-        desc.Flags = GetHeapFlags();
-
-        GFX_HR(device->CreateHeap(&desc, IID_PPV_ARGS(&heap)));
-        m_Heaps.push_back(heap);
-    }
-
-    GfxBufferSubAllocator::GfxBufferSubAllocator(GfxCompleteResourceAllocator* bufferAllocator)
-        : GfxResourceAllocator(bufferAllocator->GetDevice())
-        , m_BufferAllocator(bufferAllocator)
-    {
-    }
-
-    GfxBufferMultiBuddySubAllocator::GfxBufferMultiBuddySubAllocator(const std::string& name, const GfxBufferMultiBuddySubAllocatorDesc& desc, GfxCompleteResourceAllocator* bufferAllocator)
-        : GfxBufferSubAllocator(bufferAllocator)
-        , MultiBuddyAllocator(name, desc.MinBlockSize, desc.DefaultMaxBlockSize)
-        , m_UnorderedAccess(desc.UnorderedAccess)
-        , m_InitialResourceState(desc.InitialResourceState)
-        , m_Buffers{}
-        , m_ReleaseQueue{}
-    {
-    }
-
-    void GfxBufferMultiBuddySubAllocator::AppendNewAllocator(uint32_t maxBlockSize)
-    {
-        MultiBuddyAllocator::AppendNewAllocator(maxBlockSize); // Call base
-
-        GfxCompleteResourceAllocator* allocator = GetBufferAllocator();
-        UINT64 width = static_cast<UINT64>(maxBlockSize);
-        D3D12_RESOURCE_FLAGS flags = m_UnorderedAccess ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
-        m_Buffers.push_back(allocator->Allocate(GetName() + "Buffer", &CD3DX12_RESOURCE_DESC::Buffer(width, flags), m_InitialResourceState));
-    }
-
-    GfxResourceSpan GfxBufferMultiBuddySubAllocator::Allocate(uint32_t sizeInBytes, uint32_t dataPlacementAlignment)
-    {
-        size_t allocatorIndex = 0;
-        GfxResourceAllocation allocation{};
-
-        if (std::optional<uint32_t> offset = MultiBuddyAllocator::Allocate(sizeInBytes, dataPlacementAlignment, allocatorIndex, allocation.Buddy))
-        {
-            return m_Buffers[allocatorIndex].MakeBufferSlice(*offset, sizeInBytes, this, allocation);
-        }
-
-        return GfxResourceSpan{};
-    }
-
-    void GfxBufferMultiBuddySubAllocator::DeferredRelease(const GfxResourceAllocation& allocation)
-    {
-        m_ReleaseQueue.emplace(GetDevice()->GetNextFence(), allocation);
-    }
-
-    void GfxBufferMultiBuddySubAllocator::CleanUpAllocations()
-    {
-        while (!m_ReleaseQueue.empty() && GetDevice()->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
-        {
-            const GfxResourceAllocation& allocation = m_ReleaseQueue.front().second;
-            BuddyAllocator* allocator = allocation.Buddy.Owner;
-            allocator->Release(allocation.Buddy);
-            m_ReleaseQueue.pop();
-        }
-    }
-
-    GfxBufferLinearSubAllocator::GfxBufferLinearSubAllocator(
-        const std::string& name,
-        const GfxBufferLinearSubAllocatorDesc& desc,
-        GfxCompleteResourceAllocator* pageAllocator,
-        GfxCompleteResourceAllocator* largePageAllocator)
-        : GfxBufferSubAllocator(pageAllocator)
-        , LinearAllocator(name, desc.PageSize)
-        , m_UnorderedAccess(desc.UnorderedAccess)
-        , m_InitialResourceState(desc.InitialResourceState)
-        , m_LargePageAllocator(largePageAllocator)
-        , m_Pages{}
-        , m_LargePages{}
-        , m_ReleaseQueue{}
-    {
-    }
-
-    GfxResourceSpan GfxBufferLinearSubAllocator::Allocate(uint32_t sizeInBytes, uint32_t dataPlacementAlignment)
-    {
-        size_t pageIndex = 0;
-        bool large = false;
-        uint32_t offset = LinearAllocator::Allocate(sizeInBytes, dataPlacementAlignment, pageIndex, large);
-
-        std::vector<GfxResourceSpan>& pages = large ? m_LargePages : m_Pages;
-        return pages[pageIndex].MakeBufferSlice(offset, sizeInBytes, this, {});
-    }
-
-    void GfxBufferLinearSubAllocator::DeferredRelease(const GfxResourceAllocation& allocation)
-    {
-        // Do nothing
-    }
-
-    void GfxBufferLinearSubAllocator::CleanUpAllocations()
-    {
-        for (GfxResourceSpan& page : m_Pages)
-        {
-            m_ReleaseQueue.emplace(GetDevice()->GetNextFence(), std::move(page));
-        }
-
-        m_Pages.clear();
-        m_LargePages.clear();
-        LinearAllocator::Reset();
-    }
-
-    size_t GfxBufferLinearSubAllocator::RequestPage(uint32_t sizeInBytes, bool large, bool* pOutIsNew)
-    {
-        std::vector<GfxResourceSpan>& pages = large ? m_LargePages : m_Pages;
-
-        if (!large && !m_ReleaseQueue.empty() && GetDevice()->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
-        {
-            *pOutIsNew = false;
-
-            GfxResourceSpan& p = m_ReleaseQueue.front().second;
-            assert(p.GetBufferSize() == sizeInBytes);
-
-            pages.push_back(std::move(p));
-            m_ReleaseQueue.pop();
-        }
-        else
-        {
-            *pOutIsNew = true;
-
-            GfxCompleteResourceAllocator* allocator;
-            std::string name;
-
-            if (large)
-            {
-                allocator = m_LargePageAllocator;
-                name = GetName() + "Page (Large)";
-            }
-            else
-            {
-                allocator = GetBufferAllocator();
-                name = GetName() + "Page";
-            }
-
-            D3D12_RESOURCE_FLAGS flags = m_UnorderedAccess ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
-            pages.push_back(allocator->Allocate(name, &CD3DX12_RESOURCE_DESC::Buffer(sizeInBytes, flags), m_InitialResourceState));
-        }
-
-        return pages.size() - 1;
+        m_Allocator->Release(allocation.Buddy);
     }
 }

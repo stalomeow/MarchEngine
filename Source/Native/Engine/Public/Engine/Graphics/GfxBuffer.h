@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Object.h"
-#include "Engine/Allocator.h"
+#include "Engine/Memory/Allocator.h"
 #include "Engine/Graphics/GfxResource.h"
 #include "Engine/Graphics/GfxDescriptor.h"
 #include <directx/d3dx12.h>
@@ -9,15 +9,15 @@
 #include <stdint.h>
 #include <vector>
 #include <queue>
+#include <memory>
 
 namespace march
 {
     class GfxDevice;
-    class GfxBufferDataAllocator;
-    class GfxBufferCounterAllocator;
+    class GfxBufferSubAllocator;
 
     // 记录不同分配器分配的信息
-    union GfxBufferDataAllocation
+    union GfxBufferSubAllocation
     {
         BuddyAllocation Buddy;
     };
@@ -60,6 +60,9 @@ namespace march
         uint32_t Count;
         GfxBufferUsages Usages;
         GfxBufferUnorderedAccessMode UnorderedAccessMode;
+
+        uint32_t GetSizeInBytes() const { return Stride * Count; }
+        bool HasCounter() const { return UnorderedAccessMode == GfxBufferUnorderedAccessMode::StructuredWithCounter; }
     };
 
     enum class GfxBufferAllocationStrategy
@@ -71,102 +74,142 @@ namespace march
         UploadHeapFastOneFrame,
     };
 
-    // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
-    // 但 RootUav 无法使用 Counter，所以 Buffer 会提供 Uav
     class GfxBufferResource final : public ThreadSafeRefCountedObject
     {
     public:
         GfxBufferResource(
             const GfxBufferDesc& desc,
-            GfxBufferDataAllocator* dataAllocator,
-            const GfxBufferDataAllocation& dataAllocation,
-            RefCountPtr<GfxResource> dataResource,
-            uint32_t dataResourceOffsetInBytes,
-            GfxBufferCounterAllocator* counterAllocator,
-            RefCountPtr<GfxResource> counterResource,
-            uint32_t counterResourceOffsetInBytes);
+            RefCountPtr<GfxResource> resource,
+            uint32_t dataOffsetInBytes,
+            uint32_t counterOffsetInBytes);
+
+        GfxBufferResource(
+            const GfxBufferDesc& desc,
+            GfxBufferSubAllocator* allocator,
+            const GfxBufferSubAllocation& allocation,
+            RefCountPtr<GfxResource> resource,
+            uint32_t dataOffsetInBytes,
+            uint32_t counterOffsetInBytes);
 
         ~GfxBufferResource();
 
-        RefCountPtr<GfxResource> GetUnderlyingResource(GfxBufferElement element = GfxBufferElement::Data) const;
+        // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
+        // 但 RootUav 无法使用 Counter，所以 Buffer 会提供 Uav
+
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element = GfxBufferElement::Data) const;
+        uint32_t GetOffsetInBytes(GfxBufferElement element = GfxBufferElement::Data) const;
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav();
         D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
         D3D12_INDEX_BUFFER_VIEW GetIbv() const;
 
-        GfxDevice* GetDevice() const { return m_DataResource->GetDevice(); }
+        GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
+        RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
+        GfxBufferSubAllocator* GetAllocator() const { return m_Allocator; }
         const GfxBufferDesc& GetDesc() const { return m_Desc; }
 
     private:
         GfxBufferDesc m_Desc;
 
-        GfxBufferDataAllocator* m_DataAllocator;
-        GfxBufferDataAllocation m_DataAllocation;
-        RefCountPtr<GfxResource> m_DataResource;
-        uint32_t m_DataResourceOffsetInBytes;
+        RefCountPtr<GfxResource> m_Resource;
+        uint32_t m_DataOffsetInBytes;
+        uint32_t m_CounterOffsetInBytes; // 可能没有 Counter
 
-        // 可能没有 Counter
-        GfxBufferCounterAllocator* m_CounterAllocator;
-        RefCountPtr<GfxResource> m_CounterResource;
-        uint32_t m_CounterResourceOffsetInBytes;
+        GfxBufferSubAllocator* m_Allocator; // 可以没有
+        GfxBufferSubAllocation m_Allocation;
 
         // Lazy creation
         GfxOfflineDescriptor m_UavDescriptor;
     };
 
-    class GfxBufferDataAllocator
+    class GfxBufferSubAllocator
     {
     public:
-        virtual ~GfxBufferDataAllocator() = default;
+        virtual ~GfxBufferSubAllocator() = default;
 
         virtual RefCountPtr<GfxResource> Allocate(
             uint32_t sizeInBytes,
             uint32_t dataPlacementAlignment,
             uint32_t* pOutOffsetInBytes,
-            GfxBufferDataAllocation* pOutAllocation) = 0;
+            GfxBufferSubAllocation* pOutAllocation) = 0;
 
-        virtual void Release(const GfxBufferDataAllocation& allocation) = 0;
+        virtual void Release(const GfxBufferSubAllocation& allocation) = 0;
 
-        bool IsHeapCpuAccessible() const { return m_BaseAllocator->IsHeapCpuAccessible(); }
+        virtual void CleanUpAllocations() {}
 
     protected:
-        GfxBufferDataAllocator(GfxResourceAllocator* baseAllocator) : m_BaseAllocator(baseAllocator) {}
-
-        GfxResourceAllocator* GetBaseAllocator() const { return m_BaseAllocator; }
-
-    private:
-        GfxResourceAllocator* m_BaseAllocator;
+        GfxBufferSubAllocator() = default;
     };
 
-    class GfxBufferDataDirectAllocator : public GfxBufferDataAllocator
+    struct GfxBufferMultiBuddySubAllocatorDesc
+    {
+        uint32_t MinBlockSize;
+        uint32_t DefaultMaxBlockSize;
+    };
+
+    class GfxBufferMultiBuddySubAllocator : public GfxBufferSubAllocator
     {
     public:
-        GfxBufferDataDirectAllocator(GfxResourceAllocator* bufferAllocator) : GfxBufferDataAllocator(bufferAllocator) {}
+        GfxBufferMultiBuddySubAllocator(
+            const std::string& name,
+            const GfxBufferMultiBuddySubAllocatorDesc& desc,
+            GfxResourceAllocator* pageAllocator);
 
         RefCountPtr<GfxResource> Allocate(
             uint32_t sizeInBytes,
             uint32_t dataPlacementAlignment,
             uint32_t* pOutOffsetInBytes,
-            GfxBufferDataAllocation* pOutAllocation) override;
+            GfxBufferSubAllocation* pOutAllocation) override;
 
-        void Release(const GfxBufferDataAllocation& allocation) override {}
-    };
-
-    class GfxBufferCounterAllocator final
-    {
-    public:
+        void Release(const GfxBufferSubAllocation& allocation) override;
 
     private:
-        uint32_t m_NumElementsPerPage;
-        uint32_t m_NextElementIndex;
+        std::unique_ptr<MultiBuddyAllocator> m_Allocator;
         std::vector<RefCountPtr<GfxResource>> m_Pages;
-        std::queue<std::pair<RefCountPtr<GfxResource>, uint32_t>> m_FreeElements;
+    };
+
+    struct GfxBufferLinearSubAllocatorDesc
+    {
+        uint32_t PageSize;
+    };
+
+    // 分配结果只有一帧有效
+    class GfxBufferLinearSubAllocator : public GfxBufferSubAllocator
+    {
+    public:
+        GfxBufferLinearSubAllocator(
+            const std::string& name,
+            const GfxBufferLinearSubAllocatorDesc& desc,
+            GfxResourceAllocator* pageAllocator,
+            GfxResourceAllocator* largePageAllocator);
+
+        RefCountPtr<GfxResource> Allocate(
+            uint32_t sizeInBytes,
+            uint32_t dataPlacementAlignment,
+            uint32_t* pOutOffsetInBytes,
+            GfxBufferSubAllocation* pOutAllocation) override;
+
+        void Release(const GfxBufferSubAllocation& allocation) override;
+
+        void CleanUpAllocations() override;
+
+    private:
+        GfxDevice* m_Device;
+        std::unique_ptr<LinearAllocator> m_Allocator;
+        std::vector<RefCountPtr<GfxResource>> m_Pages;
+        std::vector<RefCountPtr<GfxResource>> m_LargePages;
+        std::queue<std::pair<uint64_t, RefCountPtr<GfxResource>>> m_ReleaseQueue;
     };
 
     class GfxBuffer final
     {
     public:
-        void SetData(const GfxBufferDesc& desc, const void* src = nullptr, uint32_t counter = 0xFFFFFFFF);
+        static constexpr uint32_t NullCounter = 0xFFFFFFFF;
+
+        void SetData(
+            const GfxBufferDesc& desc,
+            GfxBufferAllocationStrategy allocationStrategy,
+            const void* pData = nullptr,
+            uint32_t counter = NullCounter);
 
         RefCountPtr<GfxBufferResource> GetResource() const { return m_Resource; }
 

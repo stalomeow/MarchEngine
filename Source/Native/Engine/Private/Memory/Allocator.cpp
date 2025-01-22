@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Allocator.h"
+#include "Engine/Memory/Allocator.h"
 #include "Engine/Debug.h"
 #include "Engine/MathUtils.h"
 #include <limits>
@@ -7,9 +7,10 @@
 
 namespace march
 {
-    LinearAllocator::LinearAllocator(const std::string& name, uint32_t pageSize)
+    LinearAllocator::LinearAllocator(const std::string& name, uint32_t pageSize, const RequestPageFunc& requestPageFunc)
         : m_Name(name)
         , m_PageSize(pageSize)
+        , m_RequestPageFunc(requestPageFunc)
         , m_CurrentPageIndex(std::numeric_limits<size_t>::max())
         , m_NextAllocOffset(0)
     {
@@ -21,13 +22,13 @@ namespace march
         m_NextAllocOffset = 0;
     }
 
-    uint32_t LinearAllocator::Allocate(uint32_t sizeInBytes, uint32_t alignment, size_t& outPageIndex, bool& outLarge)
+    uint32_t LinearAllocator::Allocate(uint32_t sizeInBytes, uint32_t alignment, size_t* pOutPageIndex, bool* pOutLarge)
     {
         if (sizeInBytes > m_PageSize)
         {
             bool isNew = false;
-            outPageIndex = RequestPage(sizeInBytes, true, &isNew);
-            outLarge = true;
+            *pOutPageIndex = m_RequestPageFunc(sizeInBytes, true, &isNew);
+            *pOutLarge = true;
 
             if (isNew)
             {
@@ -46,7 +47,7 @@ namespace march
         if (m_CurrentPageIndex == std::numeric_limits<size_t>::max() || offset + sizeInBytes > m_PageSize)
         {
             bool isNew = false;
-            m_CurrentPageIndex = RequestPage(m_PageSize, false, &isNew);
+            m_CurrentPageIndex = m_RequestPageFunc(m_PageSize, false, &isNew);
             offset = 0; // AlignUp already done
 
             if (isNew)
@@ -56,8 +57,8 @@ namespace march
         }
 
         m_NextAllocOffset = offset + sizeInBytes;
-        outPageIndex = m_CurrentPageIndex;
-        outLarge = false;
+        *pOutPageIndex = m_CurrentPageIndex;
+        *pOutLarge = false;
         return offset;
     }
 
@@ -142,7 +143,7 @@ namespace march
         }
     }
 
-    std::optional<uint32_t> BuddyAllocator::Allocate(uint32_t sizeInBytes, uint32_t alignment, BuddyAllocation& outAllocation)
+    std::optional<uint32_t> BuddyAllocator::Allocate(uint32_t sizeInBytes, uint32_t alignment, BuddyAllocation* pOutAllocation)
     {
         uint32_t sizeToAllocate = sizeInBytes;
 
@@ -174,9 +175,9 @@ namespace march
             byteOffset = newOffset;
         }
 
-        outAllocation.Owner = this;
-        outAllocation.Offset = *offset;
-        outAllocation.Order = order;
+        pOutAllocation->Owner = this;
+        pOutAllocation->Offset = *offset;
+        pOutAllocation->Order = order;
         return byteOffset;
     }
 
@@ -186,21 +187,27 @@ namespace march
         ReleaseBlock(allocation.Offset, allocation.Order);
     }
 
-    MultiBuddyAllocator::MultiBuddyAllocator(const std::string& name, uint32_t minBlockSize, uint32_t defaultMaxBlockSize)
+    MultiBuddyAllocator::MultiBuddyAllocator(const std::string& name, uint32_t minBlockSize, uint32_t defaultMaxBlockSize, const AppendPageFunc& appendPageFunc)
         : m_Name(name)
         , m_MinBlockSize(minBlockSize)
         , m_DefaultMaxBlockSize(defaultMaxBlockSize)
-        , m_Allocators{}
+        , m_AppendPageFunc(appendPageFunc)
+        , m_PageAllocators{}
     {
     }
 
-    std::optional<uint32_t> MultiBuddyAllocator::Allocate(uint32_t sizeInBytes, uint32_t alignment, size_t& outAllocatorIndex, BuddyAllocation& outAllocation)
+    void MultiBuddyAllocator::Reset()
     {
-        for (size_t i = 0; i < m_Allocators.size(); i++)
+        m_PageAllocators.clear();
+    }
+
+    std::optional<uint32_t> MultiBuddyAllocator::Allocate(uint32_t sizeInBytes, uint32_t alignment, size_t* pOutPageIndex, BuddyAllocation* pOutAllocation)
+    {
+        for (size_t i = 0; i < m_PageAllocators.size(); i++)
         {
-            if (std::optional<uint32_t> result = m_Allocators[i]->Allocate(sizeInBytes, alignment, outAllocation))
+            if (std::optional<uint32_t> result = m_PageAllocators[i]->Allocate(sizeInBytes, alignment, pOutAllocation))
             {
-                outAllocatorIndex = i;
+                *pOutPageIndex = i;
                 return result;
             }
         }
@@ -222,20 +229,26 @@ namespace march
             maxBlockSize = MathUtils::AlignPowerOfTwo(maxBlockSize / m_MinBlockSize) * m_MinBlockSize;
         }
 
-        AppendNewAllocator(maxBlockSize);
+        AppendNewPage(maxBlockSize);
 
-        if (std::optional<uint32_t> result = m_Allocators.back()->Allocate(sizeInBytes, alignment, outAllocation))
+        if (std::optional<uint32_t> result = m_PageAllocators.back()->Allocate(sizeInBytes, alignment, pOutAllocation))
         {
-            outAllocatorIndex = m_Allocators.size() - 1;
+            *pOutPageIndex = m_PageAllocators.size() - 1;
             return result;
         }
 
         return std::nullopt;
     }
 
-    void MultiBuddyAllocator::AppendNewAllocator(uint32_t maxBlockSize)
+    void MultiBuddyAllocator::Release(const BuddyAllocation& allocation)
     {
-        LOG_TRACE("{} creates new buddy allocator; MinBlockSize={}; MaxBlockSize={}", m_Name, m_MinBlockSize, maxBlockSize);
-        m_Allocators.emplace_back(std::make_unique<BuddyAllocator>(m_MinBlockSize, maxBlockSize));
+        allocation.Owner->Release(allocation);
+    }
+
+    void MultiBuddyAllocator::AppendNewPage(uint32_t maxBlockSize)
+    {
+        m_AppendPageFunc(maxBlockSize);
+        m_PageAllocators.emplace_back(std::make_unique<BuddyAllocator>(m_MinBlockSize, maxBlockSize));
+        LOG_TRACE("{} creates new page; MinBlockSize={}; MaxBlockSize={}", m_Name, m_MinBlockSize, maxBlockSize);
     }
 }

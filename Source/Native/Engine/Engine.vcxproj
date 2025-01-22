@@ -12,7 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Internal\pch.h" />
-    <ClInclude Include="Public\Engine\Allocator.h" />
+    <ClInclude Include="Public\Engine\Memory\Allocator.h" />
     <ClInclude Include="Public\Engine\Application.h" />
     <ClInclude Include="Public\Engine\AssetManger.h" />
     <ClInclude Include="Public\Engine\Component.h" />
@@ -61,7 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\JobManager.binding.cpp" />
-    <ClCompile Include="Private\Allocator.cpp" />
+    <ClCompile Include="Private\Memory\Allocator.cpp" />
     <ClCompile Include="Private\Application.binding.cpp" />
     <ClCompile Include="Private\Application.cpp" />
     <ClCompile Include="Private\AssetManager.cpp" />
