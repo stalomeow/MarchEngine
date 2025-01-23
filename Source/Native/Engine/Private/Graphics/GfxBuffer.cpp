@@ -208,7 +208,7 @@ namespace march
         {
             std::vector<RefCountPtr<GfxResource>>& pages = large ? m_LargePages : m_Pages;
 
-            if (!large && !m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+            if (!large && !m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first))
             {
                 *pOutIsNew = false;
 
@@ -301,12 +301,75 @@ namespace march
         const void* pData,
         uint32_t counter)
     {
-        uint32_t resourceSizeInBytes = desc.GetSizeInBytes();
+        uint32_t totalSizeInBytes = AllocateResource(desc, allocationStrategy);
+
+        if (!pData && counter == NullCounter)
+        {
+            return;
+        }
+
+        RefCountPtr<GfxResource> underlyingResource = m_Resource->GetUnderlyingResource();
+        ID3D12Resource* d3dResource = underlyingResource->GetD3DResource();
+
+        size_t dataOffsetInBytes = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::Data));
+        size_t dataSizeInBytes = static_cast<size_t>(m_Resource->GetDesc().GetSizeInBytes());
+
+        if (underlyingResource->IsHeapCpuAccessible())
+        {
+            uint8_t* pMappedData = nullptr;
+            GFX_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(&pMappedData)));
+
+            if (pData)
+            {
+                memcpy(pMappedData + dataOffsetInBytes, pData, dataSizeInBytes);
+            }
+
+            if (counter != NullCounter)
+            {
+                if (desc.HasCounter())
+                {
+
+                }
+                else
+                {
+                    LOG_WARNING("GfxBuffer::SetData: buffer does not have counter");
+                }
+            }
+
+            d3dResource->Unmap(0, &CD3DX12_RANGE(dataOffsetInBytes, dataOffsetInBytes + dataSizeInBytes));
+        }
+        else
+        {
+            GfxBufferDesc tempDesc{};
+            tempDesc.Stride = totalSizeInBytes;
+            tempDesc.Count = 1;
+            tempDesc.Usages = GfxBufferUsages::Copy;
+            tempDesc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+
+            GfxBuffer temp{ m_Device, m_Name + "TempUpload" };
+            temp.SetData(tempDesc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, pData, counter);
+
+            //GfxDevice* device = GetDevice();
+            //D3D12_RESOURCE_STATES currentState = GetResource()->GetState();
+
+            //GfxBuffer tempUpload{ device, sizeInBytes, 0, GfxSubAllocator::TempUpload };
+            //tempUpload.SetData(0, src, sizeInBytes);
+
+            //GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
+            //context->CopyBuffer(&tempUpload, 0, this, destOffset, sizeInBytes);
+            //context->TransitionResource(GetResource().Get(), currentState);
+            //context->SubmitAndRelease().WaitOnCpu();
+        }
+    }
+
+    uint32_t GfxBuffer::AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocationStrategy strategy)
+    {
+        uint32_t sizeInBytes = desc.GetSizeInBytes();
         uint32_t dataPlacementAlignment = 0; // TODO: 不知道默认能不能用 0，或许要用 16 字节（float4）？
 
         if ((desc.Usages & GfxBufferUsages::Index) == GfxBufferUsages::Index && desc.Stride != 2 && desc.Stride != 4)
         {
-            throw std::invalid_argument("GfxBuffer::SetData: stride must be 2 or 4 bytes for Index Buffer");
+            throw std::invalid_argument("GfxBuffer::AllocateResource: stride must be 2 or 4 bytes for Index Buffer");
         }
 
         if ((desc.Usages & GfxBufferUsages::Constant) == GfxBufferUsages::Constant)
@@ -321,16 +384,16 @@ namespace march
         }
         else if (desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::Raw)
         {
-            if (resourceSizeInBytes % sizeof(uint32_t) != 0)
+            if (sizeInBytes % sizeof(uint32_t) != 0)
             {
-                throw std::invalid_argument("GfxBuffer::SetData: size must be a multiple of 4 bytes for Raw buffer");
+                throw std::invalid_argument("GfxBuffer::AllocateResource: size must be a multiple of 4 bytes for Raw buffer");
             }
 
             // 创建 UAV 时需要填 FirstElement，所以 Offset 必须是 sizeof(uint32_t) 的整数倍
             dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, sizeof(uint32_t));
         }
 
-        uint32_t dataOffset = 0;
+        uint32_t dataOffsetInResource = 0;
 
         if (desc.HasCounter())
         {
@@ -338,53 +401,81 @@ namespace march
             // 布局：Counter [Padding] Data
             // Padding 用于对齐 Data，可能没有
 
-            dataOffset = MathUtils::AlignUp(4, dataPlacementAlignment);
-            resourceSizeInBytes += dataOffset;
+            dataOffsetInResource = MathUtils::AlignUp(4, dataPlacementAlignment);
+            sizeInBytes += dataOffsetInResource;
             dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT);
         }
 
-        // TODO allocate resource
+        bool isSubAlloc = false;
 
-        if (pData)
+        switch (strategy)
         {
-            RefCountPtr<GfxResource> underlyingResource = m_Resource->GetUnderlyingResource();
-            ID3D12Resource* d3dResource = underlyingResource->GetD3DResource();
+        case GfxBufferAllocationStrategy::DefaultHeapCommitted:
+        case GfxBufferAllocationStrategy::DefaultHeapPlaced:
+        case GfxBufferAllocationStrategy::UploadHeapPlaced:
+            isSubAlloc = false;
+            break;
+        case GfxBufferAllocationStrategy::UploadHeapSubAlloc:
+        case GfxBufferAllocationStrategy::UploadHeapFastOneFrame:
+            isSubAlloc = true;
+            break;
+        default:
+            throw std::invalid_argument("GfxBuffer::AllocateResource: Invalid allocation strategy");
+        }
 
-            size_t dataOffsetInBytes = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::Data));
-            size_t dataSizeInBytes = static_cast<size_t>(m_Resource->GetDesc().GetSizeInBytes());
+        uint32_t resourceOffsetInBytes = 0;
+        GfxBufferSubAllocator* subAllocator = nullptr;
+        GfxBufferSubAllocation subAllocation{};
+        RefCountPtr<GfxResource> resource;
 
-            if (underlyingResource->IsHeapCpuAccessible())
+        if (isSubAlloc)
+        {
+            if (desc.UnorderedAccessMode != GfxBufferUnorderedAccessMode::Disabled)
             {
-                uint8_t* pMappedData = nullptr;
-                GFX_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(pMappedData)));
-                memcpy(pMappedData + dataOffsetInBytes, pData, dataSizeInBytes);
-                d3dResource->Unmap(0, &CD3DX12_RANGE(dataOffsetInBytes, dataOffsetInBytes + dataSizeInBytes));
+                throw std::invalid_argument("GfxBuffer::AllocateResource: Unordered Access is not supported for sub-allocated buffer");
+            }
+
+            bool isFastOneFrame = (strategy == GfxBufferAllocationStrategy::UploadHeapFastOneFrame);
+            subAllocator = m_Device->GetUploadHeapBufferSubAllocator(isFastOneFrame);
+            resource = subAllocator->Allocate(sizeInBytes, dataPlacementAlignment, &resourceOffsetInBytes, &subAllocation);
+        }
+        else
+        {
+            GfxResourceAllocator* allocator;
+
+            switch (strategy)
+            {
+            case GfxBufferAllocationStrategy::DefaultHeapCommitted:
+                allocator = m_Device->GetCommittedAllocator(D3D12_HEAP_TYPE_DEFAULT);
+                break;
+            case GfxBufferAllocationStrategy::DefaultHeapPlaced:
+                allocator = m_Device->GetPlacedBufferAllocator(D3D12_HEAP_TYPE_DEFAULT);
+                break;
+            case GfxBufferAllocationStrategy::UploadHeapPlaced:
+                allocator = m_Device->GetPlacedBufferAllocator(D3D12_HEAP_TYPE_UPLOAD);
+                break;
+            default:
+                throw std::invalid_argument("GfxBuffer::AllocateResource: Invalid allocation strategy");
+            }
+
+            UINT64 width = static_cast<UINT64>(sizeInBytes);
+            D3D12_RESOURCE_FLAGS flags;
+
+            if (desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::Disabled)
+            {
+                flags = D3D12_RESOURCE_FLAG_NONE;
             }
             else
             {
-                //GfxDevice* device = GetDevice();
-                //D3D12_RESOURCE_STATES currentState = GetResource()->GetState();
-
-                //GfxBuffer tempUpload{ device, sizeInBytes, 0, GfxSubAllocator::TempUpload };
-                //tempUpload.SetData(0, src, sizeInBytes);
-
-                //GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
-                //context->CopyBuffer(&tempUpload, 0, this, destOffset, sizeInBytes);
-                //context->TransitionResource(GetResource().Get(), currentState);
-                //context->SubmitAndRelease().WaitOnCpu();
+                flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             }
+
+            resource = allocator->Allocate(m_Name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), D3D12_RESOURCE_STATE_GENERIC_READ);
         }
 
-        if (counter != NullCounter)
-        {
-            if (desc.HasCounter())
-            {
-
-            }
-            else
-            {
-                LOG_WARNING("GfxBuffer::SetData: buffer does not have counter");
-            }
-        }
+        m_Resource = MARCH_MAKE_REF(GfxBufferResource, desc, subAllocator, subAllocation, resource,
+            /* dataOffsetInBytes */ resourceOffsetInBytes + dataOffsetInResource,
+            /* counterOffsetInBytes */ resourceOffsetInBytes);
+        return sizeInBytes;
     }
 }

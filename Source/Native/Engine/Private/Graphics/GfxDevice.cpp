@@ -2,8 +2,10 @@
 #include "Engine/Graphics/GfxDevice.h"
 #include "Engine/Graphics/GfxCommand.h"
 #include "Engine/Graphics/GfxBuffer.h"
+#include "Engine/Graphics/GfxResource.h"
 #include "Engine/Graphics/GfxDescriptor.h"
 #include "Engine/Debug.h"
+#include <assert.h>
 
 using namespace Microsoft::WRL;
 
@@ -25,7 +27,7 @@ namespace march
             ComPtr<ID3D12Debug> debugController = nullptr;
             GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
             debugController->EnableDebugLayer();
-            LOG_INFO("D3D12 Debug Layer Enabled");
+            LOG_WARNING("D3D12 Debug Layer Enabled");
         }
 
         GFX_HR(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
@@ -87,120 +89,79 @@ namespace march
             return std::make_unique<GfxOnlineSamplerDescriptorAllocator>(device, maxSize);
         });
 
-        GfxCommittedResourceAllocatorDesc committedDefaultDesc{};
-        committedDefaultDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        committedDefaultDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
-        m_CommittedDefaultAllocator = std::make_unique<GfxCommittedResourceAllocator>(this, committedDefaultDesc);
+        GfxCommittedResourceAllocatorDesc defaultHeapCommittedDesc{};
+        defaultHeapCommittedDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        defaultHeapCommittedDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+        m_DefaultHeapCommittedAllocator = std::make_unique<GfxCommittedResourceAllocator>(this, defaultHeapCommittedDesc);
 
-        GfxCommittedResourceAllocatorDesc committedUploadDesc{};
-        committedUploadDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-        committedUploadDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
-        m_CommittedUploadAllocator = std::make_unique<GfxCommittedResourceAllocator>(this, committedUploadDesc);
+        GfxCommittedResourceAllocatorDesc uploadHeapCommittedDesc{};
+        uploadHeapCommittedDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        uploadHeapCommittedDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+        m_UploadHeapCommittedAllocator = std::make_unique<GfxCommittedResourceAllocator>(this, uploadHeapCommittedDesc);
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultBufferDesc{};
-        placedDefaultBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        placedDefaultBufferDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        placedDefaultBufferDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-        placedDefaultBufferDesc.MSAA = false;
-        m_PlacedDefaultAllocatorBuffer = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorBuffer", placedDefaultBufferDesc);
+        GfxPlacedResourceAllocatorDesc defaultHeapPlacedBufferDesc{};
+        defaultHeapPlacedBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        defaultHeapPlacedBufferDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        defaultHeapPlacedBufferDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+        defaultHeapPlacedBufferDesc.MSAA = false;
+        m_DefaultHeapPlacedAllocatorBuffer = std::make_unique<GfxPlacedResourceAllocator>(this, "DefaultHeapPlacedBufferAllocator", defaultHeapPlacedBufferDesc);
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultTextureDesc{};
-        placedDefaultTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        placedDefaultTextureDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        placedDefaultTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-        placedDefaultTextureDesc.MSAA = false;
-        m_PlacedDefaultAllocatorTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorTexture", placedDefaultTextureDesc);
+        GfxPlacedResourceAllocatorDesc defaultHeapPlacedTextureDesc{};
+        defaultHeapPlacedTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        defaultHeapPlacedTextureDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        defaultHeapPlacedTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+        defaultHeapPlacedTextureDesc.MSAA = false;
+        m_DefaultHeapPlacedAllocatorTexture = std::make_unique<GfxPlacedResourceAllocator>(this, "DefaultHeapPlacedTextureAllocator", defaultHeapPlacedTextureDesc);
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultRenderTextureDesc{};
-        placedDefaultRenderTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        placedDefaultRenderTextureDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        placedDefaultRenderTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
-        placedDefaultRenderTextureDesc.MSAA = false;
-        m_PlacedDefaultAllocatorRenderTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorRenderTexture", placedDefaultRenderTextureDesc);
+        GfxPlacedResourceAllocatorDesc defaultHeapPlacedRenderTextureDesc{};
+        defaultHeapPlacedRenderTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        defaultHeapPlacedRenderTextureDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        defaultHeapPlacedRenderTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+        defaultHeapPlacedRenderTextureDesc.MSAA = false;
+        m_DefaultHeapPlacedAllocatorRenderTexture = std::make_unique<GfxPlacedResourceAllocator>(this, "DefaultHeapPlacedRenderTextureAllocator", defaultHeapPlacedRenderTextureDesc);
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedDefaultRenderTextureMSDesc{};
-        placedDefaultRenderTextureMSDesc.DefaultMaxBlockSize = 64 * 1024 * 1024; // 64MB
-        placedDefaultRenderTextureMSDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        placedDefaultRenderTextureMSDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
-        placedDefaultRenderTextureMSDesc.MSAA = true;
-        m_PlacedDefaultAllocatorRenderTextureMS = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedDefaultAllocatorRenderTextureMS", placedDefaultRenderTextureMSDesc);
+        GfxPlacedResourceAllocatorDesc defaultHeapPlacedRenderTextureMSDesc{};
+        defaultHeapPlacedRenderTextureMSDesc.DefaultMaxBlockSize = 64 * 1024 * 1024; // 64MB
+        defaultHeapPlacedRenderTextureMSDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+        defaultHeapPlacedRenderTextureMSDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+        defaultHeapPlacedRenderTextureMSDesc.MSAA = true;
+        m_DefaultHeapPlacedAllocatorRenderTextureMS = std::make_unique<GfxPlacedResourceAllocator>(this, "DefaultHeapPlacedRenderTextureMultisampleAllocator", defaultHeapPlacedRenderTextureMSDesc);
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadBufferDesc{};
-        placedUploadBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        placedUploadBufferDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-        placedUploadBufferDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-        placedUploadBufferDesc.MSAA = false;
-        m_PlacedUploadAllocatorBuffer = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorBuffer", placedUploadBufferDesc);
+        GfxPlacedResourceAllocatorDesc uploadHeapPlacedBufferDesc{};
+        uploadHeapPlacedBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        uploadHeapPlacedBufferDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+        uploadHeapPlacedBufferDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+        uploadHeapPlacedBufferDesc.MSAA = false;
+        m_UploadHeapPlacedAllocatorBuffer = std::make_unique<GfxPlacedResourceAllocator>(this, "UploadHeapPlacedBufferAllocator", uploadHeapPlacedBufferDesc);
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadTextureDesc{};
-        placedUploadTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        placedUploadTextureDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-        placedUploadTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-        placedUploadTextureDesc.MSAA = false;
-        m_PlacedUploadAllocatorTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorTexture", placedUploadTextureDesc);
+        GfxBufferMultiBuddySubAllocatorDesc uploadHeapSubBufferDesc{};
+        uploadHeapSubBufferDesc.MinBlockSize = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT; // 目前主要用来分配 constant buffer
+        uploadHeapSubBufferDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
+        m_UploadHeapBufferSubAllocator = std::make_unique<GfxBufferMultiBuddySubAllocator>("UploadHeapBufferSubAllocator", uploadHeapSubBufferDesc,
+            /* page allocator */ m_UploadHeapCommittedAllocator.get());
 
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadRenderTextureDesc{};
-        placedUploadRenderTextureDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        placedUploadRenderTextureDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-        placedUploadRenderTextureDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
-        placedUploadRenderTextureDesc.MSAA = false;
-        m_PlacedUploadAllocatorRenderTexture = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorRenderTexture", placedUploadRenderTextureDesc);
-
-        GfxPlacedResourceMultiBuddyAllocatorDesc placedUploadRenderTextureMSDesc{};
-        placedUploadRenderTextureMSDesc.DefaultMaxBlockSize = 64 * 1024 * 1024; // 64MB
-        placedUploadRenderTextureMSDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
-        placedUploadRenderTextureMSDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
-        placedUploadRenderTextureMSDesc.MSAA = true;
-        m_PlacedUploadAllocatorRenderTextureMS = std::make_unique<GfxPlacedResourceMultiBuddyAllocator>(this, "PlacedUploadAllocatorRenderTextureMS", placedUploadRenderTextureMSDesc);
-
-        GfxBufferLinearSubAllocatorDesc tempUploadDesc{};
-        tempUploadDesc.PageSize = 16 * 1024 * 1024; // 16MB
-        tempUploadDesc.UnorderedAccess = false;
-        tempUploadDesc.InitialResourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
-        m_TempUploadSubAllocator = std::make_unique<GfxBufferLinearSubAllocator>("TempUploadSubAllocator", tempUploadDesc,
-            /* page allocator */ m_CommittedUploadAllocator.get(),
-            /* large page allocator */ m_PlacedUploadAllocatorBuffer.get());
-
-        GfxBufferMultiBuddySubAllocatorDesc persistentUploadDesc{};
-        persistentUploadDesc.MinBlockSize = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT; // 主要用来分配 constant buffer
-        persistentUploadDesc.DefaultMaxBlockSize = 16 * 1024 * 1024; // 16MB
-        persistentUploadDesc.UnorderedAccess = false;
-        persistentUploadDesc.InitialResourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
-        m_PersistentUploadSubAllocator = std::make_unique<GfxBufferMultiBuddySubAllocator>("PersistentUploadSubAllocator", persistentUploadDesc,
-            /* buffer allocator */ m_CommittedUploadAllocator.get());
+        GfxBufferLinearSubAllocatorDesc uploadHeapSubBufferFastOneFrameDesc{};
+        uploadHeapSubBufferFastOneFrameDesc.PageSize = 16 * 1024 * 1024; // 16MB
+        m_UploadHeapBufferSubAllocatorFastOneFrame = std::make_unique<GfxBufferLinearSubAllocator>("UploadHeapBufferSubAllocatorFastOneFrame", uploadHeapSubBufferFastOneFrameDesc,
+            /* page allocator */ m_UploadHeapCommittedAllocator.get(),
+            /* large page allocator */ m_UploadHeapPlacedAllocatorBuffer.get());
     }
 
     GfxDevice::~GfxDevice()
     {
         WaitForGpuIdle(true);
-        ProcessReleaseQueue();
     }
 
     void GfxDevice::EndFrame()
     {
-        ProcessReleaseQueue(); // 这里会更新 frame fence cache，放在最前面
+        RefreshCompletedFrameFenceAndProcessReleaseQueue();
 
         m_OnlineViewAllocator->CleanUpAllocations();
         m_OnlineSamplerAllocator->CleanUpAllocations();
-        m_CommittedDefaultAllocator->CleanUpAllocations();
-        m_CommittedUploadAllocator->CleanUpAllocations();
-        m_PlacedDefaultAllocatorBuffer->CleanUpAllocations();
-        m_PlacedDefaultAllocatorTexture->CleanUpAllocations();
-        m_PlacedDefaultAllocatorRenderTexture->CleanUpAllocations();
-        m_PlacedDefaultAllocatorRenderTextureMS->CleanUpAllocations();
-        m_PlacedUploadAllocatorBuffer->CleanUpAllocations();
-        m_PlacedUploadAllocatorTexture->CleanUpAllocations();
-        m_PlacedUploadAllocatorRenderTexture->CleanUpAllocations();
-        m_PlacedUploadAllocatorRenderTextureMS->CleanUpAllocations();
-        m_TempUploadSubAllocator->CleanUpAllocations();
-        m_PersistentUploadSubAllocator->CleanUpAllocations();
+        m_UploadHeapBufferSubAllocator->CleanUpAllocations();
+        m_UploadHeapBufferSubAllocatorFastOneFrame->CleanUpAllocations();
 
         m_CommandManager->SignalNextFrameFence();
-    }
-
-    void GfxDevice::DeferredRelease(ComPtr<ID3D12Object> obj)
-    {
-        m_ReleaseQueue.emplace(m_CommandManager->GetNextFrameFence(), obj);
     }
 
     void GfxDevice::WaitForGpuIdle(bool releaseUnusedObjects)
@@ -209,27 +170,18 @@ namespace march
 
         if (releaseUnusedObjects)
         {
-            ProcessReleaseQueue();
+            RefreshCompletedFrameFenceAndProcessReleaseQueue();
+            assert(m_ReleaseQueue.empty());
         }
     }
 
-    void GfxDevice::ProcessReleaseQueue()
+    void GfxDevice::RefreshCompletedFrameFenceAndProcessReleaseQueue()
     {
-        bool useFenceCache = false;
+        m_CommandManager->RefreshCompletedFrameFence();
 
-        while (!m_ReleaseQueue.empty() && IsFenceCompleted(m_ReleaseQueue.front().first, useFenceCache))
+        while (!m_ReleaseQueue.empty() && IsFenceCompleted(m_ReleaseQueue.front().first))
         {
-            // TODO 释放资源较多时，输出名称太卡了！
-
-            wchar_t name[256];
-            UINT size = sizeof(name);
-            if (SUCCEEDED(m_ReleaseQueue.front().second->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
-            {
-                LOG_TRACE(L"Release D3D12Object {}", name);
-            }
-
             m_ReleaseQueue.pop();
-            useFenceCache = true;
         }
     }
 
@@ -238,14 +190,14 @@ namespace march
         return m_CommandManager->RequestAndOpenContext(type);
     }
 
-    uint64_t GfxDevice::GetCompletedFence(bool useCache)
+    uint64_t GfxDevice::GetCompletedFence()
     {
-        return m_CommandManager->GetCompletedFrameFence(useCache);
+        return m_CommandManager->GetCompletedFrameFence();
     }
 
-    bool GfxDevice::IsFenceCompleted(uint64_t fence, bool useCache)
+    bool GfxDevice::IsFenceCompleted(uint64_t fence)
     {
-        return m_CommandManager->IsFrameFenceCompleted(fence, useCache);
+        return m_CommandManager->IsFrameFenceCompleted(fence);
     }
 
     uint64_t GfxDevice::GetNextFence() const
@@ -253,62 +205,67 @@ namespace march
         return m_CommandManager->GetNextFrameFence();
     }
 
-    GfxCompleteResourceAllocator* GfxDevice::GetResourceAllocator(GfxAllocator allocator, GfxAllocation allocation) const
+    GfxResourceAllocator* GfxDevice::GetCommittedAllocator(D3D12_HEAP_TYPE heapType) const
     {
-        switch (allocator)
+        switch (heapType)
         {
-        case GfxAllocator::CommittedDefault:
-            return m_CommittedDefaultAllocator.get();
-        case GfxAllocator::CommittedUpload:
-            return m_CommittedUploadAllocator.get();
-        case GfxAllocator::PlacedDefault:
-        {
-            switch (allocation)
-            {
-            case GfxAllocation::Buffer:
-                return m_PlacedDefaultAllocatorBuffer.get();
-            case GfxAllocation::Texture:
-                return m_PlacedDefaultAllocatorTexture.get();
-            case GfxAllocation::RenderTexture:
-                return m_PlacedDefaultAllocatorRenderTexture.get();
-            case GfxAllocation::RenderTextureMS:
-                return m_PlacedDefaultAllocatorRenderTextureMS.get();
-            default:
-                throw std::invalid_argument("Invalid GfxAllocation");
-            }
-        }
-        case GfxAllocator::PlacedUpload:
-        {
-            switch (allocation)
-            {
-            case GfxAllocation::Buffer:
-                return m_PlacedUploadAllocatorBuffer.get();
-            case GfxAllocation::Texture:
-                return m_PlacedUploadAllocatorTexture.get();
-            case GfxAllocation::RenderTexture:
-                return m_PlacedUploadAllocatorRenderTexture.get();
-            case GfxAllocation::RenderTextureMS:
-                return m_PlacedUploadAllocatorRenderTextureMS.get();
-            default:
-                throw std::invalid_argument("Invalid GfxAllocation");
-            }
-        }
+        case D3D12_HEAP_TYPE_DEFAULT:
+            return m_DefaultHeapCommittedAllocator.get();
+        case D3D12_HEAP_TYPE_UPLOAD:
+            return m_UploadHeapCommittedAllocator.get();
         default:
-            throw std::invalid_argument("Invalid GfxAllocator");
+            throw std::invalid_argument("GfxDevice::GetCommittedAllocator: Invalid heap type");
         }
     }
 
-    GfxBufferSubAllocator* GfxDevice::GetResourceAllocator(GfxSubAllocator subAllocator) const
+    GfxResourceAllocator* GfxDevice::GetPlacedBufferAllocator(D3D12_HEAP_TYPE heapType) const
     {
-        switch (subAllocator)
+        switch (heapType)
         {
-        case GfxSubAllocator::TempUpload:
-            return m_TempUploadSubAllocator.get();
-        case GfxSubAllocator::PersistentUpload:
-            return m_PersistentUploadSubAllocator.get();
+        case D3D12_HEAP_TYPE_DEFAULT:
+            return m_DefaultHeapPlacedAllocatorBuffer.get();
+        case D3D12_HEAP_TYPE_UPLOAD:
+            return m_UploadHeapPlacedAllocatorBuffer.get();
         default:
-            throw std::invalid_argument("Invalid GfxSubAllocator");
+            throw std::invalid_argument("GfxDevice::GetPlacedBufferAllocator: Invalid heap type");
         }
+    }
+
+    GfxResourceAllocator* GfxDevice::GetDefaultHeapPlacedTextureAllocator(bool render, bool msaa) const
+    {
+        if (render)
+        {
+            if (msaa)
+            {
+                return m_DefaultHeapPlacedAllocatorRenderTextureMS.get();
+            }
+
+            return m_DefaultHeapPlacedAllocatorRenderTexture.get();
+        }
+        else
+        {
+            if (msaa)
+            {
+                throw std::invalid_argument("GfxDevice::GetDefaultHeapPlacedTextureAllocator: MSAA is not supported for non-render textures");
+            }
+
+            return m_DefaultHeapPlacedAllocatorTexture.get();
+        }
+    }
+
+    GfxBufferSubAllocator* GfxDevice::GetUploadHeapBufferSubAllocator(bool fastOneFrame) const
+    {
+        if (fastOneFrame)
+        {
+            return m_UploadHeapBufferSubAllocatorFastOneFrame.get();
+        }
+
+        return m_UploadHeapBufferSubAllocator.get();
+    }
+
+    void GfxDevice::KeepAliveUntilNextFence(RefCountPtr<ThreadSafeRefCountedObject> obj)
+    {
+        m_ReleaseQueue.emplace(m_CommandManager->GetNextFrameFence(), obj);
     }
 
     uint32_t GfxDevice::GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount)

@@ -4,6 +4,7 @@
 #include "Engine/Graphics/GfxDescriptor.h"
 #include "Engine/Graphics/GfxPipelineState.h"
 #include "Engine/Graphics/GfxBuffer.h"
+#include "Engine/Graphics/GfxTexture.h"
 #include "Engine/Graphics/GfxUtils.h"
 #include "Engine/Graphics/Shader.h"
 #include <directx/d3dx12.h>
@@ -126,8 +127,9 @@ namespace march
         GfxCommandContext* RequestAndOpenContext(GfxCommandType type);
         void RecycleContext(GfxCommandContext* context);
 
-        uint64_t GetCompletedFrameFence(bool useCache);
-        bool IsFrameFenceCompleted(uint64_t fence, bool useCache);
+        void RefreshCompletedFrameFence();
+        uint64_t GetCompletedFrameFence() const;
+        bool IsFrameFenceCompleted(uint64_t fence) const;
         uint64_t GetNextFrameFence() const;
 
         void SignalNextFrameFence();
@@ -223,7 +225,7 @@ namespace march
         void BeginEvent(const std::string& name);
         void EndEvent();
 
-        void TransitionResource(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter);
+        void TransitionResource(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter);
         void FlushResourceBarriers();
 
         void WaitOnGpu(const GfxSyncPoint& syncPoint);
@@ -259,6 +261,7 @@ namespace march
 
         void ResolveTexture(GfxTexture* source, GfxTexture* destination);
         void CopyBuffer(GfxBuffer* source, uint32_t sourceOffset, GfxBuffer* destination, uint32_t destinationOffset, uint32_t sizeInBytes);
+        void UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxCommandType GetType() const { return m_Type; }
@@ -295,8 +298,8 @@ namespace march
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
-        GfxRenderTexture* m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
-        GfxRenderTexture* m_DepthStencilTarget;
+        RefCountPtr<GfxTextureResource> m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
+        RefCountPtr<GfxTextureResource> m_DepthStencilTarget;
 
         uint32_t m_NumViewports;
         D3D12_VIEWPORT m_Viewports[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
@@ -312,8 +315,8 @@ namespace march
         D3D12_INDEX_BUFFER_VIEW m_CurrentIndexBuffer;
         std::optional<uint8_t> m_CurrentStencilRef;
 
-        std::unordered_map<int32_t, GfxTexture*> m_GlobalTextures;
-        std::unordered_map<int32_t, GfxBuffer*> m_GlobalBuffers;
+        std::unordered_map<int32_t, RefCountPtr<GfxTextureResource>> m_GlobalTextures;
+        std::unordered_map<int32_t, RefCountPtr<GfxBufferResource>> m_GlobalBuffers;
 
         struct InstanceData
         {
@@ -321,11 +324,11 @@ namespace march
             DirectX::XMFLOAT4X4 MatrixIT; // 逆转置，用于法线变换
         };
 
-        GfxStructuredBuffer<InstanceData> m_InstanceBuffer;
+        GfxBuffer m_InstanceBuffer;
 
-        GfxRenderTexture* GetFirstRenderTarget() const;
-        GfxTexture* FindTexture(int32_t id, Material* material);
-        GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex);
+        RefCountPtr<GfxTextureResource> GetFirstRenderTarget() const;
+        RefCountPtr<GfxTextureResource> FindTexture(int32_t id, Material* material);
+        RefCountPtr<GfxBufferResource> FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex);
 
         ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex);
 

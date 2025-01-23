@@ -2,7 +2,6 @@
 #include "Engine/Graphics/GfxCommand.h"
 #include "Engine/Graphics/GfxDevice.h"
 #include "Engine/Graphics/GfxResource.h"
-#include "Engine/Graphics/GfxTexture.h"
 #include "Engine/Graphics/GfxMesh.h"
 #include "Engine/Graphics/Material.h"
 #include "Engine/Graphics/MeshRenderer.h"
@@ -46,7 +45,7 @@ namespace march
         , m_CurrentStencilRef(std::nullopt)
         , m_GlobalTextures{}
         , m_GlobalBuffers{}
-        , m_InstanceBuffer{}
+        , m_InstanceBuffer{ device, "_InstanceBuffer" }
     {
     }
 
@@ -111,7 +110,7 @@ namespace march
         m_CurrentStencilRef = std::nullopt;
         m_GlobalTextures.clear();
         m_GlobalBuffers.clear();
-        m_InstanceBuffer = {};
+        m_InstanceBuffer.Reset();
 
         // 回收
         manager->RecycleContext(this);
@@ -135,7 +134,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::TransitionResource(GfxResource* resource, D3D12_RESOURCE_STATES stateAfter)
+    void GfxCommandContext::TransitionResource(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter)
     {
         D3D12_RESOURCE_STATES stateBefore = resource->GetState();
         bool needTransition;
@@ -153,6 +152,8 @@ namespace march
 
         if (needTransition)
         {
+            //m_Device->KeepAliveUntilNextFence(resource);
+
             ID3D12Resource* res = resource->GetD3DResource();
             m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter));
             resource->SetState(stateAfter);
@@ -183,7 +184,7 @@ namespace march
 
     void GfxCommandContext::SetTexture(int32_t id, GfxTexture* value)
     {
-        m_GlobalTextures[id] = value;
+        m_GlobalTextures[id] = value->GetResource();
     }
 
     void GfxCommandContext::ClearTextures()
@@ -198,7 +199,7 @@ namespace march
 
     void GfxCommandContext::SetBuffer(int32_t id, GfxBuffer* value)
     {
-        m_GlobalBuffers[id] = value;
+        m_GlobalBuffers[id] = value->GetResource();
     }
 
     void GfxCommandContext::ClearBuffers()
@@ -224,18 +225,18 @@ namespace march
 
         if (numColorTargets == 0 && depthStencilTarget == nullptr)
         {
-            LOG_WARNING("No render target is set");
+            LOG_WARNING("GfxCommandContext::SetRenderTargets: No render target is set");
             return;
         }
 
         // Check if the render targets are dirty
-        if (numColorTargets == m_OutputDesc.NumRTV && depthStencilTarget == m_DepthStencilTarget)
+        if (numColorTargets == m_OutputDesc.NumRTV && depthStencilTarget->GetResource() == m_DepthStencilTarget)
         {
             bool isDirty = false;
 
             for (uint32_t i = 0; i < numColorTargets; i++)
             {
-                if (colorTargets[i] != m_ColorTargets[i])
+                if (colorTargets[i]->GetResource() != m_ColorTargets[i])
                 {
                     isDirty = true;
                     break;
@@ -256,8 +257,10 @@ namespace march
         {
             if (i < numColorTargets)
             {
-                GfxRenderTexture* target = colorTargets[i];
-                TransitionResource(target->GetResource().Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+                RefCountPtr<GfxTextureResource> target = colorTargets[i]->GetResource();
+
+                m_Device->KeepAliveUntilNextFence(target);
+                TransitionResource(target->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET);
 
                 rtv[i] = target->GetRtvDsv();
 
@@ -273,15 +276,16 @@ namespace march
             }
         }
 
-        if (m_DepthStencilTarget = depthStencilTarget)
+        if (m_DepthStencilTarget = depthStencilTarget->GetResource())
         {
-            TransitionResource(depthStencilTarget->GetResource().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            m_Device->KeepAliveUntilNextFence(m_DepthStencilTarget);
+            TransitionResource(m_DepthStencilTarget->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-            m_OutputDesc.DSVFormat = depthStencilTarget->GetDesc().GetRtvDsvDXGIFormat();
-            m_OutputDesc.SampleCount = depthStencilTarget->GetSampleCount();
-            m_OutputDesc.SampleQuality = depthStencilTarget->GetSampleQuality();
+            m_OutputDesc.DSVFormat = m_DepthStencilTarget->GetDesc().GetRtvDsvDXGIFormat();
+            m_OutputDesc.SampleCount = m_DepthStencilTarget->GetSampleCount();
+            m_OutputDesc.SampleQuality = m_DepthStencilTarget->GetSampleQuality();
 
-            D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthStencilTarget->GetRtvDsv();
+            D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsv();
             m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, &dsv);
         }
         else
@@ -293,16 +297,15 @@ namespace march
 
     void GfxCommandContext::ClearRenderTargets(GfxClearFlags flags, const float color[4], float depth, uint8_t stencil)
     {
-        bool clearColor = false;
+        bool clearColor;
 
         if (m_OutputDesc.NumRTV > 0 && (flags & GfxClearFlags::Color) == GfxClearFlags::Color)
         {
             clearColor = true;
-
-            for (uint32_t i = 0; i < m_OutputDesc.NumRTV; i++)
-            {
-                TransitionResource(m_ColorTargets[i]->GetResource().Get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-            }
+        }
+        else
+        {
+            clearColor = false;
         }
 
         D3D12_CLEAR_FLAGS clearDepthStencil = static_cast<D3D12_CLEAR_FLAGS>(0);
@@ -317,11 +320,6 @@ namespace march
             if ((flags & GfxClearFlags::Stencil) == GfxClearFlags::Stencil)
             {
                 clearDepthStencil |= D3D12_CLEAR_FLAG_STENCIL;
-            }
-
-            if (clearDepthStencil != 0)
-            {
-                TransitionResource(m_DepthStencilTarget->GetResource().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
             }
         }
 
@@ -387,7 +385,7 @@ namespace march
 
     void GfxCommandContext::SetDefaultViewport()
     {
-        GfxRenderTexture* target = GetFirstRenderTarget();
+        RefCountPtr<GfxTextureResource> target = GetFirstRenderTarget();
 
         if (target == nullptr)
         {
@@ -407,7 +405,7 @@ namespace march
 
     void GfxCommandContext::SetDefaultScissorRect()
     {
-        GfxRenderTexture* target = GetFirstRenderTarget();
+        RefCountPtr<GfxTextureResource> target = GetFirstRenderTarget();
 
         if (target == nullptr)
         {
@@ -448,27 +446,27 @@ namespace march
         }
     }
 
-    GfxRenderTexture* GfxCommandContext::GetFirstRenderTarget() const
+    RefCountPtr<GfxTextureResource> GfxCommandContext::GetFirstRenderTarget() const
     {
         return m_OutputDesc.NumRTV > 0 ? m_ColorTargets[0] : m_DepthStencilTarget;
     }
 
-    GfxTexture* GfxCommandContext::FindTexture(int32_t id, Material* material)
+    RefCountPtr<GfxTextureResource> GfxCommandContext::FindTexture(int32_t id, Material* material)
     {
-        GfxTexture* texture = nullptr;
-
-        if (!material->GetTexture(id, &texture))
+        if (GfxTexture* texture = nullptr; material->GetTexture(id, &texture))
         {
-            if (auto it = m_GlobalTextures.find(id); it != m_GlobalTextures.end())
-            {
-                texture = it->second;
-            }
+            return texture->GetResource();
         }
 
-        return texture;
+        if (auto it = m_GlobalTextures.find(id); it != m_GlobalTextures.end())
+        {
+            return it->second;
+        }
+
+        return nullptr;
     }
 
-    GfxBuffer* GfxCommandContext::FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex)
+    RefCountPtr<GfxBufferResource> GfxCommandContext::FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex)
     {
         if (isConstantBuffer)
         {
@@ -483,7 +481,7 @@ namespace march
 
             if (id == instanceBufferId)
             {
-                return &m_InstanceBuffer;
+                return m_InstanceBuffer.GetResource();
             }
         }
 

@@ -136,24 +136,24 @@ namespace march
         m_Commands[static_cast<size_t>(context->GetType())].FreeContexts.push(context);
     }
 
-    uint64_t GfxCommandManager::GetCompletedFrameFence(bool useCache)
+    void GfxCommandManager::RefreshCompletedFrameFence()
     {
-        if (!useCache)
+        m_CompletedFence = std::numeric_limits<uint64_t>::max();
+
+        for (auto& c : m_Commands)
         {
-            m_CompletedFence = std::numeric_limits<uint64_t>::max();
-
-            for (auto& c : m_Commands)
-            {
-                m_CompletedFence = std::min(m_CompletedFence, c.FrameFence->GetCompletedValue());
-            }
+            m_CompletedFence = std::min(m_CompletedFence, c.FrameFence->GetCompletedValue());
         }
+    }
 
+    uint64_t GfxCommandManager::GetCompletedFrameFence() const
+    {
         return m_CompletedFence;
     }
 
-    bool GfxCommandManager::IsFrameFenceCompleted(uint64_t fence, bool useCache)
+    bool GfxCommandManager::IsFrameFenceCompleted(uint64_t fence) const
     {
-        return fence <= GetCompletedFrameFence(useCache);
+        return fence <= GetCompletedFrameFence();
     }
 
     uint64_t GfxCommandManager::GetNextFrameFence() const

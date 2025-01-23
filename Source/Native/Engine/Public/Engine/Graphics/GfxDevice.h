@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include <directx/d3dx12.h>
 #include <dxgi1_4.h>
 #include <wrl.h>
@@ -18,6 +19,9 @@ namespace march
 
     class GfxOfflineDescriptorAllocator;
     class GfxOnlineDescriptorMultiAllocator;
+
+    class GfxResourceAllocator;
+    class GfxBufferSubAllocator;
 
     struct GfxDeviceDesc
     {
@@ -42,16 +46,20 @@ namespace march
         GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
         GfxCommandContext* RequestContext(GfxCommandType type);
 
-        uint64_t GetCompletedFence(bool useCache = false);
-        bool IsFenceCompleted(uint64_t fence, bool useCache = false);
+        uint64_t GetCompletedFence();
+        bool IsFenceCompleted(uint64_t fence);
         uint64_t GetNextFence() const;
 
         GfxOfflineDescriptorAllocator* GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE type) const { return m_OfflineDescriptorAllocators[type].get(); }
         GfxOnlineDescriptorMultiAllocator* GetOnlineViewDescriptorAllocator() const { return m_OnlineViewAllocator.get(); }
         GfxOnlineDescriptorMultiAllocator* GetOnlineSamplerDescriptorAllocator() const { return m_OnlineSamplerAllocator.get(); }
 
-        GfxCompleteResourceAllocator* GetResourceAllocator(GfxAllocator allocator, GfxAllocation allocation) const;
-        GfxBufferSubAllocator* GetResourceAllocator(GfxSubAllocator subAllocator) const;
+        GfxResourceAllocator* GetCommittedAllocator(D3D12_HEAP_TYPE heapType) const;
+        GfxResourceAllocator* GetPlacedBufferAllocator(D3D12_HEAP_TYPE heapType) const;
+        GfxResourceAllocator* GetDefaultHeapPlacedTextureAllocator(bool render, bool msaa) const;
+        GfxBufferSubAllocator* GetUploadHeapBufferSubAllocator(bool fastOneFrame) const;
+
+        void KeepAliveUntilNextFence(RefCountPtr<ThreadSafeRefCountedObject> obj);
 
         uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
 
@@ -63,28 +71,24 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 
         std::unique_ptr<GfxCommandManager> m_CommandManager;
-        std::queue<std::pair<uint64_t, Microsoft::WRL::ComPtr<ID3D12Object>>> m_ReleaseQueue;
-
-        // 下面的 allocator 在析构时会使用 m_ReleaseQueue
 
         std::unique_ptr<GfxOfflineDescriptorAllocator> m_OfflineDescriptorAllocators[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
         std::unique_ptr<GfxOnlineDescriptorMultiAllocator> m_OnlineViewAllocator;
         std::unique_ptr<GfxOnlineDescriptorMultiAllocator> m_OnlineSamplerAllocator;
 
-        std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedDefaultAllocator;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_CommittedUploadAllocator;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocatorBuffer;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocatorTexture;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocatorRenderTexture;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedDefaultAllocatorRenderTextureMS;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocatorBuffer;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocatorTexture;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocatorRenderTexture;
-        std::unique_ptr<GfxCompleteResourceAllocator> m_PlacedUploadAllocatorRenderTextureMS;
-        std::unique_ptr<GfxBufferSubAllocator> m_TempUploadSubAllocator;
-        std::unique_ptr<GfxBufferSubAllocator> m_PersistentUploadSubAllocator;
+        std::unique_ptr<GfxResourceAllocator> m_DefaultHeapCommittedAllocator;
+        std::unique_ptr<GfxResourceAllocator> m_UploadHeapCommittedAllocator;
+        std::unique_ptr<GfxResourceAllocator> m_DefaultHeapPlacedAllocatorBuffer;
+        std::unique_ptr<GfxResourceAllocator> m_DefaultHeapPlacedAllocatorTexture;
+        std::unique_ptr<GfxResourceAllocator> m_DefaultHeapPlacedAllocatorRenderTexture;
+        std::unique_ptr<GfxResourceAllocator> m_DefaultHeapPlacedAllocatorRenderTextureMS;
+        std::unique_ptr<GfxResourceAllocator> m_UploadHeapPlacedAllocatorBuffer;
+        std::unique_ptr<GfxBufferSubAllocator> m_UploadHeapBufferSubAllocator;
+        std::unique_ptr<GfxBufferSubAllocator> m_UploadHeapBufferSubAllocatorFastOneFrame;
 
-        void ProcessReleaseQueue();
+        std::queue<std::pair<uint64_t, RefCountPtr<ThreadSafeRefCountedObject>>> m_ReleaseQueue;
+
+        void RefreshCompletedFrameFenceAndProcessReleaseQueue();
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);
         void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
     };

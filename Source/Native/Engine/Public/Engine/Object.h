@@ -68,6 +68,12 @@ namespace march
             InternalAddRef();
         }
 
+        template <typename U>
+        RefCountPtr(const RefCountPtr<U>& other, typename std::enable_if_t<std::is_convertible_v<U*, T*>>* = nullptr) noexcept : m_Ptr(other.m_Ptr)
+        {
+            InternalAddRef();
+        }
+
         RefCountPtr(RefCountPtr&& other) noexcept : m_Ptr(nullptr)
         {
             // 下面定义了 operator&，所以这里取 other 的地址要先转成其他类型

@@ -225,6 +225,7 @@ namespace march
 
         GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
         RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
+        ID3D12Resource* GetUnderlyingD3DResource() const { return m_Resource->GetD3DResource(); }
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
         uint32_t GetMipLevels() const { return m_MipLevels; }
         uint32_t GetSampleCount() const { return m_Desc.MSAASamples; }
@@ -273,13 +274,14 @@ namespace march
 
         virtual bool AllowRendering() const = 0;
 
+        GfxDevice* GetDevice() const { return m_Device; }
         RefCountPtr<GfxTextureResource> GetResource() const { return m_Resource; }
 
         static GfxTexture* GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension);
         static void ClearSamplerCache();
 
     protected:
-        GfxTexture() : m_Resource(nullptr) {}
+        GfxTexture(GfxDevice* device) : m_Device(device), m_Resource(nullptr) {}
 
         void Reset(const GfxTextureDesc& desc, RefCountPtr<GfxResource> resource)
         {
@@ -287,6 +289,7 @@ namespace march
         }
 
     private:
+        GfxDevice* m_Device;
         RefCountPtr<GfxTextureResource> m_Resource;
     };
 
@@ -326,6 +329,7 @@ namespace march
         DirectX::ScratchImage m_Image;
     };
 
+    // TODO rename this
     struct GfxTextureResourceDesc
     {
         bool IsCube;
@@ -339,7 +343,7 @@ namespace march
     class GfxRenderTexture : public GfxTexture
     {
     public:
-        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxAllocator allocator);
+        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocationStrategy allocationStrategy);
         GfxRenderTexture(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc);
 
         bool AllowRendering() const override { return true; }

@@ -29,6 +29,7 @@ namespace march
         Constant = 1 << 2,
         Structured = 1 << 3,
         Raw = 1 << 4,
+        Copy = 1 << 5,
     };
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsages);
@@ -36,7 +37,7 @@ namespace march
     enum class GfxBufferUnorderedAccessMode
     {
         // Disable Unordered Access
-        Disabled,
+        Disabled = 0,
 
         // RWStructuredBuffer without IncrementCounter and DecrementCounter functions
         Structured,
@@ -104,6 +105,7 @@ namespace march
 
         GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
         RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
+        ID3D12Resource* GetUnderlyingD3DResource() const { return m_Resource->GetD3DResource(); }
         GfxBufferSubAllocator* GetAllocator() const { return m_Allocator; }
         const GfxBufferDesc& GetDesc() const { return m_Desc; }
 
@@ -205,15 +207,27 @@ namespace march
     public:
         static constexpr uint32_t NullCounter = 0xFFFFFFFF;
 
+        GfxBuffer(GfxDevice* device, const std::string& name) : m_Device(device), m_Name(name), m_Resource(nullptr) {}
+
         void SetData(
             const GfxBufferDesc& desc,
             GfxBufferAllocationStrategy allocationStrategy,
             const void* pData = nullptr,
             uint32_t counter = NullCounter);
 
+        void Initialize(const GfxBufferDesc& desc, GfxBufferAllocationStrategy allocationStrategy)
+        {
+            SetData(desc, allocationStrategy);
+        }
+
+        void Reset()
+        {
+            m_Resource = nullptr;
+        }
+
+        GfxDevice* GetDevice() const { return m_Device; }
         RefCountPtr<GfxBufferResource> GetResource() const { return m_Resource; }
 
-        GfxBuffer() = default;
         ~GfxBuffer() = default;
 
         GfxBuffer(const GfxBuffer&) = default;
@@ -223,6 +237,10 @@ namespace march
         GfxBuffer& operator=(GfxBuffer&&) = default;
 
     private:
+        GfxDevice* m_Device;
+        std::string m_Name;
         RefCountPtr<GfxBufferResource> m_Resource;
+
+        uint32_t AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocationStrategy strategy);
     };
 }

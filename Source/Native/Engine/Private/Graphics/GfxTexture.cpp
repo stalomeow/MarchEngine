@@ -736,23 +736,29 @@ namespace march
         GFX_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
 
         // upload is implemented by application developer. Here's one solution using <d3dx12.h>
-        const UINT64 uploadBufferSize = GetRequiredIntermediateSize(GetResource()->GetD3DResource(), 0, static_cast<UINT>(subresources.size()));
+        const UINT64 uploadBufferSize = GetRequiredIntermediateSize(
+            GetResource()->GetUnderlyingD3DResource(), 0, static_cast<UINT>(subresources.size()));
 
-        GfxBuffer uploadBuffer{ device, static_cast<uint32_t>(uploadBufferSize), 0, GfxSubAllocator::TempUpload };
+        GfxBuffer uploadBuffer{ device, "TempTextureUpload" };
+        GfxBufferDesc uploadBufferDesc{};
+        uploadBufferDesc.Stride = static_cast<uint32_t>(uploadBufferSize);
+        uploadBufferDesc.Count = 1;
+        uploadBufferDesc.Usages = GfxBufferUsages::Copy;
+        uploadBufferDesc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+        uploadBuffer.Initialize(uploadBufferDesc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame);
+
         GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
-
         UpdateSubresources(
             context->GetCommandList(),
-            GetResource()->GetD3DResource(),
-            uploadBuffer.GetResource()->GetD3DResource(),
-            static_cast<UINT64>(uploadBuffer.GetResourceOffset()),
+            GetResource()->GetUnderlyingD3DResource(),
+            uploadBuffer.GetResource()->GetUnderlyingD3DResource(),
+            static_cast<UINT64>(uploadBuffer.GetResource()->GetOffsetInBytes()),
             0, static_cast<UINT>(subresources.size()),
             subresources.data());
-
         context->SubmitAndRelease().WaitOnCpu();
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxAllocator allocator)
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocationStrategy allocationStrategy)
         : GfxTexture(device)
     {
         D3D12_RESOURCE_DESC resDesc = {};
@@ -807,9 +813,21 @@ namespace march
             initialState = D3D12_RESOURCE_STATE_COMMON;
         }
 
-        GfxCompleteResourceAllocator* resAllocator = device->GetResourceAllocator(allocator,
-            desc.MSAASamples > 1 ? GfxAllocation::RenderTextureMS : GfxAllocation::RenderTexture);
-        Reset(desc, resAllocator->Allocate(name, &resDesc, initialState, &clearValue));
+        GfxResourceAllocator* allocator;
+
+        switch (allocationStrategy)
+        {
+        case GfxTexureAllocationStrategy::DefaultHeapCommitted:
+            allocator = device->GetCommittedAllocator(D3D12_HEAP_TYPE_DEFAULT);
+            break;
+        case GfxTexureAllocationStrategy::DefaultHeapPlaced:
+            allocator = device->GetDefaultHeapPlacedTextureAllocator(true, desc.MSAASamples > 1);
+            break;
+        default:
+            throw GfxException("Invalid texture allocation strategy");
+        }
+
+        Reset(desc, allocator->Allocate(name, &resDesc, initialState, &clearValue));
     }
 
     GfxRenderTexture::GfxRenderTexture(GfxDevice* device, ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc)
