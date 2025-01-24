@@ -20,7 +20,7 @@ namespace march
         {
             GfxRenderTexture* tex = it->Texture;
 
-            if (tex->GetDesc().IsCompatibleWith(desc))
+            if (tex->GetResource()->GetDesc().IsCompatibleWith(desc))
             {
                 m_FreeTextures.erase(it);
                 return tex;
@@ -43,7 +43,7 @@ namespace march
         }
 
         GfxDevice* device = GetGfxDevice();
-        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc, GfxAllocator::PlacedDefault));
+        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc, GfxTexureAllocationStrategy::DefaultHeapPlaced));
         GfxRenderTexture* texture = m_AllTextures.back().get();
         m_TextureMap[texture] = std::prev(m_AllTextures.end());
         return texture;
@@ -124,7 +124,7 @@ namespace march
             return m_TransientTextureDesc;
         }
 
-        return static_cast<GfxRenderTexture*>(m_ResourcePtr)->GetDesc();
+        return static_cast<GfxRenderTexture*>(m_ResourcePtr)->GetResource()->GetDesc();
     }
 
     bool RenderGraphResourceData::IsTransient() const

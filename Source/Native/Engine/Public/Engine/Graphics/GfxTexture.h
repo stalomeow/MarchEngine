@@ -211,7 +211,7 @@ namespace march
         DefaultHeapPlaced,
     };
 
-    class GfxTextureResource final : public ThreadSafeRefCountedObject
+    class GfxTextureResource final : public FenceSynchronizedObject
     {
     public:
         GfxTextureResource(const GfxTextureDesc& desc, RefCountPtr<GfxResource> underlyingResource, bool allowRendering);

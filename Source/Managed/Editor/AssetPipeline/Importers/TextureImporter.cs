@@ -7,7 +7,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 13)]
+    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 14)]
     internal class TextureImporter : AssetImporter
     {
         [JsonProperty]
@@ -17,10 +17,6 @@ namespace March.Editor.AssetPipeline.Importers
         [JsonProperty]
         [InspectorName("Generate Mipmaps")]
         public bool GenerateMipmaps { get; set; } = true;
-
-        [JsonProperty]
-        [InspectorName("Unordered Access")]
-        public bool UnorderedAccess { get; set; } = false;
 
         [JsonProperty]
         public TextureCompression Compression { get; set; } = TextureCompression.NormalQuality;
@@ -57,11 +53,6 @@ namespace March.Editor.AssetPipeline.Importers
             if (GenerateMipmaps)
             {
                 args.Flags |= TextureFlags.Mipmaps;
-            }
-
-            if (UnorderedAccess)
-            {
-                args.Flags |= TextureFlags.UnorderedAccess;
             }
 
             string name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);

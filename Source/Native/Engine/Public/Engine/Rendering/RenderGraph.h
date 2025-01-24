@@ -38,10 +38,9 @@ namespace march
         void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode) { m_Context->DrawMeshRenderers(numRenderers, renderers, lightMode); }
 
         void ResolveTexture(GfxTexture* source, GfxTexture* destination) { m_Context->ResolveTexture(source, destination); }
-        void CopyBuffer(GfxBuffer* source, uint32_t sourceOffset, GfxBuffer* destination, uint32_t destinationOffset, uint32_t sizeInBytes) { m_Context->CopyBuffer(source, sourceOffset, destination, destinationOffset, sizeInBytes); }
+        void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement) { m_Context->CopyBuffer(sourceBuffer, sourceElement, destinationBuffer, destinationElement); }
 
         GfxDevice* GetDevice() const { return m_Context->GetDevice(); }
-        ID3D12GraphicsCommandList* GetCommandList() const { return m_Context->GetCommandList(); }
         GfxCommandContext* GetCommandContext() const { return m_Context; }
 
         RenderGraphContext(const RenderGraphContext&) = delete;

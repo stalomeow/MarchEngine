@@ -101,8 +101,9 @@ namespace march
     class ImGuiViewportData
     {
     public:
-        ImGuiViewportData()
-            : m_Mesh(GfxSubAllocator::TempUpload)
+        ImGuiViewportData(GfxDevice* device)
+            : m_Mesh(GfxBufferAllocationStrategy::UploadHeapFastOneFrame)
+            , m_ConstantBuffer(device, "ImGuiConstants")
             , m_Intermediate(nullptr)
         {
         }
@@ -110,6 +111,11 @@ namespace march
         GfxBasicMesh<ImGuiVertex>& GetMesh()
         {
             return m_Mesh;
+        }
+
+        GfxBuffer& GetConstantBuffer()
+        {
+            return m_ConstantBuffer;
         }
 
         GfxRenderTexture* GetIntermediateTarget(GfxDevice* device, GfxRenderTexture* target)
@@ -122,8 +128,8 @@ namespace march
             }
             else
             {
-                const GfxTextureDesc& desc1 = target->GetDesc();
-                const GfxTextureDesc& desc2 = m_Intermediate->GetDesc();
+                const GfxTextureDesc& desc1 = target->GetResource()->GetDesc();
+                const GfxTextureDesc& desc2 = m_Intermediate->GetResource()->GetDesc();
                 needRecreate = desc1.Width != desc2.Width || desc1.Height != desc2.Height;
             }
 
@@ -133,14 +139,14 @@ namespace march
                 desc.Format = GfxTextureFormat::R11G11B10_Float;
                 desc.Flags = GfxTextureFlags::None;
                 desc.Dimension = GfxTextureDimension::Tex2D;
-                desc.Width = target->GetDesc().Width;
-                desc.Height = target->GetDesc().Height;
+                desc.Width = target->GetResource()->GetDesc().Width;
+                desc.Height = target->GetResource()->GetDesc().Height;
                 desc.DepthOrArraySize = 1;
                 desc.MSAASamples = 1;
                 desc.Filter = GfxTextureFilterMode::Point;
                 desc.Wrap = GfxTextureWrapMode::Clamp;
                 desc.MipmapBias = 0;
-                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGuiIntermediate", desc, GfxAllocator::CommittedDefault);
+                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGuiIntermediate", desc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
             }
 
             return m_Intermediate.get();
@@ -148,6 +154,7 @@ namespace march
 
     private:
         GfxBasicMesh<ImGuiVertex> m_Mesh;
+        GfxBuffer m_ConstantBuffer;
         std::unique_ptr<GfxRenderTexture> m_Intermediate;
     };
 
@@ -171,7 +178,7 @@ namespace march
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
 
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-        mainViewport->RendererUserData = IM_NEW(ImGuiViewportData)();
+        mainViewport->RendererUserData = IM_NEW(ImGuiViewportData)(device);
     }
 
     void ImGui_ImplDX12_Shutdown()
@@ -208,7 +215,7 @@ namespace march
         IM_ASSERT(bd != nullptr && "Context or backend not initialized! Did you call ImGui_ImplDX12_Init()?");
     }
 
-    static GfxConstantBuffer<ImGuiConstants> CreateConstantBuffer(GfxDevice* device, ImDrawData* drawData)
+    static void SetConstantBufferData(GfxBuffer& buffer, ImDrawData* drawData)
     {
         // Ref: https://github.com/ocornut/imgui/blob/master/backends/imgui_impl_dx12.cpp
 
@@ -224,12 +231,15 @@ namespace march
             { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
         };
 
+        GfxBufferDesc desc{};
+        desc.Stride = sizeof(ImGuiConstants);
+        desc.Count = 1;
+        desc.Usages = GfxBufferUsages::Constant;
+        desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+
         ImGuiConstants constants{};
         memcpy(&constants.MVP.m, mvp, sizeof(mvp));
-
-        GfxConstantBuffer<ImGuiConstants> buffer{ device, GfxSubAllocator::TempUpload };
-        buffer.SetData(0, &constants, sizeof(constants));
-        return buffer;
+        buffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &constants);
     }
 
     void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxRenderTexture* target)
@@ -242,6 +252,7 @@ namespace march
         ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(drawData->OwnerViewport->RendererUserData);
 
         GfxBasicMesh<ImGuiVertex>& mesh = vd->GetMesh();
+        GfxBuffer& cbuffer = vd->GetConstantBuffer();
         GfxRenderTexture* intermediate = vd->GetIntermediateTarget(bd->GetDevice(), target);
 
         // (Because we merged all buffers into a single one, we maintain our own offset into them)
@@ -278,7 +289,7 @@ namespace march
         static int32_t textureId = Shader::GetNameId("_Texture");
 
         GfxCommandContext* context = bd->GetDevice()->RequestContext(GfxCommandType::Direct);
-        GfxConstantBuffer<ImGuiConstants> cbuffer = CreateConstantBuffer(bd->GetDevice(), drawData);
+        SetConstantBufferData(cbuffer, drawData);
 
         context->BeginEvent("DrawImGui");
         {

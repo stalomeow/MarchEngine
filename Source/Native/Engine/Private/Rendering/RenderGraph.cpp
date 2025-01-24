@@ -20,7 +20,7 @@ namespace march
 
     void RenderGraphContext::ClearPassData()
     {
-        m_Context->ClearTextures();
+        m_Context->UnsetTextures();
     }
 
     RenderGraphPass::RenderGraphPass(const std::string& name)

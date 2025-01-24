@@ -55,7 +55,7 @@ namespace march
         void EnableKeyword(const std::string& keyword);
         void DisableKeyword(const std::string& keyword);
         void SetKeyword(const std::string& keyword, bool value);
-        GfxRawConstantBuffer* GetConstantBuffer(int32_t passIndex);
+        GfxBuffer* GetConstantBuffer(int32_t passIndex);
         const ShaderPassRenderState& GetResolvedRenderState(int32_t passIndex, size_t* outHash = nullptr);
 
     private:
@@ -68,7 +68,7 @@ namespace march
         int32_t m_ShaderVersion;
         ShaderKeywordSet m_KeywordCache;
         std::unordered_set<std::string> m_EnabledKeywords;
-        std::unordered_map<int32_t, GfxRawConstantBuffer> m_ConstantBuffers; // Key 是 ShaderPassIndex
+        std::unordered_map<int32_t, GfxBuffer> m_ConstantBuffers; // Key 是 ShaderPassIndex
 
         // Key 是 ShaderPassIndex, Value 是 ShaderPassRenderState 和对应的 Hash
         std::unordered_map<int32_t, std::pair<ShaderPassRenderState, size_t>> m_ResolvedRenderStates;

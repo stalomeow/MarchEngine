@@ -30,12 +30,12 @@ struct CSharpLoadTextureFileArgs
 
 NATIVE_EXPORT_AUTO GfxTexture_GetMipLevels(cs<GfxTexture*> t)
 {
-    retcs t->GetMipLevels();
+    retcs t->GetResource()->GetMipLevels();
 }
 
 NATIVE_EXPORT_AUTO GfxTexture_GetDesc(cs<GfxTexture*> t)
 {
-    const GfxTextureDesc& desc = t->GetDesc();
+    const GfxTextureDesc& desc = t->GetResource()->GetDesc();
 
     CSharpTextureDesc result{};
     result.Format.assign(desc.Format);

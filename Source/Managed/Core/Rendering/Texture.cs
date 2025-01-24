@@ -87,7 +87,7 @@ namespace March.Core.Rendering
 
         Mipmaps = 1 << 1,
 
-        [InspectorName("Unordered Access")]
+        [HideInInspector]
         UnorderedAccess = 1 << 2,
 
         [HideInInspector]

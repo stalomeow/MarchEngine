@@ -351,17 +351,17 @@ namespace march
     }
 
     template<typename T>
-    static void SetConstantBufferProperty(GfxRawConstantBuffer& buffer, ShaderPass* pass, int32_t id, const T& value)
+    static void SetConstantBufferProperty(uint8_t* p, ShaderPass* pass, int32_t id, const T& value)
     {
         const auto& locations = pass->GetPropertyLocations();
         if (const auto it = locations.find(id); it != locations.end())
         {
             assert(sizeof(T) >= it->second.Size); // 有时候会把 Vector4 绑定到 Vector3 上，所以用 >=
-            buffer.SetData(it->second.Offset, &value, it->second.Size);
+            memcpy(p + it->second.Offset, &value, it->second.Size);
         }
     }
 
-    GfxRawConstantBuffer* Material::GetConstantBuffer(int32_t passIndex)
+    GfxBuffer* Material::GetConstantBuffer(int32_t passIndex)
     {
         CheckShaderVersion();
 
@@ -411,7 +411,9 @@ namespace march
                 return nullptr;
             }
 
-            it = m_ConstantBuffers.emplace(passIndex, GfxRawConstantBuffer{ GetGfxDevice() , bufferSizeInBytes, GfxSubAllocator::PersistentUpload }).first;
+            it = m_ConstantBuffers.emplace(passIndex, GfxBuffer{ GetGfxDevice() , "MaterialConstantBuffer" }).first;
+
+            std::vector<uint8_t> data(bufferSizeInBytes);
 
             // 初始化 cbuffer
             for (const auto& kv : m_Shader->GetProperties())
@@ -426,7 +428,7 @@ namespace march
                     float value;
                     if (GetFloat(id, &value))
                     {
-                        SetConstantBufferProperty(it->second, pass, id, value);
+                        SetConstantBufferProperty(data.data(), pass, id, value);
                     }
                     break;
                 }
@@ -436,7 +438,7 @@ namespace march
                     int32_t value;
                     if (GetInt(id, &value))
                     {
-                        SetConstantBufferProperty(it->second, pass, id, value);
+                        SetConstantBufferProperty(data.data(), pass, id, value);
                     }
                     break;
                 }
@@ -446,7 +448,7 @@ namespace march
                     XMFLOAT4 value;
                     if (GetColor(id, &value))
                     {
-                        SetConstantBufferProperty(it->second, pass, id, GfxUtils::GetShaderColor(value));
+                        SetConstantBufferProperty(data.data(), pass, id, GfxUtils::GetShaderColor(value));
                     }
                     break;
                 }
@@ -456,7 +458,7 @@ namespace march
                     XMFLOAT4 value;
                     if (GetVector(id, &value))
                     {
-                        SetConstantBufferProperty(it->second, pass, id, value);
+                        SetConstantBufferProperty(data.data(), pass, id, value);
                     }
                     break;
                 }
@@ -470,6 +472,13 @@ namespace march
                     break;
                 }
             }
+
+            GfxBufferDesc desc{};
+            desc.Stride = bufferSizeInBytes;
+            desc.Count = 1;
+            desc.Usages = GfxBufferUsages::Constant;
+            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+            it->second.SetData(desc, GfxBufferAllocationStrategy::UploadHeapSubAlloc, data.data());
         }
 
         return &it->second;

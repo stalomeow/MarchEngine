@@ -46,9 +46,12 @@ namespace march
         std::atomic<uint32> m_RefCount;
     };
 
-    template <typename T, typename = std::enable_if_t<std::is_base_of_v<ThreadSafeRefCountedObject, T>>>
+    template <typename T>
     class RefCountPtr final
     {
+        template <typename U>
+        friend class RefCountPtr;
+
     public:
         RefCountPtr() noexcept : m_Ptr(nullptr)
         {
@@ -222,8 +225,12 @@ namespace march
     private:
         T* m_Ptr;
 
+        using IsTypeAllowed = std::is_base_of<ThreadSafeRefCountedObject, T>;
+
         void InternalAddRef() const noexcept
         {
+            static_assert(IsTypeAllowed::value, "T must derive from ThreadSafeRefCountedObject");
+
             if (m_Ptr != nullptr)
             {
                 m_Ptr->AddRef();
@@ -232,12 +239,37 @@ namespace march
 
         void InternalRelease() noexcept
         {
+            static_assert(IsTypeAllowed::value, "T must derive from ThreadSafeRefCountedObject");
+
             if (T* temp = m_Ptr; temp != nullptr)
             {
                 m_Ptr = nullptr;
                 temp->Release();
             }
         }
+    };
+
+    class FenceSynchronizedObject : public ThreadSafeRefCountedObject
+    {
+    public:
+        uint64 GetDeadlineFence() const { return m_DeadlineFence; }
+        void SetDeadlineFence(uint64 value) { m_DeadlineFence = value; }
+
+        RefCountPtr<FenceSynchronizedObject> GetPrevFenceSynchronizedObject() const { return m_Prev; }
+        void SetPrevFenceSynchronizedObject(RefCountPtr<FenceSynchronizedObject> value) { m_Prev = value; }
+
+        RefCountPtr<FenceSynchronizedObject> GetNextFenceSynchronizedObject() const { return m_Next; }
+        void SetNextFenceSynchronizedObject(RefCountPtr<FenceSynchronizedObject> value) { m_Next = value; }
+
+        virtual ~FenceSynchronizedObject() = default;
+
+    protected:
+        FenceSynchronizedObject() = default;
+
+    private:
+        uint64 m_DeadlineFence;
+        RefCountPtr<FenceSynchronizedObject> m_Prev;
+        RefCountPtr<FenceSynchronizedObject> m_Next;
     };
 }
 

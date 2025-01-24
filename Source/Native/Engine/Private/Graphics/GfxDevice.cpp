@@ -19,7 +19,8 @@ namespace march
         void* pContext);
 
     GfxDevice::GfxDevice(const GfxDeviceDesc& desc)
-        : m_ReleaseQueue{}
+        : m_ReleaseListHead(nullptr)
+        , m_ReleaseListTail(nullptr)
     {
         // 开启调试层
         if (desc.EnableDebugLayer)
@@ -171,7 +172,7 @@ namespace march
         if (releaseUnusedObjects)
         {
             RefreshCompletedFrameFenceAndProcessReleaseQueue();
-            assert(m_ReleaseQueue.empty());
+            assert(m_ReleaseListHead == nullptr && m_ReleaseListTail == nullptr);
         }
     }
 
@@ -179,10 +180,24 @@ namespace march
     {
         m_CommandManager->RefreshCompletedFrameFence();
 
-        while (!m_ReleaseQueue.empty() && IsFenceCompleted(m_ReleaseQueue.front().first))
+        RefCountPtr<FenceSynchronizedObject> curr = m_ReleaseListHead;
+
+        while (curr)
         {
-            m_ReleaseQueue.pop();
+            curr->SetPrevFenceSynchronizedObject(nullptr);
+
+            if (!IsFenceCompleted(curr->GetDeadlineFence()))
+            {
+                break;
+            }
+
+            RefCountPtr<FenceSynchronizedObject> next = curr->GetNextFenceSynchronizedObject();
+            curr->SetNextFenceSynchronizedObject(nullptr);
+            curr = next;
         }
+
+        m_ReleaseListHead = curr;
+        if (!curr) m_ReleaseListTail = nullptr;
     }
 
     GfxCommandContext* GfxDevice::RequestContext(GfxCommandType type)
@@ -263,9 +278,30 @@ namespace march
         return m_UploadHeapBufferSubAllocator.get();
     }
 
-    void GfxDevice::KeepAliveUntilNextFence(RefCountPtr<ThreadSafeRefCountedObject> obj)
+    void GfxDevice::KeepAliveUntilNextFence(RefCountPtr<FenceSynchronizedObject> obj)
     {
-        m_ReleaseQueue.emplace(m_CommandManager->GetNextFrameFence(), obj);
+        uint64_t fence = m_CommandManager->GetNextFrameFence();
+
+        if (fence == obj->GetDeadlineFence())
+        {
+            return;
+        }
+
+        // 将 obj 移动到链表最后
+
+        RefCountPtr<FenceSynchronizedObject> prev = obj->GetPrevFenceSynchronizedObject();
+        RefCountPtr<FenceSynchronizedObject> next = obj->GetNextFenceSynchronizedObject();
+
+        if (prev) prev->SetNextFenceSynchronizedObject(next);
+        if (next) next->SetPrevFenceSynchronizedObject(prev);
+
+        if (m_ReleaseListTail) m_ReleaseListTail->SetNextFenceSynchronizedObject(obj);
+        obj->SetPrevFenceSynchronizedObject(m_ReleaseListTail);
+        obj->SetNextFenceSynchronizedObject(nullptr);
+        obj->SetDeadlineFence(fence);
+
+        if (!m_ReleaseListHead) m_ReleaseListHead = obj;
+        m_ReleaseListTail = obj;
     }
 
     uint32_t GfxDevice::GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount)

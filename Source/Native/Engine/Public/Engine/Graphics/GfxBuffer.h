@@ -62,7 +62,7 @@ namespace march
         GfxBufferUsages Usages;
         GfxBufferUnorderedAccessMode UnorderedAccessMode;
 
-        uint32_t GetSizeInBytes() const { return Stride * Count; }
+        uint32_t GetDataSizeInBytes() const { return Stride * Count; } // 不包括 Counter
         bool HasCounter() const { return UnorderedAccessMode == GfxBufferUnorderedAccessMode::StructuredWithCounter; }
     };
 
@@ -72,10 +72,10 @@ namespace march
         DefaultHeapPlaced,
         UploadHeapPlaced,
         UploadHeapSubAlloc,
-        UploadHeapFastOneFrame,
+        UploadHeapFastOneFrame, // 快速分配，只有一帧有效
     };
 
-    class GfxBufferResource final : public ThreadSafeRefCountedObject
+    class GfxBufferResource final : public FenceSynchronizedObject
     {
     public:
         GfxBufferResource(
@@ -99,6 +99,7 @@ namespace march
 
         D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element = GfxBufferElement::Data) const;
         uint32_t GetOffsetInBytes(GfxBufferElement element = GfxBufferElement::Data) const;
+        uint32_t GetSizeInBytes(GfxBufferElement element = GfxBufferElement::Data) const;
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav();
         D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
         D3D12_INDEX_BUFFER_VIEW GetIbv() const;
@@ -205,15 +206,13 @@ namespace march
     class GfxBuffer final
     {
     public:
-        static constexpr uint32_t NullCounter = 0xFFFFFFFF;
-
         GfxBuffer(GfxDevice* device, const std::string& name) : m_Device(device), m_Name(name), m_Resource(nullptr) {}
 
         void SetData(
             const GfxBufferDesc& desc,
             GfxBufferAllocationStrategy allocationStrategy,
             const void* pData = nullptr,
-            uint32_t counter = NullCounter);
+            std::optional<uint32_t> counter = std::nullopt);
 
         void Initialize(const GfxBufferDesc& desc, GfxBufferAllocationStrategy allocationStrategy)
         {
@@ -226,6 +225,7 @@ namespace march
         }
 
         GfxDevice* GetDevice() const { return m_Device; }
+        const std::string& GetName() const { return m_Name; }
         RefCountPtr<GfxBufferResource> GetResource() const { return m_Resource; }
 
         ~GfxBuffer() = default;
@@ -241,6 +241,6 @@ namespace march
         std::string m_Name;
         RefCountPtr<GfxBufferResource> m_Resource;
 
-        uint32_t AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocationStrategy strategy);
+        D3D12_RANGE AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocationStrategy strategy);
     };
 }

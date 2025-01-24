@@ -29,6 +29,10 @@ using namespace DirectX;
 namespace march
 {
     RenderPipeline::RenderPipeline()
+        : m_CameraConstantBuffer(GetGfxDevice(), "_CameraConstantBuffer")
+        , m_ShadowCameraConstantBuffer(GetGfxDevice(), "_ShadowCameraConstantBuffer")
+        , m_LightConstantBuffer(GetGfxDevice(), "_LightConstantBuffer")
+        , m_ShadowConstantBuffer(GetGfxDevice(), "_ShadowConstantBuffer")
     {
         m_FullScreenTriangleMesh = GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle);
         m_SphereMesh = GfxMesh::GetGeometry(GfxMeshGeometry::Sphere);
@@ -113,12 +117,12 @@ namespace march
         builder.ImportTexture(id, texture);
     }
 
-    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera)
+    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, Camera* camera)
     {
         return SetCameraGlobalConstantBuffer(passName, buffer, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
     }
 
-    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
+    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
     {
         static int32_t bufferId = Shader::GetNameId("cbCamera");
 
@@ -140,8 +144,13 @@ namespace march
         builder.AllowPassCulling(false);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            *buffer = GfxConstantBuffer<CameraConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
-            buffer->SetData(0, &consts, sizeof(consts));
+            GfxBufferDesc desc{};
+            desc.Stride = sizeof(CameraConstants);
+            desc.Count = 1;
+            desc.Usages = GfxBufferUsages::Constant;
+            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+
+            buffer->SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &consts);
             context.SetBuffer(bufferId, buffer);
         });
 
@@ -168,8 +177,13 @@ namespace march
                 m_Lights[i]->FillLightData(consts.Lights[i]);
             }
 
-            m_LightConstantBuffer = GfxConstantBuffer<LightConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
-            m_LightConstantBuffer.SetData(0, &consts, sizeof(consts));
+            GfxBufferDesc desc{};
+            desc.Stride = sizeof(LightConstants);
+            desc.Count = 1;
+            desc.Usages = GfxBufferUsages::Constant;
+            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+
+            m_LightConstantBuffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &consts);
             context.SetBuffer(id, &m_LightConstantBuffer);
         });
     }
@@ -383,9 +397,14 @@ namespace march
         builder.AllowPassCulling(false);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            GfxBufferDesc desc{};
+            desc.Stride = sizeof(ShadowConstants);
+            desc.Count = 1;
+            desc.Usages = GfxBufferUsages::Constant;
+            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
+
             ShadowConstants consts{ shadowMatrix };
-            m_ShadowConstantBuffer = GfxConstantBuffer<ShadowConstants>(context.GetDevice(), GfxSubAllocator::TempUpload);
-            m_ShadowConstantBuffer.SetData(0, &consts, sizeof(consts));
+            m_ShadowConstantBuffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &consts);
             context.SetBuffer(bufferId, &m_ShadowConstantBuffer);
 
             for (int32_t i = 0; i < numGBuffers; i++)

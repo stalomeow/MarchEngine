@@ -109,7 +109,7 @@ namespace march
     void GfxSwapChain::Present()
     {
         GfxCommandContext* context = m_Device->RequestContext(CommandType);
-        context->TransitionResource(GetBackBuffer()->GetResource().Get(), D3D12_RESOURCE_STATE_PRESENT);
+        context->TransitionResource(GetBackBuffer()->GetResource()->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PRESENT);
         context->SubmitAndRelease();
 
         GFX_HR(m_SwapChain->Present(0, 0)); // No vsync

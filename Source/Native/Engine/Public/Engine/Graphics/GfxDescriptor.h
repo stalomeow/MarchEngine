@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Allocator.h"
+#include "Engine/Memory/Allocator.h"
 #include <directx/d3dx12.h>
 #include <wrl.h>
 #include <stdint.h>
@@ -26,7 +26,6 @@ namespace march
     {
     public:
         GfxDescriptorHeap(GfxDevice* device, const std::string& name, const GfxDescriptorHeapDesc& desc);
-        ~GfxDescriptorHeap();
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetCpuHandle(uint32_t index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle(uint32_t index) const;
@@ -71,7 +70,7 @@ namespace march
 
         uint32_t m_NextDescriptorIndex;
         std::vector<std::unique_ptr<GfxDescriptorHeap>> m_Pages;
-        std::queue<std::pair<uint64_t, D3D12_CPU_DESCRIPTOR_HANDLE>> m_ReleaseQueue;
+        std::queue<D3D12_CPU_DESCRIPTOR_HANDLE> m_ReleaseQueue;
 
         void Release(D3D12_CPU_DESCRIPTOR_HANDLE handle);
     };

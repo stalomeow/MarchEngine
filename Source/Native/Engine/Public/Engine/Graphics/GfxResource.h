@@ -20,7 +20,7 @@ namespace march
         BuddyAllocation Buddy;
     };
 
-    class GfxResource final : public ThreadSafeRefCountedObject
+    class GfxResource final : public FenceSynchronizedObject
     {
     public:
         GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);

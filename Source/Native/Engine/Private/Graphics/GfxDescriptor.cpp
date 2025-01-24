@@ -42,17 +42,6 @@ namespace march
         m_IncrementSize = static_cast<uint32_t>(d3dDevice->GetDescriptorHandleIncrementSize(desc.Type));
     }
 
-    GfxDescriptorHeap::~GfxDescriptorHeap()
-    {
-        if (m_Device && m_Heap)
-        {
-            m_Device->DeferredRelease(m_Heap);
-
-            m_Device = nullptr;
-            m_Heap = nullptr;
-        }
-    }
-
     D3D12_CPU_DESCRIPTOR_HANDLE GfxDescriptorHeap::GetCpuHandle(uint32_t index) const
     {
         if (index >= GetCapacity())
@@ -103,9 +92,9 @@ namespace march
     {
         D3D12_CPU_DESCRIPTOR_HANDLE handle;
 
-        if (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        if (!m_ReleaseQueue.empty())
         {
-            handle = m_ReleaseQueue.front().second;
+            handle = m_ReleaseQueue.front();
             m_ReleaseQueue.pop();
         }
         else
@@ -133,7 +122,7 @@ namespace march
 
     void GfxOfflineDescriptorAllocator::Release(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
-        m_ReleaseQueue.emplace(m_Device->GetNextFence(), handle);
+        m_ReleaseQueue.emplace(handle);
     }
 
     GfxOfflineDescriptor::GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle, GfxOfflineDescriptorAllocator* allocator)
@@ -283,7 +272,7 @@ namespace march
     {
         GfxDevice* device = m_Heap->GetDevice();
 
-        while (!m_ReleaseQueue.empty() && device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        while (!m_ReleaseQueue.empty() && device->IsFenceCompleted(m_ReleaseQueue.front().first))
         {
             m_Front = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
@@ -359,7 +348,7 @@ namespace march
                 isNew[i] = true;
                 BlockData data{};
 
-                if (std::optional<uint32_t> offset = m_Allocator.Allocate(numDescriptors[i], 0, data.Allocation))
+                if (std::optional<uint32_t> offset = m_Allocator.Allocate(numDescriptors[i], 0, &data.Allocation))
                 {
                     data.Offset = *offset;
                     data.Handle = m_Heap->GetGpuHandle(*offset);
@@ -473,7 +462,7 @@ namespace march
             m_ReleaseQueue.emplace(m_Device->GetNextFence(), std::move(m_CurrentAllocator));
         }
 
-        if (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first, /* useCache */ true))
+        if (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first))
         {
             m_CurrentAllocator = std::move(m_ReleaseQueue.front().second);
             m_ReleaseQueue.pop();

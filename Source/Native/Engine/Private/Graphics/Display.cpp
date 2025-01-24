@@ -44,12 +44,12 @@ namespace march
 
     uint32_t Display::GetPixelWidth() const
     {
-        return m_ColorBuffer->GetDesc().Width;
+        return m_ColorBuffer->GetResource()->GetDesc().Width;
     }
 
     uint32_t Display::GetPixelHeight() const
     {
-        return m_ColorBuffer->GetDesc().Height;
+        return m_ColorBuffer->GetResource()->GetDesc().Height;
     }
 
     void Display::Resize(uint32_t width, uint32_t height)
@@ -106,7 +106,7 @@ namespace march
         colorDesc.Wrap = GfxTextureWrapMode::Clamp;
         colorDesc.MipmapBias = 0.0f;
 
-        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColor", colorDesc, GfxAllocator::CommittedDefault);
+        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColor", colorDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
 
         GfxTextureDesc dsDesc{};
         dsDesc.Format = DepthStencilFormat;
@@ -120,15 +120,15 @@ namespace march
         dsDesc.Wrap = GfxTextureWrapMode::Clamp;
         dsDesc.MipmapBias = 0.0f;
 
-        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencil", dsDesc, GfxAllocator::CommittedDefault);
+        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencil", dsDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
 
         if (m_EnableMSAA)
         {
             colorDesc.MSAASamples = 1;
             dsDesc.MSAASamples = 1;
 
-            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorResolved", colorDesc, GfxAllocator::CommittedDefault);
-            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilResolved", dsDesc, GfxAllocator::CommittedDefault);
+            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorResolved", colorDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
+            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilResolved", dsDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
         }
         else
         {

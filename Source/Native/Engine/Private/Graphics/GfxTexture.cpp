@@ -735,26 +735,9 @@ namespace march
         std::vector<D3D12_SUBRESOURCE_DATA> subresources{};
         GFX_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
 
-        // upload is implemented by application developer. Here's one solution using <d3dx12.h>
-        const UINT64 uploadBufferSize = GetRequiredIntermediateSize(
-            GetResource()->GetUnderlyingD3DResource(), 0, static_cast<UINT>(subresources.size()));
-
-        GfxBuffer uploadBuffer{ device, "TempTextureUpload" };
-        GfxBufferDesc uploadBufferDesc{};
-        uploadBufferDesc.Stride = static_cast<uint32_t>(uploadBufferSize);
-        uploadBufferDesc.Count = 1;
-        uploadBufferDesc.Usages = GfxBufferUsages::Copy;
-        uploadBufferDesc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
-        uploadBuffer.Initialize(uploadBufferDesc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame);
-
         GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
-        UpdateSubresources(
-            context->GetCommandList(),
-            GetResource()->GetUnderlyingD3DResource(),
-            uploadBuffer.GetResource()->GetUnderlyingD3DResource(),
-            static_cast<UINT64>(uploadBuffer.GetResource()->GetOffsetInBytes()),
-            0, static_cast<UINT>(subresources.size()),
-            subresources.data());
+        context->UpdateSubresources(GetResource()->GetUnderlyingResource(),
+            0, static_cast<uint32_t>(subresources.size()), subresources.data());
         context->SubmitAndRelease().WaitOnCpu();
     }
 

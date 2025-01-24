@@ -77,8 +77,8 @@ namespace march
         }
 
         void ImportTextures(int32_t id, GfxRenderTexture* texture);
-        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, Camera* camera);
-        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxConstantBuffer<CameraConstants>* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
+        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, Camera* camera);
+        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         void SetLightGlobalConstantBuffer(int32_t id);
         void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
         void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId, int32 screenSpaceShadowMapId);
@@ -100,10 +100,10 @@ namespace march
         asset_ptr<Shader> m_ScreenSpaceShadowShader = nullptr;
         std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
 
-        GfxConstantBuffer<CameraConstants> m_CameraConstantBuffer{};
-        GfxConstantBuffer<CameraConstants> m_ShadowCameraConstantBuffer{};
-        GfxConstantBuffer<LightConstants> m_LightConstantBuffer{};
-        GfxConstantBuffer<ShadowConstants> m_ShadowConstantBuffer{};
+        GfxBuffer m_CameraConstantBuffer;
+        GfxBuffer m_ShadowCameraConstantBuffer;
+        GfxBuffer m_LightConstantBuffer;
+        GfxBuffer m_ShadowConstantBuffer;
 
     private:
         std::vector<MeshRenderer*> m_Renderers{};
