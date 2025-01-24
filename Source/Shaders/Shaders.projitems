@@ -24,6 +24,7 @@
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\ScreenSpaceShadow.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Skybox.shader" />
+    <None Include="$(MSBuildThisFileDirectory)public\Test.compute" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Public\" />

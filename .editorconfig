@@ -5,7 +5,7 @@ charset = utf-8
 end_of_line = crlf
 insert_final_newline = true
 
-[*.{h,hpp,cpp,cs,hlsl,shader}]
+[*.{h,hpp,cpp,cs,hlsl,shader,compute}]
 indent_style = space
 indent_size = 4
 
