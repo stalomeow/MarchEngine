@@ -8,6 +8,89 @@
 
 namespace march
 {
+    bool GfxBufferDesc::HasAllUsages(GfxBufferUsages usages) const
+    {
+        return (Usages & usages) == usages;
+    }
+
+    bool GfxBufferDesc::HasAnyUsages(GfxBufferUsages usages) const
+    {
+        return (Usages & usages) != static_cast<GfxBufferUsages>(0);
+    }
+
+    bool GfxBufferDesc::HasCounter() const
+    {
+        constexpr GfxBufferUsages usages
+            = GfxBufferUsages::RWStructuredWithCounter
+            | GfxBufferUsages::AppendStructured
+            | GfxBufferUsages::ConsumeStructured;
+        return HasAnyUsages(usages);
+    }
+
+    bool GfxBufferDesc::AllowUnorderedAccess() const
+    {
+        constexpr GfxBufferUsages usages
+            = GfxBufferUsages::RWStructured
+            | GfxBufferUsages::RWStructuredWithCounter
+            | GfxBufferUsages::AppendStructured
+            | GfxBufferUsages::ConsumeStructured
+            | GfxBufferUsages::RWByteAddress;
+        return HasAnyUsages(usages);
+    }
+
+    bool GfxBufferDesc::AllowUnorderedAccess(GfxBufferElement element) const
+    {
+        GfxBufferUsages usages;
+
+        switch (element)
+        {
+        case GfxBufferElement::StructuredData:
+            usages
+                = GfxBufferUsages::RWStructured
+                | GfxBufferUsages::RWStructuredWithCounter
+                | GfxBufferUsages::AppendStructured
+                | GfxBufferUsages::ConsumeStructured;
+            break;
+        case GfxBufferElement::RawData:
+            usages
+                = GfxBufferUsages::RWByteAddress;
+            break;
+        case GfxBufferElement::StructuredCounter:
+        case GfxBufferElement::RawCounter:
+            usages
+                = GfxBufferUsages::RWStructuredWithCounter
+                | GfxBufferUsages::AppendStructured
+                | GfxBufferUsages::ConsumeStructured;
+            break;
+        default:
+            throw GfxException("Invalid buffer element");
+        }
+
+        return HasAnyUsages(usages);
+    }
+
+    uint32_t GfxBufferDesc::GetSizeInBytes(GfxBufferElement element) const
+    {
+        switch (element)
+        {
+        case GfxBufferElement::StructuredData:
+        case GfxBufferElement::RawData:
+            return Stride * Count;
+        case GfxBufferElement::StructuredCounter:
+        case GfxBufferElement::RawCounter:
+            return HasCounter() ? sizeof(uint32_t) : 0;
+        default:
+            throw GfxException("Invalid buffer element");
+        }
+    }
+
+    bool GfxBufferDesc::IsCompatibleWith(const GfxBufferDesc& other) const
+    {
+        return Stride == other.Stride
+            && Count >= other.Count
+            && HasAllUsages(other.Usages);
+    }
+
     GfxBufferResource::GfxBufferResource(
         const GfxBufferDesc& desc,
         RefCountPtr<GfxResource> resource,
@@ -30,7 +113,7 @@ namespace march
         , m_CounterOffsetInBytes(counterOffsetInBytes)
         , m_Allocator(allocator)
         , m_Allocation(allocation)
-        , m_UavDescriptor{}
+        , m_UavDescriptors{}
     {
     }
 
@@ -52,16 +135,16 @@ namespace march
     {
         switch (element)
         {
-        case GfxBufferElement::Data:
+        case GfxBufferElement::StructuredData:
+        case GfxBufferElement::RawData:
             return m_DataOffsetInBytes;
-
-        case GfxBufferElement::Counter:
+        case GfxBufferElement::StructuredCounter:
+        case GfxBufferElement::RawCounter:
             if (!m_Desc.HasCounter())
             {
                 throw GfxException("Buffer does not have counter");
             }
             return m_CounterOffsetInBytes;
-
         default:
             throw GfxException("Invalid buffer element");
         }
@@ -69,105 +152,105 @@ namespace march
 
     uint32_t GfxBufferResource::GetSizeInBytes(GfxBufferElement element) const
     {
-        switch (element)
-        {
-        case GfxBufferElement::Data:
-            return m_Desc.GetDataSizeInBytes();
-
-        case GfxBufferElement::Counter:
-            if (!m_Desc.HasCounter())
-            {
-                throw GfxException("Buffer does not have counter");
-            }
-            return sizeof(uint32_t);
-
-        default:
-            throw GfxException("Invalid buffer element");
-        }
+        return m_Desc.GetSizeInBytes(element);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxBufferResource::GetUav()
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxBufferResource::GetUav(GfxBufferElement element)
     {
-        if (!m_UavDescriptor)
+        if (!m_Desc.AllowUnorderedAccess(element))
         {
+            throw GfxException("Buffer element does not allow unordered access");
+        }
+
+        GfxOfflineDescriptor& uav = m_UavDescriptors[static_cast<size_t>(element)];
+
+        if (!uav)
+        {
+            bool bindCounter = m_Desc.HasCounter();
+
             D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
             desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 
-            switch (m_Desc.UnorderedAccessMode)
+            switch (element)
             {
-            case GfxBufferUnorderedAccessMode::Structured:
+            case GfxBufferElement::StructuredData:
                 desc.Format = DXGI_FORMAT_UNKNOWN;
                 desc.Buffer.FirstElement = static_cast<UINT64>(m_DataOffsetInBytes / m_Desc.Stride);
                 desc.Buffer.NumElements = static_cast<UINT>(m_Desc.Count);
                 desc.Buffer.StructureByteStride = static_cast<UINT>(m_Desc.Stride);
-                desc.Buffer.CounterOffsetInBytes = 0;
+                desc.Buffer.CounterOffsetInBytes = bindCounter ? m_CounterOffsetInBytes : 0;
                 desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
                 break;
-            case GfxBufferUnorderedAccessMode::StructuredWithCounter:
-                desc.Format = DXGI_FORMAT_UNKNOWN;
-                desc.Buffer.FirstElement = static_cast<UINT64>(m_DataOffsetInBytes / m_Desc.Stride);
-                desc.Buffer.NumElements = static_cast<UINT>(m_Desc.Count);
-                desc.Buffer.StructureByteStride = static_cast<UINT>(m_Desc.Stride);
-                desc.Buffer.CounterOffsetInBytes = m_CounterOffsetInBytes;
-                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-                break;
-            case GfxBufferUnorderedAccessMode::Raw:
+
+            case GfxBufferElement::RawData:
+                bindCounter = false; // 不支持 Counter
                 desc.Format = DXGI_FORMAT_R32_TYPELESS;
-                desc.Buffer.FirstElement = static_cast<UINT64>(m_DataOffsetInBytes / sizeof(uint32_t));
-                desc.Buffer.NumElements = static_cast<UINT>(m_Desc.GetDataSizeInBytes() / sizeof(uint32_t));
+                desc.Buffer.FirstElement = static_cast<UINT64>(m_DataOffsetInBytes);
+                desc.Buffer.NumElements = static_cast<UINT>(m_Desc.GetSizeInBytes(element));
                 desc.Buffer.StructureByteStride = 0;
                 desc.Buffer.CounterOffsetInBytes = 0;
                 desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
                 break;
-            case GfxBufferUnorderedAccessMode::Disabled:
-                throw GfxException("Buffer UAV is disabled");
+
+            case GfxBufferElement::StructuredCounter:
+                if (!bindCounter) throw GfxException("Buffer does not have counter");
+                bindCounter = false;
+                desc.Format = DXGI_FORMAT_UNKNOWN;
+                desc.Buffer.FirstElement = static_cast<UINT64>(m_CounterOffsetInBytes / sizeof(uint32_t));
+                desc.Buffer.NumElements = 1;
+                desc.Buffer.StructureByteStride = sizeof(uint32_t);
+                desc.Buffer.CounterOffsetInBytes = 0;
+                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+                break;
+
+            case GfxBufferElement::RawCounter:
+                if (!bindCounter) throw GfxException("Buffer does not have counter");
+                bindCounter = false;
+                desc.Format = DXGI_FORMAT_R32_TYPELESS;
+                desc.Buffer.FirstElement = static_cast<UINT64>(m_CounterOffsetInBytes);
+                desc.Buffer.NumElements = sizeof(uint32_t);
+                desc.Buffer.StructureByteStride = 0;
+                desc.Buffer.CounterOffsetInBytes = 0;
+                desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+                break;
+
             default:
-                throw GfxException("Invalid buffer unordered access mode");
-            }
-
-            ID3D12Resource* pCounterResource;
-
-            if (m_Desc.HasCounter())
-            {
-                pCounterResource = m_Resource->GetD3DResource();
-            }
-            else
-            {
-                pCounterResource = nullptr;
+                throw GfxException("Invalid buffer element");
             }
 
             GfxDevice* device = GetDevice();
-            m_UavDescriptor = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
-            device->GetD3DDevice4()->CreateUnorderedAccessView(m_Resource->GetD3DResource(), pCounterResource, &desc, m_UavDescriptor.GetHandle());
+            ID3D12Resource* pCounterResource = bindCounter ? m_Resource->GetD3DResource() : nullptr;
+            uav = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)->Allocate();
+            device->GetD3DDevice4()->CreateUnorderedAccessView(m_Resource->GetD3DResource(), pCounterResource, &desc, uav.GetHandle());
         }
 
-        return m_UavDescriptor.GetHandle();
+        return uav.GetHandle();
     }
 
     D3D12_VERTEX_BUFFER_VIEW GfxBufferResource::GetVbv() const
     {
-        if ((m_Desc.Usages & GfxBufferUsages::Vertex) != GfxBufferUsages::Vertex)
+        if (!m_Desc.HasAllUsages(GfxBufferUsages::Vertex))
         {
             throw GfxException("Buffer can not be used as a vertex buffer");
         }
 
         D3D12_VERTEX_BUFFER_VIEW view{};
-        view.BufferLocation = GetGpuVirtualAddress(GfxBufferElement::Data);
-        view.SizeInBytes = static_cast<UINT>(m_Desc.GetDataSizeInBytes());
+        view.BufferLocation = GetGpuVirtualAddress(GfxBufferElement::StructuredData);
+        view.SizeInBytes = static_cast<UINT>(m_Desc.GetSizeInBytes(GfxBufferElement::StructuredData));
         view.StrideInBytes = static_cast<UINT>(m_Desc.Stride);
         return view;
     }
 
     D3D12_INDEX_BUFFER_VIEW GfxBufferResource::GetIbv() const
     {
-        if ((m_Desc.Usages & GfxBufferUsages::Index) != GfxBufferUsages::Index)
+        if (!m_Desc.HasAllUsages(GfxBufferUsages::Index))
         {
             throw GfxException("Buffer can not be used as an index buffer");
         }
 
         D3D12_INDEX_BUFFER_VIEW view{};
-        view.BufferLocation = GetGpuVirtualAddress(GfxBufferElement::Data);
-        view.SizeInBytes = static_cast<UINT>(m_Desc.GetDataSizeInBytes());
+        view.BufferLocation = GetGpuVirtualAddress(GfxBufferElement::StructuredData);
+        view.SizeInBytes = static_cast<UINT>(m_Desc.GetSizeInBytes(GfxBufferElement::StructuredData));
 
         switch (m_Desc.Stride)
         {
@@ -306,7 +389,7 @@ namespace march
 
     void GfxBuffer::SetData(
         const GfxBufferDesc& desc,
-        GfxBufferAllocationStrategy allocationStrategy,
+        GfxBufferAllocStrategy allocationStrategy,
         const void* pData,
         std::optional<uint32_t> counter)
     {
@@ -328,8 +411,8 @@ namespace march
 
             if (pData)
             {
-                size_t offset = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::Data));
-                size_t size = static_cast<size_t>(m_Resource->GetSizeInBytes(GfxBufferElement::Data));
+                size_t offset = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::StructuredData));
+                size_t size = static_cast<size_t>(m_Resource->GetSizeInBytes(GfxBufferElement::StructuredData));
                 memcpy(pMappedData + offset, pData, size);
             }
 
@@ -338,9 +421,9 @@ namespace march
                 if (desc.HasCounter())
                 {
                     uint32_t value = *counter;
-                    assert(sizeof(value) == m_Resource->GetSizeInBytes(GfxBufferElement::Counter));
+                    assert(sizeof(value) == m_Resource->GetSizeInBytes(GfxBufferElement::StructuredCounter));
 
-                    size_t offset = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::Counter));
+                    size_t offset = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::StructuredCounter));
                     memcpy(pMappedData + offset, &value, sizeof(value));
                 }
                 else
@@ -358,15 +441,14 @@ namespace march
             if (pData)
             {
                 GfxBufferDesc tempDesc{};
-                tempDesc.Stride = m_Resource->GetSizeInBytes(GfxBufferElement::Data);
+                tempDesc.Stride = m_Resource->GetSizeInBytes(GfxBufferElement::StructuredData);
                 tempDesc.Count = 1;
                 tempDesc.Usages = GfxBufferUsages::Copy;
-                tempDesc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
                 GfxBuffer temp{ m_Device, m_Name + "DataTempUpload" };
-                temp.SetData(tempDesc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, pData);
+                temp.SetData(tempDesc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, pData);
 
-                context->CopyBuffer(&temp, GfxBufferElement::Data, this, GfxBufferElement::Data);
+                context->CopyBuffer(&temp, GfxBufferElement::StructuredData, this, GfxBufferElement::StructuredData);
             }
 
             if (counter)
@@ -374,18 +456,17 @@ namespace march
                 if (desc.HasCounter())
                 {
                     GfxBufferDesc tempDesc{};
-                    tempDesc.Stride = m_Resource->GetSizeInBytes(GfxBufferElement::Counter);
+                    tempDesc.Stride = m_Resource->GetSizeInBytes(GfxBufferElement::StructuredCounter);
                     tempDesc.Count = 1;
                     tempDesc.Usages = GfxBufferUsages::Copy;
-                    tempDesc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
                     uint32_t value = *counter;
                     assert(sizeof(value) == tempDesc.Stride);
 
                     GfxBuffer temp{ m_Device, m_Name + "CounterTempUpload" };
-                    temp.SetData(tempDesc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &value);
+                    temp.SetData(tempDesc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &value);
 
-                    context->CopyBuffer(&temp, GfxBufferElement::Data, this, GfxBufferElement::Counter);
+                    context->CopyBuffer(&temp, GfxBufferElement::StructuredData, this, GfxBufferElement::StructuredCounter);
                 }
                 else
                 {
@@ -397,35 +478,25 @@ namespace march
         }
     }
 
-    D3D12_RANGE GfxBuffer::AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocationStrategy strategy)
+    D3D12_RANGE GfxBuffer::AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocStrategy strategy)
     {
-        uint32_t sizeInBytes = desc.GetDataSizeInBytes();
+        uint32_t sizeInBytes = desc.GetSizeInBytes(GfxBufferElement::StructuredData);
         uint32_t dataPlacementAlignment = 0; // TODO: 不知道默认能不能用 0，或许要用 16 字节（float4）？
 
-        if ((desc.Usages & GfxBufferUsages::Index) == GfxBufferUsages::Index && desc.Stride != 2 && desc.Stride != 4)
+        if (desc.HasAllUsages(GfxBufferUsages::Index) && desc.Stride != 2 && desc.Stride != 4)
         {
             throw std::invalid_argument("GfxBuffer::AllocateResource: stride must be 2 or 4 bytes for Index Buffer");
         }
 
-        if ((desc.Usages & GfxBufferUsages::Constant) == GfxBufferUsages::Constant)
+        if (desc.HasAllUsages(GfxBufferUsages::Constant))
         {
             dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         }
 
-        if (desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::Structured || desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::StructuredWithCounter)
+        if (desc.AllowUnorderedAccess(GfxBufferElement::StructuredData))
         {
             // 创建 UAV 时需要填 FirstElement，所以 Offset 必须是 Stride 的整数倍
             dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, desc.Stride);
-        }
-        else if (desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::Raw)
-        {
-            if (sizeInBytes % sizeof(uint32_t) != 0)
-            {
-                throw std::invalid_argument("GfxBuffer::AllocateResource: size must be a multiple of 4 bytes for Raw buffer");
-            }
-
-            // 创建 UAV 时需要填 FirstElement，所以 Offset 必须是 sizeof(uint32_t) 的整数倍
-            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, sizeof(uint32_t));
         }
 
         uint32_t dataOffsetInResource = 0;
@@ -445,13 +516,13 @@ namespace march
 
         switch (strategy)
         {
-        case GfxBufferAllocationStrategy::DefaultHeapCommitted:
-        case GfxBufferAllocationStrategy::DefaultHeapPlaced:
-        case GfxBufferAllocationStrategy::UploadHeapPlaced:
+        case GfxBufferAllocStrategy::DefaultHeapCommitted:
+        case GfxBufferAllocStrategy::DefaultHeapPlaced:
+        case GfxBufferAllocStrategy::UploadHeapPlaced:
             isSubAlloc = false;
             break;
-        case GfxBufferAllocationStrategy::UploadHeapSubAlloc:
-        case GfxBufferAllocationStrategy::UploadHeapFastOneFrame:
+        case GfxBufferAllocStrategy::UploadHeapSubAlloc:
+        case GfxBufferAllocStrategy::UploadHeapFastOneFrame:
             isSubAlloc = true;
             break;
         default:
@@ -465,12 +536,12 @@ namespace march
 
         if (isSubAlloc)
         {
-            if (desc.UnorderedAccessMode != GfxBufferUnorderedAccessMode::Disabled)
+            if (desc.AllowUnorderedAccess())
             {
                 throw std::invalid_argument("GfxBuffer::AllocateResource: Unordered Access is not supported for sub-allocated buffer");
             }
 
-            bool isFastOneFrame = (strategy == GfxBufferAllocationStrategy::UploadHeapFastOneFrame);
+            bool isFastOneFrame = (strategy == GfxBufferAllocStrategy::UploadHeapFastOneFrame);
             subAllocator = m_Device->GetUploadHeapBufferSubAllocator(isFastOneFrame);
             resource = subAllocator->Allocate(sizeInBytes, dataPlacementAlignment, &resourceOffsetInBytes, &subAllocation);
         }
@@ -480,13 +551,13 @@ namespace march
 
             switch (strategy)
             {
-            case GfxBufferAllocationStrategy::DefaultHeapCommitted:
+            case GfxBufferAllocStrategy::DefaultHeapCommitted:
                 allocator = m_Device->GetCommittedAllocator(D3D12_HEAP_TYPE_DEFAULT);
                 break;
-            case GfxBufferAllocationStrategy::DefaultHeapPlaced:
+            case GfxBufferAllocStrategy::DefaultHeapPlaced:
                 allocator = m_Device->GetPlacedBufferAllocator(D3D12_HEAP_TYPE_DEFAULT);
                 break;
-            case GfxBufferAllocationStrategy::UploadHeapPlaced:
+            case GfxBufferAllocStrategy::UploadHeapPlaced:
                 allocator = m_Device->GetPlacedBufferAllocator(D3D12_HEAP_TYPE_UPLOAD);
                 break;
             default:
@@ -494,17 +565,7 @@ namespace march
             }
 
             UINT64 width = static_cast<UINT64>(sizeInBytes);
-            D3D12_RESOURCE_FLAGS flags;
-
-            if (desc.UnorderedAccessMode == GfxBufferUnorderedAccessMode::Disabled)
-            {
-                flags = D3D12_RESOURCE_FLAG_NONE;
-            }
-            else
-            {
-                flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            }
-
+            D3D12_RESOURCE_FLAGS flags = desc.AllowUnorderedAccess() ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
             resource = allocator->Allocate(m_Name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), D3D12_RESOURCE_STATE_GENERIC_READ);
         }
 

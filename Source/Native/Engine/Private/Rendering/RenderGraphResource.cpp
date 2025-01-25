@@ -43,7 +43,7 @@ namespace march
         }
 
         GfxDevice* device = GetGfxDevice();
-        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc, GfxTexureAllocationStrategy::DefaultHeapPlaced));
+        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc, GfxTexureAllocStrategy::DefaultHeapPlaced));
         GfxRenderTexture* texture = m_AllTextures.back().get();
         m_TextureMap[texture] = std::prev(m_AllTextures.end());
         return texture;

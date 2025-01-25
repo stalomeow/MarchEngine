@@ -106,7 +106,7 @@ namespace march
         colorDesc.Wrap = GfxTextureWrapMode::Clamp;
         colorDesc.MipmapBias = 0.0f;
 
-        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColor", colorDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
+        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColor", colorDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
 
         GfxTextureDesc dsDesc{};
         dsDesc.Format = DepthStencilFormat;
@@ -120,15 +120,15 @@ namespace march
         dsDesc.Wrap = GfxTextureWrapMode::Clamp;
         dsDesc.MipmapBias = 0.0f;
 
-        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencil", dsDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
+        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencil", dsDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
 
         if (m_EnableMSAA)
         {
             colorDesc.MSAASamples = 1;
             dsDesc.MSAASamples = 1;
 
-            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorResolved", colorDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
-            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilResolved", dsDesc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
+            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorResolved", colorDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
+            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilResolved", dsDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
         }
         else
         {

@@ -27,32 +27,26 @@ namespace march
         Vertex = 1 << 0,
         Index = 1 << 1,
         Constant = 1 << 2,
-        Structured = 1 << 3,
-        Raw = 1 << 4,
-        Copy = 1 << 5,
+        Copy = 1 << 3,
+
+        Structured = 1 << 4,
+        ByteAddress = 1 << 5,
+
+        RWStructured = 1 << 6,
+        RWStructuredWithCounter = 1 << 7,
+        AppendStructured = 1 << 8,
+        ConsumeStructured = 1 << 9,
+        RWByteAddress = 1 << 10,
     };
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsages);
 
-    enum class GfxBufferUnorderedAccessMode
-    {
-        // Disable Unordered Access
-        Disabled = 0,
-
-        // RWStructuredBuffer without IncrementCounter and DecrementCounter functions
-        Structured,
-
-        // AppendStructuredBuffer, ConsumeStructuredBuffer, RWStructuredBuffer
-        StructuredWithCounter,
-
-        // RWByteAddressBuffer
-        Raw,
-    };
-
     enum class GfxBufferElement
     {
-        Data,
-        Counter,
+        StructuredData,
+        RawData,
+        StructuredCounter,
+        RawCounter,
     };
 
     struct GfxBufferDesc
@@ -60,13 +54,23 @@ namespace march
         uint32_t Stride;
         uint32_t Count;
         GfxBufferUsages Usages;
-        GfxBufferUnorderedAccessMode UnorderedAccessMode;
 
-        uint32_t GetDataSizeInBytes() const { return Stride * Count; } // 不包括 Counter
-        bool HasCounter() const { return UnorderedAccessMode == GfxBufferUnorderedAccessMode::StructuredWithCounter; }
+        bool HasAllUsages(GfxBufferUsages usages) const;
+
+        bool HasAnyUsages(GfxBufferUsages usages) const;
+
+        bool HasCounter() const;
+
+        bool AllowUnorderedAccess() const;
+
+        bool AllowUnorderedAccess(GfxBufferElement element) const;
+
+        uint32_t GetSizeInBytes(GfxBufferElement element) const;
+
+        bool IsCompatibleWith(const GfxBufferDesc& other) const;
     };
 
-    enum class GfxBufferAllocationStrategy
+    enum class GfxBufferAllocStrategy
     {
         DefaultHeapCommitted,
         DefaultHeapPlaced,
@@ -97,10 +101,10 @@ namespace march
         // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
         // 但 RootUav 无法使用 Counter，所以 Buffer 会提供 Uav
 
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element = GfxBufferElement::Data) const;
-        uint32_t GetOffsetInBytes(GfxBufferElement element = GfxBufferElement::Data) const;
-        uint32_t GetSizeInBytes(GfxBufferElement element = GfxBufferElement::Data) const;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetUav();
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element) const;
+        uint32_t GetOffsetInBytes(GfxBufferElement element) const;
+        uint32_t GetSizeInBytes(GfxBufferElement element) const;
+        D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxBufferElement element);
         D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
         D3D12_INDEX_BUFFER_VIEW GetIbv() const;
 
@@ -121,7 +125,7 @@ namespace march
         GfxBufferSubAllocation m_Allocation;
 
         // Lazy creation
-        GfxOfflineDescriptor m_UavDescriptor;
+        GfxOfflineDescriptor m_UavDescriptors[4];
     };
 
     class GfxBufferSubAllocator
@@ -210,11 +214,11 @@ namespace march
 
         void SetData(
             const GfxBufferDesc& desc,
-            GfxBufferAllocationStrategy allocationStrategy,
+            GfxBufferAllocStrategy allocationStrategy,
             const void* pData = nullptr,
             std::optional<uint32_t> counter = std::nullopt);
 
-        void Initialize(const GfxBufferDesc& desc, GfxBufferAllocationStrategy allocationStrategy)
+        void Initialize(const GfxBufferDesc& desc, GfxBufferAllocStrategy allocationStrategy)
         {
             SetData(desc, allocationStrategy);
         }
@@ -241,6 +245,6 @@ namespace march
         std::string m_Name;
         RefCountPtr<GfxBufferResource> m_Resource;
 
-        D3D12_RANGE AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocationStrategy strategy);
+        D3D12_RANGE AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocStrategy strategy);
     };
 }

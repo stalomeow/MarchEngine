@@ -205,7 +205,7 @@ namespace march
         Grey = Gray,
     };
 
-    enum class GfxTexureAllocationStrategy
+    enum class GfxTexureAllocStrategy
     {
         DefaultHeapCommitted,
         DefaultHeapPlaced,
@@ -343,7 +343,7 @@ namespace march
     class GfxRenderTexture : public GfxTexture
     {
     public:
-        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocationStrategy allocationStrategy);
+        GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocStrategy allocationStrategy);
         GfxRenderTexture(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc);
 
         bool AllowRendering() const override { return true; }

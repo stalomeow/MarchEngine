@@ -109,7 +109,7 @@ namespace march
 
 NATIVE_EXPORT_AUTO GfxMesh_New()
 {
-    retcs MARCH_NEW GfxMesh(GfxBufferAllocationStrategy::DefaultHeapCommitted);
+    retcs MARCH_NEW GfxMesh(GfxBufferAllocStrategy::DefaultHeapCommitted);
 }
 
 NATIVE_EXPORT_AUTO GfxMesh_GetSubMeshCount(cs<GfxMesh*> pObject)

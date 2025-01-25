@@ -741,7 +741,7 @@ namespace march
         context->SubmitAndRelease().WaitOnCpu();
     }
 
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocationStrategy allocationStrategy)
+    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocStrategy allocationStrategy)
         : GfxTexture(device)
     {
         D3D12_RESOURCE_DESC resDesc = {};
@@ -800,10 +800,10 @@ namespace march
 
         switch (allocationStrategy)
         {
-        case GfxTexureAllocationStrategy::DefaultHeapCommitted:
+        case GfxTexureAllocStrategy::DefaultHeapCommitted:
             allocator = device->GetCommittedAllocator(D3D12_HEAP_TYPE_DEFAULT);
             break;
-        case GfxTexureAllocationStrategy::DefaultHeapPlaced:
+        case GfxTexureAllocStrategy::DefaultHeapPlaced:
             allocator = device->GetDefaultHeapPlacedTextureAllocator(true, desc.MSAASamples > 1);
             break;
         default:

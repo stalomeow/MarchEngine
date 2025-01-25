@@ -445,13 +445,13 @@ namespace march
     {
         if (GfxTexture* texture = nullptr; material->GetTexture(id, &texture))
         {
-            if (pOutElement) *pOutElement = GfxTextureElement::Default;
+            *pOutElement = GfxTextureElement::Default;
             return texture->GetResource();
         }
 
         if (auto it = m_GlobalTextures.find(id); it != m_GlobalTextures.end())
         {
-            if (pOutElement) *pOutElement = it->second.second;
+            *pOutElement = it->second.second;
             return it->second.first;
         }
 
@@ -464,7 +464,7 @@ namespace march
         {
             if (id == Shader::GetMaterialConstantBufferId())
             {
-                if (pOutElement) *pOutElement = GfxBufferElement::Data;
+                *pOutElement = GfxBufferElement::StructuredData;
                 return material->GetConstantBuffer(passIndex)->GetResource();
             }
         }
@@ -474,14 +474,14 @@ namespace march
 
             if (id == instanceBufferId)
             {
-                if (pOutElement) *pOutElement = GfxBufferElement::Data;
+                *pOutElement = GfxBufferElement::StructuredData;
                 return m_InstanceBuffer.GetResource();
             }
         }
 
         if (auto it = m_GlobalBuffers.find(id); it != m_GlobalBuffers.end())
         {
-            if (pOutElement) *pOutElement = it->second.second;
+            *pOutElement = it->second.second;
             return it->second.first;
         }
 
@@ -541,11 +541,11 @@ namespace march
         m_GraphicsViewResourceRequiredStates[resource->GetUnderlyingResource()] |= state;
     }
 
-    void GfxCommandContext::SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource)
+    void GfxCommandContext::SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource, GfxBufferElement element)
     {
         m_Device->KeepAliveUntilNextFence(resource);
 
-        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = resource->GetUav();
+        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = resource->GetUav(element);
         m_GraphicsSrvUavCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
 
         // 记录状态，之后会统一使用 ResourceBarrier
@@ -603,7 +603,7 @@ namespace march
 
             for (const GfxRootSignature::BufferBinding& buf : rootSignature->GetSrvCbvBufferRootParamIndices(programType))
             {
-                GfxBufferElement element = GfxBufferElement::Data;
+                GfxBufferElement element = GfxBufferElement::StructuredData;
 
                 if (RefCountPtr<GfxBufferResource> buffer = FindBuffer(buf.Id, buf.IsConstantBuffer, material, passIndex, &element))
                 {
@@ -628,9 +628,11 @@ namespace march
 
             for (const GfxRootSignature::UavBinding& buf : rootSignature->GetUavBufferTableSlots(programType))
             {
-                if (RefCountPtr<GfxBufferResource> buffer = FindBuffer(buf.Id, false, material, passIndex))
+                GfxBufferElement element = GfxBufferElement::StructuredData;
+
+                if (RefCountPtr<GfxBufferResource> buffer = FindBuffer(buf.Id, false, material, passIndex, &element))
                 {
-                    SetGraphicsUavBuffer(programType, buf.BindPoint, buffer);
+                    SetGraphicsUavBuffer(programType, buf.BindPoint, buffer, element);
                 }
             }
 
@@ -956,9 +958,8 @@ namespace march
         desc.Stride = sizeof(InstanceData);
         desc.Count = numInstances;
         desc.Usages = GfxBufferUsages::Structured;
-        desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
-        m_InstanceBuffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, instances);
+        m_InstanceBuffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, instances);
     }
 
     void GfxCommandContext::DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount)
@@ -1124,6 +1125,34 @@ namespace march
             throw std::invalid_argument("Source and destination buffer sizes do not match");
         }
 
+        return CopyBuffer(sourceBuffer, sourceElement, 0, destinationBuffer, destinationElement, 0, srcSize);
+    }
+
+    void GfxCommandContext::CopyBuffer(
+        GfxBuffer* sourceBuffer,
+        GfxBufferElement sourceElement,
+        uint32_t sourceOffsetInBytes,
+        GfxBuffer* destinationBuffer,
+        GfxBufferElement destinationElement,
+        uint32_t destinationOffsetInBytes,
+        uint32_t sizeInBytes)
+    {
+        RefCountPtr<GfxBufferResource> srcRes = sourceBuffer->GetResource();
+        RefCountPtr<GfxBufferResource> dstRes = destinationBuffer->GetResource();
+
+        uint32_t srcSize = srcRes->GetSizeInBytes(sourceElement);
+        uint32_t dstSize = dstRes->GetSizeInBytes(destinationElement);
+
+        if (srcSize - sourceOffsetInBytes < sizeInBytes)
+        {
+            throw std::invalid_argument("Source buffer size is too small");
+        }
+
+        if (dstSize - destinationOffsetInBytes < sizeInBytes)
+        {
+            throw std::invalid_argument("Destination buffer size is too small");
+        }
+
         m_Device->KeepAliveUntilNextFence(srcRes);
         m_Device->KeepAliveUntilNextFence(dstRes);
 
@@ -1131,15 +1160,15 @@ namespace march
         TransitionResource(dstRes->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_DEST);
         FlushResourceBarriers();
 
-        uint32_t srcOffset = srcRes->GetOffsetInBytes(sourceElement);
-        uint32_t dstOffset = dstRes->GetOffsetInBytes(destinationElement);
+        uint32_t srcOffset = srcRes->GetOffsetInBytes(sourceElement) + sourceOffsetInBytes;
+        uint32_t dstOffset = dstRes->GetOffsetInBytes(destinationElement) + destinationOffsetInBytes;
 
         m_CommandList->CopyBufferRegion(
             dstRes->GetUnderlyingD3DResource(),
             static_cast<UINT64>(dstOffset),
             srcRes->GetUnderlyingD3DResource(),
             static_cast<UINT64>(srcOffset),
-            static_cast<UINT64>(srcSize));
+            static_cast<UINT64>(sizeInBytes));
     }
 
     void GfxCommandContext::UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData)
@@ -1150,10 +1179,9 @@ namespace march
         tempBufferDesc.Stride = static_cast<uint32_t>(tempBufferSize);
         tempBufferDesc.Count = 1;
         tempBufferDesc.Usages = GfxBufferUsages::Copy;
-        tempBufferDesc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
         GfxBuffer tempBuffer{ m_Device, "TempUpdateSubresourcesBuffer" };
-        tempBuffer.Initialize(tempBufferDesc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame);
+        tempBuffer.Initialize(tempBufferDesc, GfxBufferAllocStrategy::UploadHeapFastOneFrame);
         RefCountPtr<GfxBufferResource> tempBufferRes = tempBuffer.GetResource();
 
         m_Device->KeepAliveUntilNextFence(tempBufferRes);
@@ -1167,7 +1195,7 @@ namespace march
             m_CommandList.Get(),
             destination->GetD3DResource(),
             tempBufferRes->GetUnderlyingD3DResource(),
-            static_cast<UINT64>(tempBufferRes->GetOffsetInBytes()),
+            static_cast<UINT64>(tempBufferRes->GetOffsetInBytes(GfxBufferElement::RawData)),
             static_cast<UINT>(firstSubresource),
             static_cast<UINT>(numSubresources),
             srcData);

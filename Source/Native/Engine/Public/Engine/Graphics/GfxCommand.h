@@ -233,8 +233,8 @@ namespace march
         void SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element = GfxTextureElement::Default);
         void SetTexture(int32_t id, GfxTexture* value, GfxTextureElement element = GfxTextureElement::Default);
         void UnsetTextures();
-        void SetBuffer(const std::string& name, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::Data);
-        void SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::Data);
+        void SetBuffer(const std::string& name, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
         void UnsetBuffers();
 
         void SetRenderTarget(GfxRenderTexture* colorTarget, GfxRenderTexture* depthStencilTarget = nullptr);
@@ -261,6 +261,14 @@ namespace march
 
         void ResolveTexture(GfxTexture* source, GfxTexture* destination);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement);
+        void CopyBuffer(
+            GfxBuffer* sourceBuffer,
+            GfxBufferElement sourceElement,
+            uint32_t sourceOffsetInBytes,
+            GfxBuffer* destinationBuffer,
+            GfxBufferElement destinationElement,
+            uint32_t destinationOffsetInBytes,
+            uint32_t sizeInBytes);
         void UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData);
 
         GfxDevice* GetDevice() const { return m_Device; }
@@ -326,14 +334,14 @@ namespace march
         GfxBuffer m_InstanceBuffer;
 
         RefCountPtr<GfxTextureResource> GetFirstRenderTarget() const;
-        RefCountPtr<GfxTextureResource> FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement = nullptr);
-        RefCountPtr<GfxBufferResource> FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex, GfxBufferElement* pOutElement = nullptr);
+        RefCountPtr<GfxTextureResource> FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement);
+        RefCountPtr<GfxBufferResource> FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex, GfxBufferElement* pOutElement);
 
         ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex);
 
         void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource, GfxBufferElement element, bool isConstantBuffer);
         void SetGraphicsSrvTexture(ShaderProgramType type, uint32_t index, RefCountPtr<GfxTextureResource> resource, GfxTextureElement element);
-        void SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource);
+        void SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource, GfxBufferElement element);
         void SetGraphicsUavTexture(ShaderProgramType type, uint32_t index, RefCountPtr<GfxTextureResource> resource, GfxTextureElement element);
         void SetGraphicsSampler(ShaderProgramType type, uint32_t index, RefCountPtr<GfxTextureResource> resource);
         void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex);

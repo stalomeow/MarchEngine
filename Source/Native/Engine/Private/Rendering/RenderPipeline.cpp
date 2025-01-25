@@ -148,9 +148,8 @@ namespace march
             desc.Stride = sizeof(CameraConstants);
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
-            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
-            buffer->SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &consts);
+            buffer->SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &consts);
             context.SetBuffer(bufferId, buffer);
         });
 
@@ -181,9 +180,8 @@ namespace march
             desc.Stride = sizeof(LightConstants);
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
-            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
-            m_LightConstantBuffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &consts);
+            m_LightConstantBuffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &consts);
             context.SetBuffer(id, &m_LightConstantBuffer);
         });
     }
@@ -401,10 +399,9 @@ namespace march
             desc.Stride = sizeof(ShadowConstants);
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
-            desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
             ShadowConstants consts{ shadowMatrix };
-            m_ShadowConstantBuffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &consts);
+            m_ShadowConstantBuffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &consts);
             context.SetBuffer(bufferId, &m_ShadowConstantBuffer);
 
             for (int32_t i = 0; i < numGBuffers; i++)

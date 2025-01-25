@@ -102,7 +102,7 @@ namespace march
     {
     public:
         ImGuiViewportData(GfxDevice* device)
-            : m_Mesh(GfxBufferAllocationStrategy::UploadHeapFastOneFrame)
+            : m_Mesh(GfxBufferAllocStrategy::UploadHeapFastOneFrame)
             , m_ConstantBuffer(device, "ImGuiConstants")
             , m_Intermediate(nullptr)
         {
@@ -146,7 +146,7 @@ namespace march
                 desc.Filter = GfxTextureFilterMode::Point;
                 desc.Wrap = GfxTextureWrapMode::Clamp;
                 desc.MipmapBias = 0;
-                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGuiIntermediate", desc, GfxTexureAllocationStrategy::DefaultHeapCommitted);
+                m_Intermediate = std::make_unique<GfxRenderTexture>(device, "ImGuiIntermediate", desc, GfxTexureAllocStrategy::DefaultHeapCommitted);
             }
 
             return m_Intermediate.get();
@@ -235,11 +235,10 @@ namespace march
         desc.Stride = sizeof(ImGuiConstants);
         desc.Count = 1;
         desc.Usages = GfxBufferUsages::Constant;
-        desc.UnorderedAccessMode = GfxBufferUnorderedAccessMode::Disabled;
 
         ImGuiConstants constants{};
         memcpy(&constants.MVP.m, mvp, sizeof(mvp));
-        buffer.SetData(desc, GfxBufferAllocationStrategy::UploadHeapFastOneFrame, &constants);
+        buffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &constants);
     }
 
     void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxRenderTexture* target)
