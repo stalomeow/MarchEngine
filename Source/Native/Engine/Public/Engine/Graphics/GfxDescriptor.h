@@ -70,9 +70,9 @@ namespace march
 
         uint32_t m_NextDescriptorIndex;
         std::vector<std::unique_ptr<GfxDescriptorHeap>> m_Pages;
-        std::queue<D3D12_CPU_DESCRIPTOR_HANDLE> m_ReleaseQueue;
+        std::queue<std::pair<uint64_t, D3D12_CPU_DESCRIPTOR_HANDLE>> m_ReleaseQueue;
 
-        void Release(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+        void DeferredRelease(D3D12_CPU_DESCRIPTOR_HANDLE handle);
     };
 
     class GfxOfflineDescriptor final
@@ -81,8 +81,8 @@ namespace march
         GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle, GfxOfflineDescriptorAllocator* allocator);
         GfxOfflineDescriptor() : GfxOfflineDescriptor({}, nullptr) {}
 
-        void Release();
-        ~GfxOfflineDescriptor() { Release(); }
+        void DeferredRelease();
+        ~GfxOfflineDescriptor() { DeferredRelease(); }
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetHandle() const { return m_Handle; }
         operator bool() const { return m_Allocator != nullptr && m_Handle.ptr != 0; }

@@ -20,7 +20,7 @@ namespace march
         {
             GfxRenderTexture* tex = it->Texture;
 
-            if (tex->GetResource()->GetDesc().IsCompatibleWith(desc))
+            if (tex->GetDesc().IsCompatibleWith(desc))
             {
                 m_FreeTextures.erase(it);
                 return tex;
@@ -124,7 +124,7 @@ namespace march
             return m_TransientTextureDesc;
         }
 
-        return static_cast<GfxRenderTexture*>(m_ResourcePtr)->GetResource()->GetDesc();
+        return static_cast<GfxRenderTexture*>(m_ResourcePtr)->GetDesc();
     }
 
     bool RenderGraphResourceData::IsTransient() const

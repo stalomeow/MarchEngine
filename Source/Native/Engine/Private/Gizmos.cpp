@@ -353,7 +353,7 @@ namespace march
 
     void Gizmos::InitResources()
     {
-        g_LineListMesh = std::make_unique<GfxBasicMesh<GizmosVertex>>(GfxBufferAllocStrategy::UploadHeapSubAlloc);
+        g_LineListMesh = std::make_unique<GfxBasicMesh<GizmosVertex>>(GfxBufferFlags::Dynamic);
         g_LineListShader.reset("Engine/Shaders/Gizmos.shader");
         g_LineListMaterial = std::make_unique<Material>();
         g_LineListMaterial->SetShader(g_LineListShader.get());

@@ -102,7 +102,7 @@ namespace march
     {
     public:
         ImGuiViewportData(GfxDevice* device)
-            : m_Mesh(GfxBufferAllocStrategy::UploadHeapFastOneFrame)
+            : m_Mesh(GfxBufferFlags::Dynamic | GfxBufferFlags::Transient)
             , m_ConstantBuffer(device, "ImGuiConstants")
             , m_Intermediate(nullptr)
         {
@@ -128,8 +128,8 @@ namespace march
             }
             else
             {
-                const GfxTextureDesc& desc1 = target->GetResource()->GetDesc();
-                const GfxTextureDesc& desc2 = m_Intermediate->GetResource()->GetDesc();
+                const GfxTextureDesc& desc1 = target->GetDesc();
+                const GfxTextureDesc& desc2 = m_Intermediate->GetDesc();
                 needRecreate = desc1.Width != desc2.Width || desc1.Height != desc2.Height;
             }
 
@@ -139,8 +139,8 @@ namespace march
                 desc.Format = GfxTextureFormat::R11G11B10_Float;
                 desc.Flags = GfxTextureFlags::None;
                 desc.Dimension = GfxTextureDimension::Tex2D;
-                desc.Width = target->GetResource()->GetDesc().Width;
-                desc.Height = target->GetResource()->GetDesc().Height;
+                desc.Width = target->GetDesc().Width;
+                desc.Height = target->GetDesc().Height;
                 desc.DepthOrArraySize = 1;
                 desc.MSAASamples = 1;
                 desc.Filter = GfxTextureFilterMode::Point;
@@ -235,10 +235,11 @@ namespace march
         desc.Stride = sizeof(ImGuiConstants);
         desc.Count = 1;
         desc.Usages = GfxBufferUsages::Constant;
+        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
         ImGuiConstants constants{};
         memcpy(&constants.MVP.m, mvp, sizeof(mvp));
-        buffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &constants);
+        buffer.SetData(desc, &constants);
     }
 
     void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxRenderTexture* target)

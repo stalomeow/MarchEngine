@@ -44,12 +44,12 @@ namespace march
 
     uint32_t Display::GetPixelWidth() const
     {
-        return m_ColorBuffer->GetResource()->GetDesc().Width;
+        return m_ColorBuffer->GetDesc().Width;
     }
 
     uint32_t Display::GetPixelHeight() const
     {
-        return m_ColorBuffer->GetResource()->GetDesc().Height;
+        return m_ColorBuffer->GetDesc().Height;
     }
 
     void Display::Resize(uint32_t width, uint32_t height)

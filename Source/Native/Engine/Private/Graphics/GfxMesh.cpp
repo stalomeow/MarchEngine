@@ -28,8 +28,8 @@ namespace march
         return DotNet::RuntimeInvoke<GfxMesh*>(ManagedMethod::Mesh_NativeGetGeometry, csGeometry);
     }
 
-    GfxMesh::GfxMesh(GfxBufferAllocStrategy allocationStrategy)
-        : GfxBasicMesh(allocationStrategy)
+    GfxMesh::GfxMesh(GfxBufferFlags bufferFlags)
+        : GfxBasicMesh(bufferFlags)
         , m_Bounds{}
     {
     }

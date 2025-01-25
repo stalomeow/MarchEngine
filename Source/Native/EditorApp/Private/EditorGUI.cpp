@@ -526,7 +526,7 @@ namespace march
     void EditorGUI::DrawTexture(GfxTexture* texture)
     {
         ImVec2 region = ImGui::GetContentRegionAvail();
-        ImVec2 size = { region.x, static_cast<float>(texture->GetResource()->GetDesc().Height) / texture->GetResource()->GetDesc().Width * region.x};
+        ImVec2 size = { region.x, static_cast<float>(texture->GetDesc().Height) / texture->GetDesc().Width * region.x};
         ImGui::Image(reinterpret_cast<ImTextureID>(texture), size);
     }
 

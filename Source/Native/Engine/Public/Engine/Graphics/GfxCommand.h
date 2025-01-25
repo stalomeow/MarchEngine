@@ -261,14 +261,7 @@ namespace march
 
         void ResolveTexture(GfxTexture* source, GfxTexture* destination);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement);
-        void CopyBuffer(
-            GfxBuffer* sourceBuffer,
-            GfxBufferElement sourceElement,
-            uint32_t sourceOffsetInBytes,
-            GfxBuffer* destinationBuffer,
-            GfxBufferElement destinationElement,
-            uint32_t destinationOffsetInBytes,
-            uint32_t sizeInBytes);
+        void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, uint32_t sourceOffsetInBytes, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement, uint32_t destinationOffsetInBytes, uint32_t sizeInBytes);
         void UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData);
 
         GfxDevice* GetDevice() const { return m_Device; }
@@ -305,8 +298,8 @@ namespace march
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
-        RefCountPtr<GfxTextureResource> m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
-        RefCountPtr<GfxTextureResource> m_DepthStencilTarget;
+        GfxTexture* m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
+        GfxTexture* m_DepthStencilTarget;
 
         uint32_t m_NumViewports;
         D3D12_VIEWPORT m_Viewports[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
@@ -322,8 +315,8 @@ namespace march
         D3D12_INDEX_BUFFER_VIEW m_CurrentIndexBuffer;
         std::optional<uint8_t> m_CurrentStencilRef;
 
-        std::unordered_map<int32_t, std::pair<RefCountPtr<GfxTextureResource>, GfxTextureElement>> m_GlobalTextures;
-        std::unordered_map<int32_t, std::pair<RefCountPtr<GfxBufferResource>, GfxBufferElement>> m_GlobalBuffers;
+        std::unordered_map<int32_t, std::pair<GfxTexture*, GfxTextureElement>> m_GlobalTextures;
+        std::unordered_map<int32_t, std::pair<GfxBuffer*, GfxBufferElement>> m_GlobalBuffers;
 
         struct InstanceData
         {
@@ -333,17 +326,17 @@ namespace march
 
         GfxBuffer m_InstanceBuffer;
 
-        RefCountPtr<GfxTextureResource> GetFirstRenderTarget() const;
-        RefCountPtr<GfxTextureResource> FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement);
-        RefCountPtr<GfxBufferResource> FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex, GfxBufferElement* pOutElement);
+        GfxTexture* GetFirstRenderTarget() const;
+        GfxTexture* FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement);
+        GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex, GfxBufferElement* pOutElement);
 
         ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex);
 
-        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource, GfxBufferElement element, bool isConstantBuffer);
-        void SetGraphicsSrvTexture(ShaderProgramType type, uint32_t index, RefCountPtr<GfxTextureResource> resource, GfxTextureElement element);
-        void SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, RefCountPtr<GfxBufferResource> resource, GfxBufferElement element);
-        void SetGraphicsUavTexture(ShaderProgramType type, uint32_t index, RefCountPtr<GfxTextureResource> resource, GfxTextureElement element);
-        void SetGraphicsSampler(ShaderProgramType type, uint32_t index, RefCountPtr<GfxTextureResource> resource);
+        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer);
+        void SetGraphicsSrvTexture(ShaderProgramType type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
+        void SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element);
+        void SetGraphicsUavTexture(ShaderProgramType type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
+        void SetGraphicsSampler(ShaderProgramType type, uint32_t index, GfxTexture* texture);
         void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex);
         void SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature);
         void SetGraphicsRootSrvCbvBuffers();
@@ -354,8 +347,8 @@ namespace march
         void SetStencilRef(uint8_t value);
 
         void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value);
-        void SetVertexBuffer(RefCountPtr<GfxBufferResource> resource);
-        void SetIndexBuffer(RefCountPtr<GfxBufferResource> resource);
+        void SetVertexBuffer(GfxBuffer* buffer);
+        void SetIndexBuffer(GfxBuffer* buffer);
         void SetInstanceBufferData(uint32_t numInstances, const InstanceData* instances);
         void DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount);
 

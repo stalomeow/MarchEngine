@@ -248,29 +248,6 @@ namespace march
             }
         }
     };
-
-    class FenceSynchronizedObject : public ThreadSafeRefCountedObject
-    {
-    public:
-        uint64 GetDeadlineFence() const { return m_DeadlineFence; }
-        void SetDeadlineFence(uint64 value) { m_DeadlineFence = value; }
-
-        RefCountPtr<FenceSynchronizedObject> GetPrevFenceSynchronizedObject() const { return m_Prev; }
-        void SetPrevFenceSynchronizedObject(RefCountPtr<FenceSynchronizedObject> value) { m_Prev = value; }
-
-        RefCountPtr<FenceSynchronizedObject> GetNextFenceSynchronizedObject() const { return m_Next; }
-        void SetNextFenceSynchronizedObject(RefCountPtr<FenceSynchronizedObject> value) { m_Next = value; }
-
-        virtual ~FenceSynchronizedObject() = default;
-
-    protected:
-        FenceSynchronizedObject() = default;
-
-    private:
-        uint64 m_DeadlineFence;
-        RefCountPtr<FenceSynchronizedObject> m_Prev;
-        RefCountPtr<FenceSynchronizedObject> m_Next;
-    };
 }
 
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/find-memory-leaks-using-the-crt-library?view=msvc-170

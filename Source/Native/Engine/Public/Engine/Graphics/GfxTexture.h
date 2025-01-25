@@ -211,11 +211,12 @@ namespace march
         DefaultHeapPlaced,
     };
 
-    class GfxTextureResource final : public FenceSynchronizedObject
+    class GfxTexture : public MarchObject
     {
     public:
-        GfxTextureResource(const GfxTextureDesc& desc, RefCountPtr<GfxResource> underlyingResource, bool allowRendering);
-        ~GfxTextureResource() = default;
+        virtual ~GfxTexture();
+
+        virtual bool AllowRendering() const = 0;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxTextureElement element = GfxTextureElement::Default);
@@ -223,15 +224,37 @@ namespace march
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(GfxCubemapFace face, uint32_t faceCount = 1, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetSampler();
 
-        GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
+        GfxDevice* GetDevice() const { return m_Device; }
         RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
         ID3D12Resource* GetUnderlyingD3DResource() const { return m_Resource->GetD3DResource(); }
+
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
         uint32_t GetMipLevels() const { return m_MipLevels; }
         uint32_t GetSampleCount() const { return m_Desc.MSAASamples; }
         uint32_t GetSampleQuality() const { return m_SampleQuality; }
 
+        GfxTexture(const GfxTexture&) = delete;
+        GfxTexture& operator=(const GfxTexture&) = delete;
+
+        GfxTexture(GfxTexture&& other);
+        GfxTexture& operator=(GfxTexture&& other);
+
+        static GfxTexture* GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension);
+        static void ClearSamplerCache();
+
+    protected:
+        GfxTexture(GfxDevice* device);
+
+        void Reset(const GfxTextureDesc& desc, RefCountPtr<GfxResource> resource);
+
     private:
+        GfxDevice* m_Device;
+
+        RefCountPtr<GfxResource> m_Resource;
+        GfxTextureDesc m_Desc;
+        uint32_t m_MipLevels;
+        uint32_t m_SampleQuality;
+
         struct RtvDsvQuery
         {
             uint32_t WOrArraySlice;
@@ -252,45 +275,14 @@ namespace march
             }
         };
 
-        RefCountPtr<GfxResource> m_Resource;
-        GfxTextureDesc m_Desc;
-        uint32_t m_MipLevels;
-        uint32_t m_SampleQuality;
-        bool m_AllowRendering;
-
         // Lazy creation
         GfxOfflineDescriptor m_SrvDescriptors[2];
         GfxOfflineDescriptor m_UavDescriptors[2];
         std::unordered_map<RtvDsvQuery, GfxOfflineDescriptor, RtvDsvQueryHash> m_RtvDsvDescriptors;
         std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> m_SamplerDescriptor;
 
+        void ReleaseResource();
         void CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv);
-    };
-
-    class GfxTexture : public MarchObject
-    {
-    public:
-        virtual ~GfxTexture() = default;
-
-        virtual bool AllowRendering() const = 0;
-
-        GfxDevice* GetDevice() const { return m_Device; }
-        RefCountPtr<GfxTextureResource> GetResource() const { return m_Resource; }
-
-        static GfxTexture* GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension);
-        static void ClearSamplerCache();
-
-    protected:
-        GfxTexture(GfxDevice* device) : m_Device(device), m_Resource(nullptr) {}
-
-        void Reset(const GfxTextureDesc& desc, RefCountPtr<GfxResource> resource)
-        {
-            m_Resource = MARCH_MAKE_REF(GfxTextureResource, desc, resource, AllowRendering());
-        }
-
-    private:
-        GfxDevice* m_Device;
-        RefCountPtr<GfxTextureResource> m_Resource;
     };
 
     enum class GfxTextureCompression

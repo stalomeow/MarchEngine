@@ -18,6 +18,16 @@ namespace march
         return (Usages & usages) != static_cast<GfxBufferUsages>(0);
     }
 
+    bool GfxBufferDesc::HasAllFlags(GfxBufferFlags flags) const
+    {
+        return (Flags & flags) == flags;
+    }
+
+    bool GfxBufferDesc::HasAnyFlags(GfxBufferFlags flags) const
+    {
+        return (Flags & flags) != GfxBufferFlags::None;
+    }
+
     bool GfxBufferDesc::HasCounter() const
     {
         constexpr GfxBufferUsages usages
@@ -88,51 +98,29 @@ namespace march
     {
         return Stride == other.Stride
             && Count >= other.Count
-            && HasAllUsages(other.Usages);
+            && HasAllUsages(other.Usages)
+            && Flags == other.Flags;
     }
 
-    GfxBufferResource::GfxBufferResource(
-        const GfxBufferDesc& desc,
-        RefCountPtr<GfxResource> resource,
-        uint32_t dataOffsetInBytes,
-        uint32_t counterOffsetInBytes)
-        : GfxBufferResource(desc, nullptr, GfxBufferSubAllocation{}, resource, dataOffsetInBytes, counterOffsetInBytes)
-    {
-    }
+    GfxBuffer::GfxBuffer(GfxDevice* device, const std::string& name) : GfxBuffer(device, name, GfxBufferDesc{}) {}
 
-    GfxBufferResource::GfxBufferResource(
-        const GfxBufferDesc& desc,
-        GfxBufferSubAllocator* allocator,
-        const GfxBufferSubAllocation& allocation,
-        RefCountPtr<GfxResource> resource,
-        uint32_t dataOffsetInBytes,
-        uint32_t counterOffsetInBytes)
-        : m_Desc(desc)
-        , m_Resource(resource)
-        , m_DataOffsetInBytes(dataOffsetInBytes)
-        , m_CounterOffsetInBytes(counterOffsetInBytes)
-        , m_Allocator(allocator)
-        , m_Allocation(allocation)
+    GfxBuffer::GfxBuffer(GfxDevice* device, const std::string& name, const GfxBufferDesc& desc)
+        : m_Device(device)
+        , m_Name(name)
+        , m_Desc(desc)
+        , m_Resource(nullptr)
+        , m_DataOffsetInBytes(0)
+        , m_CounterOffsetInBytes(0)
+        , m_Allocator(nullptr)
+        , m_Allocation{}
         , m_UavDescriptors{}
     {
     }
 
-    GfxBufferResource::~GfxBufferResource()
+    uint32_t GfxBuffer::GetOffsetInBytes(GfxBufferElement element)
     {
-        if (m_Allocator)
-        {
-            m_Allocator->Release(m_Allocation);
-        }
-    }
+        AllocateResourceIfNot();
 
-    D3D12_GPU_VIRTUAL_ADDRESS GfxBufferResource::GetGpuVirtualAddress(GfxBufferElement element) const
-    {
-        D3D12_GPU_VIRTUAL_ADDRESS baseAddress = m_Resource->GetD3DResource()->GetGPUVirtualAddress();
-        return baseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(GetOffsetInBytes(element));
-    }
-
-    uint32_t GfxBufferResource::GetOffsetInBytes(GfxBufferElement element) const
-    {
         switch (element)
         {
         case GfxBufferElement::StructuredData:
@@ -150,18 +138,36 @@ namespace march
         }
     }
 
-    uint32_t GfxBufferResource::GetSizeInBytes(GfxBufferElement element) const
+    uint32_t GfxBuffer::GetSizeInBytes(GfxBufferElement element) const
     {
         return m_Desc.GetSizeInBytes(element);
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxBufferResource::GetUav(GfxBufferElement element)
+    RefCountPtr<GfxResource> GfxBuffer::GetUnderlyingResource()
+    {
+        AllocateResourceIfNot();
+        return m_Resource;
+    }
+
+    ID3D12Resource* GfxBuffer::GetUnderlyingD3DResource()
+    {
+        return GetUnderlyingResource()->GetD3DResource();
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS GfxBuffer::GetGpuVirtualAddress(GfxBufferElement element)
+    {
+        D3D12_GPU_VIRTUAL_ADDRESS baseAddress = GetUnderlyingD3DResource()->GetGPUVirtualAddress();
+        return baseAddress + static_cast<D3D12_GPU_VIRTUAL_ADDRESS>(GetOffsetInBytes(element));
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxBuffer::GetUav(GfxBufferElement element)
     {
         if (!m_Desc.AllowUnorderedAccess(element))
         {
             throw GfxException("Buffer element does not allow unordered access");
         }
 
+        AllocateResourceIfNot();
         GfxOfflineDescriptor& uav = m_UavDescriptors[static_cast<size_t>(element)];
 
         if (!uav)
@@ -227,7 +233,7 @@ namespace march
         return uav.GetHandle();
     }
 
-    D3D12_VERTEX_BUFFER_VIEW GfxBufferResource::GetVbv() const
+    D3D12_VERTEX_BUFFER_VIEW GfxBuffer::GetVbv()
     {
         if (!m_Desc.HasAllUsages(GfxBufferUsages::Vertex))
         {
@@ -241,7 +247,7 @@ namespace march
         return view;
     }
 
-    D3D12_INDEX_BUFFER_VIEW GfxBufferResource::GetIbv() const
+    D3D12_INDEX_BUFFER_VIEW GfxBuffer::GetIbv()
     {
         if (!m_Desc.HasAllUsages(GfxBufferUsages::Index))
         {
@@ -267,11 +273,251 @@ namespace march
         return view;
     }
 
+    void GfxBuffer::SetData(const void* pData, std::optional<uint32_t> counter)
+    {
+        D3D12_RANGE resourceRange = ReallocateResource();
+
+        if (!pData && !counter)
+        {
+            return;
+        }
+
+        if (m_Resource->IsHeapCpuAccessible())
+        {
+            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-map
+            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-unmap
+
+            uint8_t* pMappedData = nullptr;
+            ID3D12Resource* d3dResource = m_Resource->GetD3DResource();
+            GFX_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(&pMappedData))); // Write-Only
+
+            if (pData)
+            {
+                size_t offset = static_cast<size_t>(m_DataOffsetInBytes);
+                size_t size = static_cast<size_t>(m_Desc.GetSizeInBytes(GfxBufferElement::StructuredData));
+                memcpy(pMappedData + offset, pData, size);
+            }
+
+            if (counter)
+            {
+                if (m_Desc.HasCounter())
+                {
+                    uint32_t value = *counter;
+                    assert(sizeof(value) == m_Desc.GetSizeInBytes(GfxBufferElement::StructuredCounter));
+
+                    size_t offset = static_cast<size_t>(m_CounterOffsetInBytes);
+                    memcpy(pMappedData + offset, &value, sizeof(value));
+                }
+                else
+                {
+                    LOG_WARNING("GfxBuffer::SetData: buffer does not have counter");
+                }
+            }
+
+            d3dResource->Unmap(0, &resourceRange);
+        }
+        else
+        {
+            GfxCommandContext* context = m_Device->RequestContext(GfxCommandType::Direct);
+
+            if (pData)
+            {
+                GfxBufferDesc tempDesc{};
+                tempDesc.Stride = m_Desc.GetSizeInBytes(GfxBufferElement::StructuredData);
+                tempDesc.Count = 1;
+                tempDesc.Usages = GfxBufferUsages::Copy;
+                tempDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+                GfxBuffer temp{ m_Device, m_Name + "DataTempUpload", tempDesc };
+                temp.SetData(pData);
+                context->CopyBuffer(&temp, GfxBufferElement::StructuredData, this, GfxBufferElement::StructuredData);
+            }
+
+            if (counter)
+            {
+                if (m_Desc.HasCounter())
+                {
+                    GfxBufferDesc tempDesc{};
+                    tempDesc.Stride = m_Desc.GetSizeInBytes(GfxBufferElement::StructuredCounter);
+                    tempDesc.Count = 1;
+                    tempDesc.Usages = GfxBufferUsages::Copy;
+                    tempDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+                    uint32_t value = *counter;
+                    assert(sizeof(value) == tempDesc.Stride);
+
+                    GfxBuffer temp{ m_Device, m_Name + "CounterTempUpload", tempDesc };
+                    temp.SetData(&value);
+                    context->CopyBuffer(&temp, GfxBufferElement::StructuredData, this, GfxBufferElement::StructuredCounter);
+                }
+                else
+                {
+                    LOG_WARNING("GfxBuffer::SetData: buffer does not have counter");
+                }
+            }
+
+            context->SubmitAndRelease().WaitOnCpu();
+        }
+    }
+
+    void GfxBuffer::SetData(const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
+    {
+        m_Desc = desc;
+        SetData(pData, counter);
+    }
+
+    void GfxBuffer::ReleaseResource()
+    {
+        if (m_Resource)
+        {
+            m_Device->DeferredRelease(m_Resource);
+            m_Resource = nullptr;
+        }
+
+        if (m_Allocator)
+        {
+            m_Allocator->DeferredRelease(m_Allocation);
+            m_Allocator = nullptr;
+        }
+
+        for (GfxOfflineDescriptor& uav : m_UavDescriptors)
+        {
+            uav.DeferredRelease();
+        }
+    }
+
+    void GfxBuffer::AllocateResourceIfNot()
+    {
+        if (!m_Resource)
+        {
+            ReallocateResource();
+        }
+    }
+
+    D3D12_RANGE GfxBuffer::ReallocateResource()
+    {
+        ReleaseResource();
+
+        uint32_t sizeInBytes = m_Desc.GetSizeInBytes(GfxBufferElement::StructuredData);
+        uint32_t dataPlacementAlignment = 0; // TODO: 不知道默认能不能用 0，或许要用 16 字节（float4）？
+
+        if (m_Desc.HasAllUsages(GfxBufferUsages::Index) && m_Desc.Stride != 2 && m_Desc.Stride != 4)
+        {
+            throw std::invalid_argument("GfxBuffer::AllocateResource: stride must be 2 or 4 bytes for Index Buffer");
+        }
+
+        if (m_Desc.HasAllUsages(GfxBufferUsages::Constant))
+        {
+            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        }
+
+        if (m_Desc.AllowUnorderedAccess(GfxBufferElement::StructuredData))
+        {
+            // 创建 UAV 时需要填 FirstElement，所以 Offset 必须是 Stride 的整数倍
+            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, m_Desc.Stride);
+        }
+
+        uint32_t dataOffsetInResource = 0;
+
+        if (m_Desc.HasCounter())
+        {
+            // 在 Data 前面放 4 字节的 Counter
+            // 布局：Counter [Padding] Data
+            // Padding 用于对齐 Data，可能没有
+
+            dataOffsetInResource = MathUtils::AlignUp(4, dataPlacementAlignment);
+            sizeInBytes += dataOffsetInResource;
+            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT);
+        }
+
+        bool isSubAlloc;
+
+        if (m_Desc.AllowUnorderedAccess())
+        {
+            isSubAlloc = false;
+
+            if (m_Desc.HasAnyFlags(GfxBufferFlags::Transient))
+            {
+                LOG_WARNING("GfxBuffer::AllocateResource: The Transient flag will be ignored because the buffer allows unordered access");
+            }
+        }
+        else
+        {
+            // 尽可能使用 SubAlloc，优化性能
+            isSubAlloc = m_Desc.HasAnyFlags(GfxBufferFlags::Dynamic | GfxBufferFlags::Transient);
+        }
+
+        uint32_t resourceOffsetInBytes = 0;
+
+        if (isSubAlloc)
+        {
+            bool isFastOneFrame = m_Desc.HasAnyFlags(GfxBufferFlags::Transient);
+            m_Allocator = m_Device->GetUploadHeapBufferSubAllocator(isFastOneFrame);
+            m_Resource = m_Allocator->Allocate(sizeInBytes, dataPlacementAlignment, &resourceOffsetInBytes, &m_Allocation);
+        }
+        else
+        {
+            GfxResourceAllocator* allocator = m_Device->GetPlacedBufferAllocator(
+                m_Desc.HasAnyFlags(GfxBufferFlags::Dynamic) ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT);
+
+            UINT64 width = static_cast<UINT64>(sizeInBytes);
+            D3D12_RESOURCE_FLAGS flags = m_Desc.AllowUnorderedAccess() ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
+            m_Resource = allocator->Allocate(m_Name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), D3D12_RESOURCE_STATE_GENERIC_READ);
+        }
+
+        m_DataOffsetInBytes = resourceOffsetInBytes + dataOffsetInResource;
+        m_CounterOffsetInBytes = resourceOffsetInBytes;
+        return CD3DX12_RANGE(resourceOffsetInBytes, resourceOffsetInBytes + sizeInBytes);
+    }
+
+    GfxBuffer::GfxBuffer(GfxBuffer&& other)
+        : m_Device(other.m_Device)
+        , m_Name(std::move(other.m_Name))
+        , m_Desc(other.m_Desc)
+        , m_Resource(std::move(other.m_Resource))
+        , m_DataOffsetInBytes(other.m_DataOffsetInBytes)
+        , m_CounterOffsetInBytes(other.m_CounterOffsetInBytes)
+        , m_Allocator(std::exchange(other.m_Allocator, nullptr))
+        , m_Allocation(other.m_Allocation)
+        , m_UavDescriptors{}
+    {
+        for (size_t i = 0; i < std::size(m_UavDescriptors); i++)
+        {
+            m_UavDescriptors[i] = std::move(other.m_UavDescriptors[i]);
+        }
+    }
+
+    GfxBuffer& GfxBuffer::operator=(GfxBuffer&& other)
+    {
+        if (this != &other)
+        {
+            ReleaseResource();
+
+            m_Device = other.m_Device;
+            m_Name = std::move(other.m_Name);
+            m_Desc = other.m_Desc;
+            m_Resource = std::move(other.m_Resource);
+            m_DataOffsetInBytes = other.m_DataOffsetInBytes;
+            m_CounterOffsetInBytes = other.m_CounterOffsetInBytes;
+            m_Allocator = std::exchange(other.m_Allocator, nullptr);
+            m_Allocation = other.m_Allocation;
+
+            for (size_t i = 0; i < std::size(m_UavDescriptors); i++)
+            {
+                m_UavDescriptors[i] = std::move(other.m_UavDescriptors[i]);
+            }
+        }
+
+        return *this;
+    }
+
     GfxBufferMultiBuddySubAllocator::GfxBufferMultiBuddySubAllocator(
         const std::string& name,
         const GfxBufferMultiBuddySubAllocatorDesc& desc,
         GfxResourceAllocator* pageAllocator)
-        : m_Pages{}
+        : m_Device(pageAllocator->GetDevice())
+        , m_Pages{}
+        , m_ReleaseQueue{}
     {
         auto appendPageFunc = [this, pageAllocator](uint32_t sizeInBytes)
         {
@@ -301,9 +547,18 @@ namespace march
         return nullptr;
     }
 
-    void GfxBufferMultiBuddySubAllocator::Release(const GfxBufferSubAllocation& allocation)
+    void GfxBufferMultiBuddySubAllocator::DeferredRelease(const GfxBufferSubAllocation& allocation)
     {
-        m_Allocator->Release(allocation.Buddy);
+        m_ReleaseQueue.emplace(m_Device->GetNextFence(), allocation);
+    }
+
+    void GfxBufferMultiBuddySubAllocator::CleanUpAllocations()
+    {
+        while (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first))
+        {
+            m_Allocator->Release(m_ReleaseQueue.front().second.Buddy);
+            m_ReleaseQueue.pop();
+        }
     }
 
     GfxBufferLinearSubAllocator::GfxBufferLinearSubAllocator(
@@ -368,7 +623,7 @@ namespace march
         return (large ? m_LargePages : m_Pages)[pageIndex];
     }
 
-    void GfxBufferLinearSubAllocator::Release(const GfxBufferSubAllocation& allocation)
+    void GfxBufferLinearSubAllocator::DeferredRelease(const GfxBufferSubAllocation& allocation)
     {
         // Do Nothing
     }
@@ -385,193 +640,5 @@ namespace march
         m_Allocator->Reset();
         m_Pages.clear();
         m_LargePages.clear();
-    }
-
-    void GfxBuffer::SetData(
-        const GfxBufferDesc& desc,
-        GfxBufferAllocStrategy allocationStrategy,
-        const void* pData,
-        std::optional<uint32_t> counter)
-    {
-        D3D12_RANGE resourceRange = AllocateResource(desc, allocationStrategy);
-
-        if (!pData && !counter)
-        {
-            return;
-        }
-
-        if (m_Resource->GetUnderlyingResource()->IsHeapCpuAccessible())
-        {
-            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-map
-            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-unmap
-
-            uint8_t* pMappedData = nullptr;
-            ID3D12Resource* d3dResource = m_Resource->GetUnderlyingD3DResource();
-            GFX_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(&pMappedData))); // Write-Only
-
-            if (pData)
-            {
-                size_t offset = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::StructuredData));
-                size_t size = static_cast<size_t>(m_Resource->GetSizeInBytes(GfxBufferElement::StructuredData));
-                memcpy(pMappedData + offset, pData, size);
-            }
-
-            if (counter)
-            {
-                if (desc.HasCounter())
-                {
-                    uint32_t value = *counter;
-                    assert(sizeof(value) == m_Resource->GetSizeInBytes(GfxBufferElement::StructuredCounter));
-
-                    size_t offset = static_cast<size_t>(m_Resource->GetOffsetInBytes(GfxBufferElement::StructuredCounter));
-                    memcpy(pMappedData + offset, &value, sizeof(value));
-                }
-                else
-                {
-                    LOG_WARNING("GfxBuffer::SetData: buffer does not have counter");
-                }
-            }
-
-            d3dResource->Unmap(0, &resourceRange);
-        }
-        else
-        {
-            GfxCommandContext* context = m_Device->RequestContext(GfxCommandType::Direct);
-
-            if (pData)
-            {
-                GfxBufferDesc tempDesc{};
-                tempDesc.Stride = m_Resource->GetSizeInBytes(GfxBufferElement::StructuredData);
-                tempDesc.Count = 1;
-                tempDesc.Usages = GfxBufferUsages::Copy;
-
-                GfxBuffer temp{ m_Device, m_Name + "DataTempUpload" };
-                temp.SetData(tempDesc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, pData);
-
-                context->CopyBuffer(&temp, GfxBufferElement::StructuredData, this, GfxBufferElement::StructuredData);
-            }
-
-            if (counter)
-            {
-                if (desc.HasCounter())
-                {
-                    GfxBufferDesc tempDesc{};
-                    tempDesc.Stride = m_Resource->GetSizeInBytes(GfxBufferElement::StructuredCounter);
-                    tempDesc.Count = 1;
-                    tempDesc.Usages = GfxBufferUsages::Copy;
-
-                    uint32_t value = *counter;
-                    assert(sizeof(value) == tempDesc.Stride);
-
-                    GfxBuffer temp{ m_Device, m_Name + "CounterTempUpload" };
-                    temp.SetData(tempDesc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &value);
-
-                    context->CopyBuffer(&temp, GfxBufferElement::StructuredData, this, GfxBufferElement::StructuredCounter);
-                }
-                else
-                {
-                    LOG_WARNING("GfxBuffer::SetData: buffer does not have counter");
-                }
-            }
-
-            context->SubmitAndRelease().WaitOnCpu();
-        }
-    }
-
-    D3D12_RANGE GfxBuffer::AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocStrategy strategy)
-    {
-        uint32_t sizeInBytes = desc.GetSizeInBytes(GfxBufferElement::StructuredData);
-        uint32_t dataPlacementAlignment = 0; // TODO: 不知道默认能不能用 0，或许要用 16 字节（float4）？
-
-        if (desc.HasAllUsages(GfxBufferUsages::Index) && desc.Stride != 2 && desc.Stride != 4)
-        {
-            throw std::invalid_argument("GfxBuffer::AllocateResource: stride must be 2 or 4 bytes for Index Buffer");
-        }
-
-        if (desc.HasAllUsages(GfxBufferUsages::Constant))
-        {
-            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-        }
-
-        if (desc.AllowUnorderedAccess(GfxBufferElement::StructuredData))
-        {
-            // 创建 UAV 时需要填 FirstElement，所以 Offset 必须是 Stride 的整数倍
-            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, desc.Stride);
-        }
-
-        uint32_t dataOffsetInResource = 0;
-
-        if (desc.HasCounter())
-        {
-            // 在 Data 前面放 4 字节的 Counter
-            // 布局：Counter [Padding] Data
-            // Padding 用于对齐 Data，可能没有
-
-            dataOffsetInResource = MathUtils::AlignUp(4, dataPlacementAlignment);
-            sizeInBytes += dataOffsetInResource;
-            dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT);
-        }
-
-        bool isSubAlloc = false;
-
-        switch (strategy)
-        {
-        case GfxBufferAllocStrategy::DefaultHeapCommitted:
-        case GfxBufferAllocStrategy::DefaultHeapPlaced:
-        case GfxBufferAllocStrategy::UploadHeapPlaced:
-            isSubAlloc = false;
-            break;
-        case GfxBufferAllocStrategy::UploadHeapSubAlloc:
-        case GfxBufferAllocStrategy::UploadHeapFastOneFrame:
-            isSubAlloc = true;
-            break;
-        default:
-            throw std::invalid_argument("GfxBuffer::AllocateResource: Invalid allocation strategy");
-        }
-
-        uint32_t resourceOffsetInBytes = 0;
-        GfxBufferSubAllocator* subAllocator = nullptr;
-        GfxBufferSubAllocation subAllocation{};
-        RefCountPtr<GfxResource> resource;
-
-        if (isSubAlloc)
-        {
-            if (desc.AllowUnorderedAccess())
-            {
-                throw std::invalid_argument("GfxBuffer::AllocateResource: Unordered Access is not supported for sub-allocated buffer");
-            }
-
-            bool isFastOneFrame = (strategy == GfxBufferAllocStrategy::UploadHeapFastOneFrame);
-            subAllocator = m_Device->GetUploadHeapBufferSubAllocator(isFastOneFrame);
-            resource = subAllocator->Allocate(sizeInBytes, dataPlacementAlignment, &resourceOffsetInBytes, &subAllocation);
-        }
-        else
-        {
-            GfxResourceAllocator* allocator;
-
-            switch (strategy)
-            {
-            case GfxBufferAllocStrategy::DefaultHeapCommitted:
-                allocator = m_Device->GetCommittedAllocator(D3D12_HEAP_TYPE_DEFAULT);
-                break;
-            case GfxBufferAllocStrategy::DefaultHeapPlaced:
-                allocator = m_Device->GetPlacedBufferAllocator(D3D12_HEAP_TYPE_DEFAULT);
-                break;
-            case GfxBufferAllocStrategy::UploadHeapPlaced:
-                allocator = m_Device->GetPlacedBufferAllocator(D3D12_HEAP_TYPE_UPLOAD);
-                break;
-            default:
-                throw std::invalid_argument("GfxBuffer::AllocateResource: Invalid allocation strategy");
-            }
-
-            UINT64 width = static_cast<UINT64>(sizeInBytes);
-            D3D12_RESOURCE_FLAGS flags = desc.AllowUnorderedAccess() ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
-            resource = allocator->Allocate(m_Name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), D3D12_RESOURCE_STATE_GENERIC_READ);
-        }
-
-        m_Resource = MARCH_MAKE_REF(GfxBufferResource, desc, subAllocator, subAllocation, resource,
-            /* dataOffsetInBytes */ resourceOffsetInBytes + dataOffsetInResource,
-            /* counterOffsetInBytes */ resourceOffsetInBytes);
-        return CD3DX12_RANGE(resourceOffsetInBytes, resourceOffsetInBytes + sizeInBytes);
     }
 }

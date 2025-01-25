@@ -19,15 +19,104 @@ namespace fs = std::filesystem;
 
 namespace march
 {
-    GfxTextureResource::GfxTextureResource(const GfxTextureDesc& desc, RefCountPtr<GfxResource> underlyingResource, bool allowRendering)
-        : m_Resource(underlyingResource)
-        , m_Desc(desc)
-        , m_AllowRendering(allowRendering)
+    GfxTexture::GfxTexture(GfxDevice* device)
+        : m_Device(device)
+        , m_Resource(nullptr)
+        , m_Desc{}
+        , m_MipLevels{}
+        , m_SampleQuality{}
         , m_SrvDescriptors{}
         , m_UavDescriptors{}
         , m_RtvDsvDescriptors{}
         , m_SamplerDescriptor{}
     {
+    }
+
+    GfxTexture::~GfxTexture()
+    {
+        ReleaseResource();
+    }
+
+    GfxTexture::GfxTexture(GfxTexture&& other)
+        : m_Device(other.m_Device)
+        , m_Resource(std::move(other.m_Resource))
+        , m_Desc(other.m_Desc)
+        , m_MipLevels(other.m_MipLevels)
+        , m_SampleQuality(other.m_SampleQuality)
+        , m_SrvDescriptors{}
+        , m_UavDescriptors{}
+        , m_RtvDsvDescriptors(std::move(other.m_RtvDsvDescriptors))
+        , m_SamplerDescriptor(std::move(other.m_SamplerDescriptor))
+    {
+        for (size_t i = 0; i < std::size(m_SrvDescriptors); i++)
+        {
+            m_SrvDescriptors[i] = std::move(other.m_SrvDescriptors[i]);
+        }
+
+        for (size_t i = 0; i < std::size(m_UavDescriptors); i++)
+        {
+            m_UavDescriptors[i] = std::move(other.m_UavDescriptors[i]);
+        }
+    }
+
+    GfxTexture& GfxTexture::operator=(GfxTexture&& other)
+    {
+        if (this != &other)
+        {
+            ReleaseResource();
+
+            m_Device = other.m_Device;
+            m_Resource = std::move(other.m_Resource);
+            m_Desc = other.m_Desc;
+            m_MipLevels = other.m_MipLevels;
+            m_SampleQuality = other.m_SampleQuality;
+
+            for (size_t i = 0; i < std::size(m_SrvDescriptors); i++)
+            {
+                m_SrvDescriptors[i] = std::move(other.m_SrvDescriptors[i]);
+            }
+
+            for (size_t i = 0; i < std::size(m_UavDescriptors); i++)
+            {
+                m_UavDescriptors[i] = std::move(other.m_UavDescriptors[i]);
+            }
+
+            m_RtvDsvDescriptors = std::move(other.m_RtvDsvDescriptors);
+            m_SamplerDescriptor = std::move(other.m_SamplerDescriptor);
+        }
+
+        return *this;
+    }
+
+    void GfxTexture::ReleaseResource()
+    {
+        if (m_Resource)
+        {
+            m_Device->DeferredRelease(m_Resource);
+            m_Resource = nullptr;
+        }
+
+        for (GfxOfflineDescriptor& srv : m_SrvDescriptors)
+        {
+            srv.DeferredRelease();
+        }
+
+        for (GfxOfflineDescriptor& uav : m_UavDescriptors)
+        {
+            uav.DeferredRelease();
+        }
+
+        m_RtvDsvDescriptors.clear();
+        m_SamplerDescriptor.reset();
+    }
+
+    void GfxTexture::Reset(const GfxTextureDesc& desc, RefCountPtr<GfxResource> resource)
+    {
+        ReleaseResource();
+
+        m_Desc = desc;
+        m_Resource = resource;
+
         D3D12_RESOURCE_DESC resDesc = m_Resource->GetD3DResourceDesc();
         m_MipLevels = static_cast<uint32_t>(resDesc.MipLevels);
         m_SampleQuality = static_cast<uint32_t>(resDesc.SampleDesc.Quality);
@@ -54,7 +143,7 @@ namespace march
         throw GfxException("Invalid texture element");
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetSrv(GfxTextureElement element)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSrv(GfxTextureElement element)
     {
         GfxOfflineDescriptor& srv = m_SrvDescriptors[GetSrvUavIndex(m_Desc, element)];
 
@@ -133,7 +222,7 @@ namespace march
         return srv.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetUav(GfxTextureElement element)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetUav(GfxTextureElement element)
     {
         if (!m_Desc.HasFlag(GfxTextureFlags::UnorderedAccess))
         {
@@ -222,9 +311,9 @@ namespace march
         return uav.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
     {
-        if (!m_AllowRendering)
+        if (!AllowRendering())
         {
             throw GfxException("Texture is not allowed for rendering");
         }
@@ -240,14 +329,14 @@ namespace march
         return it->second.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetRtvDsv(GfxCubemapFace face, uint32_t faceCount, uint32_t arraySlice, uint32_t mipSlice)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(GfxCubemapFace face, uint32_t faceCount, uint32_t arraySlice, uint32_t mipSlice)
     {
         uint32_t wOrArraySlice = static_cast<uint32_t>(face) + arraySlice * 6u; // 展开为 Texture2DArray
         uint32_t wOrArraySize = faceCount;
         return GetRtvDsv(wOrArraySlice, wOrArraySize, mipSlice);
     }
 
-    void GfxTextureResource::CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv)
+    void GfxTexture::CreateRtvDsv(const RtvDsvQuery& query, GfxOfflineDescriptor& rtvDsv)
     {
         GfxDevice* device = GetDevice();
         ID3D12Device4* d3dDevice = device->GetD3DDevice4();
@@ -361,7 +450,7 @@ namespace march
     // 根据 hash 复用 sampler
     static std::unordered_map<size_t, GfxOfflineDescriptor> g_SamplerCache{};
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTextureResource::GetSampler()
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSampler()
     {
         if (!m_SamplerDescriptor)
         {
@@ -736,7 +825,7 @@ namespace march
         GFX_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
 
         GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
-        context->UpdateSubresources(GetResource()->GetUnderlyingResource(),
+        context->UpdateSubresources(GetUnderlyingResource(),
             0, static_cast<uint32_t>(subresources.size()), subresources.data());
         context->SubmitAndRelease().WaitOnCpu();
     }

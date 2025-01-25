@@ -24,20 +24,20 @@ namespace march
     {
         const GfxInputDesc& InputDesc;
         const GfxSubMesh& SubMesh;
-        RefCountPtr<GfxBufferResource> VertexBuffer;
-        RefCountPtr<GfxBufferResource> IndexBuffer;
+        GfxBuffer* VertexBuffer;
+        GfxBuffer* IndexBuffer;
     };
 
     template <typename TVertex>
     class GfxBasicMesh : public MarchObject
     {
     public:
-        GfxBasicMesh(GfxBufferAllocStrategy allocationStrategy)
+        GfxBasicMesh(GfxBufferFlags bufferFlags)
             : m_SubMeshes{}
             , m_Vertices{}
             , m_Indices{}
             , m_IsDirty(false)
-            , m_AllocationStrategy(allocationStrategy)
+            , m_BufferFlags(bufferFlags)
             , m_VertexBuffer(GetGfxDevice(), "MeshVertexBuffer")
             , m_IndexBuffer(GetGfxDevice(), "MeshIndexBuffer")
         {
@@ -93,8 +93,8 @@ namespace march
             {
                 GetInputDesc(),
                 GetSubMesh(index),
-                m_VertexBuffer.GetResource(),
-                m_IndexBuffer.GetResource(),
+                &m_VertexBuffer,
+                &m_IndexBuffer,
             };
         }
 
@@ -108,7 +108,7 @@ namespace march
         std::vector<uint16_t> m_Indices;
         bool m_IsDirty;
 
-        GfxBufferAllocStrategy m_AllocationStrategy;
+        GfxBufferFlags m_BufferFlags;
         GfxBuffer m_VertexBuffer;
         GfxBuffer m_IndexBuffer;
 
@@ -123,14 +123,16 @@ namespace march
             vbDesc.Stride = sizeof(TVertex);
             vbDesc.Count = static_cast<uint32_t>(m_Vertices.size());
             vbDesc.Usages = GfxBufferUsages::Vertex;
+            vbDesc.Flags = m_BufferFlags;
 
             GfxBufferDesc ibDesc{};
             ibDesc.Stride = sizeof(uint16_t);
             ibDesc.Count = static_cast<uint32_t>(m_Indices.size());
             ibDesc.Usages = GfxBufferUsages::Index;
+            ibDesc.Flags = m_BufferFlags;
 
-            m_VertexBuffer.SetData(vbDesc, m_AllocationStrategy, m_Vertices.data());
-            m_IndexBuffer.SetData(ibDesc, m_AllocationStrategy, m_Indices.data());
+            m_VertexBuffer.SetData(vbDesc, m_Vertices.data());
+            m_IndexBuffer.SetData(ibDesc, m_Indices.data());
             m_IsDirty = false;
         }
     };
@@ -157,7 +159,7 @@ namespace march
         friend class GfxMeshBinding;
 
     public:
-        GfxMesh(GfxBufferAllocStrategy allocationStrategy);
+        GfxMesh(GfxBufferFlags bufferFlags);
 
         const DirectX::BoundingBox& GetBounds() const { return m_Bounds; }
 

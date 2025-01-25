@@ -92,9 +92,9 @@ namespace march
     {
         D3D12_CPU_DESCRIPTOR_HANDLE handle;
 
-        if (!m_ReleaseQueue.empty())
+        if (!m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first))
         {
-            handle = m_ReleaseQueue.front();
+            handle = m_ReleaseQueue.front().second;
             m_ReleaseQueue.pop();
         }
         else
@@ -120,9 +120,9 @@ namespace march
         return GfxOfflineDescriptor{ handle, this };
     }
 
-    void GfxOfflineDescriptorAllocator::Release(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    void GfxOfflineDescriptorAllocator::DeferredRelease(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
-        m_ReleaseQueue.emplace(handle);
+        m_ReleaseQueue.emplace(m_Device->GetNextFence(), handle);
     }
 
     GfxOfflineDescriptor::GfxOfflineDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle, GfxOfflineDescriptorAllocator* allocator)
@@ -131,11 +131,11 @@ namespace march
     {
     }
 
-    void GfxOfflineDescriptor::Release()
+    void GfxOfflineDescriptor::DeferredRelease()
     {
         if (m_Allocator)
         {
-            m_Allocator->Release(m_Handle);
+            m_Allocator->DeferredRelease(m_Handle);
             m_Allocator = nullptr;
         }
 
@@ -152,7 +152,7 @@ namespace march
     {
         if (this != &other)
         {
-            Release();
+            DeferredRelease();
 
             m_Handle = std::exchange(other.m_Handle, {});
             m_Allocator = std::exchange(other.m_Allocator, nullptr);

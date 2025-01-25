@@ -41,6 +41,15 @@ namespace march
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsages);
 
+    enum class GfxBufferFlags
+    {
+        None = 0,
+        Dynamic = 1 << 0,   // 使用 Upload Heap，优化 CPU Write
+        Transient = 1 << 1, // 快速分配，但只有一帧有效；如果 Buffer 需要 Unordered Access，会忽略该标志
+    };
+
+    DEFINE_ENUM_FLAG_OPERATORS(GfxBufferFlags);
+
     enum class GfxBufferElement
     {
         StructuredData,
@@ -54,10 +63,15 @@ namespace march
         uint32_t Stride;
         uint32_t Count;
         GfxBufferUsages Usages;
+        GfxBufferFlags Flags;
 
         bool HasAllUsages(GfxBufferUsages usages) const;
 
         bool HasAnyUsages(GfxBufferUsages usages) const;
+
+        bool HasAllFlags(GfxBufferFlags flags) const;
+
+        bool HasAnyFlags(GfxBufferFlags flags) const;
 
         bool HasCounter() const;
 
@@ -70,51 +84,49 @@ namespace march
         bool IsCompatibleWith(const GfxBufferDesc& other) const;
     };
 
-    enum class GfxBufferAllocStrategy
-    {
-        DefaultHeapCommitted,
-        DefaultHeapPlaced,
-        UploadHeapPlaced,
-        UploadHeapSubAlloc,
-        UploadHeapFastOneFrame, // 快速分配，只有一帧有效
-    };
-
-    class GfxBufferResource final : public FenceSynchronizedObject
+    class GfxBuffer final
     {
     public:
-        GfxBufferResource(
-            const GfxBufferDesc& desc,
-            RefCountPtr<GfxResource> resource,
-            uint32_t dataOffsetInBytes,
-            uint32_t counterOffsetInBytes);
+        GfxBuffer(GfxDevice* device, const std::string& name);
+        GfxBuffer(GfxDevice* device, const std::string& name, const GfxBufferDesc& desc);
 
-        GfxBufferResource(
-            const GfxBufferDesc& desc,
-            GfxBufferSubAllocator* allocator,
-            const GfxBufferSubAllocation& allocation,
-            RefCountPtr<GfxResource> resource,
-            uint32_t dataOffsetInBytes,
-            uint32_t counterOffsetInBytes);
+        uint32_t GetOffsetInBytes(GfxBufferElement element);
+        uint32_t GetSizeInBytes(GfxBufferElement element) const;
 
-        ~GfxBufferResource();
+        RefCountPtr<GfxResource> GetUnderlyingResource();
+        ID3D12Resource* GetUnderlyingD3DResource();
 
         // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
         // 但 RootUav 无法使用 Counter，所以 Buffer 会提供 Uav
 
-        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element) const;
-        uint32_t GetOffsetInBytes(GfxBufferElement element) const;
-        uint32_t GetSizeInBytes(GfxBufferElement element) const;
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress(GfxBufferElement element);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxBufferElement element);
-        D3D12_VERTEX_BUFFER_VIEW GetVbv() const;
-        D3D12_INDEX_BUFFER_VIEW GetIbv() const;
+        D3D12_VERTEX_BUFFER_VIEW GetVbv();
+        D3D12_INDEX_BUFFER_VIEW GetIbv();
 
-        GfxDevice* GetDevice() const { return m_Resource->GetDevice(); }
-        RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
-        ID3D12Resource* GetUnderlyingD3DResource() const { return m_Resource->GetD3DResource(); }
-        GfxBufferSubAllocator* GetAllocator() const { return m_Allocator; }
+        // pData 可以为 nullptr
+        void SetData(const void* pData, std::optional<uint32_t> counter = std::nullopt);
+
+        // pData 可以为 nullptr
+        void SetData(const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
+
+        void ReleaseResource();
+
+        GfxDevice* GetDevice() const { return m_Device; }
+        const std::string& GetName() const { return m_Name; }
         const GfxBufferDesc& GetDesc() const { return m_Desc; }
 
+        ~GfxBuffer() { ReleaseResource(); }
+
+        GfxBuffer(const GfxBuffer&) = delete;
+        GfxBuffer& operator=(const GfxBuffer&) = delete;
+
+        GfxBuffer(GfxBuffer&& other);
+        GfxBuffer& operator=(GfxBuffer&& other);
+
     private:
+        GfxDevice* m_Device;
+        std::string m_Name;
         GfxBufferDesc m_Desc;
 
         RefCountPtr<GfxResource> m_Resource;
@@ -126,6 +138,9 @@ namespace march
 
         // Lazy creation
         GfxOfflineDescriptor m_UavDescriptors[4];
+
+        void AllocateResourceIfNot();
+        D3D12_RANGE ReallocateResource();
     };
 
     class GfxBufferSubAllocator
@@ -139,9 +154,9 @@ namespace march
             uint32_t* pOutOffsetInBytes,
             GfxBufferSubAllocation* pOutAllocation) = 0;
 
-        virtual void Release(const GfxBufferSubAllocation& allocation) = 0;
+        virtual void DeferredRelease(const GfxBufferSubAllocation& allocation) = 0;
 
-        virtual void CleanUpAllocations() {}
+        virtual void CleanUpAllocations() = 0;
 
     protected:
         GfxBufferSubAllocator() = default;
@@ -167,11 +182,15 @@ namespace march
             uint32_t* pOutOffsetInBytes,
             GfxBufferSubAllocation* pOutAllocation) override;
 
-        void Release(const GfxBufferSubAllocation& allocation) override;
+        void DeferredRelease(const GfxBufferSubAllocation& allocation) override;
+
+        void CleanUpAllocations() override;
 
     private:
+        GfxDevice* m_Device;
         std::unique_ptr<MultiBuddyAllocator> m_Allocator;
         std::vector<RefCountPtr<GfxResource>> m_Pages;
+        std::queue<std::pair<uint64_t, GfxBufferSubAllocation>> m_ReleaseQueue;
     };
 
     struct GfxBufferLinearSubAllocatorDesc
@@ -195,7 +214,7 @@ namespace march
             uint32_t* pOutOffsetInBytes,
             GfxBufferSubAllocation* pOutAllocation) override;
 
-        void Release(const GfxBufferSubAllocation& allocation) override;
+        void DeferredRelease(const GfxBufferSubAllocation& allocation) override;
 
         void CleanUpAllocations() override;
 
@@ -205,46 +224,5 @@ namespace march
         std::vector<RefCountPtr<GfxResource>> m_Pages;
         std::vector<RefCountPtr<GfxResource>> m_LargePages;
         std::queue<std::pair<uint64_t, RefCountPtr<GfxResource>>> m_ReleaseQueue;
-    };
-
-    class GfxBuffer final
-    {
-    public:
-        GfxBuffer(GfxDevice* device, const std::string& name) : m_Device(device), m_Name(name), m_Resource(nullptr) {}
-
-        void SetData(
-            const GfxBufferDesc& desc,
-            GfxBufferAllocStrategy allocationStrategy,
-            const void* pData = nullptr,
-            std::optional<uint32_t> counter = std::nullopt);
-
-        void Initialize(const GfxBufferDesc& desc, GfxBufferAllocStrategy allocationStrategy)
-        {
-            SetData(desc, allocationStrategy);
-        }
-
-        void Reset()
-        {
-            m_Resource = nullptr;
-        }
-
-        GfxDevice* GetDevice() const { return m_Device; }
-        const std::string& GetName() const { return m_Name; }
-        RefCountPtr<GfxBufferResource> GetResource() const { return m_Resource; }
-
-        ~GfxBuffer() = default;
-
-        GfxBuffer(const GfxBuffer&) = default;
-        GfxBuffer& operator=(const GfxBuffer&) = default;
-
-        GfxBuffer(GfxBuffer&&) = default;
-        GfxBuffer& operator=(GfxBuffer&&) = default;
-
-    private:
-        GfxDevice* m_Device;
-        std::string m_Name;
-        RefCountPtr<GfxBufferResource> m_Resource;
-
-        D3D12_RANGE AllocateResource(const GfxBufferDesc& desc, GfxBufferAllocStrategy strategy);
     };
 }

@@ -477,7 +477,8 @@ namespace march
             desc.Stride = bufferSizeInBytes;
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
-            it->second.SetData(desc, GfxBufferAllocStrategy::UploadHeapSubAlloc, data.data());
+            desc.Flags = GfxBufferFlags::Dynamic;
+            it->second.SetData(desc, data.data());
         }
 
         return &it->second;

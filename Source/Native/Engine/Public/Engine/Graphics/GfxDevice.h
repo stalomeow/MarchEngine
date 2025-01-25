@@ -59,7 +59,7 @@ namespace march
         GfxResourceAllocator* GetDefaultHeapPlacedTextureAllocator(bool render, bool msaa) const;
         GfxBufferSubAllocator* GetUploadHeapBufferSubAllocator(bool fastOneFrame) const;
 
-        void KeepAliveUntilNextFence(RefCountPtr<FenceSynchronizedObject> obj);
+        void DeferredRelease(RefCountPtr<ThreadSafeRefCountedObject> obj);
 
         uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
 
@@ -86,8 +86,7 @@ namespace march
         std::unique_ptr<GfxBufferSubAllocator> m_UploadHeapBufferSubAllocator;
         std::unique_ptr<GfxBufferSubAllocator> m_UploadHeapBufferSubAllocatorFastOneFrame;
 
-        RefCountPtr<FenceSynchronizedObject> m_ReleaseListHead;
-        RefCountPtr<FenceSynchronizedObject> m_ReleaseListTail;
+        std::queue<std::pair<uint64_t, RefCountPtr<ThreadSafeRefCountedObject>>> m_ReleaseQueue;
 
         void RefreshCompletedFrameFenceAndProcessReleaseQueue();
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);

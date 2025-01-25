@@ -148,8 +148,9 @@ namespace march
             desc.Stride = sizeof(CameraConstants);
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
+            desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
-            buffer->SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &consts);
+            buffer->SetData(desc, &consts);
             context.SetBuffer(bufferId, buffer);
         });
 
@@ -180,8 +181,9 @@ namespace march
             desc.Stride = sizeof(LightConstants);
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
+            desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
-            m_LightConstantBuffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &consts);
+            m_LightConstantBuffer.SetData(desc, &consts);
             context.SetBuffer(id, &m_LightConstantBuffer);
         });
     }
@@ -399,9 +401,10 @@ namespace march
             desc.Stride = sizeof(ShadowConstants);
             desc.Count = 1;
             desc.Usages = GfxBufferUsages::Constant;
+            desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
             ShadowConstants consts{ shadowMatrix };
-            m_ShadowConstantBuffer.SetData(desc, GfxBufferAllocStrategy::UploadHeapFastOneFrame, &consts);
+            m_ShadowConstantBuffer.SetData(desc, &consts);
             context.SetBuffer(bufferId, &m_ShadowConstantBuffer);
 
             for (int32_t i = 0; i < numGBuffers; i++)
