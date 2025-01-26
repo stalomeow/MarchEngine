@@ -3,6 +3,7 @@
 #include "Engine/Object.h"
 #include "Engine/HashUtils.h"
 #include <directx/d3dx12.h>
+#include <d3d12shader.h> // Shader reflection
 #include <DirectXMath.h>
 #include <vector>
 #include <unordered_map>
@@ -127,6 +128,13 @@ namespace march
         const std::vector<ShaderTexture>& GetUavTextures() const { return m_UavTextures; }
         const std::unordered_map<int32_t, ShaderStaticSampler>& GetStaticSamplers() const { return m_StaticSamplers; }
 
+        void GetThreadGroupSize(uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ) const
+        {
+            *pOutX = m_ThreadGroupSizeX;
+            *pOutY = m_ThreadGroupSizeY;
+            *pOutZ = m_ThreadGroupSizeZ;
+        }
+
     private:
         ShaderProgramHash m_Hash;
         ShaderKeywordSet m_Keywords;
@@ -137,6 +145,10 @@ namespace march
         std::vector<ShaderBuffer> m_UavBuffers;
         std::vector<ShaderTexture> m_UavTextures;
         std::unordered_map<int32_t, ShaderStaticSampler> m_StaticSamplers;
+
+        uint32_t m_ThreadGroupSizeX;
+        uint32_t m_ThreadGroupSizeY;
+        uint32_t m_ThreadGroupSizeZ;
     };
 
     struct GfxRootSignatureBufferBinding
@@ -159,25 +171,37 @@ namespace march
         uint32_t BindPoint;
     };
 
-    template <typename EnumProgramType, size_t NumProgramTypes>
+    template <size_t _NumProgramTypes>
     class GfxRootSignature final
     {
         friend struct GfxRootSignatureUtils;
 
+        static_assert(_NumProgramTypes > 0, "_NumProgramTypes must be greater than 0");
+
     public:
+        static constexpr size_t NumProgramTypes = _NumProgramTypes;
+
         GfxRootSignature() : m_RootSignature(nullptr), m_Bindings{} {}
 
         ID3D12RootSignature* GetD3DRootSignature() const { return m_RootSignature.Get(); }
 
-        std::optional<uint32_t> GetSrvUavTableRootParamIndex(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvUavTableRootParamIndex; }
-        std::optional<uint32_t> GetSamplerTableRootParamIndex(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SamplerTableRootParamIndex; }
+        template <typename T>
+        auto GetSrvUavTableRootParamIndex(T index) const { return GetBinding(index).SrvUavTableRootParamIndex; }
 
-        const auto& GetSrvCbvBufferRootParamIndices(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvCbvBufferRootParamIndices; }
-        const auto& GetSrvTextureTableSlots(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvTextureTableSlots; }
-        const auto& GetUavBufferTableSlots(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].UavBufferTableSlots; }
-        const auto& GetUavTextureTableSlots(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].UavTextureTableSlots; }
+        template <typename T>
+        auto GetSamplerTableRootParamIndex(T index) const { return GetBinding(index).SamplerTableRootParamIndex; }
 
-        static constexpr size_t GetNumProgramTypes() { return NumProgramTypes; }
+        template <typename T>
+        const auto& GetSrvCbvBufferRootParamIndices(T index) const { return GetBinding(index).SrvCbvBufferRootParamIndices; }
+
+        template <typename T>
+        const auto& GetSrvTextureTableSlots(T index) const { return GetBinding(index).SrvTextureTableSlots; }
+
+        template <typename T>
+        const auto& GetUavBufferTableSlots(T index) const { return GetBinding(index).UavBufferTableSlots; }
+
+        template <typename T>
+        const auto& GetUavTextureTableSlots(T index) const { return GetBinding(index).UavTextureTableSlots; }
 
     private:
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
@@ -192,9 +216,22 @@ namespace march
             std::vector<GfxRootSignatureUavBinding> UavBufferTableSlots{};             // uav buffer 在 srv/uav table 中的位置
             std::vector<GfxRootSignatureUavBinding> UavTextureTableSlots{};            // uav texture 在 srv/uav table 中的位置
         } m_Bindings[NumProgramTypes];
+
+        template <typename T>
+        const auto& GetBinding(T index) const
+        {
+            size_t i = static_cast<size_t>(index);
+
+            if (i >= NumProgramTypes)
+            {
+                throw std::out_of_range("Program index out of range");
+            }
+
+            return m_Bindings[i];
+        }
     };
 
-    template <typename EnumProgramType, size_t NumProgramTypes>
+    template <size_t _NumProgramTypes>
     class ShaderProgramGroup
     {
         friend ShaderBinding;
@@ -203,42 +240,47 @@ namespace march
         friend struct ShaderProgramUtils;
 
     public:
-        using RootSignatureType = GfxRootSignature<EnumProgramType, NumProgramTypes>;
+        using RootSignatureType = GfxRootSignature<_NumProgramTypes>;
 
         const std::string& GetName() const { return m_Name; }
 
-        ShaderProgram* GetProgram(EnumProgramType type, const ShaderKeywordSet& keywords)
+        template <typename T>
+        ShaderProgram* GetProgram(T type, const ShaderKeywordSet& keywords)
         {
             size_t typeIndex = static_cast<size_t>(type);
             std::optional<size_t> programIndex = GetProgramMatch(keywords).Indices[typeIndex];
             return programIndex ? m_Programs[typeIndex][*programIndex].get() : nullptr;
         }
 
-        ShaderProgram* GetProgram(EnumProgramType type, size_t index) const
+        template <typename T>
+        ShaderProgram* GetProgram(T type, size_t index) const
         {
             return m_Programs[static_cast<size_t>(type)][index].get();
         }
 
-        size_t GetProgramCount(EnumProgramType type) const
+        template <typename T>
+        size_t GetProgramCount(T type) const
         {
             return m_Programs[static_cast<size_t>(type)].size();
         }
 
         virtual ~ShaderProgramGroup() = default;
 
-        virtual RootSignatureType* GetRootSignature(const ShaderKeywordSet& keywords) = 0;
-
-        virtual bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error) = 0;
+    protected:
+        virtual D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) = 0;
+        virtual bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) = 0;
+        virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
+        virtual void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) = 0;
 
     private:
         struct ProgramMatch
         {
-            std::optional<size_t> Indices[NumProgramTypes];
-            size_t Hash;
+            std::optional<size_t> Indices[_NumProgramTypes]{};
+            size_t Hash{};
         };
 
         std::string m_Name;
-        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[NumProgramTypes];
+        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[_NumProgramTypes];
 
         std::unordered_map<ShaderKeywordSet::DataType, ProgramMatch> m_ProgramMatches;
         std::unordered_map<size_t, std::unique_ptr<RootSignatureType>> m_RootSignatures;
@@ -259,7 +301,7 @@ namespace march
                 ProgramMatch& m = it->second;
                 size_t targetKeywordCount = keywords.GetEnabledKeywordCount();
 
-                for (size_t i = 0; i < NumProgramTypes; i++)
+                for (size_t i = 0; i < _NumProgramTypes; i++)
                 {
                     size_t minDiff = std::numeric_limits<size_t>::max();
                     m.Indices[i] = std::nullopt;
@@ -464,18 +506,24 @@ namespace march
         Geometry,
     };
 
-    class ShaderPass : public ShaderProgramGroup<ShaderProgramType, 5>
+    class ShaderPass final : public ShaderProgramGroup<5>
     {
         friend ShaderBinding;
 
     public:
-        GfxRootSignature<ShaderProgramType, 5>* GetRootSignature(const ShaderKeywordSet& keywords) override;
+        RootSignatureType* GetRootSignature(const ShaderKeywordSet& keywords);
 
-        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error) override;
+        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
 
         const std::unordered_map<std::string, std::string>& GetTags() const { return m_Tags; }
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const { return m_PropertyLocations; }
         const ShaderPassRenderState& GetRenderState() const { return m_RenderState; }
+
+    protected:
+        D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
+        bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
+        std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
+        void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override;
 
     private:
         std::unordered_map<std::string, std::string> m_Tags;
@@ -489,7 +537,7 @@ namespace march
 
     public:
         using RootSignatureType = ShaderPass::RootSignatureType;
-        static constexpr size_t NumProgramTypes = RootSignatureType::GetNumProgramTypes();
+        static constexpr size_t NumProgramTypes = RootSignatureType::NumProgramTypes;
 
         ShaderPass* GetPass(size_t index) const;
         std::optional<size_t> GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const;
@@ -520,24 +568,39 @@ namespace march
         uint32_t m_Version;
     };
 
-    enum class ComputeShaderProgramType
+    class ComputeShaderKernel final : public ShaderProgramGroup<1>
     {
-        Compute
-    };
+        using Base = ShaderProgramGroup<1>;
 
-    class ComputeShaderKernel : public ShaderProgramGroup<ComputeShaderProgramType, 1>
-    {
     public:
-        GfxRootSignature<ComputeShaderProgramType, 1>* GetRootSignature(const ShaderKeywordSet& keywords) override;
+        RootSignatureType* GetRootSignature(const ShaderKeywordSet& keywords);
 
-        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error) override;
+        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
+
+        ShaderProgram* GetProgram(const ShaderKeywordSet& keywords) { return Base::GetProgram(0, keywords); }
+
+        ShaderProgram* GetProgram(size_t index) const { return Base::GetProgram(0, index); }
+
+        size_t GetProgramCount() const { return Base::GetProgramCount(0); }
+
+        void GetThreadGroupSize(const ShaderKeywordSet& keywords, uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ)
+        {
+            ShaderProgram* program = GetProgram(keywords);
+            program->GetThreadGroupSize(pOutX, pOutY, pOutZ);
+        }
+
+    protected:
+        D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
+        bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
+        std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
+        void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override {}
     };
 
     class ComputeShader : public MarchObject
     {
     public:
         using RootSignatureType = ComputeShaderKernel::RootSignatureType;
-        static constexpr size_t NumProgramTypes = RootSignatureType::GetNumProgramTypes();
+        static constexpr size_t NumProgramTypes = RootSignatureType::NumProgramTypes;
 
         ComputeShaderKernel* GetKernel(size_t index) const;
         ComputeShaderKernel* GetKernel(const std::string& name) const;

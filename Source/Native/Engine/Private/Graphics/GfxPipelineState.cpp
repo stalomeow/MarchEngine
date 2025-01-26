@@ -220,11 +220,11 @@ namespace march
         return *hash;
     }
 
-    template <typename EnumProgramType, size_t NumProgramTypes>
+    template <size_t NumProgramTypes, typename T>
     static void SetShaderProgramIfExists(
         D3D12_SHADER_BYTECODE& s,
-        ShaderProgramGroup<EnumProgramType, NumProgramTypes>* programGroup,
-        EnumProgramType type,
+        ShaderProgramGroup<NumProgramTypes>* programGroup,
+        T type,
         const ShaderKeywordSet& keywords)
     {
         ShaderProgram* program = programGroup->GetProgram(type, keywords);
@@ -390,7 +390,7 @@ namespace march
         {
             D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
             psoDesc.pRootSignature = kernel->GetRootSignature(keywords)->GetD3DRootSignature();
-            SetShaderProgramIfExists(psoDesc.CS, kernel, ComputeShaderProgramType::Compute, keywords);
+            SetShaderProgramIfExists(psoDesc.CS, kernel, 0, keywords);
 
             ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
             GFX_HR(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));

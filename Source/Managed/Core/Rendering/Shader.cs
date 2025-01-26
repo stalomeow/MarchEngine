@@ -147,6 +147,9 @@ namespace March.Core.Rendering
         public ShaderBuffer[] UavBuffers = [];
         public ShaderTexture[] UavTextures = [];
         public ShaderStaticSampler[] StaticSamplers = [];
+        public uint ThreadGroupSizeX;
+        public uint ThreadGroupSizeY;
+        public uint ThreadGroupSizeZ;
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
@@ -160,6 +163,9 @@ namespace March.Core.Rendering
             public NativeArrayMarshal<ShaderBuffer> UavBuffers;
             public NativeArrayMarshal<ShaderTexture> UavTextures;
             public NativeArrayMarshal<ShaderStaticSampler> StaticSamplers;
+            public uint ThreadGroupSizeX;
+            public uint ThreadGroupSizeY;
+            public uint ThreadGroupSizeZ;
         }
 
         public static ShaderProgram FromNative(ref Native native) => new()
@@ -173,6 +179,9 @@ namespace March.Core.Rendering
             UavBuffers = native.UavBuffers.Value,
             UavTextures = native.UavTextures.Value,
             StaticSamplers = native.StaticSamplers.Value,
+            ThreadGroupSizeX = native.ThreadGroupSizeX,
+            ThreadGroupSizeY = native.ThreadGroupSizeY,
+            ThreadGroupSizeZ = native.ThreadGroupSizeZ,
         };
 
         public static void ToNative(ShaderProgram value, out Native native)
@@ -186,6 +195,9 @@ namespace March.Core.Rendering
             native.UavBuffers = value.UavBuffers;
             native.UavTextures = value.UavTextures;
             native.StaticSamplers = value.StaticSamplers;
+            native.ThreadGroupSizeX = value.ThreadGroupSizeX;
+            native.ThreadGroupSizeY = value.ThreadGroupSizeY;
+            native.ThreadGroupSizeZ = value.ThreadGroupSizeZ;
 
             for (int i = 0; i < value.Keywords.Length; i++)
             {

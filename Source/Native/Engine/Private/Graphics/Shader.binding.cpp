@@ -42,6 +42,9 @@ struct CSharpShaderProgram
     cs<CSharpShaderBuffer[]> UavBuffers;
     cs<CSharpShaderTexture[]> UavTextures;
     cs<CSharpShaderStaticSampler[]> StaticSamplers;
+    cs_uint ThreadGroupSizeX;
+    cs_uint ThreadGroupSizeY;
+    cs_uint ThreadGroupSizeZ;
 };
 
 struct CSharpShaderProperty
@@ -324,6 +327,10 @@ namespace march
                         program->m_StaticSamplers[Shader::GetNameId(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
                     }
 
+                    program->m_ThreadGroupSizeX = p.ThreadGroupSizeX;
+                    program->m_ThreadGroupSizeY = p.ThreadGroupSizeY;
+                    program->m_ThreadGroupSizeZ = p.ThreadGroupSizeZ;
+
                     pass->m_Programs[static_cast<int32_t>(p.Type.data)].emplace_back(std::move(program));
                 }
 
@@ -505,6 +512,10 @@ namespace march
                             sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
                             sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
                         }
+
+                        p.ThreadGroupSizeX.assign(program->m_ThreadGroupSizeX);
+                        p.ThreadGroupSizeY.assign(program->m_ThreadGroupSizeY);
+                        p.ThreadGroupSizeZ.assign(program->m_ThreadGroupSizeZ);
                     }
                 }
 

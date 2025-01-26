@@ -9,7 +9,6 @@
 #include <sstream>
 #include <unordered_set>
 #include <functional>
-#include <d3d12shader.h> // Shader reflection
 
 using namespace Microsoft::WRL;
 
@@ -39,7 +38,94 @@ namespace march
         , m_UavBuffers{}
         , m_UavTextures{}
         , m_StaticSamplers{}
+        , m_ThreadGroupSizeX{}
+        , m_ThreadGroupSizeY{}
+        , m_ThreadGroupSizeZ{}
     {
+    }
+
+    D3D12_SHADER_VISIBILITY ShaderPass::GetShaderVisibility(size_t programType)
+    {
+        switch (static_cast<ShaderProgramType>(programType))
+        {
+        case ShaderProgramType::Vertex:   return D3D12_SHADER_VISIBILITY_VERTEX;
+        case ShaderProgramType::Pixel:    return D3D12_SHADER_VISIBILITY_PIXEL;
+        case ShaderProgramType::Domain:   return D3D12_SHADER_VISIBILITY_DOMAIN;
+        case ShaderProgramType::Hull:     return D3D12_SHADER_VISIBILITY_HULL;
+        case ShaderProgramType::Geometry: return D3D12_SHADER_VISIBILITY_GEOMETRY;
+        default:                          throw GfxException("Unknown shader program type");
+        }
+    }
+
+    bool ShaderPass::GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType)
+    {
+        if (key == "vs") { *pOutProgramType = static_cast<size_t>(ShaderProgramType::Vertex); return true; }
+        if (key == "ps") { *pOutProgramType = static_cast<size_t>(ShaderProgramType::Pixel); return true; }
+        if (key == "ds") { *pOutProgramType = static_cast<size_t>(ShaderProgramType::Domain); return true; }
+        if (key == "hs") { *pOutProgramType = static_cast<size_t>(ShaderProgramType::Hull); return true; }
+        if (key == "gs") { *pOutProgramType = static_cast<size_t>(ShaderProgramType::Geometry); return true; }
+        return false;
+    }
+
+    std::string ShaderPass::GetTargetProfile(const std::string& shaderModel, size_t programType)
+    {
+        std::string model = shaderModel;
+        std::replace(model.begin(), model.end(), '.', '_');
+
+        std::string program;
+        switch (static_cast<ShaderProgramType>(programType))
+        {
+        case ShaderProgramType::Vertex:   program = "vs"; break;
+        case ShaderProgramType::Pixel:    program = "ps"; break;
+        case ShaderProgramType::Domain:   program = "ds"; break;
+        case ShaderProgramType::Hull:     program = "hs"; break;
+        case ShaderProgramType::Geometry: program = "gs"; break;
+        default:                          program = "unknown"; break;
+        }
+
+        return program + "_" + model;
+    }
+
+    void ShaderPass::RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer)
+    {
+        D3D12_SHADER_BUFFER_DESC bufferDesc{};
+        GFX_HR(cbuffer->GetDesc(&bufferDesc));
+
+        // 记录 material 的 shader property location
+        if (Shader::GetNameId(bufferDesc.Name) == Shader::GetMaterialConstantBufferId())
+        {
+            for (UINT i = 0; i < bufferDesc.Variables; i++)
+            {
+                ID3D12ShaderReflectionVariable* var = cbuffer->GetVariableByIndex(i);
+                D3D12_SHADER_VARIABLE_DESC varDesc{};
+                GFX_HR(var->GetDesc(&varDesc));
+
+                ShaderPropertyLocation& loc = m_PropertyLocations[Shader::GetNameId(varDesc.Name)];
+                loc.Offset = static_cast<uint32_t>(varDesc.StartOffset);
+                loc.Size = static_cast<uint32_t>(varDesc.Size);
+            }
+        }
+    }
+
+    D3D12_SHADER_VISIBILITY ComputeShaderKernel::GetShaderVisibility(size_t programType)
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_shader_visibility
+        // The compute queue always uses D3D12_SHADER_VISIBILITY_ALL because it has only one active stage.
+        // The 3D queue can choose values, but if it uses D3D12_SHADER_VISIBILITY_ALL,
+        // all shader stages can access whatever is bound at the root signature slot.
+        return D3D12_SHADER_VISIBILITY_ALL;
+    }
+
+    bool ComputeShaderKernel::GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType)
+    {
+        return false;
+    }
+
+    std::string ComputeShaderKernel::GetTargetProfile(const std::string& shaderModel, size_t programType)
+    {
+        std::string model = shaderModel;
+        std::replace(model.begin(), model.end(), '.', '_');
+        return "cs_" + model;
     }
 
     static ComPtr<IDxcUtils> g_Utils = nullptr;
@@ -111,65 +197,6 @@ namespace march
         }
     };
 
-    template <size_t NumProgramTypes, typename EntrypointIndexFunc>
-    static bool PreprocessAndGetShaderConfig(
-        const std::string& source,
-        ShaderConfig<NumProgramTypes>& config,
-        std::string& error,
-        EntrypointIndexFunc entrypointIndexFunc)
-    {
-        return EnumeratePragmas(source, [&](const std::vector<std::string>& args) -> bool
-        {
-            if (args.size() > 1 && args[0] == "multi_compile")
-            {
-                std::unordered_set<std::string> uniqueKeywords{};
-
-                for (size_t i = 1; i < args.size(); i++)
-                {
-                    // _ 表示没有 Keyword，替换为空字符串
-                    if (std::all_of(args[i].begin(), args[i].end(), [](char c) { return c == '_'; }))
-                    {
-                        uniqueKeywords.insert("");
-                    }
-                    else
-                    {
-                        ShaderKeywordSpace::AddKeywordResult result = config.TempMultiCompileKeywordSpace.AddKeyword(args[i]);
-
-                        if (result == ShaderKeywordSpace::AddKeywordResult::OutOfSpace)
-                        {
-                            error = "Too many keywords!";
-                            return false;
-                        }
-
-                        uniqueKeywords.insert(args[i]);
-                    }
-                }
-
-                config.MultiCompile.emplace_back(uniqueKeywords.begin(), uniqueKeywords.end());
-            }
-            else if (args.size() == 1)
-            {
-                if (args[0] == "enable_debug_information")
-                {
-                    config.EnableDebugInfo = true;
-                }
-            }
-            else if (args.size() == 2)
-            {
-                if (args[0] == "target")
-                {
-                    config.ShaderModel = args[1];
-                }
-                else if (size_t epIndex = 0; entrypointIndexFunc(args[0], &epIndex))
-                {
-                    config.Entrypoints[epIndex] = args[1];
-                }
-            }
-
-            return true;
-        });
-    }
-
     template <size_t NumProgramTypes>
     struct ShaderCompilationContext
     {
@@ -223,12 +250,69 @@ namespace march
 
     struct ShaderProgramUtils
     {
-        template <typename EnumProgramType, size_t NumProgramTypes, typename TargetProfileFunc, typename ConstBufferPropRecordFunc>
+        template <size_t NumProgramTypes>
+        static bool PreprocessAndGetShaderConfig(
+            ShaderProgramGroup<NumProgramTypes>& programGroup,
+            const std::string& source,
+            ShaderConfig<NumProgramTypes>& config,
+            std::string& error)
+        {
+            return EnumeratePragmas(source, [&](const std::vector<std::string>& args) -> bool
+            {
+                if (args.size() > 1 && args[0] == "multi_compile")
+                {
+                    std::unordered_set<std::string> uniqueKeywords{};
+
+                    for (size_t i = 1; i < args.size(); i++)
+                    {
+                        // _ 表示没有 Keyword，替换为空字符串
+                        if (std::all_of(args[i].begin(), args[i].end(), [](char c) { return c == '_'; }))
+                        {
+                            uniqueKeywords.insert("");
+                        }
+                        else
+                        {
+                            ShaderKeywordSpace::AddKeywordResult result = config.TempMultiCompileKeywordSpace.AddKeyword(args[i]);
+
+                            if (result == ShaderKeywordSpace::AddKeywordResult::OutOfSpace)
+                            {
+                                error = "Too many keywords!";
+                                return false;
+                            }
+
+                            uniqueKeywords.insert(args[i]);
+                        }
+                    }
+
+                    config.MultiCompile.emplace_back(uniqueKeywords.begin(), uniqueKeywords.end());
+                }
+                else if (args.size() == 1)
+                {
+                    if (args[0] == "enable_debug_information")
+                    {
+                        config.EnableDebugInfo = true;
+                    }
+                }
+                else if (args.size() == 2)
+                {
+                    if (args[0] == "target")
+                    {
+                        config.ShaderModel = args[1];
+                    }
+                    else if (size_t epIndex = 0; programGroup.GetEntrypointProgramType(args[0], &epIndex))
+                    {
+                        config.Entrypoints[epIndex] = args[1];
+                    }
+                }
+
+                return true;
+            });
+        }
+
+        template <size_t NumProgramTypes>
         static bool CompileRecursive(
-            ShaderProgramGroup<EnumProgramType, NumProgramTypes>& programGroup,
-            ShaderCompilationContext<NumProgramTypes>& context,
-            TargetProfileFunc targetProfileFunc,
-            ConstBufferPropRecordFunc constBufferPropRecordFunc)
+            ShaderProgramGroup<NumProgramTypes>& programGroup,
+            ShaderCompilationContext<NumProgramTypes>& context)
         {
             if (context.Keywords.size() < context.Config.MultiCompile.size())
             {
@@ -237,7 +321,7 @@ namespace march
                 for (size_t i = 0; i < candidates.size(); i++)
                 {
                     context.Keywords.push_back(candidates[i]);
-                    bool success = CompileRecursive(programGroup, context, targetProfileFunc, constBufferPropRecordFunc);
+                    bool success = CompileRecursive(programGroup, context);
                     context.Keywords.pop_back();
 
                     if (!success)
@@ -264,7 +348,7 @@ namespace march
                 }
 
                 std::wstring wEntrypoint = StringUtils::Utf8ToUtf16(context.Config.Entrypoints[i]);
-                std::wstring wTargetProfile = StringUtils::Utf8ToUtf16(targetProfileFunc(context.Config.ShaderModel, static_cast<EnumProgramType>(i)));
+                std::wstring wTargetProfile = StringUtils::Utf8ToUtf16(programGroup.GetTargetProfile(context.Config.ShaderModel, i));
 
                 std::vector<LPCWSTR> pszArgs =
                 {
@@ -401,6 +485,12 @@ namespace march
                     ComPtr<ID3D12ShaderReflection> pReflection;
                     context.Utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection));
 
+                    UINT threadGroupSize[3]{};
+                    pReflection->GetThreadGroupSize(&threadGroupSize[0], &threadGroupSize[1], &threadGroupSize[2]);
+                    program->m_ThreadGroupSizeX = static_cast<uint32_t>(threadGroupSize[0]);
+                    program->m_ThreadGroupSizeY = static_cast<uint32_t>(threadGroupSize[1]);
+                    program->m_ThreadGroupSizeZ = static_cast<uint32_t>(threadGroupSize[2]);
+
                     D3D12_SHADER_DESC shaderDesc = {};
                     GFX_HR(pReflection->GetDesc(&shaderDesc));
 
@@ -426,8 +516,7 @@ namespace march
                             buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
                             buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
                             buffer.ConstantBufferSize = static_cast<uint32_t>(cbDesc.Size);
-
-                            constBufferPropRecordFunc(cb); // 额外记录一些属性信息
+                            programGroup.RecordConstantBufferCallback(cb);
                             break;
                         }
 
@@ -548,22 +637,14 @@ namespace march
             return true;
         }
 
-        template <
-            typename EnumProgramType,
-            size_t NumProgramTypes,
-            typename TargetProfileFunc,
-            typename ConstBufferPropRecordFunc,
-            typename EntrypointIndexFunc>
+        template <size_t NumProgramTypes>
         static bool Compile(
-            ShaderProgramGroup<EnumProgramType, NumProgramTypes>& programGroup,
+            ShaderProgramGroup<NumProgramTypes>& programGroup,
             ShaderKeywordSpace& keywordSpace,
             const std::string& filename,
             const std::string& source,
             std::vector<std::string>& warnings,
-            std::string& error,
-            EntrypointIndexFunc entrypointIndexFunc,
-            TargetProfileFunc targetProfileFunc,
-            ConstBufferPropRecordFunc constBufferPropRecordFunc)
+            std::string& error)
         {
             ShaderCompilationContext<NumProgramTypes> context{ keywordSpace, warnings, error };
             context.Utils = Shader::GetDxcUtils();
@@ -576,7 +657,7 @@ namespace march
             GFX_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
             context.IncludeHandler = pIncludeHandler.Get();
 
-            if (!PreprocessAndGetShaderConfig(source, context.Config, error, entrypointIndexFunc))
+            if (!PreprocessAndGetShaderConfig(programGroup, source, context.Config, error))
             {
                 return false;
             }
@@ -587,79 +668,17 @@ namespace march
             context.Source.Size = static_cast<SIZE_T>(source.size());
             context.Source.Encoding = DXC_CP_UTF8;
 
-            return CompileRecursive(programGroup, context, targetProfileFunc, constBufferPropRecordFunc);
+            return CompileRecursive(programGroup, context);
         }
     };
 
     bool ShaderPass::Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
-        auto entrypointIndexFunc = [](const std::string& name, size_t* pOutIndex) -> bool
-        {
-            if (name == "vs") { *pOutIndex = static_cast<size_t>(ShaderProgramType::Vertex); return true; }
-            if (name == "ps") { *pOutIndex = static_cast<size_t>(ShaderProgramType::Pixel); return true; }
-            if (name == "ds") { *pOutIndex = static_cast<size_t>(ShaderProgramType::Domain); return true; }
-            if (name == "hs") { *pOutIndex = static_cast<size_t>(ShaderProgramType::Hull); return true; }
-            if (name == "gs") { *pOutIndex = static_cast<size_t>(ShaderProgramType::Geometry); return true; }
-            return false;
-        };
-
-        auto targetProfileFunc = [](const std::string& shaderModel, ShaderProgramType programType) -> std::string
-        {
-            std::string model = shaderModel;
-            std::replace(model.begin(), model.end(), '.', '_');
-
-            std::string program;
-            switch (programType)
-            {
-            case ShaderProgramType::Vertex:   program = "vs"; break;
-            case ShaderProgramType::Pixel:    program = "ps"; break;
-            case ShaderProgramType::Domain:   program = "ds"; break;
-            case ShaderProgramType::Hull:     program = "hs"; break;
-            case ShaderProgramType::Geometry: program = "gs"; break;
-            default:                          program = "unknown"; break;
-            }
-            return program + "_" + model;
-        };
-
-        auto constBufferPropRecordFunc = [this](ID3D12ShaderReflectionConstantBuffer* cb) -> void
-        {
-            D3D12_SHADER_BUFFER_DESC cbDesc{};
-            GFX_HR(cb->GetDesc(&cbDesc));
-
-            // 记录 material 的 shader property location
-            if (Shader::GetNameId(cbDesc.Name) == Shader::GetMaterialConstantBufferId())
-            {
-                for (UINT i = 0; i < cbDesc.Variables; i++)
-                {
-                    ID3D12ShaderReflectionVariable* var = cb->GetVariableByIndex(i);
-                    D3D12_SHADER_VARIABLE_DESC varDesc{};
-                    GFX_HR(var->GetDesc(&varDesc));
-
-                    ShaderPropertyLocation& loc = m_PropertyLocations[Shader::GetNameId(varDesc.Name)];
-                    loc.Offset = static_cast<uint32_t>(varDesc.StartOffset);
-                    loc.Size = static_cast<uint32_t>(varDesc.Size);
-                }
-            }
-        };
-
-        return ShaderProgramUtils::Compile(*this, keywordSpace, filename, source, warnings, error,
-            entrypointIndexFunc, targetProfileFunc, constBufferPropRecordFunc);
+        return ShaderProgramUtils::Compile(*this, keywordSpace, filename, source, warnings, error);
     }
 
     bool ComputeShaderKernel::Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
-        auto entrypointIndexFunc = [](const std::string& name, size_t* pOutIndex) -> bool { return false; };
-
-        auto targetProfileFunc = [](const std::string& shaderModel, ComputeShaderProgramType programType) -> std::string
-        {
-            std::string model = shaderModel;
-            std::replace(model.begin(), model.end(), '.', '_');
-            return "cs_" + model;
-        };
-
-        auto constBufferPropRecordFunc = [](ID3D12ShaderReflectionConstantBuffer* cb) -> void {};
-
-        return ShaderProgramUtils::Compile(*this, keywordSpace, filename, source, warnings, error,
-            entrypointIndexFunc, targetProfileFunc, constBufferPropRecordFunc);
+        return ShaderProgramUtils::Compile(*this, keywordSpace, filename, source, warnings, error);
     }
 }

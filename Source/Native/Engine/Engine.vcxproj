@@ -164,6 +164,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>.\Internal;.\Public;.\ThirdParty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>26498</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -180,6 +181,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>.\Internal;.\Public;.\ThirdParty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>26498</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>

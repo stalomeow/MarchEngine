@@ -99,11 +99,10 @@ namespace march
 
     struct GfxRootSignatureUtils
     {
-        template <typename EnumProgramType, size_t NumProgramTypes, typename ShaderVisibilityFunc>
-        static GfxRootSignature<EnumProgramType, NumProgramTypes>* GetRootSignature(
-            ShaderProgramGroup<EnumProgramType, NumProgramTypes>& programGroup,
-            const ShaderKeywordSet& keywords,
-            ShaderVisibilityFunc visibilityFunc)
+        template <size_t NumProgramTypes>
+        static GfxRootSignature<NumProgramTypes>* GetRootSignature(
+            ShaderProgramGroup<NumProgramTypes>& programGroup,
+            const ShaderKeywordSet& keywords)
         {
             const auto& m = programGroup.GetProgramMatch(keywords);
 
@@ -116,7 +115,7 @@ namespace march
             std::vector<CD3DX12_STATIC_SAMPLER_DESC> staticSamplers{};
             std::vector<CD3DX12_DESCRIPTOR_RANGE> srvUavRanges{};
             std::vector<CD3DX12_DESCRIPTOR_RANGE> samplerRanges{};
-            auto result = std::make_unique<GfxRootSignature<EnumProgramType, NumProgramTypes>>();
+            auto result = std::make_unique<GfxRootSignature<NumProgramTypes>>();
 
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
@@ -128,7 +127,7 @@ namespace march
                 ShaderProgram* program = programGroup.m_Programs[i][*m.Indices[i]].get();
                 size_t srvUavStartIndex = srvUavRanges.size();
                 size_t samplerStartIndex = samplerRanges.size();
-                D3D12_SHADER_VISIBILITY visibility = visibilityFunc(static_cast<EnumProgramType>(i));
+                D3D12_SHADER_VISIBILITY visibility = programGroup.GetShaderVisibility(i);
                 auto& rootSignatureBindings = result->m_Bindings[i];
 
                 for (const ShaderTexture& tex : program->GetSrvTextures())
@@ -239,44 +238,13 @@ namespace march
         }
     };
 
-    GfxRootSignature<ShaderProgramType, 5>* ShaderPass::GetRootSignature(const ShaderKeywordSet& keywords)
+    ShaderPass::RootSignatureType* ShaderPass::GetRootSignature(const ShaderKeywordSet& keywords)
     {
-        return GfxRootSignatureUtils::GetRootSignature(*this, keywords, [](ShaderProgramType type) -> D3D12_SHADER_VISIBILITY
-        {
-            switch (type)
-            {
-            case ShaderProgramType::Vertex:
-                return D3D12_SHADER_VISIBILITY_VERTEX;
-            case ShaderProgramType::Pixel:
-                return D3D12_SHADER_VISIBILITY_PIXEL;
-            case ShaderProgramType::Domain:
-                return D3D12_SHADER_VISIBILITY_DOMAIN;
-            case ShaderProgramType::Hull:
-                return D3D12_SHADER_VISIBILITY_HULL;
-            case ShaderProgramType::Geometry:
-                return D3D12_SHADER_VISIBILITY_GEOMETRY;
-            default:
-                throw GfxException("Unknown shader program type");
-            }
-        });
+        return GfxRootSignatureUtils::GetRootSignature(*this, keywords);
     }
 
-    GfxRootSignature<ComputeShaderProgramType, 1>* ComputeShaderKernel::GetRootSignature(const ShaderKeywordSet& keywords)
+    ComputeShaderKernel::RootSignatureType* ComputeShaderKernel::GetRootSignature(const ShaderKeywordSet& keywords)
     {
-        return GfxRootSignatureUtils::GetRootSignature(*this, keywords, [](ComputeShaderProgramType type) -> D3D12_SHADER_VISIBILITY
-        {
-            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_shader_visibility
-            // The compute queue always uses D3D12_SHADER_VISIBILITY_ALL because it has only one active stage.
-            // The 3D queue can choose values, but if it uses D3D12_SHADER_VISIBILITY_ALL,
-            // all shader stages can access whatever is bound at the root signature slot.
-
-            switch (type)
-            {
-            case ComputeShaderProgramType::Compute:
-                return D3D12_SHADER_VISIBILITY_ALL;
-            default:
-                throw GfxException("Unknown compute shader program type");
-            }
-        });
+        return GfxRootSignatureUtils::GetRootSignature(*this, keywords);
     }
 }

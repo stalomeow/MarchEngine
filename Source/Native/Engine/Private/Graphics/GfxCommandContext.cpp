@@ -585,7 +585,7 @@ namespace march
         {
             ShaderProgramType programType = static_cast<ShaderProgramType>(i);
 
-            for (const GfxRootSignatureBufferBinding& buf : rootSignature->GetSrvCbvBufferRootParamIndices(programType))
+            for (const auto& buf : rootSignature->GetSrvCbvBufferRootParamIndices(programType))
             {
                 GfxBufferElement element = GfxBufferElement::StructuredData;
 
@@ -595,7 +595,7 @@ namespace march
                 }
             }
 
-            for (const GfxRootSignatureTextureBinding& tex : rootSignature->GetSrvTextureTableSlots(programType))
+            for (const auto& tex : rootSignature->GetSrvTextureTableSlots(programType))
             {
                 GfxTextureElement element = GfxTextureElement::Default;
 
@@ -610,7 +610,7 @@ namespace march
                 }
             }
 
-            for (const GfxRootSignatureUavBinding& buf : rootSignature->GetUavBufferTableSlots(programType))
+            for (const auto& buf : rootSignature->GetUavBufferTableSlots(programType))
             {
                 GfxBufferElement element = GfxBufferElement::StructuredData;
 
@@ -620,7 +620,7 @@ namespace march
                 }
             }
 
-            for (const GfxRootSignatureUavBinding& tex : rootSignature->GetUavTextureTableSlots(programType))
+            for (const auto& tex : rootSignature->GetUavTextureTableSlots(programType))
             {
                 GfxTextureElement element = GfxTextureElement::Default;
 
