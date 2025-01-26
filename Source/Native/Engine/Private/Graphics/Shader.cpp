@@ -19,62 +19,9 @@ namespace march
         return GfxTexture::GetDefault(DefaultTexture, TextureDimension);
     }
 
-    ShaderPass::ShaderPass(Shader* shader)
-        : m_Shader(shader)
-        , m_Name{}
-        , m_Tags{}
-        , m_PropertyLocations{}
-        , m_Programs{}
-        , m_RenderState{}
-        , m_ProgramMatches{}
-        , m_RootSignatures{}
-        , m_PipelineStates{}
+    ShaderPass* Shader::GetPass(size_t index) const
     {
-    }
-
-    Shader* ShaderPass::GetShader() const
-    {
-        return m_Shader;
-    }
-
-    const std::string& ShaderPass::GetName() const
-    {
-        return m_Name;
-    }
-
-    const std::unordered_map<std::string, std::string>& ShaderPass::GetTags() const
-    {
-        return m_Tags;
-    }
-
-    const std::unordered_map<int32_t, ShaderPropertyLocation>& ShaderPass::GetPropertyLocations() const
-    {
-        return m_PropertyLocations;
-    }
-
-    const ShaderPassRenderState& ShaderPass::GetRenderState() const
-    {
-        return m_RenderState;
-    }
-
-    const std::string& Shader::GetName() const
-    {
-        return m_Name;
-    }
-
-    const ShaderKeywordSpace& Shader::GetKeywordSpace() const
-    {
-        return m_KeywordSpace;
-    }
-
-    const std::unordered_map<int32_t, ShaderProperty>& Shader::GetProperties() const
-    {
-        return m_Properties;
-    }
-
-    ShaderPass* Shader::GetPass(int32_t index) const
-    {
-        if (index < 0 || index > m_Passes.size())
+        if (index >= m_Passes.size())
         {
             throw GfxException("Invalid pass index");
         }
@@ -82,9 +29,9 @@ namespace march
         return m_Passes[index].get();
     }
 
-    int32_t Shader::GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const
+    std::optional<size_t> Shader::GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const
     {
-        for (int32_t i = 0; i < m_Passes.size(); i++)
+        for (size_t i = 0; i < m_Passes.size(); i++)
         {
             const std::unordered_map<std::string, std::string>& tags = m_Passes[i]->GetTags();
 
@@ -94,23 +41,13 @@ namespace march
             }
         }
 
-        return -1;
+        return std::nullopt;
     }
 
     ShaderPass* Shader::GetFirstPassWithTagValue(const std::string& tag, const std::string& value) const
     {
-        int32_t i = GetFirstPassIndexWithTagValue(tag, value);
-        return i == -1 ? nullptr : m_Passes[i].get();
-    }
-
-    int32_t Shader::GetPassCount() const
-    {
-        return static_cast<int32_t>(m_Passes.size());
-    }
-
-    int32_t Shader::GetVersion() const
-    {
-        return m_Version;
+        std::optional<size_t> i = GetFirstPassIndexWithTagValue(tag, value);
+        return i ? m_Passes[*i].get() : nullptr;
     }
 
     std::string Shader::GetEngineShaderPathUnixStyle()
@@ -157,5 +94,28 @@ namespace march
     {
         static int32_t id = Shader::GetNameId("cbMaterial");
         return id;
+    }
+
+    ComputeShaderKernel* ComputeShader::GetKernel(size_t index) const
+    {
+        if (index >= m_Kernels.size())
+        {
+            throw GfxException("Invalid kernel index");
+        }
+
+        return m_Kernels[index].get();
+    }
+
+    ComputeShaderKernel* ComputeShader::GetKernel(const std::string& name) const
+    {
+        for (const std::unique_ptr<ComputeShaderKernel>& k : m_Kernels)
+        {
+            if (k->GetName() == name)
+            {
+                return k.get();
+            }
+        }
+
+        return nullptr;
     }
 }

@@ -95,6 +95,9 @@ namespace march
 
     struct ShaderPassRenderState;
     class Material;
+    class ComputeShader;
+    class ComputeShaderKernel;
+    class ShaderKeywordSet;
 
     struct GfxPipelineState final
     {
@@ -102,7 +105,9 @@ namespace march
             const std::function<bool(int32_t, int32_t*)>& intResolver,
             const std::function<bool(int32_t, float*)>& floatResolver);
 
-        static ID3D12PipelineState* GetGraphicsPSO(Material* material, int32_t passIndex,
+        static ID3D12PipelineState* GetGraphicsPSO(Material* material, size_t passIndex,
             const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc);
+
+        static ID3D12PipelineState* GetComputePSO(ComputeShader* shader, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords);
     };
 }

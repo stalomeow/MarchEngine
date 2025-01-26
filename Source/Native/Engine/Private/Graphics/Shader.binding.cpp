@@ -218,7 +218,7 @@ namespace march
                 p.DefaultTexture = prop->DefaultTex;
                 break;
             default:
-                LOG_ERROR("Unknown shader property type: {}", static_cast<int32_t>(prop->Type.data));
+                LOG_ERROR("Unknown shader property type: {}", prop->Type.data);
                 break;
             }
         }
@@ -233,7 +233,7 @@ namespace march
             for (int32_t i = 0; i < pShader->m_Passes.size(); i++)
             {
                 const auto& src = passes[i];
-                pShader->m_Passes[i] = std::make_unique<ShaderPass>(pShader);
+                pShader->m_Passes[i] = std::make_unique<ShaderPass>();
                 ShaderPass* pass = pShader->m_Passes[i].get();
 
                 pass->m_Name = src.Name;
@@ -267,7 +267,7 @@ namespace march
                         program->m_Keywords.EnableKeyword(pShader->m_KeywordSpace, p.Keywords[k]);
                     }
 
-                    std::copy(p.Hash.begin(), p.Hash.end(), program->m_Hash);
+                    std::copy(p.Hash.begin(), p.Hash.end(), program->m_Hash.Data);
 
                     try
                     {
@@ -376,7 +376,7 @@ namespace march
             std::string errorBuffer{};
 
             ShaderPass* pass = pShader->GetPass(passIndex);
-            bool ret = pass->Compile(filename, source, warningBuffer, errorBuffer);
+            bool ret = pass->Compile(pShader->m_KeywordSpace, filename, source, warningBuffer, errorBuffer);
 
             if (!warningBuffer.empty())
             {
@@ -398,7 +398,7 @@ namespace march
 
         inline static void GetPasses(cs<Shader*> pShader, cs<cs<CSharpShaderPass[]>*> passes)
         {
-            passes->assign(pShader->GetPassCount());
+            passes->assign(static_cast<int32_t>(pShader->GetPassCount()));
 
             for (int32_t i = 0; i < pShader->GetPassCount(); i++)
             {
@@ -427,14 +427,14 @@ namespace march
                 }
 
                 int32_t programCount = 0;
-                for (int32_t j = 0; j < static_cast<int32_t>(ShaderProgramType::NumTypes); j++)
+                for (int32_t j = 0; j < static_cast<int32_t>(Shader::NumProgramTypes); j++)
                 {
                     programCount += static_cast<int32_t>(pass->m_Programs[j].size());
                 }
 
                 dest.Programs.assign(programCount);
                 int32_t programIndex = 0;
-                for (int32_t j = 0; j < static_cast<int32_t>(ShaderProgramType::NumTypes); j++)
+                for (int32_t j = 0; j < static_cast<int32_t>(Shader::NumProgramTypes); j++)
                 {
                     for (std::unique_ptr<ShaderProgram>& program : pass->m_Programs[j])
                     {
@@ -449,7 +449,7 @@ namespace march
                             p.Keywords[k].assign(std::move(keywords[k]));
                         }
 
-                        p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash())), reinterpret_cast<const march::cs_byte*>(program->GetHash()));
+                        p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash().Data)), reinterpret_cast<const march::cs_byte*>(program->GetHash().Data));
                         p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<const march::cs_byte*>(program->GetBinaryData()));
 
                         p.SrvCbvBuffers.assign(static_cast<int32_t>(program->GetSrvCbvBuffers().size()));

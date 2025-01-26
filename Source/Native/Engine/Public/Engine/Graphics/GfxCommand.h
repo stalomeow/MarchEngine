@@ -250,12 +250,12 @@ namespace march
         void SetDefaultDepthBias();
         void SetWireframe(bool value);
 
-        void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex);
-        void DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
-        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex);
-        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
-        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex);
-        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex);
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex);
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex);
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
 
         void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode);
 
@@ -285,15 +285,15 @@ namespace march
 
         // 固定有 2 * shader-stage 个 descriptor table，所以 root cbv/srv 上限 (64 - 2 * 8) / 2 = 24 个
         // 最多可以有 24 个 root srv/cbv (在创建 root signature 时，root srv/cbv 是排在 descriptor table 前面的)
-        GfxRootSrvCbvBufferCache<24> m_GraphicsSrvCbvBufferCache[ShaderProgram::NumTypes]; // root srv/cbv buffer
+        GfxRootSrvCbvBufferCache<24> m_GraphicsSrvCbvBufferCache[Shader::NumProgramTypes]; // root srv/cbv buffer
 
         // 如果 root signature 变化，root parameter cache 全部清空
         // 如果 root signature 没变，只有 dirty 时才重新设置 root descriptor table
         // 设置 root descriptor table 后，需要清除 dirty 标记
         // 切换 heap 时，需要强制设置为 dirty，重新设置所有 root descriptor table
 
-        GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[ShaderProgram::NumTypes];
-        GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[ShaderProgram::NumTypes];
+        GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[Shader::NumProgramTypes];
+        GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[Shader::NumProgramTypes];
         std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
@@ -328,17 +328,17 @@ namespace march
 
         GfxTexture* GetFirstRenderTarget() const;
         GfxTexture* FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement);
-        GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex, GfxBufferElement* pOutElement);
+        GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement);
 
-        ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex);
+        ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex);
 
         void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer);
         void SetGraphicsSrvTexture(ShaderProgramType type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
         void SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element);
         void SetGraphicsUavTexture(ShaderProgramType type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
         void SetGraphicsSampler(ShaderProgramType type, uint32_t index, GfxTexture* texture);
-        void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex);
-        void SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature);
+        void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex);
+        void SetGraphicsRootDescriptorTablesAndHeaps(Shader::RootSignatureType* rootSignature);
         void SetGraphicsRootSrvCbvBuffers();
         void TransitionGraphicsViewResources();
         void SetDescriptorHeaps();

@@ -55,8 +55,8 @@ namespace march
         void EnableKeyword(const std::string& keyword);
         void DisableKeyword(const std::string& keyword);
         void SetKeyword(const std::string& keyword, bool value);
-        GfxBuffer* GetConstantBuffer(int32_t passIndex);
-        const ShaderPassRenderState& GetResolvedRenderState(int32_t passIndex, size_t* outHash = nullptr);
+        GfxBuffer* GetConstantBuffer(size_t passIndex);
+        const ShaderPassRenderState& GetResolvedRenderState(size_t passIndex, size_t* outHash = nullptr);
 
     private:
         void CheckShaderVersion();
@@ -65,13 +65,13 @@ namespace march
         void ClearResolvedRenderStates();
 
         Shader* m_Shader;
-        int32_t m_ShaderVersion;
+        uint32_t m_ShaderVersion;
         ShaderKeywordSet m_KeywordCache;
         std::unordered_set<std::string> m_EnabledKeywords;
-        std::unordered_map<int32_t, GfxBuffer> m_ConstantBuffers; // Key 是 ShaderPassIndex
+        std::unordered_map<size_t, GfxBuffer> m_ConstantBuffers; // Key 是 ShaderPassIndex
 
         // Key 是 ShaderPassIndex, Value 是 ShaderPassRenderState 和对应的 Hash
-        std::unordered_map<int32_t, std::pair<ShaderPassRenderState, size_t>> m_ResolvedRenderStates;
+        std::unordered_map<size_t, std::pair<ShaderPassRenderState, size_t>> m_ResolvedRenderStates;
 
         std::unordered_map<int32_t, int32_t> m_Ints;
         std::unordered_map<int32_t, float> m_Floats;

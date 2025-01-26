@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Object.h"
+#include "Engine/HashUtils.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <vector>
@@ -12,6 +13,7 @@
 #include <memory>
 #include <bitset>
 #include <optional>
+#include <limits>
 
 namespace march
 {
@@ -28,14 +30,14 @@ namespace march
     class ShaderKeywordSet
     {
     public:
-        using data_t = std::bitset<128>;
+        using DataType = std::bitset<128>;
 
         ShaderKeywordSet();
 
         size_t GetEnabledKeywordCount() const;
         size_t GetMatchingKeywordCount(const ShaderKeywordSet& other) const;
         std::vector<std::string> GetEnabledKeywords(const ShaderKeywordSpace& space) const;
-        const data_t& GetData() const { return m_Keywords; }
+        const DataType& GetData() const { return m_Keywords; }
 
         void SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value);
         void EnableKeyword(const ShaderKeywordSpace& space, const std::string& keyword);
@@ -43,7 +45,7 @@ namespace march
         void Clear();
 
     private:
-        data_t m_Keywords;
+        DataType m_Keywords;
     };
 
     class ShaderKeywordSpace
@@ -70,6 +72,226 @@ namespace march
     private:
         std::unordered_map<std::string, uint8_t> m_KeywordIndexMap;
         uint8_t m_NextIndex; // 目前最多支持 128 个 Keyword
+    };
+
+    struct ShaderTexture
+    {
+        int32_t Id;
+        uint32_t ShaderRegisterTexture;
+        uint32_t RegisterSpaceTexture;
+
+        bool HasSampler;
+        uint32_t ShaderRegisterSampler;
+        uint32_t RegisterSpaceSampler;
+    };
+
+    struct ShaderStaticSampler
+    {
+        uint32_t ShaderRegister;
+        uint32_t RegisterSpace;
+    };
+
+    struct ShaderBuffer
+    {
+        int32_t Id;
+        uint32_t ShaderRegister;
+        uint32_t RegisterSpace;
+        uint32_t ConstantBufferSize; // 只有 Constant Buffer 有值，其他为 0
+    };
+
+    struct alignas(4) ShaderProgramHash
+    {
+        uint8_t Data[16];
+
+        void SetData(const DxcShaderHash& hash);
+        bool operator==(const ShaderProgramHash& other) const;
+        bool operator!=(const ShaderProgramHash& other) const;
+    };
+
+    class ShaderProgram
+    {
+        friend ShaderBinding;
+        friend struct ShaderProgramUtils;
+
+    public:
+        ShaderProgram();
+
+        const ShaderProgramHash& GetHash() const { return m_Hash; }
+        const ShaderKeywordSet& GetKeywords() const { return m_Keywords; }
+        const uint8_t* GetBinaryData() const { return reinterpret_cast<const uint8_t*>(m_Binary->GetBufferPointer()); }
+        uint64_t GetBinarySize() const { return static_cast<uint64_t>(m_Binary->GetBufferSize()); }
+
+        const std::vector<ShaderBuffer>& GetSrvCbvBuffers() const { return m_SrvCbvBuffers; }
+        const std::vector<ShaderTexture>& GetSrvTextures() const { return m_SrvTextures; }
+        const std::vector<ShaderBuffer>& GetUavBuffers() const { return m_UavBuffers; }
+        const std::vector<ShaderTexture>& GetUavTextures() const { return m_UavTextures; }
+        const std::unordered_map<int32_t, ShaderStaticSampler>& GetStaticSamplers() const { return m_StaticSamplers; }
+
+    private:
+        ShaderProgramHash m_Hash;
+        ShaderKeywordSet m_Keywords;
+        Microsoft::WRL::ComPtr<IDxcBlob> m_Binary;
+
+        std::vector<ShaderBuffer> m_SrvCbvBuffers;
+        std::vector<ShaderTexture> m_SrvTextures;
+        std::vector<ShaderBuffer> m_UavBuffers;
+        std::vector<ShaderTexture> m_UavTextures;
+        std::unordered_map<int32_t, ShaderStaticSampler> m_StaticSamplers;
+    };
+
+    struct GfxRootSignatureBufferBinding
+    {
+        int32_t Id;
+        uint32_t BindPoint;
+        bool IsConstantBuffer;
+    };
+
+    struct GfxRootSignatureTextureBinding
+    {
+        int32_t Id;
+        uint32_t BindPointTexture;
+        std::optional<uint32_t> BindPointSampler;
+    };
+
+    struct GfxRootSignatureUavBinding
+    {
+        int32_t Id;
+        uint32_t BindPoint;
+    };
+
+    template <typename EnumProgramType, size_t NumProgramTypes>
+    class GfxRootSignature final
+    {
+        friend struct GfxRootSignatureUtils;
+
+    public:
+        GfxRootSignature() : m_RootSignature(nullptr), m_Bindings{} {}
+
+        ID3D12RootSignature* GetD3DRootSignature() const { return m_RootSignature.Get(); }
+
+        std::optional<uint32_t> GetSrvUavTableRootParamIndex(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvUavTableRootParamIndex; }
+        std::optional<uint32_t> GetSamplerTableRootParamIndex(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SamplerTableRootParamIndex; }
+
+        const auto& GetSrvCbvBufferRootParamIndices(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvCbvBufferRootParamIndices; }
+        const auto& GetSrvTextureTableSlots(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvTextureTableSlots; }
+        const auto& GetUavBufferTableSlots(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].UavBufferTableSlots; }
+        const auto& GetUavTextureTableSlots(EnumProgramType type) const { return m_Bindings[static_cast<size_t>(type)].UavTextureTableSlots; }
+
+        static constexpr size_t GetNumProgramTypes() { return NumProgramTypes; }
+
+    private:
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
+
+        struct
+        {
+            std::optional<uint32_t> SrvUavTableRootParamIndex = std::nullopt;
+            std::optional<uint32_t> SamplerTableRootParamIndex = std::nullopt;
+
+            std::vector<GfxRootSignatureBufferBinding> SrvCbvBufferRootParamIndices{}; // srv/cbv buffer 都使用 root srv/cbv
+            std::vector<GfxRootSignatureTextureBinding> SrvTextureTableSlots{};        // srv texture 在 srv/uav table 中的位置和 sampler 在 sampler table 中的位置
+            std::vector<GfxRootSignatureUavBinding> UavBufferTableSlots{};             // uav buffer 在 srv/uav table 中的位置
+            std::vector<GfxRootSignatureUavBinding> UavTextureTableSlots{};            // uav texture 在 srv/uav table 中的位置
+        } m_Bindings[NumProgramTypes];
+    };
+
+    template <typename EnumProgramType, size_t NumProgramTypes>
+    class ShaderProgramGroup
+    {
+        friend ShaderBinding;
+        friend struct GfxPipelineState;
+        friend struct GfxRootSignatureUtils;
+        friend struct ShaderProgramUtils;
+
+    public:
+        using RootSignatureType = GfxRootSignature<EnumProgramType, NumProgramTypes>;
+
+        const std::string& GetName() const { return m_Name; }
+
+        ShaderProgram* GetProgram(EnumProgramType type, const ShaderKeywordSet& keywords)
+        {
+            size_t typeIndex = static_cast<size_t>(type);
+            std::optional<size_t> programIndex = GetProgramMatch(keywords).Indices[typeIndex];
+            return programIndex ? m_Programs[typeIndex][*programIndex].get() : nullptr;
+        }
+
+        ShaderProgram* GetProgram(EnumProgramType type, size_t index) const
+        {
+            return m_Programs[static_cast<size_t>(type)][index].get();
+        }
+
+        size_t GetProgramCount(EnumProgramType type) const
+        {
+            return m_Programs[static_cast<size_t>(type)].size();
+        }
+
+        virtual ~ShaderProgramGroup() = default;
+
+        virtual RootSignatureType* GetRootSignature(const ShaderKeywordSet& keywords) = 0;
+
+        virtual bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error) = 0;
+
+    private:
+        struct ProgramMatch
+        {
+            std::optional<size_t> Indices[NumProgramTypes];
+            size_t Hash;
+        };
+
+        std::string m_Name;
+        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[NumProgramTypes];
+
+        std::unordered_map<ShaderKeywordSet::DataType, ProgramMatch> m_ProgramMatches;
+        std::unordered_map<size_t, std::unique_ptr<RootSignatureType>> m_RootSignatures;
+        std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_PipelineStates;
+
+        static __forceinline size_t AbsDiff(size_t a, size_t b)
+        {
+            return a > b ? a - b : b - a;
+        }
+
+        const ProgramMatch& GetProgramMatch(const ShaderKeywordSet& keywords)
+        {
+            auto [it, isNew] = m_ProgramMatches.try_emplace(keywords.GetData());
+
+            if (isNew)
+            {
+                DefaultHash hash{};
+                ProgramMatch& m = it->second;
+                size_t targetKeywordCount = keywords.GetEnabledKeywordCount();
+
+                for (size_t i = 0; i < NumProgramTypes; i++)
+                {
+                    size_t minDiff = std::numeric_limits<size_t>::max();
+                    m.Indices[i] = std::nullopt;
+
+                    for (size_t j = 0; j < m_Programs[i].size(); j++)
+                    {
+                        const ShaderKeywordSet& ks = m_Programs[i][j]->GetKeywords();
+                        size_t matchingCount = ks.GetMatchingKeywordCount(keywords);
+                        size_t enabledCount = ks.GetEnabledKeywordCount();
+
+                        // 没 match 的数量 + 多余的数量
+                        size_t diff = AbsDiff(targetKeywordCount, matchingCount) + AbsDiff(enabledCount, matchingCount);
+
+                        if (diff < minDiff)
+                        {
+                            minDiff = diff;
+                            m.Indices[i] = j;
+                        }
+                    }
+
+                    if (m.Indices[i])
+                    {
+                        ShaderProgram* program = m_Programs[i][*m.Indices[i]].get();
+                        hash.Append(program->GetHash());
+                    }
+                }
+
+                m.Hash = *hash;
+            }
+
+            return it->second;
+        }
     };
 
     enum class CullMode
@@ -135,76 +357,6 @@ namespace march
         Invert = 5,
         Incr = 6,
         Decr = 7,
-    };
-
-    struct ShaderTexture
-    {
-        int32_t Id;
-        uint32_t ShaderRegisterTexture;
-        uint32_t RegisterSpaceTexture;
-
-        bool HasSampler;
-        uint32_t ShaderRegisterSampler;
-        uint32_t RegisterSpaceSampler;
-    };
-
-    struct ShaderStaticSampler
-    {
-        uint32_t ShaderRegister;
-        uint32_t RegisterSpace;
-    };
-
-    struct ShaderBuffer
-    {
-        int32_t Id;
-        uint32_t ShaderRegister;
-        uint32_t RegisterSpace;
-        uint32_t ConstantBufferSize; // 只有 Constant Buffer 有值，其他为 0
-    };
-
-    enum class ShaderProgramType
-    {
-        Vertex,
-        Pixel,
-        Domain,
-        Hull,
-        Geometry,
-        NumTypes,
-    };
-
-    class ShaderProgram
-    {
-        friend Shader;
-        friend ShaderPass;
-        friend ShaderBinding;
-
-    public:
-        using hash_t = uint8_t[16];
-        static constexpr int32_t NumTypes = static_cast<int32_t>(ShaderProgramType::NumTypes);
-
-        ShaderProgram();
-
-        const hash_t& GetHash() const { return m_Hash; }
-        const ShaderKeywordSet& GetKeywords() const { return m_Keywords; }
-        const uint8_t* GetBinaryData() const { return reinterpret_cast<const uint8_t*>(m_Binary->GetBufferPointer()); }
-        uint64_t GetBinarySize() const { return static_cast<uint64_t>(m_Binary->GetBufferSize()); }
-
-        const std::vector<ShaderBuffer>& GetSrvCbvBuffers() const { return m_SrvCbvBuffers; }
-        const std::vector<ShaderTexture>& GetSrvTextures() const { return m_SrvTextures; }
-        const std::vector<ShaderBuffer>& GetUavBuffers() const { return m_UavBuffers; }
-        const std::vector<ShaderTexture>& GetUavTextures() const { return m_UavTextures; }
-        const std::unordered_map<int32_t, ShaderStaticSampler>& GetStaticSamplers() const { return m_StaticSamplers; }
-
-    private:
-        hash_t m_Hash;
-        ShaderKeywordSet m_Keywords;
-        Microsoft::WRL::ComPtr<IDxcBlob> m_Binary;
-
-        std::vector<ShaderBuffer> m_SrvCbvBuffers;
-        std::vector<ShaderTexture> m_SrvTextures;
-        std::vector<ShaderBuffer> m_UavBuffers;
-        std::vector<ShaderTexture> m_UavTextures;
-        std::unordered_map<int32_t, ShaderStaticSampler> m_StaticSamplers;
     };
 
     enum class ShaderPropertyType
@@ -303,118 +455,51 @@ namespace march
         ShaderPassStencilState StencilState;
     };
 
-    class GfxRootSignature
+    enum class ShaderProgramType
     {
-        friend ShaderPass;
-
-    public:
-        struct BufferBinding
-        {
-            int32_t Id;
-            uint32_t BindPoint;
-            bool IsConstantBuffer;
-        };
-
-        struct TextureBinding
-        {
-            int32_t Id{};
-            uint32_t BindPointTexture{};
-            std::optional<uint32_t> BindPointSampler = ::std::nullopt;
-        };
-
-        struct UavBinding
-        {
-            int32_t Id;
-            uint32_t BindPoint;
-        };
-
-        GfxRootSignature() : m_RootSignature(nullptr), m_Bindings{} {}
-
-        ID3D12RootSignature* GetD3DRootSignature() const { return m_RootSignature.Get(); }
-
-        std::optional<uint32_t> GetSrvUavTableRootParamIndex(ShaderProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvUavTableRootParamIndex; }
-        std::optional<uint32_t> GetSamplerTableRootParamIndex(ShaderProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SamplerTableRootParamIndex; }
-
-        const std::vector<BufferBinding>& GetSrvCbvBufferRootParamIndices(ShaderProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvCbvBufferRootParamIndices; }
-        const std::vector<TextureBinding>& GetSrvTextureTableSlots(ShaderProgramType type) const { return m_Bindings[static_cast<size_t>(type)].SrvTextureTableSlots; }
-        const std::vector<UavBinding>& GetUavBufferTableSlots(ShaderProgramType type) const { return m_Bindings[static_cast<size_t>(type)].UavBufferTableSlots; }
-        const std::vector<UavBinding>& GetUavTextureTableSlots(ShaderProgramType type) const { return m_Bindings[static_cast<size_t>(type)].UavTextureTableSlots; }
-
-    private:
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
-
-        struct
-        {
-            std::optional<uint32_t> SrvUavTableRootParamIndex{};
-            std::optional<uint32_t> SamplerTableRootParamIndex{};
-
-            std::vector<BufferBinding> SrvCbvBufferRootParamIndices{}; // srv/cbv buffer 都使用 root srv/cbv
-            std::vector<TextureBinding> SrvTextureTableSlots{};        // srv texture 在 srv/uav table 中的位置和 sampler 在 sampler table 中的位置
-            std::vector<UavBinding> UavBufferTableSlots{};             // uav buffer 在 srv/uav table 中的位置
-            std::vector<UavBinding> UavTextureTableSlots{};            // uav texture 在 srv/uav table 中的位置
-        } m_Bindings[ShaderProgram::NumTypes];
+        Vertex,
+        Pixel,
+        Domain,
+        Hull,
+        Geometry,
     };
 
-    struct GfxPipelineState;
-    struct ShaderCompilationContext;
-
-    class ShaderPass
+    class ShaderPass : public ShaderProgramGroup<ShaderProgramType, 5>
     {
-        friend Shader;
         friend ShaderBinding;
-        friend GfxPipelineState;
 
     public:
-        ShaderPass(Shader* shader);
+        GfxRootSignature<ShaderProgramType, 5>* GetRootSignature(const ShaderKeywordSet& keywords) override;
 
-        Shader* GetShader() const;
-        const std::string& GetName() const;
-        const std::unordered_map<std::string, std::string>& GetTags() const;
-        const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const;
-        ShaderProgram* GetProgram(ShaderProgramType type, const ShaderKeywordSet& keywords);
-        ShaderProgram* GetProgram(ShaderProgramType type, int32_t index) const;
-        int32_t GetProgramCount(ShaderProgramType type) const;
-        const ShaderPassRenderState& GetRenderState() const;
+        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error) override;
 
-        GfxRootSignature* GetRootSignature(const ShaderKeywordSet& keywords);
+        const std::unordered_map<std::string, std::string>& GetTags() const { return m_Tags; }
+        const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const { return m_PropertyLocations; }
+        const ShaderPassRenderState& GetRenderState() const { return m_RenderState; }
 
     private:
-        struct ProgramMatch
-        {
-            int32_t Indices[ShaderProgram::NumTypes]; // -1 表示 nullptr
-            size_t Hash;
-        };
-
-        const ProgramMatch& GetProgramMatch(const ShaderKeywordSet& keywords);
-        bool CompileRecursive(ShaderCompilationContext& context);
-        bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
-
-        Shader* m_Shader;
-        std::string m_Name;
         std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
-        std::vector<std::unique_ptr<ShaderProgram>> m_Programs[ShaderProgram::NumTypes];
         ShaderPassRenderState m_RenderState;
-
-        std::unordered_map<ShaderKeywordSet::data_t, ProgramMatch> m_ProgramMatches;
-        std::unordered_map<size_t, std::unique_ptr<GfxRootSignature>> m_RootSignatures;
-        std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_PipelineStates;
     };
 
     class Shader : public MarchObject
     {
-        friend ShaderPass;
         friend ShaderBinding;
 
     public:
-        const std::string& GetName() const;
-        const ShaderKeywordSpace& GetKeywordSpace() const;
-        const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const;
-        ShaderPass* GetPass(int32_t index) const;
-        int32_t GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const;
+        using RootSignatureType = ShaderPass::RootSignatureType;
+        static constexpr size_t NumProgramTypes = RootSignatureType::GetNumProgramTypes();
+
+        ShaderPass* GetPass(size_t index) const;
+        std::optional<size_t> GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const;
         ShaderPass* GetFirstPassWithTagValue(const std::string& tag, const std::string& value) const;
-        int32_t GetPassCount() const;
-        int32_t GetVersion() const;
+
+        const std::string& GetName() const { return m_Name; }
+        const ShaderKeywordSpace& GetKeywordSpace() const { return m_KeywordSpace; }
+        const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const { return m_Properties; }
+        size_t GetPassCount() const { return m_Passes.size(); }
+        uint32_t GetVersion() const { return m_Version; }
 
         static std::string GetEngineShaderPathUnixStyle();
 
@@ -432,6 +517,38 @@ namespace march
         ShaderKeywordSpace m_KeywordSpace;
         std::unordered_map<int32_t, ShaderProperty> m_Properties;
         std::vector<std::unique_ptr<ShaderPass>> m_Passes;
-        int32_t m_Version = 0;
+        uint32_t m_Version;
+    };
+
+    enum class ComputeShaderProgramType
+    {
+        Compute
+    };
+
+    class ComputeShaderKernel : public ShaderProgramGroup<ComputeShaderProgramType, 1>
+    {
+    public:
+        GfxRootSignature<ComputeShaderProgramType, 1>* GetRootSignature(const ShaderKeywordSet& keywords) override;
+
+        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error) override;
+    };
+
+    class ComputeShader : public MarchObject
+    {
+    public:
+        using RootSignatureType = ComputeShaderKernel::RootSignatureType;
+        static constexpr size_t NumProgramTypes = RootSignatureType::GetNumProgramTypes();
+
+        ComputeShaderKernel* GetKernel(size_t index) const;
+        ComputeShaderKernel* GetKernel(const std::string& name) const;
+
+        const std::string& GetName() const { return m_Name; }
+        const ShaderKeywordSpace& GetKeywordSpace() const { return m_KeywordSpace; }
+        size_t GetKernelCount() const { return m_Kernels.size(); }
+
+    private:
+        std::string m_Name;
+        ShaderKeywordSpace m_KeywordSpace;
+        std::vector<std::unique_ptr<ComputeShaderKernel>> m_Kernels;
     };
 }

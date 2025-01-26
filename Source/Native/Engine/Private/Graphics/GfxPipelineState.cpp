@@ -220,9 +220,14 @@ namespace march
         return *hash;
     }
 
-    static void SetShaderProgramIfExists(D3D12_SHADER_BYTECODE& s, ShaderPass* pass, ShaderProgramType type, const ShaderKeywordSet& keywords)
+    template <typename EnumProgramType, size_t NumProgramTypes>
+    static void SetShaderProgramIfExists(
+        D3D12_SHADER_BYTECODE& s,
+        ShaderProgramGroup<EnumProgramType, NumProgramTypes>* programGroup,
+        EnumProgramType type,
+        const ShaderKeywordSet& keywords)
     {
-        ShaderProgram* program = pass->GetProgram(type, keywords);
+        ShaderProgram* program = programGroup->GetProgram(type, keywords);
 
         if (program == nullptr)
         {
@@ -275,7 +280,7 @@ namespace march
         }
     }
 
-    ID3D12PipelineState* GfxPipelineState::GetGraphicsPSO(Material* material, int32_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc)
+    ID3D12PipelineState* GfxPipelineState::GetGraphicsPSO(Material* material, size_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc)
     {
         Shader* shader = material->GetShader();
         if (shader == nullptr)
@@ -371,6 +376,27 @@ namespace march
             GfxUtils::SetName(result.Get(), shader->GetName() + " - " + pass->GetName());
 
             LOG_TRACE("Create Graphics PSO for '{}' Pass of '{}' Shader", pass->GetName(), shader->GetName());
+        }
+
+        return result.Get();
+    }
+
+    ID3D12PipelineState* GfxPipelineState::GetComputePSO(ComputeShader* shader, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords)
+    {
+        size_t hash = kernel->GetProgramMatch(keywords).Hash;
+        ComPtr<ID3D12PipelineState>& result = kernel->m_PipelineStates[hash];
+
+        if (result == nullptr)
+        {
+            D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+            psoDesc.pRootSignature = kernel->GetRootSignature(keywords)->GetD3DRootSignature();
+            SetShaderProgramIfExists(psoDesc.CS, kernel, ComputeShaderProgramType::Compute, keywords);
+
+            ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
+            GFX_HR(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
+            GfxUtils::SetName(result.Get(), shader->GetName() + " - " + kernel->GetName());
+
+            LOG_TRACE("Create Compute PSO for '{}' Kernel of '{}' Shader", kernel->GetName(), shader->GetName());
         }
 
         return result.Get();

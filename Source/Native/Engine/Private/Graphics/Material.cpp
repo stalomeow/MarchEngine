@@ -361,7 +361,7 @@ namespace march
         }
     }
 
-    GfxBuffer* Material::GetConstantBuffer(int32_t passIndex)
+    GfxBuffer* Material::GetConstantBuffer(size_t passIndex)
     {
         CheckShaderVersion();
 
@@ -372,11 +372,11 @@ namespace march
             ShaderPass* pass = m_Shader->GetPass(passIndex);
             uint32_t bufferSizeInBytes = 0;
 
-            for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
+            for (size_t i = 0; i < Shader::NumProgramTypes; i++)
             {
                 ShaderProgramType type = static_cast<ShaderProgramType>(i);
 
-                for (int32_t j = 0; j < pass->GetProgramCount(type); j++)
+                for (size_t j = 0; j < pass->GetProgramCount(type); j++)
                 {
                     ShaderProgram* program = pass->GetProgram(type, j);
 
@@ -489,7 +489,7 @@ namespace march
         m_ConstantBuffers.clear();
     }
 
-    const ShaderPassRenderState& Material::GetResolvedRenderState(int32_t passIndex, size_t* outHash)
+    const ShaderPassRenderState& Material::GetResolvedRenderState(size_t passIndex, size_t* outHash)
     {
         CheckShaderVersion();
         auto it = m_ResolvedRenderStates.find(passIndex);

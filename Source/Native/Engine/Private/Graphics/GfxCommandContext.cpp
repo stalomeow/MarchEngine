@@ -452,7 +452,7 @@ namespace march
         return nullptr;
     }
 
-    GfxBuffer* GfxCommandContext::FindBuffer(int32_t id, bool isConstantBuffer, Material* material, int32_t passIndex, GfxBufferElement* pOutElement)
+    GfxBuffer* GfxCommandContext::FindBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement)
     {
         if (isConstantBuffer)
         {
@@ -482,7 +482,7 @@ namespace march
         return nullptr;
     }
 
-    ID3D12PipelineState* GfxCommandContext::GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, int32_t passIndex)
+    ID3D12PipelineState* GfxCommandContext::GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex)
     {
         return GfxPipelineState::GetGraphicsPSO(material, passIndex, inputDesc, m_OutputDesc);
     }
@@ -555,7 +555,7 @@ namespace march
         m_GraphicsSamplerCache[static_cast<size_t>(type)].Set(static_cast<size_t>(index), offlineDescriptor);
     }
 
-    void GfxCommandContext::SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, int32_t passIndex)
+    void GfxCommandContext::SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex)
     {
         if (m_CurrentPipelineState != pso)
         {
@@ -564,9 +564,9 @@ namespace march
         }
 
         ShaderPass* pass = material->GetShader()->GetPass(passIndex);
-        GfxRootSignature* rootSignature = pass->GetRootSignature(material->GetKeywords());
+        Shader::RootSignatureType* rootSignature = pass->GetRootSignature(material->GetKeywords());
 
-        // GfxRootSignature 本身不复用，但内部的 ID3D12RootSignature 是复用的
+        // Shader::RootSignatureType 本身不复用，但内部的 ID3D12RootSignature 是复用的
         // 如果 ID3D12RootSignature 变了，说明根签名发生了结构上的变化
         if (m_CurrentGraphicsRootSignature != rootSignature->GetD3DRootSignature())
         {
@@ -581,11 +581,11 @@ namespace march
             m_CommandList->SetGraphicsRootSignature(m_CurrentGraphicsRootSignature);
         }
 
-        for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
+        for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
         {
             ShaderProgramType programType = static_cast<ShaderProgramType>(i);
 
-            for (const GfxRootSignature::BufferBinding& buf : rootSignature->GetSrvCbvBufferRootParamIndices(programType))
+            for (const GfxRootSignatureBufferBinding& buf : rootSignature->GetSrvCbvBufferRootParamIndices(programType))
             {
                 GfxBufferElement element = GfxBufferElement::StructuredData;
 
@@ -595,7 +595,7 @@ namespace march
                 }
             }
 
-            for (const GfxRootSignature::TextureBinding& tex : rootSignature->GetSrvTextureTableSlots(programType))
+            for (const GfxRootSignatureTextureBinding& tex : rootSignature->GetSrvTextureTableSlots(programType))
             {
                 GfxTextureElement element = GfxTextureElement::Default;
 
@@ -610,7 +610,7 @@ namespace march
                 }
             }
 
-            for (const GfxRootSignature::UavBinding& buf : rootSignature->GetUavBufferTableSlots(programType))
+            for (const GfxRootSignatureUavBinding& buf : rootSignature->GetUavBufferTableSlots(programType))
             {
                 GfxBufferElement element = GfxBufferElement::StructuredData;
 
@@ -620,7 +620,7 @@ namespace march
                 }
             }
 
-            for (const GfxRootSignature::UavBinding& tex : rootSignature->GetUavTextureTableSlots(programType))
+            for (const GfxRootSignatureUavBinding& tex : rootSignature->GetUavTextureTableSlots(programType))
             {
                 GfxTextureElement element = GfxTextureElement::Default;
 
@@ -637,15 +637,15 @@ namespace march
         SetResolvedRenderState(material->GetResolvedRenderState(passIndex));
     }
 
-    void GfxCommandContext::SetGraphicsRootDescriptorTablesAndHeaps(GfxRootSignature* rootSignature)
+    void GfxCommandContext::SetGraphicsRootDescriptorTablesAndHeaps(Shader::RootSignatureType* rootSignature)
     {
         // ------------------------------------------------------------
         // SRV & UAV
         // ------------------------------------------------------------
 
-        D3D12_GPU_DESCRIPTOR_HANDLE srvUavTables[ShaderProgram::NumTypes]{};
-        const D3D12_CPU_DESCRIPTOR_HANDLE* offlineSrvUav[ShaderProgram::NumTypes]{};
-        uint32_t numSrvUav[ShaderProgram::NumTypes]{};
+        D3D12_GPU_DESCRIPTOR_HANDLE srvUavTables[Shader::NumProgramTypes]{};
+        const D3D12_CPU_DESCRIPTOR_HANDLE* offlineSrvUav[Shader::NumProgramTypes]{};
+        uint32_t numSrvUav[Shader::NumProgramTypes]{};
 
         GfxOnlineDescriptorMultiAllocator* viewAllocator = m_Device->GetOnlineViewDescriptorAllocator();
         GfxDescriptorHeap* viewHeap = nullptr;
@@ -655,7 +655,7 @@ namespace march
         {
             uint32_t totalNumSrvUav = 0;
 
-            for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
+            for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
             {
                 ShaderProgramType programType = static_cast<ShaderProgramType>(i);
                 std::optional<uint32_t> srvUavTableRootParamIndex = rootSignature->GetSrvUavTableRootParamIndex(programType);
@@ -703,9 +703,9 @@ namespace march
         // SAMPLER
         // ------------------------------------------------------------
 
-        D3D12_GPU_DESCRIPTOR_HANDLE samplerTables[ShaderProgram::NumTypes]{};
-        const D3D12_CPU_DESCRIPTOR_HANDLE* offlineSamplers[ShaderProgram::NumTypes]{};
-        uint32_t numSamplers[ShaderProgram::NumTypes]{};
+        D3D12_GPU_DESCRIPTOR_HANDLE samplerTables[Shader::NumProgramTypes]{};
+        const D3D12_CPU_DESCRIPTOR_HANDLE* offlineSamplers[Shader::NumProgramTypes]{};
+        uint32_t numSamplers[Shader::NumProgramTypes]{};
 
         GfxOnlineDescriptorMultiAllocator* samplerAllocator = m_Device->GetOnlineSamplerDescriptorAllocator();
         GfxDescriptorHeap* samplerHeap = nullptr;
@@ -715,7 +715,7 @@ namespace march
         {
             uint32_t totalNumSamplers = 0;
 
-            for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
+            for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
             {
                 ShaderProgramType programType = static_cast<ShaderProgramType>(i);
                 std::optional<uint32_t> samplerTableRootParamIndex = rootSignature->GetSamplerTableRootParamIndex(programType);
@@ -787,7 +787,7 @@ namespace march
             SetDescriptorHeaps();
         }
 
-        for (int32_t i = 0; i < ShaderProgram::NumTypes; i++)
+        for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
         {
             ShaderProgramType programType = static_cast<ShaderProgramType>(i);
 
@@ -960,32 +960,32 @@ namespace march
             0);
     }
 
-    void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex)
+    void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex)
     {
         DrawMesh(geometry, material, shaderPassIndex, MathUtils::Identity4x4());
     }
 
-    void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
+    void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
         DrawMesh(GfxMesh::GetGeometry(geometry), 0, material, shaderPassIndex, matrix);
     }
 
-    void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex)
+    void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex)
     {
         DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, MathUtils::Identity4x4());
     }
 
-    void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
+    void GfxCommandContext::DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
         DrawMesh(mesh->GetSubMeshDesc(subMeshIndex), material, shaderPassIndex, matrix);
     }
 
-    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex)
+    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex)
     {
         DrawMesh(subMesh, material, shaderPassIndex, MathUtils::Identity4x4());
     }
 
-    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, int32_t shaderPassIndex, const XMFLOAT4X4& matrix)
+    void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
         SetInstanceBufferData(1, &CreateInstanceData(matrix));
 
@@ -1001,7 +1001,7 @@ namespace march
         GfxMesh* Mesh;
         uint32_t SubMeshIndex;
         Material* Mat;
-        int32_t ShaderPassIndex;
+        size_t ShaderPassIndex;
 
         bool operator==(const DrawCall& other) const
         {
@@ -1015,7 +1015,7 @@ namespace march
                 return std::hash<GfxMesh*>{}(drawCall.Mesh)
                     ^ std::hash<uint32_t>{}(drawCall.SubMeshIndex)
                     ^ std::hash<Material*>{}(drawCall.Mat)
-                    ^ std::hash<int32_t>{}(drawCall.ShaderPassIndex);
+                    ^ std::hash<size_t>{}(drawCall.ShaderPassIndex);
             };
         };
     };
@@ -1046,14 +1046,14 @@ namespace march
                     continue;
                 }
 
-                int32_t shaderPassIndex = mat->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
-                if (shaderPassIndex < 0)
+                std::optional<size_t> shaderPassIndex = mat->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+                if (!shaderPassIndex)
                 {
                     continue;
                 }
 
-                ID3D12PipelineState* pso = GetGraphicsPipelineState(renderer->Mesh->GetInputDesc(), mat, shaderPassIndex);
-                DrawCall dc{ renderer->Mesh, j, mat, shaderPassIndex };
+                ID3D12PipelineState* pso = GetGraphicsPipelineState(renderer->Mesh->GetInputDesc(), mat, *shaderPassIndex);
+                DrawCall dc{ renderer->Mesh, j, mat, *shaderPassIndex };
                 psoMap[pso][dc].emplace_back(CreateInstanceData(renderer->GetTransform()->GetLocalToWorldMatrix()));
             }
         }
