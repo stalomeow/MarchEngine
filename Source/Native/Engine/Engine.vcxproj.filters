@@ -48,6 +48,7 @@
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Public\Engine\JobManager.h" />
     <ClInclude Include="Public\Engine\Object.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxViewCache.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />

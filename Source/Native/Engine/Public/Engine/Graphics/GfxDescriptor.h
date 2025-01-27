@@ -98,44 +98,6 @@ namespace march
         GfxOfflineDescriptorAllocator* m_Allocator;
     };
 
-    template <size_t Capacity>
-    class GfxOfflineDescriptorTable
-    {
-    public:
-        GfxOfflineDescriptorTable() = default;
-
-        void Reset()
-        {
-            m_Num = 0;
-            memset(m_Descriptors, 0, sizeof(m_Descriptors));
-            m_IsDirty = false;
-        }
-
-        void Set(size_t index, D3D12_CPU_DESCRIPTOR_HANDLE handle)
-        {
-            if (index < m_Num && m_Descriptors[index].ptr == handle.ptr)
-            {
-                return;
-            }
-
-            m_Num = std::max(m_Num, index + 1);
-            m_Descriptors[index] = handle;
-            m_IsDirty = true;
-        }
-
-        const D3D12_CPU_DESCRIPTOR_HANDLE* GetDescriptors() const { return m_Descriptors; }
-        size_t GetNum() const { return m_Num; }
-        bool IsEmpty() const { return m_Num == 0; }
-        constexpr size_t GetCapacity() const { return Capacity; }
-        bool IsDirty() const { return m_IsDirty; }
-        void SetDirty(bool value) { m_IsDirty = value; }
-
-    private:
-        size_t m_Num; // 设置的最大 index + 1
-        D3D12_CPU_DESCRIPTOR_HANDLE m_Descriptors[Capacity];
-        bool m_IsDirty;
-    };
-
     class GfxOnlineDescriptorAllocator
     {
     public:

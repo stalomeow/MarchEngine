@@ -7,6 +7,7 @@
 #include "Engine/Graphics/GfxTexture.h"
 #include "Engine/Graphics/GfxUtils.h"
 #include "Engine/Graphics/Shader.h"
+#include "Engine/Graphics/GfxViewCache.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
@@ -152,55 +153,6 @@ namespace march
         uint64_t SignalNextFence();
     };
 
-    template <size_t Capacity>
-    class GfxRootSrvCbvBufferCache
-    {
-    public:
-        GfxRootSrvCbvBufferCache() = default;
-
-        void Reset()
-        {
-            m_Num = 0;
-            memset(m_Addresses, 0, sizeof(m_Addresses));
-            m_IsConstantBuffer.reset();
-            m_IsDirty.reset();
-        }
-
-        void Set(size_t index, D3D12_GPU_VIRTUAL_ADDRESS address, bool isConstantBuffer)
-        {
-            if (index < m_Num && m_Addresses[index] == address && m_IsConstantBuffer.test(index) == isConstantBuffer)
-            {
-                return;
-            }
-
-            m_Num = std::max(m_Num, index + 1);
-            m_Addresses[index] = address;
-            m_IsConstantBuffer.set(index, isConstantBuffer);
-            m_IsDirty.set(index);
-        }
-
-        D3D12_GPU_VIRTUAL_ADDRESS Get(size_t index, bool* pOutIsConstantBuffer) const
-        {
-            assert(index < m_Num);
-            *pOutIsConstantBuffer = m_IsConstantBuffer.test(index);
-            return m_Addresses[index];
-        }
-
-        // 清空 dirty 标记
-        void Apply() { m_IsDirty.reset(); }
-
-        size_t GetNum() const { return m_Num; }
-        bool IsEmpty() const { return m_Num == 0; }
-        constexpr size_t GetCapacity() const { return Capacity; }
-        bool IsDirty(size_t index) const { return m_IsDirty.test(index); }
-
-    private:
-        size_t m_Num{}; // 设置的最大 index + 1
-        D3D12_GPU_VIRTUAL_ADDRESS m_Addresses[Capacity]{};
-        std::bitset<Capacity> m_IsConstantBuffer{};
-        std::bitset<Capacity> m_IsDirty{};
-    };
-
     enum class GfxClearFlags
     {
         None = 0,
@@ -279,29 +231,8 @@ namespace march
         std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
         std::vector<GfxSyncPoint> m_SyncPointsToWait;
 
-        // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html
-        // The maximum size of a root arguments is 64 DWORDs.
-        // Descriptor tables cost 1 DWORD each.
-        // Root constants cost 1 DWORD * NumConstants, by definition since they are collections of 32-bit values.
-        // Raw/Structured Buffer SRVs/UAVs and CBVs cost 2 DWORDs.
-
-        // 固定有 2 * shader-stage 个 descriptor table，所以 root cbv/srv 上限 (64 - 2 * 8) / 2 = 24 个
-        // 最多可以有 24 个 root srv/cbv (在创建 root signature 时，root srv/cbv 是排在 descriptor table 前面的)
-        GfxRootSrvCbvBufferCache<24> m_GraphicsSrvCbvBufferCache[Shader::NumProgramTypes]; // root srv/cbv buffer
-
-        // 如果 root signature 变化，root parameter cache 全部清空
-        // 如果 root signature 没变，只有 dirty 时才重新设置 root descriptor table
-        // 设置 root descriptor table 后，需要清除 dirty 标记
-        // 切换 heap 时，需要强制设置为 dirty，重新设置所有 root descriptor table
-
-        GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[Shader::NumProgramTypes];
-        GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[Shader::NumProgramTypes];
-        std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
-
-        GfxRootSrvCbvBufferCache<24> m_ComputeSrvCbvBufferCache[ComputeShader::NumProgramTypes];
-        GfxOfflineDescriptorTable<64> m_ComputeSrvUavCache[ComputeShader::NumProgramTypes];
-        GfxOfflineDescriptorTable<16> m_ComputeSamplerCache[ComputeShader::NumProgramTypes];
-        std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_ComputeViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
+        GfxViewCache<GraphicsPipelineTraits> m_GraphicsViewCache;
+        GfxViewCache<ComputePipelineTraits> m_ComputeViewCache;
 
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
@@ -318,13 +249,10 @@ namespace march
 
         ID3D12PipelineState* m_CurrentPipelineState;
 
-        ID3D12RootSignature* m_CurrentGraphicsRootSignature;
         D3D12_PRIMITIVE_TOPOLOGY m_CurrentPrimitiveTopology;
         D3D12_VERTEX_BUFFER_VIEW m_CurrentVertexBuffer;
         D3D12_INDEX_BUFFER_VIEW m_CurrentIndexBuffer;
         std::optional<uint8_t> m_CurrentStencilRef;
-
-        ID3D12RootSignature* m_CurrentComputeRootSignature;
 
         std::unordered_map<int32_t, std::pair<GfxTexture*, GfxTextureElement>> m_GlobalTextures;
         std::unordered_map<int32_t, std::pair<GfxBuffer*, GfxBufferElement>> m_GlobalBuffers;

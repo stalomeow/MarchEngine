@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Internal\pch.h" />
+    <ClInclude Include="Public\Engine\Graphics\GfxViewCache.h" />
     <ClInclude Include="Public\Engine\Memory\Allocator.h" />
     <ClInclude Include="Public\Engine\Application.h" />
     <ClInclude Include="Public\Engine\AssetManger.h" />
