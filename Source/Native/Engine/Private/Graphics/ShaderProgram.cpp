@@ -128,6 +128,11 @@ namespace march
         return "cs_" + model;
     }
 
+    void ComputeShaderKernel::RecordEntrypointCallback(size_t programType, std::string& entrypoint)
+    {
+        entrypoint = GetName();
+    }
+
     static ComPtr<IDxcUtils> g_Utils = nullptr;
     static ComPtr<IDxcCompiler3> g_Compiler = nullptr;
 
@@ -662,6 +667,11 @@ namespace march
                 return false;
             }
 
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                programGroup.RecordEntrypointCallback(i, context.Config.Entrypoints[i]);
+            }
+
             context.FileName = StringUtils::Utf8ToUtf16(filename);
             context.IncludePath = StringUtils::Utf8ToUtf16(Shader::GetEngineShaderPathUnixStyle());
             context.Source.Ptr = source.data();
@@ -677,8 +687,32 @@ namespace march
         return ShaderProgramUtils::Compile(*this, keywordSpace, filename, source, warnings, error);
     }
 
-    bool ComputeShaderKernel::Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
+    bool ComputeShader::Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
-        return ShaderProgramUtils::Compile(*this, keywordSpace, filename, source, warnings, error);
+        m_KeywordSpace.Clear();
+        m_Kernels.clear();
+
+        EnumeratePragmas(source, [this](const std::vector<std::string>& args) -> bool
+        {
+            if (args.size() > 1 && args[0] == "kernel")
+            {
+                ComputeShaderKernel* kernel = m_Kernels.emplace_back(std::make_unique<ComputeShaderKernel>()).get();
+                kernel->m_Name = args[1];
+            }
+
+            return true;
+        });
+
+        for (std::unique_ptr<ComputeShaderKernel>& kernel : m_Kernels)
+        {
+            if (!ShaderProgramUtils::Compile(*kernel.get(), m_KeywordSpace, filename, source, warnings, error))
+            {
+                m_KeywordSpace.Clear();
+                m_Kernels.clear();
+                return false;
+            }
+        }
+
+        return true;
     }
 }

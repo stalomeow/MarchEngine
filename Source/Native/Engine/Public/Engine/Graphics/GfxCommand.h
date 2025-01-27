@@ -259,6 +259,8 @@ namespace march
 
         void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode);
 
+        void DispatchCompute(ComputeShader* shader, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
+
         void ResolveTexture(GfxTexture* source, GfxTexture* destination);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, uint32_t sourceOffsetInBytes, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement, uint32_t destinationOffsetInBytes, uint32_t sizeInBytes);
@@ -295,6 +297,12 @@ namespace march
         GfxOfflineDescriptorTable<64> m_GraphicsSrvUavCache[Shader::NumProgramTypes];
         GfxOfflineDescriptorTable<16> m_GraphicsSamplerCache[Shader::NumProgramTypes];
         std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_GraphicsViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
+
+        GfxRootSrvCbvBufferCache<24> m_ComputeSrvCbvBufferCache[ComputeShader::NumProgramTypes];
+        GfxOfflineDescriptorTable<64> m_ComputeSrvUavCache[ComputeShader::NumProgramTypes];
+        GfxOfflineDescriptorTable<16> m_ComputeSamplerCache[ComputeShader::NumProgramTypes];
+        std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_ComputeViewResourceRequiredStates; // 暂存 srv/uav/cbv 资源需要的状态
+
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
@@ -309,11 +317,14 @@ namespace march
         GfxOutputDesc m_OutputDesc;
 
         ID3D12PipelineState* m_CurrentPipelineState;
+
         ID3D12RootSignature* m_CurrentGraphicsRootSignature;
         D3D12_PRIMITIVE_TOPOLOGY m_CurrentPrimitiveTopology;
         D3D12_VERTEX_BUFFER_VIEW m_CurrentVertexBuffer;
         D3D12_INDEX_BUFFER_VIEW m_CurrentIndexBuffer;
         std::optional<uint8_t> m_CurrentStencilRef;
+
+        ID3D12RootSignature* m_CurrentComputeRootSignature;
 
         std::unordered_map<int32_t, std::pair<GfxTexture*, GfxTextureElement>> m_GlobalTextures;
         std::unordered_map<int32_t, std::pair<GfxBuffer*, GfxBufferElement>> m_GlobalBuffers;
@@ -327,8 +338,10 @@ namespace march
         GfxBuffer m_InstanceBuffer;
 
         GfxTexture* GetFirstRenderTarget() const;
+        GfxTexture* FindTexture(int32_t id, GfxTextureElement* pOutElement);
         GfxTexture* FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement);
-        GfxBuffer* FindBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement);
+        GfxBuffer* FindComputeBuffer(int32_t id, bool isConstantBuffer, GfxBufferElement* pOutElement);
+        GfxBuffer* FindGraphicsBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement);
 
         ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex);
 
@@ -341,6 +354,17 @@ namespace march
         void SetGraphicsRootDescriptorTablesAndHeaps(Shader::RootSignatureType* rootSignature);
         void SetGraphicsRootSrvCbvBuffers();
         void TransitionGraphicsViewResources();
+
+        void SetComputeSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer);
+        void SetComputeSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
+        void SetComputeUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element);
+        void SetComputeUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
+        void SetComputeSampler(size_t type, uint32_t index, GfxTexture* texture);
+        void SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords);
+        void SetComputeRootDescriptorTablesAndHeaps(ComputeShader::RootSignatureType* rootSignature);
+        void SetComputeRootSrvCbvBuffers();
+        void TransitionComputeViewResources();
+
         void SetDescriptorHeaps();
 
         void SetResolvedRenderState(const ShaderPassRenderState& state);

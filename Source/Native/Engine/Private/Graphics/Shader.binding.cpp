@@ -33,7 +33,7 @@ struct CSharpShaderBuffer
 
 struct CSharpShaderProgram
 {
-    cs<ShaderProgramType> Type;
+    cs_int Type;
     cs<cs_string[]> Keywords;
     cs<march::cs_byte[]> Hash;
     cs<march::cs_byte[]> Binary;
@@ -446,7 +446,7 @@ namespace march
                     for (std::unique_ptr<ShaderProgram>& program : pass->m_Programs[j])
                     {
                         auto& p = dest.Programs[programIndex++];
-                        p.Type.assign(static_cast<ShaderProgramType>(j));
+                        p.Type.assign(j);
 
                         std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywords(pShader->m_KeywordSpace);
                         p.Keywords.assign(static_cast<int32_t>(keywords.size()));
@@ -607,4 +607,271 @@ NATIVE_EXPORT_AUTO Shader_GetNameId(cs_string name)
 NATIVE_EXPORT_AUTO Shader_GetIdName(cs_int id)
 {
     retcs Shader::GetIdName(id);
+}
+
+struct CSharpComputeShaderKernel
+{
+    cs_string Name;
+    cs<CSharpShaderProgram[]> Programs;
+};
+
+namespace march
+{
+    class ComputeShaderBinding
+    {
+    public:
+        static void SetName(cs<ComputeShader*> s, cs_string name)
+        {
+            s->m_Name = name;
+        }
+
+        static void GetKernels(cs<ComputeShader*> s, cs<cs<CSharpComputeShaderKernel[]>*> kernels)
+        {
+            kernels->assign(static_cast<int32_t>(s->GetKernelCount()));
+
+            for (int32_t i = 0; i < s->GetKernelCount(); i++)
+            {
+                ComputeShaderKernel* kernel = s->m_Kernels[i].get();
+                CSharpComputeShaderKernel& dest = (*kernels)[i];
+
+                dest.Name.assign(kernel->GetName());
+
+                int32_t programCount = 0;
+                for (int32_t j = 0; j < static_cast<int32_t>(ComputeShader::NumProgramTypes); j++)
+                {
+                    programCount += static_cast<int32_t>(kernel->m_Programs[j].size());
+                }
+
+                dest.Programs.assign(programCount);
+                int32_t programIndex = 0;
+                for (int32_t j = 0; j < static_cast<int32_t>(ComputeShader::NumProgramTypes); j++)
+                {
+                    for (std::unique_ptr<ShaderProgram>& program : kernel->m_Programs[j])
+                    {
+                        auto& p = dest.Programs[programIndex++];
+                        p.Type.assign(j);
+
+                        std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywords(s->m_KeywordSpace);
+                        p.Keywords.assign(static_cast<int32_t>(keywords.size()));
+
+                        for (int32_t k = 0; k < keywords.size(); k++)
+                        {
+                            p.Keywords[k].assign(std::move(keywords[k]));
+                        }
+
+                        p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash().Data)), reinterpret_cast<const march::cs_byte*>(program->GetHash().Data));
+                        p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<const march::cs_byte*>(program->GetBinaryData()));
+
+                        p.SrvCbvBuffers.assign(static_cast<int32_t>(program->GetSrvCbvBuffers().size()));
+                        for (size_t bufIdx = 0; bufIdx < program->GetSrvCbvBuffers().size(); bufIdx++)
+                        {
+                            auto& buf = p.SrvCbvBuffers[static_cast<int32_t>(bufIdx)];
+                            buf.Name.assign(Shader::GetIdName(program->GetSrvCbvBuffers()[bufIdx].Id));
+                            buf.ShaderRegister.assign(program->GetSrvCbvBuffers()[bufIdx].ShaderRegister);
+                            buf.RegisterSpace.assign(program->GetSrvCbvBuffers()[bufIdx].RegisterSpace);
+                            buf.ConstantBufferSize.assign(program->GetSrvCbvBuffers()[bufIdx].ConstantBufferSize);
+                        }
+
+                        p.SrvTextures.assign(static_cast<int32_t>(program->GetSrvTextures().size()));
+                        for (size_t texIdx = 0; texIdx < program->GetSrvTextures().size(); texIdx++)
+                        {
+                            auto& tp = p.SrvTextures[static_cast<int32_t>(texIdx)];
+                            tp.Name.assign(Shader::GetIdName(program->GetSrvTextures()[texIdx].Id));
+                            tp.ShaderRegisterTexture.assign(program->GetSrvTextures()[texIdx].ShaderRegisterTexture);
+                            tp.RegisterSpaceTexture.assign(program->GetSrvTextures()[texIdx].RegisterSpaceTexture);
+                            tp.HasSampler.assign(program->GetSrvTextures()[texIdx].HasSampler);
+                            tp.ShaderRegisterSampler.assign(program->GetSrvTextures()[texIdx].ShaderRegisterSampler);
+                            tp.RegisterSpaceSampler.assign(program->GetSrvTextures()[texIdx].RegisterSpaceSampler);
+                        }
+
+                        p.UavBuffers.assign(static_cast<int32_t>(program->GetUavBuffers().size()));
+                        for (size_t bufIdx = 0; bufIdx < program->GetUavBuffers().size(); bufIdx++)
+                        {
+                            auto& buf = p.UavBuffers[static_cast<int32_t>(bufIdx)];
+                            buf.Name.assign(Shader::GetIdName(program->GetUavBuffers()[bufIdx].Id));
+                            buf.ShaderRegister.assign(program->GetUavBuffers()[bufIdx].ShaderRegister);
+                            buf.RegisterSpace.assign(program->GetUavBuffers()[bufIdx].RegisterSpace);
+                            buf.ConstantBufferSize.assign(program->GetUavBuffers()[bufIdx].ConstantBufferSize);
+                        }
+
+                        p.UavTextures.assign(static_cast<int32_t>(program->GetUavTextures().size()));
+                        for (size_t texIdx = 0; texIdx < program->GetUavTextures().size(); texIdx++)
+                        {
+                            auto& tp = p.UavTextures[static_cast<int32_t>(texIdx)];
+                            tp.Name.assign(Shader::GetIdName(program->GetUavTextures()[texIdx].Id));
+                            tp.ShaderRegisterTexture.assign(program->GetUavTextures()[texIdx].ShaderRegisterTexture);
+                            tp.RegisterSpaceTexture.assign(program->GetUavTextures()[texIdx].RegisterSpaceTexture);
+                            tp.HasSampler.assign(program->GetUavTextures()[texIdx].HasSampler);
+                            tp.ShaderRegisterSampler.assign(program->GetUavTextures()[texIdx].ShaderRegisterSampler);
+                            tp.RegisterSpaceSampler.assign(program->GetUavTextures()[texIdx].RegisterSpaceSampler);
+                        }
+
+                        p.StaticSamplers.assign(static_cast<int32_t>(program->GetStaticSamplers().size()));
+                        int32_t samplerIndex = 0;
+                        for (auto& kvp : program->GetStaticSamplers())
+                        {
+                            auto& sampler = p.StaticSamplers[samplerIndex++];
+                            sampler.Name.assign(Shader::GetIdName(kvp.first));
+                            sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
+                            sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
+                        }
+
+                        p.ThreadGroupSizeX.assign(program->m_ThreadGroupSizeX);
+                        p.ThreadGroupSizeY.assign(program->m_ThreadGroupSizeY);
+                        p.ThreadGroupSizeZ.assign(program->m_ThreadGroupSizeZ);
+                    }
+                }
+            }
+        }
+
+        static void SetKernels(cs<ComputeShader*> s, cs<CSharpComputeShaderKernel[]> kernels)
+        {
+            s->m_KeywordSpace.Clear();
+            s->m_Kernels.clear();
+            s->m_Kernels.resize(static_cast<size_t>(kernels.size()));
+
+            for (int32_t i = 0; i < s->m_Kernels.size(); i++)
+            {
+                const auto& src = kernels[i];
+                s->m_Kernels[i] = std::make_unique<ComputeShaderKernel>();
+                ComputeShaderKernel* kernel = s->m_Kernels[i].get();
+
+                kernel->m_Name = src.Name;
+
+                for (int32_t j = 0; j < std::size(kernel->m_Programs); j++)
+                {
+                    kernel->m_Programs[j].clear();
+                }
+                for (int32_t j = 0; j < src.Programs.size(); j++)
+                {
+                    const auto& p = src.Programs[j];
+                    std::unique_ptr<ShaderProgram> program = std::make_unique<ShaderProgram>();
+
+                    for (int32_t k = 0; k < p.Keywords.size(); k++)
+                    {
+                        s->m_KeywordSpace.AddKeyword(p.Keywords[k]);
+                        program->m_Keywords.EnableKeyword(s->m_KeywordSpace, p.Keywords[k]);
+                    }
+
+                    std::copy(p.Hash.begin(), p.Hash.end(), program->m_Hash.Data);
+
+                    try
+                    {
+                        GFX_HR(Shader::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
+                            reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_ERROR("Failed to create shader blob: {}", e.what());
+                        return;
+                    }
+
+                    for (int32_t k = 0; k < p.SrvCbvBuffers.size(); k++)
+                    {
+                        const auto& buf = p.SrvCbvBuffers[k];
+                        program->m_SrvCbvBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                    }
+
+                    for (int32_t k = 0; k < p.SrvTextures.size(); k++)
+                    {
+                        const auto& tp = p.SrvTextures[k];
+                        program->m_SrvTextures.push_back({
+                            Shader::GetNameId(tp.Name),
+                            tp.ShaderRegisterTexture,
+                            tp.RegisterSpaceTexture,
+                            tp.HasSampler,
+                            tp.ShaderRegisterSampler,
+                            tp.RegisterSpaceSampler
+                            });
+                    }
+
+                    for (int32_t k = 0; k < p.UavBuffers.size(); k++)
+                    {
+                        const auto& buf = p.UavBuffers[k];
+                        program->m_UavBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                    }
+
+                    for (int32_t k = 0; k < p.UavTextures.size(); k++)
+                    {
+                        const auto& tp = p.UavTextures[k];
+                        program->m_UavTextures.push_back({
+                            Shader::GetNameId(tp.Name),
+                            tp.ShaderRegisterTexture,
+                            tp.RegisterSpaceTexture,
+                            tp.HasSampler,
+                            tp.ShaderRegisterSampler,
+                            tp.RegisterSpaceSampler
+                            });
+                    }
+
+                    for (int32_t k = 0; k < p.StaticSamplers.size(); k++)
+                    {
+                        const auto& sampler = p.StaticSamplers[k];
+                        program->m_StaticSamplers[Shader::GetNameId(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
+                    }
+
+                    program->m_ThreadGroupSizeX = p.ThreadGroupSizeX;
+                    program->m_ThreadGroupSizeY = p.ThreadGroupSizeY;
+                    program->m_ThreadGroupSizeZ = p.ThreadGroupSizeZ;
+
+                    kernel->m_Programs[static_cast<size_t>(p.Type.data)].emplace_back(std::move(program));
+                }
+            }
+        }
+
+        static bool Compile(cs<ComputeShader*> s, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+        {
+            std::vector<std::string> warningBuffer{};
+            std::string errorBuffer{};
+
+            bool ret = s->Compile(filename, source, warningBuffer, errorBuffer);
+
+            if (!warningBuffer.empty())
+            {
+                warnings->assign(static_cast<int32_t>(warningBuffer.size()));
+
+                for (int32_t i = 0; i < warningBuffer.size(); i++)
+                {
+                    (*warnings)[i].assign(std::move(warningBuffer[i]));
+                }
+            }
+
+            if (!errorBuffer.empty())
+            {
+                error->assign(std::move(errorBuffer));
+            }
+
+            return ret;
+        }
+    };
+}
+
+NATIVE_EXPORT_AUTO ComputeShader_New()
+{
+    retcs MARCH_NEW ComputeShader();
+}
+
+NATIVE_EXPORT_AUTO ComputeShader_GetName(cs<ComputeShader*> s)
+{
+    retcs s->GetName();
+}
+
+NATIVE_EXPORT_AUTO ComputeShader_SetName(cs<ComputeShader*> s, cs_string name)
+{
+    ComputeShaderBinding::SetName(s, name);
+}
+
+NATIVE_EXPORT_AUTO ComputeShader_GetKernels(cs<ComputeShader*> s, cs<cs<CSharpComputeShaderKernel[]>*> kernels)
+{
+    ComputeShaderBinding::GetKernels(s, kernels);
+}
+
+NATIVE_EXPORT_AUTO ComputeShader_SetKernels(cs<ComputeShader*> s, cs<CSharpComputeShaderKernel[]> kernels)
+{
+    ComputeShaderBinding::SetKernels(s, kernels);
+}
+
+NATIVE_EXPORT_AUTO ComputeShader_Compile(cs<ComputeShader*> s, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+{
+    retcs ComputeShaderBinding::Compile(s, filename, source, warnings, error);
 }

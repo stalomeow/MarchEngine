@@ -28,6 +28,10 @@ namespace march
         , m_GraphicsSrvUavCache{}
         , m_GraphicsSamplerCache{}
         , m_GraphicsViewResourceRequiredStates{}
+        , m_ComputeSrvCbvBufferCache{}
+        , m_ComputeSrvUavCache{}
+        , m_ComputeSamplerCache{}
+        , m_ComputeViewResourceRequiredStates{}
         , m_ViewHeap(nullptr)
         , m_SamplerHeap(nullptr)
         , m_ColorTargets{}
@@ -43,6 +47,7 @@ namespace march
         , m_CurrentVertexBuffer{}
         , m_CurrentIndexBuffer{}
         , m_CurrentStencilRef(std::nullopt)
+        , m_CurrentComputeRootSignature(nullptr)
         , m_GlobalTextures{}
         , m_GlobalBuffers{}
         , m_InstanceBuffer{ device, "_InstanceBuffer" }
@@ -95,6 +100,10 @@ namespace march
         for (auto& cache : m_GraphicsSrvUavCache) cache.Reset();
         for (auto& cache : m_GraphicsSamplerCache) cache.Reset();
         m_GraphicsViewResourceRequiredStates.clear();
+        for (auto& cache : m_ComputeSrvCbvBufferCache) cache.Reset();
+        for (auto& cache : m_ComputeSrvUavCache) cache.Reset();
+        for (auto& cache : m_ComputeSamplerCache) cache.Reset();
+        m_ComputeViewResourceRequiredStates.clear();
         m_ViewHeap = nullptr;
         m_SamplerHeap = nullptr;
         memset(m_ColorTargets, 0, sizeof(m_ColorTargets));
@@ -108,6 +117,7 @@ namespace march
         m_CurrentVertexBuffer = {};
         m_CurrentIndexBuffer = {};
         m_CurrentStencilRef = std::nullopt;
+        m_CurrentComputeRootSignature = nullptr;
         m_GlobalTextures.clear();
         m_GlobalBuffers.clear();
         m_InstanceBuffer.ReleaseResource();
@@ -435,14 +445,8 @@ namespace march
         return m_OutputDesc.NumRTV > 0 ? m_ColorTargets[0] : m_DepthStencilTarget;
     }
 
-    GfxTexture* GfxCommandContext::FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement)
+    GfxTexture* GfxCommandContext::FindTexture(int32_t id, GfxTextureElement* pOutElement)
     {
-        if (GfxTexture* texture = nullptr; material->GetTexture(id, &texture))
-        {
-            *pOutElement = GfxTextureElement::Default;
-            return texture;
-        }
-
         if (auto it = m_GlobalTextures.find(id); it != m_GlobalTextures.end())
         {
             *pOutElement = it->second.second;
@@ -452,7 +456,34 @@ namespace march
         return nullptr;
     }
 
-    GfxBuffer* GfxCommandContext::FindBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement)
+    GfxTexture* GfxCommandContext::FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement)
+    {
+        if (GfxTexture* texture = nullptr; material->GetTexture(id, &texture))
+        {
+            *pOutElement = GfxTextureElement::Default;
+            return texture;
+        }
+
+        return FindTexture(id, pOutElement);
+    }
+
+    GfxBuffer* GfxCommandContext::FindComputeBuffer(int32_t id, bool isConstantBuffer, GfxBufferElement* pOutElement)
+    {
+        if (auto it = m_GlobalBuffers.find(id); it != m_GlobalBuffers.end())
+        {
+            GfxBuffer* buffer = it->second.first;
+
+            if (!isConstantBuffer || (isConstantBuffer && buffer->GetDesc().HasAnyUsages(GfxBufferUsages::Constant)))
+            {
+                *pOutElement = it->second.second;
+                return buffer;
+            }
+        }
+
+        return nullptr;
+    }
+
+    GfxBuffer* GfxCommandContext::FindGraphicsBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement)
     {
         if (isConstantBuffer)
         {
@@ -473,13 +504,7 @@ namespace march
             }
         }
 
-        if (auto it = m_GlobalBuffers.find(id); it != m_GlobalBuffers.end())
-        {
-            *pOutElement = it->second.second;
-            return it->second.first;
-        }
-
-        return nullptr;
+        return FindComputeBuffer(id, isConstantBuffer, pOutElement);
     }
 
     ID3D12PipelineState* GfxCommandContext::GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex)
@@ -581,7 +606,7 @@ namespace march
             m_CommandList->SetGraphicsRootSignature(m_CurrentGraphicsRootSignature);
         }
 
-        for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
+        for (size_t i = 0; i < Shader::NumProgramTypes; i++)
         {
             ShaderProgramType programType = static_cast<ShaderProgramType>(i);
 
@@ -589,7 +614,7 @@ namespace march
             {
                 GfxBufferElement element = GfxBufferElement::StructuredData;
 
-                if (GfxBuffer* buffer = FindBuffer(buf.Id, buf.IsConstantBuffer, material, passIndex, &element))
+                if (GfxBuffer* buffer = FindGraphicsBuffer(buf.Id, buf.IsConstantBuffer, material, passIndex, &element))
                 {
                     SetGraphicsSrvCbvBuffer(programType, buf.BindPoint, buffer, element, buf.IsConstantBuffer);
                 }
@@ -614,7 +639,7 @@ namespace march
             {
                 GfxBufferElement element = GfxBufferElement::StructuredData;
 
-                if (GfxBuffer* buffer = FindBuffer(buf.Id, false, material, passIndex, &element))
+                if (GfxBuffer* buffer = FindGraphicsBuffer(buf.Id, false, material, passIndex, &element))
                 {
                     SetGraphicsUavBuffer(programType, buf.BindPoint, buffer, element);
                 }
@@ -655,7 +680,7 @@ namespace march
         {
             uint32_t totalNumSrvUav = 0;
 
-            for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
+            for (size_t i = 0; i < Shader::NumProgramTypes; i++)
             {
                 ShaderProgramType programType = static_cast<ShaderProgramType>(i);
                 std::optional<uint32_t> srvUavTableRootParamIndex = rootSignature->GetSrvUavTableRootParamIndex(programType);
@@ -715,7 +740,7 @@ namespace march
         {
             uint32_t totalNumSamplers = 0;
 
-            for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
+            for (size_t i = 0; i < Shader::NumProgramTypes; i++)
             {
                 ShaderProgramType programType = static_cast<ShaderProgramType>(i);
                 std::optional<uint32_t> samplerTableRootParamIndex = rootSignature->GetSamplerTableRootParamIndex(programType);
@@ -787,7 +812,7 @@ namespace march
             SetDescriptorHeaps();
         }
 
-        for (int32_t i = 0; i < Shader::NumProgramTypes; i++)
+        for (size_t i = 0; i < Shader::NumProgramTypes; i++)
         {
             ShaderProgramType programType = static_cast<ShaderProgramType>(i);
 
@@ -857,6 +882,355 @@ namespace march
         }
 
         m_GraphicsViewResourceRequiredStates.clear();
+    }
+
+    void GfxCommandContext::SetComputeSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer)
+    {
+        D3D12_GPU_VIRTUAL_ADDRESS address = buffer->GetGpuVirtualAddress(element);
+        m_ComputeSrvCbvBufferCache[type].Set(static_cast<size_t>(index), address, isConstantBuffer);
+
+        D3D12_RESOURCE_STATES state;
+
+        if (isConstantBuffer)
+        {
+            state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        }
+        else
+        {
+            state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        }
+
+        // 记录状态，之后会统一使用 ResourceBarrier
+        m_ComputeViewResourceRequiredStates[buffer->GetUnderlyingResource()] |= state;
+    }
+
+    void GfxCommandContext::SetComputeSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSrv(element);
+        m_ComputeSrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+
+        // 记录状态，之后会统一使用 ResourceBarrier
+        m_ComputeViewResourceRequiredStates[texture->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    }
+
+    void GfxCommandContext::SetComputeUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element)
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = buffer->GetUav(element);
+        m_ComputeSrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+
+        // 记录状态，之后会统一使用 ResourceBarrier
+        m_ComputeViewResourceRequiredStates[buffer->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+
+    void GfxCommandContext::SetComputeUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetUav(element);
+        m_ComputeSrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+
+        // 记录状态，之后会统一使用 ResourceBarrier
+        m_ComputeViewResourceRequiredStates[texture->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    }
+
+    void GfxCommandContext::SetComputeSampler(size_t type, uint32_t index, GfxTexture* texture)
+    {
+        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSampler();
+        m_ComputeSamplerCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+    }
+
+    void GfxCommandContext::SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords)
+    {
+        if (m_CurrentPipelineState != pso)
+        {
+            m_CurrentPipelineState = pso;
+            m_CommandList->SetPipelineState(pso);
+        }
+
+        ComputeShader::RootSignatureType* rootSignature = kernel->GetRootSignature(keywords);
+
+        // ComputeShader::RootSignatureType 本身不复用，但内部的 ID3D12RootSignature 是复用的
+        // 如果 ID3D12RootSignature 变了，说明根签名发生了结构上的变化
+        if (m_CurrentComputeRootSignature != rootSignature->GetD3DRootSignature())
+        {
+            // 删掉旧的 view
+            for (auto& cache : m_ComputeSrvCbvBufferCache) cache.Reset();
+            for (auto& cache : m_ComputeSrvUavCache) cache.Reset();
+            for (auto& cache : m_ComputeSamplerCache) cache.Reset();
+            m_ComputeViewResourceRequiredStates.clear();
+
+            // 设置 root signature
+            m_CurrentComputeRootSignature = rootSignature->GetD3DRootSignature();
+            m_CommandList->SetComputeRootSignature(m_CurrentComputeRootSignature);
+        }
+
+        for (size_t i = 0; i < ComputeShader::NumProgramTypes; i++)
+        {
+            for (const auto& buf : rootSignature->GetSrvCbvBufferRootParamIndices(i))
+            {
+                GfxBufferElement element = GfxBufferElement::StructuredData;
+
+                if (GfxBuffer* buffer = FindComputeBuffer(buf.Id, buf.IsConstantBuffer, &element))
+                {
+                    SetComputeSrvCbvBuffer(i, buf.BindPoint, buffer, element, buf.IsConstantBuffer);
+                }
+            }
+
+            for (const auto& tex : rootSignature->GetSrvTextureTableSlots(i))
+            {
+                GfxTextureElement element = GfxTextureElement::Default;
+
+                if (GfxTexture* texture = FindTexture(tex.Id, &element))
+                {
+                    SetComputeSrvTexture(i, tex.BindPointTexture, texture, element);
+
+                    if (tex.BindPointSampler.has_value())
+                    {
+                        SetComputeSampler(i, *tex.BindPointSampler, texture);
+                    }
+                }
+            }
+
+            for (const auto& buf : rootSignature->GetUavBufferTableSlots(i))
+            {
+                GfxBufferElement element = GfxBufferElement::StructuredData;
+
+                if (GfxBuffer* buffer = FindComputeBuffer(buf.Id, false, &element))
+                {
+                    SetComputeUavBuffer(i, buf.BindPoint, buffer, element);
+                }
+            }
+
+            for (const auto& tex : rootSignature->GetUavTextureTableSlots(i))
+            {
+                GfxTextureElement element = GfxTextureElement::Default;
+
+                if (GfxTexture* texture = FindTexture(tex.Id, &element))
+                {
+                    SetComputeUavTexture(i, tex.BindPoint, texture, element);
+                }
+            }
+        }
+
+        TransitionComputeViewResources();
+        SetComputeRootDescriptorTablesAndHeaps(rootSignature);
+        SetComputeRootSrvCbvBuffers();
+    }
+
+    void GfxCommandContext::SetComputeRootDescriptorTablesAndHeaps(ComputeShader::RootSignatureType* rootSignature)
+    {
+        // ------------------------------------------------------------
+        // SRV & UAV
+        // ------------------------------------------------------------
+
+        D3D12_GPU_DESCRIPTOR_HANDLE srvUavTables[ComputeShader::NumProgramTypes]{};
+        const D3D12_CPU_DESCRIPTOR_HANDLE* offlineSrvUav[ComputeShader::NumProgramTypes]{};
+        uint32_t numSrvUav[ComputeShader::NumProgramTypes]{};
+
+        GfxOnlineDescriptorMultiAllocator* viewAllocator = m_Device->GetOnlineViewDescriptorAllocator();
+        GfxDescriptorHeap* viewHeap = nullptr;
+        bool hasSrvUav = false;
+
+        for (uint32_t numTry = 0; numTry < 2; numTry++)
+        {
+            uint32_t totalNumSrvUav = 0;
+
+            for (size_t i = 0; i < ComputeShader::NumProgramTypes; i++)
+            {
+                std::optional<uint32_t> srvUavTableRootParamIndex = rootSignature->GetSrvUavTableRootParamIndex(i);
+                const auto& srvUavCache = m_ComputeSrvUavCache[i];
+
+                if (srvUavTableRootParamIndex.has_value() && srvUavCache.IsDirty() && !srvUavCache.IsEmpty())
+                {
+                    offlineSrvUav[i] = srvUavCache.GetDescriptors();
+                    numSrvUav[i] = static_cast<uint32_t>(srvUavCache.GetNum());
+                }
+                else
+                {
+                    offlineSrvUav[i] = nullptr;
+                    numSrvUav[i] = 0;
+                }
+
+                totalNumSrvUav += numSrvUav[i];
+            }
+
+            if (totalNumSrvUav > 0)
+            {
+                if (viewAllocator->AllocateMany(std::size(srvUavTables), offlineSrvUav, numSrvUav, srvUavTables, &viewHeap))
+                {
+                    hasSrvUav = true;
+                    break;
+                }
+
+                // 当前的 heap 不够，切换 heap
+                viewAllocator->Rollover();
+
+                // 因为 heap 变了，所以 table 要全部重新分配
+                for (auto& cache : m_ComputeSrvUavCache)
+                {
+                    cache.SetDirty(true);
+                }
+            }
+            else
+            {
+                // 没有 SRV & UAV，不需要分配
+                break;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // SAMPLER
+        // ------------------------------------------------------------
+
+        D3D12_GPU_DESCRIPTOR_HANDLE samplerTables[ComputeShader::NumProgramTypes]{};
+        const D3D12_CPU_DESCRIPTOR_HANDLE* offlineSamplers[ComputeShader::NumProgramTypes]{};
+        uint32_t numSamplers[ComputeShader::NumProgramTypes]{};
+
+        GfxOnlineDescriptorMultiAllocator* samplerAllocator = m_Device->GetOnlineSamplerDescriptorAllocator();
+        GfxDescriptorHeap* samplerHeap = nullptr;
+        bool hasSampler = false;
+
+        for (uint32_t numTry = 0; numTry < 2; numTry++)
+        {
+            uint32_t totalNumSamplers = 0;
+
+            for (size_t i = 0; i < ComputeShader::NumProgramTypes; i++)
+            {
+                std::optional<uint32_t> samplerTableRootParamIndex = rootSignature->GetSamplerTableRootParamIndex(i);
+                const auto& samplerCache = m_ComputeSamplerCache[i];
+
+                if (samplerTableRootParamIndex.has_value() && samplerCache.IsDirty() && !samplerCache.IsEmpty())
+                {
+                    offlineSamplers[i] = samplerCache.GetDescriptors();
+                    numSamplers[i] = static_cast<uint32_t>(samplerCache.GetNum());
+                }
+                else
+                {
+                    offlineSamplers[i] = nullptr;
+                    numSamplers[i] = 0;
+                }
+
+                totalNumSamplers += numSamplers[i];
+            }
+
+            if (totalNumSamplers > 0)
+            {
+                if (samplerAllocator->AllocateMany(std::size(samplerTables), offlineSamplers, numSamplers, samplerTables, &samplerHeap))
+                {
+                    hasSampler = true;
+                    break;
+                }
+
+                // 当前的 heap 不够，切换 heap
+                samplerAllocator->Rollover();
+
+                // 因为 heap 变了，所以 table 要全部重新分配
+                for (auto& cache : m_ComputeSamplerCache)
+                {
+                    cache.SetDirty(true);
+                }
+            }
+            else
+            {
+                // 没有 SAMPLER，不需要分配
+                break;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // Apply
+        // ------------------------------------------------------------
+
+        if (!hasSrvUav && !hasSampler)
+        {
+            return;
+        }
+
+        bool isHeapChanged = false;
+
+        if (hasSrvUav && viewHeap != m_ViewHeap)
+        {
+            m_ViewHeap = viewHeap;
+            isHeapChanged = true;
+        }
+
+        if (hasSampler && samplerHeap != m_SamplerHeap)
+        {
+            m_SamplerHeap = samplerHeap;
+            isHeapChanged = true;
+        }
+
+        if (isHeapChanged)
+        {
+            SetDescriptorHeaps();
+        }
+
+        for (size_t i = 0; i < ComputeShader::NumProgramTypes; i++)
+        {
+            if (hasSrvUav && numSrvUav[i] > 0)
+            {
+                uint32_t rootParamIndex = *rootSignature->GetSrvUavTableRootParamIndex(i);
+                m_CommandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootParamIndex), srvUavTables[i]);
+            }
+
+            if (hasSampler && numSamplers[i] > 0)
+            {
+                uint32_t rootParamIndex = *rootSignature->GetSamplerTableRootParamIndex(i);
+                m_CommandList->SetComputeRootDescriptorTable(static_cast<UINT>(rootParamIndex), samplerTables[i]);
+            }
+        }
+
+        if (hasSrvUav)
+        {
+            for (auto& cache : m_ComputeSrvUavCache)
+            {
+                cache.SetDirty(false);
+            }
+        }
+
+        if (hasSampler)
+        {
+            for (auto& cache : m_ComputeSamplerCache)
+            {
+                cache.SetDirty(false);
+            }
+        }
+    }
+
+    void GfxCommandContext::SetComputeRootSrvCbvBuffers()
+    {
+        for (auto& cache : m_ComputeSrvCbvBufferCache)
+        {
+            for (size_t i = 0; i < cache.GetNum(); i++)
+            {
+                if (!cache.IsDirty(i))
+                {
+                    continue;
+                }
+
+                bool isConstantBuffer = false;
+                D3D12_GPU_VIRTUAL_ADDRESS address = cache.Get(i, &isConstantBuffer);
+
+                if (isConstantBuffer)
+                {
+                    m_CommandList->SetComputeRootConstantBufferView(static_cast<UINT>(i), address);
+                }
+                else
+                {
+                    m_CommandList->SetComputeRootShaderResourceView(static_cast<UINT>(i), address);
+                }
+            }
+
+            cache.Apply();
+        }
+    }
+
+    void GfxCommandContext::TransitionComputeViewResources()
+    {
+        for (const auto& [resource, state] : m_ComputeViewResourceRequiredStates)
+        {
+            TransitionResource(resource, state);
+        }
+
+        m_ComputeViewResourceRequiredStates.clear();
     }
 
     void GfxCommandContext::SetDescriptorHeaps()
@@ -1068,6 +1442,18 @@ namespace march
                 DrawSubMesh(dc.Mesh->GetSubMeshDesc(dc.SubMeshIndex), instanceCount);
             }
         }
+    }
+
+    void GfxCommandContext::DispatchCompute(ComputeShader* shader, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
+    {
+        ID3D12PipelineState* pso = GfxPipelineState::GetComputePSO(shader, kernel, keywords);
+        SetComputePipelineParameters(pso, kernel, keywords);
+        FlushResourceBarriers();
+
+        m_CommandList->Dispatch(
+            static_cast<UINT>(threadGroupCountX),
+            static_cast<UINT>(threadGroupCountY),
+            static_cast<UINT>(threadGroupCountZ));
     }
 
     GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& matrix)

@@ -47,6 +47,7 @@ namespace march
         m_SkyboxMaterial.reset("Assets/skybox.mat");
         m_ScreenSpaceShadowShader.reset("Engine/Shaders/ScreenSpaceShadow.shader");
         m_ScreenSpaceShadowMaterial = std::make_unique<Material>(m_ScreenSpaceShadowShader.get());
+        m_ComputeShader.reset("Engine/Shaders/Test.compute");
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -70,6 +71,8 @@ namespace march
 
             ImportTextures(colorTargetId, display->GetColorBuffer());
             ImportTextures(depthStencilTargetId, display->GetDepthStencilBuffer());
+
+            TestCompute();
 
             if (display->GetEnableMSAA())
             {
@@ -414,6 +417,35 @@ namespace march
 
             context.SetTexture(shadowMapId, shadowMap.Get());
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_ScreenSpaceShadowMaterial.get(), 0);
+        });
+    }
+
+    void RenderPipeline::TestCompute()
+    {
+        auto builder = m_RenderGraph->AddPass("TestCompute");
+        builder.AllowPassCulling(false);
+
+        static int32_t texId = Shader::GetNameId("res");
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R32G32B32A32_Float;
+        desc.Flags = GfxTextureFlags::UnorderedAccess;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = 4;
+        desc.Height = 4;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Point;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0;
+
+        builder.CreateTransientTexture(texId, desc);
+        TextureHandle t = builder.WriteTexture(texId);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            context.SetTexture(texId, t.Get());
+
+            ComputeShaderKernel* kernel = m_ComputeShader->GetKernel("FillWithRed");
+            context.GetCommandContext()->DispatchCompute(m_ComputeShader.get(), kernel, {}, 4, 4, 1);
         });
     }
 }

@@ -24,6 +24,7 @@ namespace march
     class ShaderBinding;
     class ShaderKeywordSet;
     class ShaderKeywordSpace;
+    class ComputeShaderBinding;
 
     enum class GfxDefaultTexture;
     enum class GfxTextureDimension;
@@ -112,6 +113,7 @@ namespace march
     class ShaderProgram
     {
         friend ShaderBinding;
+        friend ComputeShaderBinding;
         friend struct ShaderProgramUtils;
 
     public:
@@ -235,9 +237,11 @@ namespace march
     class ShaderProgramGroup
     {
         friend ShaderBinding;
+        friend ComputeShaderBinding;
         friend struct GfxPipelineState;
         friend struct GfxRootSignatureUtils;
         friend struct ShaderProgramUtils;
+        friend class ComputeShader;
 
     public:
         using RootSignatureType = GfxRootSignature<_NumProgramTypes>;
@@ -265,12 +269,6 @@ namespace march
         }
 
         virtual ~ShaderProgramGroup() = default;
-
-    protected:
-        virtual D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) = 0;
-        virtual bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) = 0;
-        virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
-        virtual void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) = 0;
 
     private:
         struct ProgramMatch
@@ -334,6 +332,12 @@ namespace march
 
             return it->second;
         }
+
+        virtual D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) = 0;
+        virtual bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) = 0;
+        virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
+        virtual void RecordEntrypointCallback(size_t programType, std::string& entrypoint) = 0;
+        virtual void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) = 0;
     };
 
     enum class CullMode
@@ -513,8 +517,6 @@ namespace march
     public:
         RootSignatureType* GetRootSignature(const ShaderKeywordSet& keywords);
 
-        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
-
         const std::unordered_map<std::string, std::string>& GetTags() const { return m_Tags; }
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const { return m_PropertyLocations; }
         const ShaderPassRenderState& GetRenderState() const { return m_RenderState; }
@@ -523,12 +525,15 @@ namespace march
         D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
         bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
         std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
+        void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override {}
         void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override;
 
     private:
         std::unordered_map<std::string, std::string> m_Tags;
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations; // shader property 在 cbuffer 中的位置
         ShaderPassRenderState m_RenderState;
+
+        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
     };
 
     class Shader : public MarchObject
@@ -575,8 +580,6 @@ namespace march
     public:
         RootSignatureType* GetRootSignature(const ShaderKeywordSet& keywords);
 
-        bool Compile(ShaderKeywordSpace& keywordSpace, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
-
         ShaderProgram* GetProgram(const ShaderKeywordSet& keywords) { return Base::GetProgram(0, keywords); }
 
         ShaderProgram* GetProgram(size_t index) const { return Base::GetProgram(0, index); }
@@ -593,11 +596,14 @@ namespace march
         D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
         bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
         std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
+        void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override;
         void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override {}
     };
 
     class ComputeShader : public MarchObject
     {
+        friend ComputeShaderBinding;
+
     public:
         using RootSignatureType = ComputeShaderKernel::RootSignatureType;
         static constexpr size_t NumProgramTypes = RootSignatureType::NumProgramTypes;
@@ -613,5 +619,7 @@ namespace march
         std::string m_Name;
         ShaderKeywordSpace m_KeywordSpace;
         std::vector<std::unique_ptr<ComputeShaderKernel>> m_Kernels;
+
+        bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
     };
 }

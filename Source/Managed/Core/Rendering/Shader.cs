@@ -138,7 +138,7 @@ namespace March.Core.Rendering
 
     internal class ShaderProgram : INativeMarshal<ShaderProgram, ShaderProgram.Native>
     {
-        public ShaderProgramType Type;
+        public int Type;
         public string[] Keywords = [];
         public byte[] Hash = [];
         public byte[] Binary = [];
@@ -154,7 +154,7 @@ namespace March.Core.Rendering
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
         {
-            public ShaderProgramType Type;
+            public int Type;
             public NativeArray<nint> Keywords;
             public NativeArray<byte> Hash;
             public NativeArray<byte> Binary;
@@ -779,5 +779,143 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private partial bool CompilePass(int passIndex, string filename, string source, nint* warnings, nint* error);
+    }
+
+    internal class ComputeShaderKernel : INativeMarshal<ComputeShaderKernel, ComputeShaderKernel.Native>
+    {
+        public string Name = string.Empty;
+        public ShaderProgram[] Programs = [];
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal unsafe struct Native
+        {
+            public nint Name;
+            public NativeArrayMarshal<ShaderProgram> Programs;
+        }
+
+        public static unsafe ComputeShaderKernel FromNative(ref Native native) => new()
+        {
+            Name = NativeString.Get(native.Name),
+            Programs = native.Programs.Value,
+        };
+
+        public static unsafe void ToNative(ComputeShaderKernel value, out Native native)
+        {
+            native.Name = NativeString.New(value.Name);
+            native.Programs = value.Programs;
+        }
+
+        public static unsafe void FreeNative(ref Native native)
+        {
+            NativeString.Free(native.Name);
+            native.Programs.Dispose();
+        }
+    }
+
+    public unsafe partial class ComputeShader : NativeMarchObject
+    {
+        [JsonProperty]
+        [NativeProperty]
+        public partial string Name { get; set; }
+
+        [JsonProperty]
+        public ImmutableArray<string> Warnings { get; private set; } = [];
+
+        [JsonProperty]
+        public ImmutableArray<string> Errors { get; private set; } = [];
+
+        [JsonProperty]
+        internal ComputeShaderKernel[] Kernels
+        {
+            get
+            {
+                GetKernels(out nint kernels);
+                return NativeArrayMarshal<ComputeShaderKernel>.GetAndFree(kernels);
+            }
+
+            set
+            {
+                using NativeArrayMarshal<ComputeShaderKernel> kernels = value;
+                SetKernels(kernels);
+            }
+        }
+
+        public ComputeShader() : base(New()) { }
+
+        public bool HasWarningOrError => !Warnings.IsEmpty || !Errors.IsEmpty;
+
+        internal void ClearWarningsAndErrors()
+        {
+            Warnings = Warnings.Clear();
+            Errors = Errors.Clear();
+        }
+
+        internal bool AddWarning(string warning)
+        {
+            if (!Warnings.Contains(warning))
+            {
+                Warnings = Warnings.Add(warning);
+                return true;
+            }
+
+            return false;
+        }
+
+        internal bool AddError(string error)
+        {
+            if (!Errors.Contains(error))
+            {
+                Errors = Errors.Add(error);
+                return true;
+            }
+
+            return false;
+        }
+
+        internal bool Compile(string filename, string source)
+        {
+            nint nativeWarnings = nint.Zero;
+            nint nativeError = nint.Zero;
+            bool success = Compile(filename, source, &nativeWarnings, &nativeError);
+
+            if (nativeWarnings != nint.Zero)
+            {
+                using var warnings = (NativeArray<nint>)nativeWarnings;
+
+                for (int i = 0; i < warnings.Length; i++)
+                {
+                    string w = NativeString.GetAndFree(warnings[i]);
+
+                    if (AddWarning(w))
+                    {
+                        Log.Message(LogLevel.Warning, w);
+                    }
+                }
+            }
+
+            if (nativeError != nint.Zero)
+            {
+                string e = NativeString.GetAndFree(nativeError);
+
+                if (AddError(e))
+                {
+                    Log.Message(LogLevel.Error, e);
+                }
+            }
+
+            return success;
+        }
+
+        [NativeMethod]
+        private static partial nint New();
+
+        [NativeMethod]
+        private partial void GetKernels(out nint passes);
+
+        [NativeMethod]
+        private partial void SetKernels(NativeArrayMarshal<ComputeShaderKernel> passes);
+
+        [NativeMethod]
+        private partial bool Compile(string filename, string source, nint* warnings, nint* error);
     }
 }

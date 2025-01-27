@@ -90,6 +90,8 @@ namespace march
 
         void ScreenSpaceShadow(const DirectX::XMFLOAT4X4& shadowMatrix, int32_t cameraColorTargetId, int32_t shadowMapId, int32_t destinationId);
 
+        void TestCompute();
+
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
         GfxMesh* m_SphereMesh = nullptr;
@@ -98,6 +100,7 @@ namespace march
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
         asset_ptr<Shader> m_ScreenSpaceShadowShader = nullptr;
+        asset_ptr<ComputeShader> m_ComputeShader = nullptr;
         std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
 
         GfxBuffer m_CameraConstantBuffer;
