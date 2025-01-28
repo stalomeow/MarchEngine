@@ -540,10 +540,6 @@ namespace march
 
                 LOG_TRACE("Create new sampler");
             }
-            else
-            {
-                LOG_TRACE("Reuse sampler");
-            }
 
             m_SamplerDescriptor = it->second.GetHandle();
         }

@@ -99,7 +99,17 @@ namespace march
         std::bitset<Capacity> m_IsDirty{};
     };
 
-    struct GraphicsPipelineTraits
+    enum class GfxPipelineType
+    {
+        Graphics,
+        Compute,
+    };
+
+    template <GfxPipelineType _PipelineType>
+    struct GfxPipelineTraits;
+
+    template <>
+    struct GfxPipelineTraits<GfxPipelineType::Graphics>
     {
         static constexpr size_t NumProgramTypes = Shader::NumProgramTypes;
         static constexpr size_t PixelProgramType = static_cast<size_t>(ShaderProgramType::Pixel);
@@ -110,7 +120,8 @@ namespace march
         static constexpr auto SetRootDescriptorTable = &ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable;
     };
 
-    struct ComputePipelineTraits
+    template <>
+    struct GfxPipelineTraits<GfxPipelineType::Compute>
     {
         static constexpr size_t NumProgramTypes = ComputeShader::NumProgramTypes;
         static constexpr size_t PixelProgramType = std::numeric_limits<size_t>::max(); // no pixel program
@@ -121,193 +132,296 @@ namespace march
         static constexpr auto SetRootDescriptorTable = &ID3D12GraphicsCommandList::SetComputeRootDescriptorTable;
     };
 
-    template <typename _PipelineTraits>
+    template <GfxPipelineType _PipelineType>
     class GfxViewCache final
     {
+        using PipelineTraits = GfxPipelineTraits<_PipelineType>;
+
         // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html
         // The maximum size of a root arguments is 64 DWORDs.
         // Descriptor tables cost 1 DWORD each.
         // Root constants cost 1 DWORD * NumConstants, by definition since they are collections of 32-bit values.
         // Raw/Structured Buffer SRVs/UAVs and CBVs cost 2 DWORDs.
 
-        // 即 Shader Stage 的数量
-        static constexpr size_t NumProgramTypes = _PipelineTraits::NumProgramTypes;
+        // Shader Stage 的数量
+        static constexpr size_t NumProgramTypes = PipelineTraits::NumProgramTypes;
 
-        // 固定有 2 * shader-stage 个 descriptor table
+        // 每个 Shader Stage 固定有 srv/uav 和 sampler 两个 descriptor table
         static constexpr size_t NumDescriptorTables = 2 * NumProgramTypes;
 
-        // 最多可以有 24 个 root srv/cbv (在创建 root signature 时，root srv/cbv 是排在 descriptor table 前面的)
+        // 剩下的空间都分给 root srv/cbv buffer
+        // 在创建 root signature 时，root srv/cbv buffer 是排在 descriptor table 前面的
         static constexpr size_t NumMaxRootSrvCbvBuffers = (64 - NumDescriptorTables) / 2;
 
-        GfxRootSrvCbvBufferCache<NumMaxRootSrvCbvBuffers> m_SrvCbvBufferCache[NumProgramTypes]; // root srv/cbv buffer
+        using RootSignatureType = GfxRootSignature<NumProgramTypes>;
+
+        GfxDevice* m_Device;
+        RootSignatureType* m_RootSignature;
+        bool m_IsRootSignatureDirty;
 
         // 如果 root signature 变化，root parameter cache 全部清空
         // 如果 root signature 没变，只有 dirty 时才重新设置 root descriptor table
         // 设置 root descriptor table 后，需要清除 dirty 标记
         // 切换 heap 时，需要强制设置为 dirty，重新设置所有 root descriptor table
 
+        GfxRootSrvCbvBufferCache<NumMaxRootSrvCbvBuffers> m_SrvCbvBufferCache[NumProgramTypes];
         GfxOfflineDescriptorTable<64> m_SrvUavCache[NumProgramTypes];
         GfxOfflineDescriptorTable<16> m_SamplerCache[NumProgramTypes];
-
-        ID3D12RootSignature* m_CurrentRootSignature;
 
         // 暂存 srv/uav/cbv 资源需要的状态
         std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_StagedResourceStates;
 
-        GfxDevice* m_Device;
+        static constexpr bool AllowPixelProgram = PipelineTraits::PixelProgramType < NumProgramTypes;
+        static constexpr bool IsPixelProgram(size_t type) { return type == PipelineTraits::PixelProgramType; }
 
-        static constexpr bool AllowPixelProgram = _PipelineTraits::PixelProgramType < NumProgramTypes;
-        static constexpr bool IsPixelProgram(size_t type) { return type == _PipelineTraits::PixelProgramType; }
+        void SetSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer)
+        {
+            D3D12_GPU_VIRTUAL_ADDRESS address = buffer->GetGpuVirtualAddress(element);
+            m_SrvCbvBufferCache[type].Set(static_cast<size_t>(index), address, isConstantBuffer);
 
-        using RootSignatureType = GfxRootSignature<NumProgramTypes>;
+            D3D12_RESOURCE_STATES state;
 
-    public:
-        void SetSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer);
+            if (isConstantBuffer)
+            {
+                state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+            }
+            else if constexpr (AllowPixelProgram)
+            {
+                state = IsPixelProgram(type)
+                    ? D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+                    : D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            }
+            else
+            {
+                state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            }
 
-        void SetSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
+            // 记录状态，之后会统一使用 ResourceBarrier
+            m_StagedResourceStates[buffer->GetUnderlyingResource()] |= state;
+        }
 
-        void SetUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element);
+        void SetSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSrv(element);
+            m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
 
-        void SetUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
+            D3D12_RESOURCE_STATES state;
 
-        void SetSampler(size_t type, uint32_t index, GfxTexture* texture);
+            if constexpr (AllowPixelProgram)
+            {
+                state = IsPixelProgram(type)
+                    ? D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+                    : D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            }
+            else
+            {
+                state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            }
 
-        void SetRootSignature(ID3D12GraphicsCommandList* cmd, RootSignatureType* rootSignature);
+            // 记录状态，之后会统一使用 ResourceBarrier
+            m_StagedResourceStates[texture->GetUnderlyingResource()] |= state;
+        }
+
+        void SetUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element)
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = buffer->GetUav(element);
+            m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+
+            // 记录状态，之后会统一使用 ResourceBarrier
+            m_StagedResourceStates[buffer->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        }
+
+        void SetUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetUav(element);
+            m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+
+            // 记录状态，之后会统一使用 ResourceBarrier
+            m_StagedResourceStates[texture->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        }
+
+        void SetSampler(size_t type, uint32_t index, GfxTexture* texture)
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSampler();
+            m_SamplerCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
+        }
+
+        void SetRootSrvCbvBuffers(ID3D12GraphicsCommandList* cmd)
+        {
+            for (auto& cache : m_SrvCbvBufferCache)
+            {
+                for (size_t i = 0; i < cache.GetNum(); i++)
+                {
+                    if (!cache.IsDirty(i))
+                    {
+                        continue;
+                    }
+
+                    bool isConstantBuffer = false;
+                    D3D12_GPU_VIRTUAL_ADDRESS address = cache.Get(i, &isConstantBuffer);
+
+                    if (isConstantBuffer)
+                    {
+                        (cmd->*PipelineTraits::SetRootConstantBufferView)(static_cast<UINT>(i), address);
+                    }
+                    else
+                    {
+                        (cmd->*PipelineTraits::SetRootShaderResourceView)(static_cast<UINT>(i), address);
+                    }
+                }
+
+                cache.Apply();
+            }
+        }
+
+        void SetDescriptorHeaps(
+            ID3D12GraphicsCommandList* cmd,
+            GfxDescriptorHeap* viewHeap,
+            GfxDescriptorHeap* samplerHeap);
 
         void SetRootDescriptorTablesAndHeaps(
             ID3D12GraphicsCommandList* cmd,
-            RootSignatureType* rootSignature,
             GfxDescriptorHeap** ppViewHeap,
             GfxDescriptorHeap** ppSamplerHeap);
 
-        void SetRootSrvCbvBuffers(ID3D12GraphicsCommandList* cmd);
-
-        template <typename Func>
-        void TransitionResources(Func fn);
-
-        void SetDescriptorHeaps(ID3D12GraphicsCommandList* cmd, GfxDescriptorHeap* viewHeap, GfxDescriptorHeap* samplerHeap);
-    };
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer)
-    {
-        D3D12_GPU_VIRTUAL_ADDRESS address = buffer->GetGpuVirtualAddress(element);
-        m_SrvCbvBufferCache[type].Set(static_cast<size_t>(index), address, isConstantBuffer);
-
-        D3D12_RESOURCE_STATES state;
-
-        if (isConstantBuffer)
+    public:
+        GfxViewCache(GfxDevice* device)
+            : m_Device(device)
+            , m_RootSignature(nullptr)
+            , m_IsRootSignatureDirty(true)
+            , m_SrvCbvBufferCache{}
+            , m_SrvUavCache{}
+            , m_SamplerCache{}
+            , m_StagedResourceStates{}
         {
-            state = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-        }
-        else if constexpr (AllowPixelProgram)
-        {
-            state = IsPixelProgram(type)
-                ? D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-                : D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
-        else
-        {
-            state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
         }
 
-        // 记录状态，之后会统一使用 ResourceBarrier
-        m_StagedResourceStates[buffer->GetUnderlyingResource()] |= state;
-    }
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSrv(element);
-        m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
-
-        D3D12_RESOURCE_STATES state;
-
-        if constexpr (AllowPixelProgram)
+        void Reset()
         {
-            state = IsPixelProgram(type)
-                ? D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
-                : D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
-        else
-        {
-            state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            m_RootSignature = nullptr;
+            m_IsRootSignatureDirty = false;
+            for (auto& cache : m_SrvCbvBufferCache) cache.Reset();
+            for (auto& cache : m_SrvUavCache) cache.Reset();
+            for (auto& cache : m_SamplerCache) cache.Reset();
+            m_StagedResourceStates.clear();
         }
 
-        // 记录状态，之后会统一使用 ResourceBarrier
-        m_StagedResourceStates[texture->GetUnderlyingResource()] |= state;
-    }
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element)
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = buffer->GetUav(element);
-        m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
-
-        // 记录状态，之后会统一使用 ResourceBarrier
-        m_StagedResourceStates[buffer->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    }
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetUav(element);
-        m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
-
-        // 记录状态，之后会统一使用 ResourceBarrier
-        m_StagedResourceStates[texture->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    }
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetSampler(size_t type, uint32_t index, GfxTexture* texture)
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSampler();
-        m_SamplerCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
-    }
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetRootSrvCbvBuffers(ID3D12GraphicsCommandList* cmd)
-    {
-        for (auto& cache : m_SrvCbvBufferCache)
+        void SetRootSignature(RootSignatureType* rootSignature)
         {
-            for (size_t i = 0; i < cache.GetNum(); i++)
+            // 内部的 ID3D12RootSignature 是复用的，如果 ID3D12RootSignature 变了，说明根签名发生了结构上的变化
+            if (m_RootSignature == nullptr || m_RootSignature->GetD3DRootSignature() != rootSignature->GetD3DRootSignature())
             {
-                if (!cache.IsDirty(i))
-                {
-                    continue;
-                }
+                m_IsRootSignatureDirty = true;
 
-                bool isConstantBuffer = false;
-                D3D12_GPU_VIRTUAL_ADDRESS address = cache.Get(i, &isConstantBuffer);
-
-                if (isConstantBuffer)
-                {
-                    (cmd->*_PipelineTraits::SetRootConstantBufferView)(static_cast<UINT>(i), address);
-                }
-                else
-                {
-                    (cmd->*_PipelineTraits::SetRootShaderResourceView)(static_cast<UINT>(i), address);
-                }
+                // 删掉旧的 view
+                for (auto& cache : m_SrvCbvBufferCache) cache.Reset();
+                for (auto& cache : m_SrvUavCache) cache.Reset();
+                for (auto& cache : m_SamplerCache) cache.Reset();
+                m_StagedResourceStates.clear();
             }
 
-            cache.Apply();
+            m_RootSignature = rootSignature;
         }
-    }
 
-    template <typename _PipelineTraits>
-    template <typename Func>
-    void GfxViewCache<_PipelineTraits>::TransitionResources(Func fn)
-    {
-        for (const auto& [resource, state] : m_StagedResourceStates)
+        template <typename FindBufferFunc>
+        void SetSrvCbvBuffers(FindBufferFunc fn)
         {
-            fn(resource, state);
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                for (const auto& buf : m_RootSignature->GetSrvCbvBufferRootParamIndices(i))
+                {
+                    GfxBufferElement element = GfxBufferElement::StructuredData;
+
+                    if (GfxBuffer* buffer = fn(buf, &element))
+                    {
+                        SetSrvCbvBuffer(i, buf.BindPoint, buffer, element, buf.IsConstantBuffer);
+                    }
+                }
+            }
         }
 
-        m_StagedResourceStates.clear();
-    }
+        template <typename FindTextureFunc>
+        void SetSrvTexturesAndSamplers(FindTextureFunc fn)
+        {
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                for (const auto& tex : m_RootSignature->GetSrvTextureTableSlots(i))
+                {
+                    GfxTextureElement element = GfxTextureElement::Default;
 
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetDescriptorHeaps(ID3D12GraphicsCommandList* cmd, GfxDescriptorHeap* viewHeap, GfxDescriptorHeap* samplerHeap)
+                    if (GfxTexture* texture = fn(tex, &element))
+                    {
+                        SetSrvTexture(i, tex.BindPointTexture, texture, element);
+
+                        if (tex.BindPointSampler.has_value())
+                        {
+                            SetSampler(i, *tex.BindPointSampler, texture);
+                        }
+                    }
+                }
+            }
+        }
+
+        template <typename FindBufferFunc>
+        void SetUavBuffers(FindBufferFunc fn)
+        {
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                for (const auto& buf : m_RootSignature->GetUavBufferTableSlots(i))
+                {
+                    GfxBufferElement element = GfxBufferElement::StructuredData;
+
+                    if (GfxBuffer* buffer = fn(buf, &element))
+                    {
+                        SetUavBuffer(i, buf.BindPoint, buffer, element);
+                    }
+                }
+            }
+        }
+
+        template <typename FindTextureFunc>
+        void SetUavTextures(FindTextureFunc fn)
+        {
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                for (const auto& tex : m_RootSignature->GetUavTextureTableSlots(i))
+                {
+                    GfxTextureElement element = GfxTextureElement::Default;
+
+                    if (GfxTexture* texture = fn(tex, &element))
+                    {
+                        SetUavTexture(i, tex.BindPoint, texture, element);
+                    }
+                }
+            }
+        }
+
+        template <typename TransitionFunc>
+        void TransitionResources(TransitionFunc fn)
+        {
+            for (const auto& [resource, state] : m_StagedResourceStates)
+            {
+                fn(resource, state);
+            }
+
+            m_StagedResourceStates.clear();
+        }
+
+        void Apply(ID3D12GraphicsCommandList* cmd, GfxDescriptorHeap** ppViewHeap, GfxDescriptorHeap** ppSamplerHeap)
+        {
+            if (m_IsRootSignatureDirty)
+            {
+                (cmd->*PipelineTraits::SetRootSignature)(m_RootSignature->GetD3DRootSignature());
+                m_IsRootSignatureDirty = false;
+            }
+
+            SetRootSrvCbvBuffers(cmd);
+            SetRootDescriptorTablesAndHeaps(cmd, ppViewHeap, ppSamplerHeap);
+        }
+    };
+
+    template <GfxPipelineType _PipelineType>
+    void GfxViewCache<_PipelineType>::SetDescriptorHeaps(ID3D12GraphicsCommandList* cmd, GfxDescriptorHeap* viewHeap, GfxDescriptorHeap* samplerHeap)
     {
         if (viewHeap != nullptr && samplerHeap != nullptr)
         {
@@ -326,10 +440,9 @@ namespace march
         }
     }
 
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetRootDescriptorTablesAndHeaps(
+    template <GfxPipelineType _PipelineType>
+    void GfxViewCache<_PipelineType>::SetRootDescriptorTablesAndHeaps(
         ID3D12GraphicsCommandList* cmd,
-        RootSignatureType* rootSignature,
         GfxDescriptorHeap** ppViewHeap,
         GfxDescriptorHeap** ppSamplerHeap)
     {
@@ -351,7 +464,7 @@ namespace march
 
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
-                std::optional<uint32_t> srvUavTableRootParamIndex = rootSignature->GetSrvUavTableRootParamIndex(i);
+                std::optional<uint32_t> srvUavTableRootParamIndex = m_RootSignature->GetSrvUavTableRootParamIndex(i);
                 const auto& srvUavCache = m_SrvUavCache[i];
 
                 if (srvUavTableRootParamIndex.has_value() && srvUavCache.IsDirty() && !srvUavCache.IsEmpty())
@@ -410,7 +523,7 @@ namespace march
 
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
-                std::optional<uint32_t> samplerTableRootParamIndex = rootSignature->GetSamplerTableRootParamIndex(i);
+                std::optional<uint32_t> samplerTableRootParamIndex = m_RootSignature->GetSamplerTableRootParamIndex(i);
                 const auto& samplerCache = m_SamplerCache[i];
 
                 if (samplerTableRootParamIndex.has_value() && samplerCache.IsDirty() && !samplerCache.IsEmpty())
@@ -484,14 +597,14 @@ namespace march
         {
             if (hasSrvUav && numSrvUav[i] > 0)
             {
-                uint32_t rootParamIndex = *rootSignature->GetSrvUavTableRootParamIndex(i);
-                (cmd->*_PipelineTraits::SetRootDescriptorTable)(static_cast<UINT>(rootParamIndex), srvUavTables[i]);
+                uint32_t rootParamIndex = *m_RootSignature->GetSrvUavTableRootParamIndex(i);
+                (cmd->*PipelineTraits::SetRootDescriptorTable)(static_cast<UINT>(rootParamIndex), srvUavTables[i]);
             }
 
             if (hasSampler && numSamplers[i] > 0)
             {
-                uint32_t rootParamIndex = *rootSignature->GetSamplerTableRootParamIndex(i);
-                (cmd->*_PipelineTraits::SetRootDescriptorTable)(static_cast<UINT>(rootParamIndex), samplerTables[i]);
+                uint32_t rootParamIndex = *m_RootSignature->GetSamplerTableRootParamIndex(i);
+                (cmd->*PipelineTraits::SetRootDescriptorTable)(static_cast<UINT>(rootParamIndex), samplerTables[i]);
             }
         }
 
@@ -509,24 +622,6 @@ namespace march
             {
                 cache.SetDirty(false);
             }
-        }
-    }
-
-    template <typename _PipelineTraits>
-    void GfxViewCache<_PipelineTraits>::SetRootSignature(ID3D12GraphicsCommandList* cmd, RootSignatureType* rootSignature)
-    {
-        // 内部的 ID3D12RootSignature 是复用的，如果 ID3D12RootSignature 变了，说明根签名发生了结构上的变化
-        if (m_CurrentRootSignature != rootSignature->GetD3DRootSignature())
-        {
-            // 删掉旧的 view
-            for (auto& cache : m_SrvCbvBufferCache) cache.Reset();
-            for (auto& cache : m_SrvUavCache) cache.Reset();
-            for (auto& cache : m_SamplerCache) cache.Reset();
-            m_StagedResourceStates.clear();
-
-            // 设置 root signature
-            m_CurrentRootSignature = rootSignature->GetD3DRootSignature();
-            (cmd->*_PipelineTraits::SetRootSignature)(m_CurrentRootSignature);
         }
     }
 }

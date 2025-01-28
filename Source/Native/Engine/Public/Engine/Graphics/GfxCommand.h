@@ -231,8 +231,8 @@ namespace march
         std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
         std::vector<GfxSyncPoint> m_SyncPointsToWait;
 
-        GfxViewCache<GraphicsPipelineTraits> m_GraphicsViewCache;
-        GfxViewCache<ComputePipelineTraits> m_ComputeViewCache;
+        GfxViewCache<GfxPipelineType::Graphics> m_GraphicsViewCache;
+        GfxViewCache<GfxPipelineType::Compute> m_ComputeViewCache;
 
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
@@ -273,27 +273,8 @@ namespace march
 
         ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex);
 
-        void SetGraphicsSrvCbvBuffer(ShaderProgramType type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer);
-        void SetGraphicsSrvTexture(ShaderProgramType type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
-        void SetGraphicsUavBuffer(ShaderProgramType type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element);
-        void SetGraphicsUavTexture(ShaderProgramType type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
-        void SetGraphicsSampler(ShaderProgramType type, uint32_t index, GfxTexture* texture);
         void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex);
-        void SetGraphicsRootDescriptorTablesAndHeaps(Shader::RootSignatureType* rootSignature);
-        void SetGraphicsRootSrvCbvBuffers();
-        void TransitionGraphicsViewResources();
-
-        void SetComputeSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer);
-        void SetComputeSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
-        void SetComputeUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element);
-        void SetComputeUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element);
-        void SetComputeSampler(size_t type, uint32_t index, GfxTexture* texture);
         void SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords);
-        void SetComputeRootDescriptorTablesAndHeaps(ComputeShader::RootSignatureType* rootSignature);
-        void SetComputeRootSrvCbvBuffers();
-        void TransitionComputeViewResources();
-
-        void SetDescriptorHeaps();
 
         void SetResolvedRenderState(const ShaderPassRenderState& state);
         void SetStencilRef(uint8_t value);
