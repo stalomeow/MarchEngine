@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 #include <string>
+#include <fmt/core.h>
+#include <fmt/xchar.h>
 
 namespace march::StringUtils
 {
@@ -24,4 +26,16 @@ namespace march::StringUtils
     std::wstring Utf8ToUtf16(const std::string& s);
 
     std::string Utf8ToAnsi(const std::string& s);
+
+    template <typename... _Args>
+    __forceinline std::string Format(const std::string& format, _Args&&... args)
+    {
+        return ::fmt::format(format, std::forward<_Args>(args)...);
+    }
+
+    template <typename... _Args>
+    __forceinline std::wstring Format(const std::wstring& format, _Args&&... args)
+    {
+        return ::fmt::format(format, std::forward<_Args>(args)...);
+    }
 }

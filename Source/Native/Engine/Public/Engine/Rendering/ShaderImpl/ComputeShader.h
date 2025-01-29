@@ -1,0 +1,68 @@
+#pragma once
+
+#include "Engine/Ints.h"
+#include "Engine/Object.h"
+#include "Engine/Rendering/ShaderImpl/ShaderKeyword.h"
+#include "Engine/Rendering/ShaderImpl/ShaderProgram.h"
+#include <directx/d3dx12.h>
+#include <vector>
+#include <string>
+#include <memory>
+#include <optional>
+
+namespace march
+{
+    class ComputeShaderKernel final : public ShaderProgramGroup<1>
+    {
+        using Base = ShaderProgramGroup<1>;
+
+        friend class ComputeShader;
+
+    protected:
+        D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
+        bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
+        std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
+        void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override;
+        void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override {}
+    };
+
+    class ComputeShader : public MarchObject
+    {
+    public:
+        static constexpr size_t NumProgramTypes = ComputeShaderKernel::NumProgramTypes;
+        using RootSignatureType = ComputeShaderKernel::RootSignatureType;
+
+    private:
+        std::string m_Name{};
+        ShaderKeywordSpace m_KeywordSpace{};
+        DynamicShaderKeywordSet m_KeywordSet{}; // 不会被序列化
+        std::vector<std::unique_ptr<ComputeShaderKernel>> m_Kernels{};
+
+    public:
+        const std::string& GetName() const { return m_Name; }
+
+        const ShaderKeywordSpace& GetKeywordSpace() const { return m_KeywordSpace; }
+
+        const ShaderKeywordSet& GetKeywords() const { return m_KeywordSet.GetKeywordSet(); }
+
+        void EnableKeyword(const std::string& keyword) { m_KeywordSet.EnableKeyword(m_KeywordSpace, keyword); }
+
+        void EnableKeyword(int32 keywordId) { m_KeywordSet.EnableKeyword(m_KeywordSpace, keywordId); }
+
+        void DisableKeyword(const std::string& keyword) { m_KeywordSet.DisableKeyword(m_KeywordSpace, keyword); }
+
+        void DisableKeyword(int32 keywordId) { m_KeywordSet.DisableKeyword(m_KeywordSpace, keywordId); }
+
+        void SetKeyword(const std::string& keyword, bool value) { m_KeywordSet.SetKeyword(m_KeywordSpace, keyword, value); }
+
+        void SetKeyword(int32 keywordId, bool value) { m_KeywordSet.SetKeyword(m_KeywordSpace, keywordId, value); }
+
+        size_t GetKernelCount() const { return m_Kernels.size(); }
+
+        std::optional<size_t> FindKernel(const std::string& name) const;
+        void GetThreadGroupSize(size_t kernelIndex, uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ);
+
+    private:
+        bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
+    };
+}

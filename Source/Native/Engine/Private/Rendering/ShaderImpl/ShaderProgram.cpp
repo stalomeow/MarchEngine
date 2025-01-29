@@ -1,0 +1,370 @@
+#include "pch.h"
+#include "Engine/Rendering/ShaderImpl/ShaderProgram.h"
+#include "Engine/Rendering/ShaderImpl/ShaderUtils.h"
+#include "Engine/Graphics/GfxSettings.h"
+#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Debug.h"
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <regex>
+#include <sstream>
+#include <functional>
+
+using namespace Microsoft::WRL;
+
+namespace march
+{
+    // ID3D12RootSignature 根据 Hash 复用
+    static std::unordered_map<size_t, ComPtr<ID3D12RootSignature>> g_GlobalRootSignaturePool{};
+
+    void ShaderUtils::ClearRootSignatureCache()
+    {
+        g_GlobalRootSignaturePool.clear();
+    }
+
+    void ShaderRootSignatureInternalUtils::AddStaticSamplers(
+        std::vector<CD3DX12_STATIC_SAMPLER_DESC>& samplers,
+        ShaderProgram* program,
+        D3D12_SHADER_VISIBILITY visibility)
+    {
+        static std::unordered_map<int32, CD3DX12_STATIC_SAMPLER_DESC> cache{};
+
+        // build cache
+        if (cache.empty())
+        {
+            auto filters =
+            {
+                std::pair{ "Point"    , D3D12_FILTER_MIN_MAG_MIP_POINT        },
+                std::pair{ "Linear"   , D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT },
+                std::pair{ "Trilinear", D3D12_FILTER_MIN_MAG_MIP_LINEAR       },
+            };
+
+            auto wraps =
+            {
+                std::pair{ "Repeat"    , D3D12_TEXTURE_ADDRESS_MODE_WRAP        },
+                std::pair{ "Clamp"     , D3D12_TEXTURE_ADDRESS_MODE_CLAMP       },
+                std::pair{ "Mirror"    , D3D12_TEXTURE_ADDRESS_MODE_MIRROR      },
+                std::pair{ "MirrorOnce", D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE },
+            };
+
+            using namespace std::string_literals;
+
+            for (const auto& [filterName, filterValue] : filters)
+            {
+                for (const auto& [wrapName, wrapValue] : wraps)
+                {
+                    std::string name = "sampler_"s + filterName + wrapName;
+                    CD3DX12_STATIC_SAMPLER_DESC& desc = cache[ShaderUtils::GetIdFromString(name)];
+
+                    desc.Filter = filterValue;
+                    desc.AddressU = wrapValue;
+                    desc.AddressV = wrapValue;
+                    desc.AddressW = wrapValue;
+                }
+            }
+
+            // Anisotropic
+            for (UINT aniso = 1; aniso <= 16; aniso++)
+            {
+                for (const auto& [wrapName, wrapValue] : wraps)
+                {
+                    std::string name = "sampler_Aniso"s + std::to_string(aniso) + wrapName;
+                    CD3DX12_STATIC_SAMPLER_DESC& desc = cache[ShaderUtils::GetIdFromString(name)];
+
+                    desc.Filter = D3D12_FILTER_ANISOTROPIC;
+                    desc.AddressU = wrapValue;
+                    desc.AddressV = wrapValue;
+                    desc.AddressW = wrapValue;
+                    desc.MaxAnisotropy = aniso;
+                }
+            }
+        }
+
+        for (const ShaderProgramStaticSampler& s : program->GetStaticSamplers())
+        {
+            if (auto it = cache.find(s.Id); it != cache.end())
+            {
+                CD3DX12_STATIC_SAMPLER_DESC& desc = samplers.emplace_back(it->second);
+
+                desc.ShaderRegister = static_cast<UINT>(s.ShaderRegister);
+                desc.RegisterSpace = static_cast<UINT>(s.RegisterSpace);
+                desc.ShaderVisibility = visibility;
+            }
+        }
+    }
+
+    ComPtr<ID3D12RootSignature> ShaderRootSignatureInternalUtils::CreateRootSignature(const D3D12_ROOT_SIGNATURE_DESC& desc)
+    {
+        ComPtr<ID3DBlob> serializedData = nullptr;
+        ComPtr<ID3DBlob> error = nullptr;
+        HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, serializedData.GetAddressOf(), error.GetAddressOf());
+
+        if (error != nullptr)
+        {
+            LOG_ERROR("{}", reinterpret_cast<char*>(error->GetBufferPointer()));
+        }
+
+        GFX_HR(hr);
+
+        LPVOID bufferPointer = serializedData->GetBufferPointer();
+        SIZE_T bufferSize = serializedData->GetBufferSize();
+
+        if (bufferSize % 4 != 0)
+        {
+            throw GfxException("Invalid root signature data size");
+        }
+
+        DefaultHash hash{};
+        hash.Append(bufferPointer, bufferSize);
+        ComPtr<ID3D12RootSignature>& result = g_GlobalRootSignaturePool[*hash];
+
+        if (result == nullptr)
+        {
+            LOG_TRACE("Create new RootSignature");
+
+            ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
+            GFX_HR(device->CreateRootSignature(0, bufferPointer, bufferSize, IID_PPV_ARGS(result.GetAddressOf())));
+        }
+        else
+        {
+            LOG_TRACE("Reuse RootSignature");
+        }
+
+        return result;
+    }
+
+    bool ShaderCompilationInternalUtils::EnumeratePragmas(const std::string& source, const std::function<bool(const std::vector<std::string>&)>& fn)
+    {
+        std::regex re(R"(^\s*#\s*pragma\s+(.*))", std::regex::ECMAScript);
+        auto itEnd = std::sregex_iterator();
+
+        std::vector<std::string> args{};
+
+        for (auto it = std::sregex_iterator(source.begin(), source.end(), re); it != itEnd; ++it)
+        {
+            args.clear();
+            std::istringstream iss((*it)[1]);
+
+            std::string temp{};
+            while (iss >> temp)
+            {
+                args.emplace_back(std::move(temp));
+            }
+
+            if (!args.empty() && !fn(args))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void ShaderCompilationInternalUtils::AppendEngineMacros(std::vector<std::wstring>& m)
+    {
+        if constexpr (GfxSettings::UseReversedZBuffer)
+        {
+            m.push_back(L"MARCH_REVERSED_Z=1");
+        }
+
+        if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Gamma)
+        {
+            m.push_back(L"MARCH_COLORSPACE_GAMMA=1");
+        }
+
+        m.push_back(L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxUtils::NearClipPlaneDepth));
+        m.push_back(L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxUtils::FarClipPlaneDepth));
+    }
+
+    void ShaderCompilationInternalUtils::SaveCompilationResults(
+        IDxcUtils* utils,
+        ComPtr<IDxcResult> pResults,
+        ShaderProgram* program,
+        const std::function<void(ID3D12ShaderReflectionConstantBuffer*)>& recordConstantBufferCallback)
+    {
+        // 保存编译结果
+        GFX_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&program->m_Binary), nullptr));
+
+        // 暂时不输出 PDB 文件
+
+        // 保存 Hash
+        ComPtr<IDxcBlob> hash = nullptr;
+        GFX_HR(pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&hash), nullptr));
+        program->m_Hash.SetData(*static_cast<DxcShaderHash*>(hash->GetBufferPointer()));
+
+        // 反射
+        ComPtr<IDxcBlob> pReflectionData = nullptr;
+        GFX_HR(pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&pReflectionData), nullptr));
+
+        if (pReflectionData != nullptr)
+        {
+            // Create reflection interface.
+            DxcBuffer ReflectionData{};
+            ReflectionData.Encoding = DXC_CP_ACP;
+            ReflectionData.Ptr = pReflectionData->GetBufferPointer();
+            ReflectionData.Size = pReflectionData->GetBufferSize();
+
+            ComPtr<ID3D12ShaderReflection> pReflection = nullptr;
+            GFX_HR(utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection)));
+
+            UINT threadGroupSize[3]{};
+            pReflection->GetThreadGroupSize(&threadGroupSize[0], &threadGroupSize[1], &threadGroupSize[2]);
+            program->m_ThreadGroupSizeX = static_cast<uint32_t>(threadGroupSize[0]);
+            program->m_ThreadGroupSizeY = static_cast<uint32_t>(threadGroupSize[1]);
+            program->m_ThreadGroupSizeZ = static_cast<uint32_t>(threadGroupSize[2]);
+
+            D3D12_SHADER_DESC shaderDesc{};
+            GFX_HR(pReflection->GetDesc(&shaderDesc));
+
+            std::unordered_map<int32, ShaderProgramStaticSampler> samplers{};
+
+            // 记录所有资源
+            for (UINT i = 0; i < shaderDesc.BoundResources; i++)
+            {
+                D3D12_SHADER_INPUT_BIND_DESC bindDesc{};
+                GFX_HR(pReflection->GetResourceBindingDesc(i, &bindDesc));
+
+                // TODO rt acceleration structure
+                // TODO uav readback texture
+
+                switch (bindDesc.Type)
+                {
+                case D3D_SIT_CBUFFER:
+                {
+                    ID3D12ShaderReflectionConstantBuffer* cb = pReflection->GetConstantBufferByName(bindDesc.Name);
+                    D3D12_SHADER_BUFFER_DESC cbDesc{};
+                    GFX_HR(cb->GetDesc(&cbDesc));
+
+                    ShaderProgramBuffer& buffer = program->m_SrvCbvBuffers.emplace_back();
+                    buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                    buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
+                    buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
+                    buffer.ConstantBufferSize = static_cast<uint32_t>(cbDesc.Size);
+                    recordConstantBufferCallback(cb);
+                    break;
+                }
+
+                // TODO: tbuffer 怎么用
+                // TODO: 如何绑定 Buffer<T>；Buffer<T> 算是 tbuffer 吗
+                // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/sm5-object-buffer
+                case D3D_SIT_TBUFFER:
+                case D3D_SIT_STRUCTURED:
+                case D3D_SIT_BYTEADDRESS:
+                {
+                    ShaderProgramBuffer& buffer = program->m_SrvCbvBuffers.emplace_back();
+                    buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                    buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
+                    buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
+                    buffer.ConstantBufferSize = 0;
+                    break;
+                }
+
+                case D3D_SIT_UAV_RWSTRUCTURED:
+                case D3D_SIT_UAV_RWBYTEADDRESS:
+                case D3D_SIT_UAV_APPEND_STRUCTURED:
+                case D3D_SIT_UAV_CONSUME_STRUCTURED:
+                case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+                {
+                    ShaderProgramBuffer& buffer = program->m_UavBuffers.emplace_back();
+                    buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                    buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
+                    buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
+                    buffer.ConstantBufferSize = 0;
+                    break;
+                }
+
+                case D3D_SIT_TEXTURE:
+                {
+                    ShaderProgramTexture& tex = program->m_SrvTextures.emplace_back();
+                    tex.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                    tex.ShaderRegisterTexture = static_cast<uint32_t>(bindDesc.BindPoint);
+                    tex.RegisterSpaceTexture = static_cast<uint32_t>(bindDesc.Space);
+                    tex.HasSampler = false; // 先假设没有 sampler
+                    tex.ShaderRegisterSampler = 0;
+                    tex.RegisterSpaceSampler = 0;
+                    break;
+                }
+
+                case D3D_SIT_SAMPLER:
+                {
+                    // 先假设全是 static sampler
+                    ShaderProgramStaticSampler sampler{};
+                    sampler.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                    sampler.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
+                    sampler.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
+                    samplers[sampler.Id] = sampler;
+                    break;
+                }
+
+                // https://learn.microsoft.com/en-us/windows/win32/api/d3dcommon/ne-d3dcommon-d3d_shader_input_type
+                // The shader resource is a read-and-write buffer or texture.
+                case D3D_SIT_UAV_RWTYPED:
+                {
+                    bool isTexture;
+
+                    switch (bindDesc.Dimension)
+                    {
+                    case D3D_SRV_DIMENSION_TEXTURE1D:
+                    case D3D_SRV_DIMENSION_TEXTURE1DARRAY:
+                    case D3D_SRV_DIMENSION_TEXTURE2D:
+                    case D3D_SRV_DIMENSION_TEXTURE2DARRAY:
+                    case D3D_SRV_DIMENSION_TEXTURE2DMS:
+                    case D3D_SRV_DIMENSION_TEXTURE2DMSARRAY:
+                    case D3D_SRV_DIMENSION_TEXTURE3D:
+                    case D3D_SRV_DIMENSION_TEXTURECUBE:
+                    case D3D_SRV_DIMENSION_TEXTURECUBEARRAY:
+                        isTexture = true;
+                        break;
+                    default:
+                        isTexture = false;
+                        break;
+                    }
+
+                    if (isTexture)
+                    {
+                        ShaderProgramTexture& tex = program->m_UavTextures.emplace_back();
+                        tex.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                        tex.ShaderRegisterTexture = static_cast<uint32_t>(bindDesc.BindPoint);
+                        tex.RegisterSpaceTexture = static_cast<uint32_t>(bindDesc.Space);
+                        tex.HasSampler = false; // uav 没有 sampler
+                        tex.ShaderRegisterSampler = 0;
+                        tex.RegisterSpaceSampler = 0;
+                    }
+                    else
+                    {
+                        ShaderProgramBuffer& buffer = program->m_UavBuffers.emplace_back();
+                        buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
+                        buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
+                        buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
+                        buffer.ConstantBufferSize = 0;
+                    }
+
+                    break;
+                }
+                }
+            }
+
+            // 记录 texture sampler
+            for (ShaderProgramTexture& tex : program->m_SrvTextures)
+            {
+                int32 samplerId = ShaderUtils::GetIdFromString("sampler" + ShaderUtils::GetStringFromId(tex.Id));
+
+                if (auto it = samplers.find(samplerId); it != samplers.end())
+                {
+                    tex.HasSampler = true;
+                    tex.ShaderRegisterSampler = it->second.ShaderRegister;
+                    tex.RegisterSpaceSampler = it->second.RegisterSpace;
+                    samplers.erase(it); // 移除假的 static sampler
+                }
+            }
+
+            // 剩下的就是真的 static sampler
+            for (const auto& [_, sampler] : samplers)
+            {
+                program->m_StaticSamplers.emplace_back(sampler);
+            }
+        }
+    }
+}

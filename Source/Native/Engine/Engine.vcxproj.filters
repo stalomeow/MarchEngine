@@ -44,11 +44,16 @@
     <ClInclude Include="Public\Engine\Graphics\Material.h" />
     <ClInclude Include="Public\Engine\Graphics\MeshRenderer.h" />
     <ClInclude Include="Public\Engine\Graphics\RenderDoc.h" />
-    <ClInclude Include="Public\Engine\Graphics\Shader.h" />
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Public\Engine\JobManager.h" />
     <ClInclude Include="Public\Engine\Object.h" />
     <ClInclude Include="Public\Engine\Graphics\GfxViewCache.h" />
+    <ClInclude Include="Public\Engine\Rendering\ShaderImpl\ShaderUtils.h" />
+    <ClInclude Include="Public\Engine\Rendering\ShaderImpl\ShaderKeyword.h" />
+    <ClInclude Include="Public\Engine\Rendering\ShaderImpl\ShaderProgram.h" />
+    <ClInclude Include="Public\Engine\Rendering\ShaderImpl\Shader.h" />
+    <ClInclude Include="Public\Engine\Rendering\ShaderImpl\ComputeShader.h" />
+    <ClInclude Include="Public\Engine\Rendering\Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />
@@ -101,14 +106,15 @@
     <ClCompile Include="Private\Graphics\MeshRenderer.binding.cpp" />
     <ClCompile Include="Private\Graphics\MeshRenderer.cpp" />
     <ClCompile Include="Private\Graphics\RenderDoc.cpp" />
-    <ClCompile Include="Private\Graphics\Shader.binding.cpp" />
-    <ClCompile Include="Private\Graphics\Shader.cpp" />
-    <ClCompile Include="Private\Graphics\ShaderKeyword.cpp" />
-    <ClCompile Include="Private\Graphics\ShaderProgram.cpp" />
-    <ClCompile Include="Private\Graphics\ShaderRootSignature.cpp" />
+    <ClCompile Include="Private\Rendering\Shader.binding.cpp" />
+    <ClCompile Include="Private\Rendering\ShaderImpl\Shader.cpp" />
+    <ClCompile Include="Private\Rendering\ShaderImpl\ShaderKeyword.cpp" />
+    <ClCompile Include="Private\Rendering\ShaderImpl\ShaderProgram.cpp" />
     <ClCompile Include="Private\pch.cpp" />
     <ClCompile Include="Private\JobManager.cpp" />
     <ClCompile Include="Private\JobManager.binding.cpp" />
     <ClCompile Include="Private\Object.binding.cpp" />
+    <ClCompile Include="Private\Rendering\ShaderImpl\ShaderUtils.cpp" />
+    <ClCompile Include="Private\Rendering\ShaderImpl\ComputeShader.cpp" />
   </ItemGroup>
 </Project>
