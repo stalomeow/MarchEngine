@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxMesh.h"
-#include "Engine/Graphics/GfxPipelineState.h"
+#include "Engine/Rendering/D3D12Impl/GfxMesh.h"
+#include "Engine/Rendering/D3D12Impl/GfxPipeline.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Scripting/DotNetMarshal.h"
 

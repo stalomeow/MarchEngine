@@ -94,7 +94,7 @@ namespace March.Core.Rendering
         public string Name = string.Empty;
         public uint ShaderRegister;
         public uint RegisterSpace;
-        public uint ConstantBufferSize;
+        public bool IsConstantBuffer;
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct Native
@@ -102,7 +102,7 @@ namespace March.Core.Rendering
             public nint Name;
             public uint ShaderRegister;
             public uint RegisterSpace;
-            public uint ConstantBufferSize;
+            public NativeBool IsConstantBuffer;
         }
 
         public static ShaderBuffer FromNative(ref Native native) => new()
@@ -110,7 +110,7 @@ namespace March.Core.Rendering
             Name = NativeString.Get(native.Name),
             ShaderRegister = native.ShaderRegister,
             RegisterSpace = native.RegisterSpace,
-            ConstantBufferSize = native.ConstantBufferSize,
+            IsConstantBuffer = native.IsConstantBuffer,
         };
 
         public static void ToNative(ShaderBuffer value, out Native native)
@@ -118,7 +118,7 @@ namespace March.Core.Rendering
             native.Name = NativeString.New(value.Name);
             native.ShaderRegister = value.ShaderRegister;
             native.RegisterSpace = value.RegisterSpace;
-            native.ConstantBufferSize = value.ConstantBufferSize;
+            native.IsConstantBuffer = value.IsConstantBuffer;
         }
 
         public static void FreeNative(ref Native native)
@@ -326,7 +326,7 @@ namespace March.Core.Rendering
     internal struct OptionalShaderPropertyId(string propertyName)
     {
         public NativeBool HasValue = true;
-        public int Value = Shader.GetNameId(propertyName);
+        public int Value = ShaderUtility.GetIdFromString(propertyName);
     }
 
     internal sealed class OptionalShaderPropertyIdJsonConverter : JsonConverter<OptionalShaderPropertyId>
@@ -346,7 +346,7 @@ namespace March.Core.Rendering
         {
             if (value.HasValue)
             {
-                writer.WriteValue(Shader.GetIdName(value.Value));
+                writer.WriteValue(ShaderUtility.GetStringFromId(value.Value));
             }
             else
             {
@@ -482,7 +482,7 @@ namespace March.Core.Rendering
     internal struct ShaderPassDepthState
     {
         public NativeBool Enable;
-        public ShaderPassVar<bool> Write;
+        public ShaderPassVar<NativeBool> Write;
         public ShaderPassVar<CompareFunction> Compare;
     }
 
@@ -565,7 +565,6 @@ namespace March.Core.Rendering
     {
         public string Name = string.Empty;
         public ShaderPassTag[] Tags = [];
-        public ShaderPropertyLocation[] PropertyLocations = [];
         public ShaderProgram[] Programs = [];
 
         public ShaderPassVar<CullMode> Cull;
@@ -578,7 +577,6 @@ namespace March.Core.Rendering
         {
             public nint Name;
             public NativeArrayMarshal<ShaderPassTag> Tags;
-            public NativeArrayMarshal<ShaderPropertyLocation> PropertyLocations;
             public NativeArrayMarshal<ShaderProgram> Programs;
             public ShaderPassVar<CullMode> Cull;
             public NativeArray<ShaderPassBlendState> Blends;
@@ -590,7 +588,6 @@ namespace March.Core.Rendering
         {
             Name = NativeString.Get(native.Name),
             Tags = native.Tags.Value,
-            PropertyLocations = native.PropertyLocations.Value,
             Programs = native.Programs.Value,
             Cull = native.Cull,
             Blends = native.Blends.Value,
@@ -602,7 +599,6 @@ namespace March.Core.Rendering
         {
             native.Name = NativeString.New(value.Name);
             native.Tags = value.Tags;
-            native.PropertyLocations = value.PropertyLocations;
             native.Programs = value.Programs;
             native.Cull = value.Cull;
             native.Blends = value.Blends;
@@ -614,10 +610,33 @@ namespace March.Core.Rendering
         {
             NativeString.Free(native.Name);
             native.Tags.Dispose();
-            native.PropertyLocations.Dispose();
             native.Programs.Dispose();
             native.Blends.Dispose();
         }
+    }
+
+    [NativeTypeName("ShaderUtils")]
+    public static partial class ShaderUtility
+    {
+        #region EngineShaderPath
+
+        private static string? s_CachedEngineShaderPath;
+
+        /// <summary>
+        /// 引擎内置 Shader 的路径 (Unix Style)
+        /// </summary>
+        public static string EngineShaderPath => s_CachedEngineShaderPath ??= GetEngineShaderPathUnixStyle();
+
+        [NativeMethod]
+        private static partial string GetEngineShaderPathUnixStyle();
+
+        #endregion
+
+        [NativeMethod]
+        public static partial int GetIdFromString(StringLike name);
+
+        [NativeMethod]
+        public static partial string GetStringFromId(int id);
     }
 
     public unsafe partial class Shader : NativeMarchObject
@@ -673,6 +692,26 @@ namespace March.Core.Rendering
             {
                 using NativeArrayMarshal<ShaderPass> passes = value;
                 SetPasses(passes);
+            }
+        }
+
+        [JsonProperty]
+        [NativeProperty]
+        internal partial uint MaterialConstantBufferSize { get; set; }
+
+        [JsonProperty]
+        internal ShaderPropertyLocation[] PropertyLocations
+        {
+            get
+            {
+                GetPropertyLocations(out nint locations);
+                return NativeArrayMarshal<ShaderPropertyLocation>.GetAndFree(locations);
+            }
+
+            set
+            {
+                using NativeArrayMarshal<ShaderPropertyLocation> locations = value;
+                SetPropertyLocations(locations);
             }
         }
 
@@ -742,26 +781,6 @@ namespace March.Core.Rendering
             return success;
         }
 
-        #region EngineShaderPath
-
-        private static string? s_CachedEngineShaderPath;
-
-        /// <summary>
-        /// 引擎内置 Shader 的路径 (Unix Style)
-        /// </summary>
-        public static string EngineShaderPath => s_CachedEngineShaderPath ??= GetEngineShaderPathUnixStyle();
-
-        [NativeMethod]
-        private static partial string GetEngineShaderPathUnixStyle();
-
-        #endregion
-
-        [NativeMethod]
-        public static partial int GetNameId(StringLike name);
-
-        [NativeMethod]
-        public static partial string GetIdName(int id);
-
         [NativeMethod]
         private static partial nint New();
 
@@ -776,6 +795,12 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         private partial void SetPasses(NativeArrayMarshal<ShaderPass> passes);
+
+        [NativeMethod]
+        private partial void GetPropertyLocations(out nint locations);
+
+        [NativeMethod]
+        private partial void SetPropertyLocations(NativeArrayMarshal<ShaderPropertyLocation> locations);
 
         [NativeMethod]
         private partial bool CompilePass(int passIndex, string filename, string source, nint* warnings, nint* error);

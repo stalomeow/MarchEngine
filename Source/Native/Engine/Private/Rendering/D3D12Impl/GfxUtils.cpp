@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxUtils.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/StringUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
+#include "Engine/Misc/StringUtils.h"
 #include <cmath>
 #include <wrl.h>
 #include <dxgi1_4.h>

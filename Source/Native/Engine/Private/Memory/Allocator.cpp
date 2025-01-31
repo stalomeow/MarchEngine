@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "Engine/Memory/Allocator.h"
 #include "Engine/Debug.h"
-#include "Engine/MathUtils.h"
+#include "Engine/Memory/Allocator.h"
+#include "Engine/Misc/MathUtils.h"
 #include <limits>
 #include <assert.h>
 

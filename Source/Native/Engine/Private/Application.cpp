@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Engine/Application.h"
 #include "Engine/EngineTimer.h"
-#include "Engine/StringUtils.h"
+#include "Engine/Misc/StringUtils.h"
 #include <WindowsX.h>
 #include <stdexcept>
 #include <assert.h>

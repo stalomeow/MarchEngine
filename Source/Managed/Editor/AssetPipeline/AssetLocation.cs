@@ -57,7 +57,7 @@ namespace March.Editor.AssetPipeline
                     {
                         Category = AssetCategory.EngineShader,
                         AssetPath = path,
-                        AssetFullPath = AssetLocationUtility.CombinePath(Shader.EngineShaderPath, path[15..]), // "Engine/Shaders/".Length == 15
+                        AssetFullPath = AssetLocationUtility.CombinePath(ShaderUtility.EngineShaderPath, path[15..]), // "Engine/Shaders/".Length == 15
                         ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
                     };
                 }
@@ -91,9 +91,9 @@ namespace March.Editor.AssetPipeline
                     };
                 }
 
-                if (fullPath.StartsWith(Shader.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
+                if (fullPath.StartsWith(ShaderUtility.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    string relativePath = fullPath[(Shader.EngineShaderPath.Length + 1)..];
+                    string relativePath = fullPath[(ShaderUtility.EngineShaderPath.Length + 1)..];
 
                     return new()
                     {

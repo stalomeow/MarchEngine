@@ -1,15 +1,12 @@
 #pragma once
 
-#include "Engine/Object.h"
+#include "Engine/Memory/RefCounting.h"
 #include <directx/d3dx12.h>
 #include <dxgi1_4.h>
 #include <wrl.h>
 #include <memory>
 #include <queue>
-#include <string>
-#include <exception>
 #include <stdint.h>
-#include <Windows.h>
 
 namespace march
 {
@@ -93,35 +90,7 @@ namespace march
         void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
     };
 
-    class GfxException : public std::exception
-    {
-    public:
-        explicit GfxException(const std::string& message);
-
-        char const* what() const override;
-
-    private:
-        std::string m_Message;
-    };
-
-    class GfxHResultException : public std::exception
-    {
-    public:
-        GfxHResultException(HRESULT hr, const std::string& expr, const std::string& filename, int line);
-
-        char const* what() const override;
-
-    private:
-        std::string m_Message;
-    };
-
     GfxDevice* GetGfxDevice();
     GfxDevice* InitGfxDevice(const GfxDeviceDesc& desc);
     void DestroyGfxDevice();
-}
-
-#define GFX_HR(x) \
-{ \
-    HRESULT ___hr___ = (x); \
-    if (FAILED(___hr___)) { throw ::march::GfxHResultException(___hr___, #x, __FILE__, __LINE__); } \
 }

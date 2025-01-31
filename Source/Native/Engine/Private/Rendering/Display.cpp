@@ -1,7 +1,6 @@
 #include "pch.h"
-#include "Engine/Graphics/Display.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxTexture.h"
+#include "Engine/Rendering/Display.h"
+#include "Engine/Rendering/D3D12.h"
 
 namespace march
 {
@@ -9,9 +8,8 @@ namespace march
     static const GfxTextureFormat ColorFormat = GfxTextureFormat::R16G16B16A16_Float;
     static const GfxTextureFormat DepthStencilFormat = GfxTextureFormat::D24_UNorm_S8_UInt;
 
-    Display::Display(GfxDevice* device, const std::string& name, uint32_t width, uint32_t height)
-        : m_Device(device)
-        , m_Name(name)
+    Display::Display(const std::string& name, uint32_t width, uint32_t height)
+        : m_Name(name)
         , m_EnableMSAA(false)
         , m_ColorBuffer(nullptr)
         , m_DepthStencilBuffer(nullptr)
@@ -94,6 +92,8 @@ namespace march
 
     void Display::CreateBuffers(uint32_t width, uint32_t height)
     {
+        GfxDevice* device = GetGfxDevice();
+
         GfxTextureDesc colorDesc{};
         colorDesc.Format = ColorFormat;
         colorDesc.Flags = GfxTextureFlags::None;
@@ -106,7 +106,7 @@ namespace march
         colorDesc.Wrap = GfxTextureWrapMode::Clamp;
         colorDesc.MipmapBias = 0.0f;
 
-        m_ColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColor", colorDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
+        m_ColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor", colorDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
 
         GfxTextureDesc dsDesc{};
         dsDesc.Format = DepthStencilFormat;
@@ -120,15 +120,15 @@ namespace march
         dsDesc.Wrap = GfxTextureWrapMode::Clamp;
         dsDesc.MipmapBias = 0.0f;
 
-        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencil", dsDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
+        m_DepthStencilBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayDepthStencil", dsDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
 
         if (m_EnableMSAA)
         {
             colorDesc.MSAASamples = 1;
             dsDesc.MSAASamples = 1;
 
-            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayColorResolved", colorDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
-            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(m_Device, m_Name + "DisplayDepthStencilResolved", dsDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
+            m_ResolvedColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColorResolved", colorDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
+            m_ResolvedDepthStencilBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayDepthStencilResolved", dsDesc, GfxTexureAllocStrategy::DefaultHeapCommitted);
         }
         else
         {
@@ -144,9 +144,9 @@ namespace march
         return s_MainDisplay.get();
     }
 
-    void Display::CreateMainDisplay(GfxDevice* device, uint32_t width, uint32_t height)
+    void Display::CreateMainDisplay(uint32_t width, uint32_t height)
     {
-        s_MainDisplay = std::make_unique<Display>(device, "Main", width, height);
+        s_MainDisplay = std::make_unique<Display>("Main", width, height);
     }
 
     void Display::DestroyMainDisplay()

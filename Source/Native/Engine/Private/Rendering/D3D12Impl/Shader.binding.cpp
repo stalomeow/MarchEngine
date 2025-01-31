@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "Engine/Graphics/Shader.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
+#include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
+#include "Engine/Rendering/D3D12Impl/GfxTexture.h"
 #include "Engine/Scripting/InteropServices.h"
 #include "Engine/Debug.h"
 #include <exception>
@@ -28,7 +28,7 @@ struct CSharpShaderBuffer
     cs_string Name;
     cs_uint ShaderRegister;
     cs_uint RegisterSpace;
-    cs_uint ConstantBufferSize;
+    cs_bool IsConstantBuffer;
 };
 
 struct CSharpShaderProgram
@@ -131,7 +131,6 @@ struct CSharpShaderPass
 {
     cs_string Name;
     cs<CSharpShaderPassTag[]> Tags;
-    cs<CSharpShaderPropertyLocation[]> PropertyLocations;
     cs<CSharpShaderProgram[]> Programs;
 
     CSharpShaderPassVar<CullMode> Cull;
@@ -180,9 +179,8 @@ CSharpShaderPassVar<T> PackShaderPassVar(const ShaderPassVar<T>& v)
 
 namespace march
 {
-    class ShaderBinding
+    struct ShaderBinding
     {
-    public:
         inline static void ClearProperties(Shader* pShader)
         {
             pShader->m_Version++;
@@ -199,7 +197,7 @@ namespace march
         {
             pShader->m_Version++;
 
-            auto& p = pShader->m_Properties[Shader::GetNameId(prop->Name)];
+            auto& p = pShader->m_Properties[ShaderUtils::GetIdFromString(prop->Name)];
             p.Type = prop->Type;
 
             switch (prop->Type)
@@ -229,7 +227,7 @@ namespace march
         inline static void SetPasses(Shader* pShader, cs<CSharpShaderPass[]> passes)
         {
             pShader->m_Version++;
-            pShader->m_KeywordSpace.Clear();
+            pShader->m_KeywordSpace->Clear();
             pShader->m_Passes.clear();
             pShader->m_Passes.resize(static_cast<size_t>(passes.size()));
 
@@ -248,13 +246,6 @@ namespace march
                     pass->m_Tags[t.Key] = t.Value;
                 }
 
-                pass->m_PropertyLocations.clear();
-                for (int32_t j = 0; j < src.PropertyLocations.size(); j++)
-                {
-                    const auto& mp = src.PropertyLocations[j];
-                    pass->m_PropertyLocations[Shader::GetNameId(mp.Name)] = { mp.Offset, mp.Size };
-                }
-
                 for (int32_t j = 0; j < std::size(pass->m_Programs); j++)
                 {
                     pass->m_Programs[j].clear();
@@ -263,18 +254,19 @@ namespace march
                 {
                     const auto& p = src.Programs[j];
                     std::unique_ptr<ShaderProgram> program = std::make_unique<ShaderProgram>();
+                    program->m_Keywords.Reset(pShader->m_KeywordSpace.get());
 
                     for (int32_t k = 0; k < p.Keywords.size(); k++)
                     {
-                        pShader->m_KeywordSpace.AddKeyword(p.Keywords[k]);
-                        program->m_Keywords.EnableKeyword(pShader->m_KeywordSpace, p.Keywords[k]);
+                        assert(pShader->m_KeywordSpace->RegisterKeyword(p.Keywords[k]));
+                        program->m_Keywords.EnableKeyword(p.Keywords[k]);
                     }
 
                     std::copy(p.Hash.begin(), p.Hash.end(), program->m_Hash.Data);
 
                     try
                     {
-                        GFX_HR(Shader::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
+                        GFX_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
                             reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
                     }
                     catch (const std::exception& e)
@@ -286,14 +278,14 @@ namespace march
                     for (int32_t k = 0; k < p.SrvCbvBuffers.size(); k++)
                     {
                         const auto& buf = p.SrvCbvBuffers[k];
-                        program->m_SrvCbvBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                        program->m_SrvCbvBuffers.push_back({ ShaderUtils::GetIdFromString(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.IsConstantBuffer });
                     }
 
                     for (int32_t k = 0; k < p.SrvTextures.size(); k++)
                     {
                         const auto& tp = p.SrvTextures[k];
                         program->m_SrvTextures.push_back({
-                            Shader::GetNameId(tp.Name),
+                            ShaderUtils::GetIdFromString(tp.Name),
                             tp.ShaderRegisterTexture,
                             tp.RegisterSpaceTexture,
                             tp.HasSampler,
@@ -305,14 +297,14 @@ namespace march
                     for (int32_t k = 0; k < p.UavBuffers.size(); k++)
                     {
                         const auto& buf = p.UavBuffers[k];
-                        program->m_UavBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                        program->m_UavBuffers.push_back({ ShaderUtils::GetIdFromString(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.IsConstantBuffer });
                     }
 
                     for (int32_t k = 0; k < p.UavTextures.size(); k++)
                     {
                         const auto& tp = p.UavTextures[k];
                         program->m_UavTextures.push_back({
-                            Shader::GetNameId(tp.Name),
+                            ShaderUtils::GetIdFromString(tp.Name),
                             tp.ShaderRegisterTexture,
                             tp.RegisterSpaceTexture,
                             tp.HasSampler,
@@ -324,7 +316,7 @@ namespace march
                     for (int32_t k = 0; k < p.StaticSamplers.size(); k++)
                     {
                         const auto& sampler = p.StaticSamplers[k];
-                        program->m_StaticSamplers[Shader::GetNameId(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
+                        program->m_StaticSamplers.push_back({ ShaderUtils::GetIdFromString(sampler.Name), sampler.ShaderRegister, sampler.RegisterSpace });
                     }
 
                     program->m_ThreadGroupSizeX = p.ThreadGroupSizeX;
@@ -377,13 +369,10 @@ namespace march
 
         inline static bool CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
         {
-            pShader->m_Version++;
-
             std::vector<std::string> warningBuffer{};
             std::string errorBuffer{};
 
-            ShaderPass* pass = pShader->GetPass(passIndex);
-            bool ret = pass->Compile(pShader->m_KeywordSpace, filename, source, warningBuffer, errorBuffer);
+            bool ret = pShader->CompilePass(static_cast<size_t>(passIndex.data), filename, source, warningBuffer, errorBuffer);
 
             if (!warningBuffer.empty())
             {
@@ -423,16 +412,6 @@ namespace march
                     tag.Value.assign(kvp.second);
                 }
 
-                dest.PropertyLocations.assign(static_cast<int32_t>(pass->GetPropertyLocations().size()));
-                int32_t propLocIndex = 0;
-                for (auto& kvp : pass->GetPropertyLocations())
-                {
-                    auto& loc = dest.PropertyLocations[propLocIndex++];
-                    loc.Name.assign(Shader::GetIdName(kvp.first));
-                    loc.Offset.assign(kvp.second.Offset);
-                    loc.Size.assign(kvp.second.Size);
-                }
-
                 int32_t programCount = 0;
                 for (int32_t j = 0; j < static_cast<int32_t>(Shader::NumProgramTypes); j++)
                 {
@@ -448,7 +427,7 @@ namespace march
                         auto& p = dest.Programs[programIndex++];
                         p.Type.assign(j);
 
-                        std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywords(pShader->m_KeywordSpace);
+                        std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywordStringsInSpace();
                         p.Keywords.assign(static_cast<int32_t>(keywords.size()));
 
                         for (int32_t k = 0; k < keywords.size(); k++)
@@ -463,17 +442,17 @@ namespace march
                         for (size_t bufIdx = 0; bufIdx < program->GetSrvCbvBuffers().size(); bufIdx++)
                         {
                             auto& buf = p.SrvCbvBuffers[static_cast<int32_t>(bufIdx)];
-                            buf.Name.assign(Shader::GetIdName(program->GetSrvCbvBuffers()[bufIdx].Id));
+                            buf.Name.assign(ShaderUtils::GetStringFromId(program->GetSrvCbvBuffers()[bufIdx].Id));
                             buf.ShaderRegister.assign(program->GetSrvCbvBuffers()[bufIdx].ShaderRegister);
                             buf.RegisterSpace.assign(program->GetSrvCbvBuffers()[bufIdx].RegisterSpace);
-                            buf.ConstantBufferSize.assign(program->GetSrvCbvBuffers()[bufIdx].ConstantBufferSize);
+                            buf.IsConstantBuffer.assign(program->GetSrvCbvBuffers()[bufIdx].IsConstantBuffer);
                         }
 
                         p.SrvTextures.assign(static_cast<int32_t>(program->GetSrvTextures().size()));
                         for (size_t texIdx = 0; texIdx < program->GetSrvTextures().size(); texIdx++)
                         {
                             auto& tp = p.SrvTextures[static_cast<int32_t>(texIdx)];
-                            tp.Name.assign(Shader::GetIdName(program->GetSrvTextures()[texIdx].Id));
+                            tp.Name.assign(ShaderUtils::GetStringFromId(program->GetSrvTextures()[texIdx].Id));
                             tp.ShaderRegisterTexture.assign(program->GetSrvTextures()[texIdx].ShaderRegisterTexture);
                             tp.RegisterSpaceTexture.assign(program->GetSrvTextures()[texIdx].RegisterSpaceTexture);
                             tp.HasSampler.assign(program->GetSrvTextures()[texIdx].HasSampler);
@@ -485,17 +464,17 @@ namespace march
                         for (size_t bufIdx = 0; bufIdx < program->GetUavBuffers().size(); bufIdx++)
                         {
                             auto& buf = p.UavBuffers[static_cast<int32_t>(bufIdx)];
-                            buf.Name.assign(Shader::GetIdName(program->GetUavBuffers()[bufIdx].Id));
+                            buf.Name.assign(ShaderUtils::GetStringFromId(program->GetUavBuffers()[bufIdx].Id));
                             buf.ShaderRegister.assign(program->GetUavBuffers()[bufIdx].ShaderRegister);
                             buf.RegisterSpace.assign(program->GetUavBuffers()[bufIdx].RegisterSpace);
-                            buf.ConstantBufferSize.assign(program->GetUavBuffers()[bufIdx].ConstantBufferSize);
+                            buf.IsConstantBuffer.assign(program->GetUavBuffers()[bufIdx].IsConstantBuffer);
                         }
 
                         p.UavTextures.assign(static_cast<int32_t>(program->GetUavTextures().size()));
                         for (size_t texIdx = 0; texIdx < program->GetUavTextures().size(); texIdx++)
                         {
                             auto& tp = p.UavTextures[static_cast<int32_t>(texIdx)];
-                            tp.Name.assign(Shader::GetIdName(program->GetUavTextures()[texIdx].Id));
+                            tp.Name.assign(ShaderUtils::GetStringFromId(program->GetUavTextures()[texIdx].Id));
                             tp.ShaderRegisterTexture.assign(program->GetUavTextures()[texIdx].ShaderRegisterTexture);
                             tp.RegisterSpaceTexture.assign(program->GetUavTextures()[texIdx].RegisterSpaceTexture);
                             tp.HasSampler.assign(program->GetUavTextures()[texIdx].HasSampler);
@@ -504,13 +483,12 @@ namespace march
                         }
 
                         p.StaticSamplers.assign(static_cast<int32_t>(program->GetStaticSamplers().size()));
-                        int32_t samplerIndex = 0;
-                        for (auto& kvp : program->GetStaticSamplers())
+                        for (size_t samplerIdx = 0; samplerIdx < program->GetStaticSamplers().size(); samplerIdx++)
                         {
-                            auto& sampler = p.StaticSamplers[samplerIndex++];
-                            sampler.Name.assign(Shader::GetIdName(kvp.first));
-                            sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
-                            sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
+                            auto& sampler = p.StaticSamplers[static_cast<int32_t>(samplerIdx)];
+                            sampler.Name.assign(ShaderUtils::GetStringFromId(program->GetStaticSamplers()[samplerIdx].Id));
+                            sampler.ShaderRegister.assign(program->GetStaticSamplers()[samplerIdx].ShaderRegister);
+                            sampler.RegisterSpace.assign(program->GetStaticSamplers()[samplerIdx].RegisterSpace);
                         }
 
                         p.ThreadGroupSizeX.assign(program->m_ThreadGroupSizeX);
@@ -551,6 +529,37 @@ namespace march
                 dest.StencilState.BackFace.DepthFailOp = PackShaderPassVar(pass->m_RenderState.StencilState.BackFace.DepthFailOp);
             }
         }
+
+        inline static void SetMaterialConstantBufferSize(cs<Shader*> pShader, cs_uint value)
+        {
+            pShader->m_Version++;
+            pShader->m_MaterialConstantBufferSize = value;
+        }
+
+        inline static void GetPropertyLocations(cs<Shader*> pShader, cs<cs<CSharpShaderPropertyLocation[]>*> locations)
+        {
+            locations->assign(static_cast<int32_t>(pShader->GetPropertyLocations().size()));
+            int32_t propLocIndex = 0;
+            for (auto& kvp : pShader->GetPropertyLocations())
+            {
+                auto& loc = (*locations)[propLocIndex++];
+                loc.Name.assign(ShaderUtils::GetStringFromId(kvp.first));
+                loc.Offset.assign(kvp.second.Offset);
+                loc.Size.assign(kvp.second.Size);
+            }
+        }
+
+        inline static void SetPropertyLocations(cs<Shader*> pShader, cs<CSharpShaderPropertyLocation[]> locations)
+        {
+            pShader->m_Version++;
+            pShader->m_PropertyLocations.clear();
+
+            for (int32_t i = 0; i < locations.size(); i++)
+            {
+                const auto& mp = locations[i];
+                pShader->m_PropertyLocations[ShaderUtils::GetIdFromString(mp.Name)] = { mp.Offset, mp.Size };
+            }
+        }
     };
 }
 
@@ -589,24 +598,44 @@ NATIVE_EXPORT_AUTO Shader_SetPasses(cs<Shader*> pShader, cs<CSharpShaderPass[]> 
     ShaderBinding::SetPasses(pShader, passes);
 }
 
+NATIVE_EXPORT_AUTO Shader_GetMaterialConstantBufferSize(cs<Shader*> pShader)
+{
+    retcs pShader->GetMaterialConstantBufferSize();
+}
+
+NATIVE_EXPORT_AUTO Shader_SetMaterialConstantBufferSize(cs<Shader*> pShader, cs_uint value)
+{
+    ShaderBinding::SetMaterialConstantBufferSize(pShader, value);
+}
+
+NATIVE_EXPORT_AUTO Shader_GetPropertyLocations(cs<Shader*> pShader, cs<cs<CSharpShaderPropertyLocation[]>*> locations)
+{
+    ShaderBinding::GetPropertyLocations(pShader, locations);
+}
+
+NATIVE_EXPORT_AUTO Shader_SetPropertyLocations(cs<Shader*> pShader, cs<CSharpShaderPropertyLocation[]> locations)
+{
+    ShaderBinding::SetPropertyLocations(pShader, locations);
+}
+
 NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
 {
     retcs ShaderBinding::CompilePass(pShader, passIndex, filename, source, warnings, error);
 }
 
-NATIVE_EXPORT_AUTO Shader_GetEngineShaderPathUnixStyle()
+NATIVE_EXPORT_AUTO ShaderUtils_GetEngineShaderPathUnixStyle()
 {
-    retcs Shader::GetEngineShaderPathUnixStyle();
+    retcs ShaderUtils::GetEngineShaderPathUnixStyle();
 }
 
-NATIVE_EXPORT_AUTO Shader_GetNameId(cs_string name)
+NATIVE_EXPORT_AUTO ShaderUtils_GetIdFromString(cs_string name)
 {
-    retcs Shader::GetNameId(name);
+    retcs ShaderUtils::GetIdFromString(name);
 }
 
-NATIVE_EXPORT_AUTO Shader_GetIdName(cs_int id)
+NATIVE_EXPORT_AUTO ShaderUtils_GetStringFromId(cs_int id)
 {
-    retcs Shader::GetIdName(id);
+    retcs ShaderUtils::GetStringFromId(id);
 }
 
 struct CSharpComputeShaderKernel
@@ -617,9 +646,8 @@ struct CSharpComputeShaderKernel
 
 namespace march
 {
-    class ComputeShaderBinding
+    struct ComputeShaderBinding
     {
-    public:
         static void SetName(cs<ComputeShader*> s, cs_string name)
         {
             s->m_Name = name;
@@ -651,7 +679,7 @@ namespace march
                         auto& p = dest.Programs[programIndex++];
                         p.Type.assign(j);
 
-                        std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywords(s->m_KeywordSpace);
+                        std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywordStringsInSpace();
                         p.Keywords.assign(static_cast<int32_t>(keywords.size()));
 
                         for (int32_t k = 0; k < keywords.size(); k++)
@@ -666,17 +694,17 @@ namespace march
                         for (size_t bufIdx = 0; bufIdx < program->GetSrvCbvBuffers().size(); bufIdx++)
                         {
                             auto& buf = p.SrvCbvBuffers[static_cast<int32_t>(bufIdx)];
-                            buf.Name.assign(Shader::GetIdName(program->GetSrvCbvBuffers()[bufIdx].Id));
+                            buf.Name.assign(ShaderUtils::GetStringFromId(program->GetSrvCbvBuffers()[bufIdx].Id));
                             buf.ShaderRegister.assign(program->GetSrvCbvBuffers()[bufIdx].ShaderRegister);
                             buf.RegisterSpace.assign(program->GetSrvCbvBuffers()[bufIdx].RegisterSpace);
-                            buf.ConstantBufferSize.assign(program->GetSrvCbvBuffers()[bufIdx].ConstantBufferSize);
+                            buf.IsConstantBuffer.assign(program->GetSrvCbvBuffers()[bufIdx].IsConstantBuffer);
                         }
 
                         p.SrvTextures.assign(static_cast<int32_t>(program->GetSrvTextures().size()));
                         for (size_t texIdx = 0; texIdx < program->GetSrvTextures().size(); texIdx++)
                         {
                             auto& tp = p.SrvTextures[static_cast<int32_t>(texIdx)];
-                            tp.Name.assign(Shader::GetIdName(program->GetSrvTextures()[texIdx].Id));
+                            tp.Name.assign(ShaderUtils::GetStringFromId(program->GetSrvTextures()[texIdx].Id));
                             tp.ShaderRegisterTexture.assign(program->GetSrvTextures()[texIdx].ShaderRegisterTexture);
                             tp.RegisterSpaceTexture.assign(program->GetSrvTextures()[texIdx].RegisterSpaceTexture);
                             tp.HasSampler.assign(program->GetSrvTextures()[texIdx].HasSampler);
@@ -688,17 +716,17 @@ namespace march
                         for (size_t bufIdx = 0; bufIdx < program->GetUavBuffers().size(); bufIdx++)
                         {
                             auto& buf = p.UavBuffers[static_cast<int32_t>(bufIdx)];
-                            buf.Name.assign(Shader::GetIdName(program->GetUavBuffers()[bufIdx].Id));
+                            buf.Name.assign(ShaderUtils::GetStringFromId(program->GetUavBuffers()[bufIdx].Id));
                             buf.ShaderRegister.assign(program->GetUavBuffers()[bufIdx].ShaderRegister);
                             buf.RegisterSpace.assign(program->GetUavBuffers()[bufIdx].RegisterSpace);
-                            buf.ConstantBufferSize.assign(program->GetUavBuffers()[bufIdx].ConstantBufferSize);
+                            buf.IsConstantBuffer.assign(program->GetUavBuffers()[bufIdx].IsConstantBuffer);
                         }
 
                         p.UavTextures.assign(static_cast<int32_t>(program->GetUavTextures().size()));
                         for (size_t texIdx = 0; texIdx < program->GetUavTextures().size(); texIdx++)
                         {
                             auto& tp = p.UavTextures[static_cast<int32_t>(texIdx)];
-                            tp.Name.assign(Shader::GetIdName(program->GetUavTextures()[texIdx].Id));
+                            tp.Name.assign(ShaderUtils::GetStringFromId(program->GetUavTextures()[texIdx].Id));
                             tp.ShaderRegisterTexture.assign(program->GetUavTextures()[texIdx].ShaderRegisterTexture);
                             tp.RegisterSpaceTexture.assign(program->GetUavTextures()[texIdx].RegisterSpaceTexture);
                             tp.HasSampler.assign(program->GetUavTextures()[texIdx].HasSampler);
@@ -707,13 +735,12 @@ namespace march
                         }
 
                         p.StaticSamplers.assign(static_cast<int32_t>(program->GetStaticSamplers().size()));
-                        int32_t samplerIndex = 0;
-                        for (auto& kvp : program->GetStaticSamplers())
+                        for (size_t samplerIdx = 0; samplerIdx < program->GetStaticSamplers().size(); samplerIdx++)
                         {
-                            auto& sampler = p.StaticSamplers[samplerIndex++];
-                            sampler.Name.assign(Shader::GetIdName(kvp.first));
-                            sampler.ShaderRegister.assign(kvp.second.ShaderRegister);
-                            sampler.RegisterSpace.assign(kvp.second.RegisterSpace);
+                            auto& sampler = p.StaticSamplers[static_cast<int32_t>(samplerIdx)];
+                            sampler.Name.assign(ShaderUtils::GetStringFromId(program->GetStaticSamplers()[samplerIdx].Id));
+                            sampler.ShaderRegister.assign(program->GetStaticSamplers()[samplerIdx].ShaderRegister);
+                            sampler.RegisterSpace.assign(program->GetStaticSamplers()[samplerIdx].RegisterSpace);
                         }
 
                         p.ThreadGroupSizeX.assign(program->m_ThreadGroupSizeX);
@@ -726,7 +753,7 @@ namespace march
 
         static void SetKernels(cs<ComputeShader*> s, cs<CSharpComputeShaderKernel[]> kernels)
         {
-            s->m_KeywordSpace.Clear();
+            s->m_KeywordSpace->Clear();
             s->m_Kernels.clear();
             s->m_Kernels.resize(static_cast<size_t>(kernels.size()));
 
@@ -746,18 +773,19 @@ namespace march
                 {
                     const auto& p = src.Programs[j];
                     std::unique_ptr<ShaderProgram> program = std::make_unique<ShaderProgram>();
+                    program->m_Keywords.Reset(s->m_KeywordSpace.get());
 
                     for (int32_t k = 0; k < p.Keywords.size(); k++)
                     {
-                        s->m_KeywordSpace.AddKeyword(p.Keywords[k]);
-                        program->m_Keywords.EnableKeyword(s->m_KeywordSpace, p.Keywords[k]);
+                        assert(s->m_KeywordSpace->RegisterKeyword(p.Keywords[k]));
+                        program->m_Keywords.EnableKeyword(p.Keywords[k]);
                     }
 
                     std::copy(p.Hash.begin(), p.Hash.end(), program->m_Hash.Data);
 
                     try
                     {
-                        GFX_HR(Shader::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
+                        GFX_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
                             reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
                     }
                     catch (const std::exception& e)
@@ -769,14 +797,14 @@ namespace march
                     for (int32_t k = 0; k < p.SrvCbvBuffers.size(); k++)
                     {
                         const auto& buf = p.SrvCbvBuffers[k];
-                        program->m_SrvCbvBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                        program->m_SrvCbvBuffers.push_back({ ShaderUtils::GetIdFromString(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.IsConstantBuffer });
                     }
 
                     for (int32_t k = 0; k < p.SrvTextures.size(); k++)
                     {
                         const auto& tp = p.SrvTextures[k];
                         program->m_SrvTextures.push_back({
-                            Shader::GetNameId(tp.Name),
+                            ShaderUtils::GetIdFromString(tp.Name),
                             tp.ShaderRegisterTexture,
                             tp.RegisterSpaceTexture,
                             tp.HasSampler,
@@ -788,14 +816,14 @@ namespace march
                     for (int32_t k = 0; k < p.UavBuffers.size(); k++)
                     {
                         const auto& buf = p.UavBuffers[k];
-                        program->m_UavBuffers.push_back({ Shader::GetNameId(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.ConstantBufferSize });
+                        program->m_UavBuffers.push_back({ ShaderUtils::GetIdFromString(buf.Name), buf.ShaderRegister, buf.RegisterSpace, buf.IsConstantBuffer });
                     }
 
                     for (int32_t k = 0; k < p.UavTextures.size(); k++)
                     {
                         const auto& tp = p.UavTextures[k];
                         program->m_UavTextures.push_back({
-                            Shader::GetNameId(tp.Name),
+                            ShaderUtils::GetIdFromString(tp.Name),
                             tp.ShaderRegisterTexture,
                             tp.RegisterSpaceTexture,
                             tp.HasSampler,
@@ -807,7 +835,7 @@ namespace march
                     for (int32_t k = 0; k < p.StaticSamplers.size(); k++)
                     {
                         const auto& sampler = p.StaticSamplers[k];
-                        program->m_StaticSamplers[Shader::GetNameId(sampler.Name)] = { sampler.ShaderRegister, sampler.RegisterSpace };
+                        program->m_StaticSamplers.push_back({ ShaderUtils::GetIdFromString(sampler.Name), sampler.ShaderRegister, sampler.RegisterSpace });
                     }
 
                     program->m_ThreadGroupSizeX = p.ThreadGroupSizeX;

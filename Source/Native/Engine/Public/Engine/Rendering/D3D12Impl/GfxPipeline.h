@@ -1,24 +1,148 @@
 #pragma once
 
-#include "Engine/Object.h"
-#include "Engine/Graphics/GfxResource.h"
-#include "Engine/Graphics/GfxDescriptor.h"
-#include "Engine/Graphics/GfxBuffer.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/Shader.h"
+#include "Engine/Ints.h"
+#include "Engine/Memory/RefCounting.h"
+#include "Engine/Rendering/D3D12Impl/GfxResource.h"
+#include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
+#include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
+#include "Engine/Rendering/D3D12Impl/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
+#include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
 #include <directx/d3dx12.h>
-#include <stdint.h>
 #include <assert.h>
+#include <vector>
 #include <bitset>
 #include <unordered_map>
 #include <limits>
 
 namespace march
 {
+    enum class GfxSemantic
+    {
+        Position,
+        Normal,
+        Tangent,
+        Color,
+        TexCoord0,
+        TexCoord1,
+        TexCoord2,
+        TexCoord3,
+        TexCoord4,
+        TexCoord5,
+        TexCoord6,
+        TexCoord7,
+
+        // Aliases
+        TexCoord = TexCoord0,
+    };
+
+    struct GfxInputElement
+    {
+        GfxSemantic Semantic;
+        DXGI_FORMAT Format;
+        uint32_t InputSlot;
+        D3D12_INPUT_CLASSIFICATION InputSlotClass;
+        uint32_t InstanceDataStepRate;
+
+        constexpr GfxInputElement(
+            GfxSemantic semantic,
+            DXGI_FORMAT format,
+            uint32_t inputSlot = 0,
+            D3D12_INPUT_CLASSIFICATION inputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+            uint32_t instanceDataStepRate = 0) noexcept
+            : Semantic(semantic)
+            , Format(format)
+            , InputSlot(inputSlot)
+            , InputSlotClass(inputSlotClass)
+            , InstanceDataStepRate(instanceDataStepRate)
+        {
+        }
+    };
+
+    class GfxInputDesc final
+    {
+        D3D12_PRIMITIVE_TOPOLOGY m_PrimitiveTopology;
+        std::vector<D3D12_INPUT_ELEMENT_DESC> m_Layout;
+        size_t m_Hash;
+
+    public:
+        GfxInputDesc(D3D12_PRIMITIVE_TOPOLOGY topology, const std::vector<GfxInputElement>& elements);
+
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE GetPrimitiveTopologyType() const;
+
+        D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopology() const { return m_PrimitiveTopology; }
+        const std::vector<D3D12_INPUT_ELEMENT_DESC>& GetLayout() const { return m_Layout; }
+        size_t GetHash() const { return m_Hash; }
+    };
+
+    class GfxOutputDesc final
+    {
+        mutable bool m_IsDirty;
+        mutable size_t m_Hash;
+
+    public:
+        uint32_t NumRTV;
+        DXGI_FORMAT RTVFormats[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
+        DXGI_FORMAT DSVFormat;
+
+        uint32_t SampleCount;
+        uint32_t SampleQuality;
+
+        int32_t DepthBias;
+        float DepthBiasClamp;
+        float SlopeScaledDepthBias;
+
+        bool Wireframe;
+
+        GfxOutputDesc();
+
+        void MarkDirty();
+        size_t GetHash() const;
+
+        bool IsDirty() const { return m_IsDirty; }
+    };
+
+    enum class GfxPipelineType
+    {
+        Graphics,
+        Compute,
+    };
+
+    template <GfxPipelineType _PipelineType>
+    struct GfxPipelineTraits;
+
+    template <>
+    struct GfxPipelineTraits<GfxPipelineType::Graphics>
+    {
+        static constexpr size_t NumProgramTypes = Shader::NumProgramTypes;
+        static constexpr size_t PixelProgramType = static_cast<size_t>(ShaderProgramType::Pixel);
+
+        static constexpr auto SetRootSignature = &ID3D12GraphicsCommandList::SetGraphicsRootSignature;
+        static constexpr auto SetRootConstantBufferView = &ID3D12GraphicsCommandList::SetGraphicsRootConstantBufferView;
+        static constexpr auto SetRootShaderResourceView = &ID3D12GraphicsCommandList::SetGraphicsRootShaderResourceView;
+        static constexpr auto SetRootDescriptorTable = &ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable;
+    };
+
+    template <>
+    struct GfxPipelineTraits<GfxPipelineType::Compute>
+    {
+        static constexpr size_t NumProgramTypes = ComputeShader::NumProgramTypes;
+        static constexpr size_t PixelProgramType = std::numeric_limits<size_t>::max(); // no pixel program
+
+        static constexpr auto SetRootSignature = &ID3D12GraphicsCommandList::SetComputeRootSignature;
+        static constexpr auto SetRootConstantBufferView = &ID3D12GraphicsCommandList::SetComputeRootConstantBufferView;
+        static constexpr auto SetRootShaderResourceView = &ID3D12GraphicsCommandList::SetComputeRootShaderResourceView;
+        static constexpr auto SetRootDescriptorTable = &ID3D12GraphicsCommandList::SetComputeRootDescriptorTable;
+    };
+
     template <size_t Capacity>
     class GfxOfflineDescriptorTable
     {
+        size_t m_Num; // 设置的最大 index + 1
+        D3D12_CPU_DESCRIPTOR_HANDLE m_Descriptors[Capacity];
+        bool m_IsDirty;
+
     public:
         void Reset()
         {
@@ -45,16 +169,16 @@ namespace march
         constexpr size_t GetCapacity() const { return Capacity; }
         bool IsDirty() const { return m_IsDirty; }
         void SetDirty(bool value) { m_IsDirty = value; }
-
-    private:
-        size_t m_Num; // 设置的最大 index + 1
-        D3D12_CPU_DESCRIPTOR_HANDLE m_Descriptors[Capacity];
-        bool m_IsDirty;
     };
 
     template <size_t Capacity>
     class GfxRootSrvCbvBufferCache
     {
+        size_t m_Num{}; // 设置的最大 index + 1
+        D3D12_GPU_VIRTUAL_ADDRESS m_Addresses[Capacity]{};
+        std::bitset<Capacity> m_IsConstantBuffer{};
+        std::bitset<Capacity> m_IsDirty{};
+
     public:
         void Reset()
         {
@@ -91,49 +215,10 @@ namespace march
         bool IsEmpty() const { return m_Num == 0; }
         constexpr size_t GetCapacity() const { return Capacity; }
         bool IsDirty(size_t index) const { return m_IsDirty.test(index); }
-
-    private:
-        size_t m_Num{}; // 设置的最大 index + 1
-        D3D12_GPU_VIRTUAL_ADDRESS m_Addresses[Capacity]{};
-        std::bitset<Capacity> m_IsConstantBuffer{};
-        std::bitset<Capacity> m_IsDirty{};
-    };
-
-    enum class GfxPipelineType
-    {
-        Graphics,
-        Compute,
     };
 
     template <GfxPipelineType _PipelineType>
-    struct GfxPipelineTraits;
-
-    template <>
-    struct GfxPipelineTraits<GfxPipelineType::Graphics>
-    {
-        static constexpr size_t NumProgramTypes = Shader::NumProgramTypes;
-        static constexpr size_t PixelProgramType = static_cast<size_t>(ShaderProgramType::Pixel);
-
-        static constexpr auto SetRootSignature = &ID3D12GraphicsCommandList::SetGraphicsRootSignature;
-        static constexpr auto SetRootConstantBufferView = &ID3D12GraphicsCommandList::SetGraphicsRootConstantBufferView;
-        static constexpr auto SetRootShaderResourceView = &ID3D12GraphicsCommandList::SetGraphicsRootShaderResourceView;
-        static constexpr auto SetRootDescriptorTable = &ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable;
-    };
-
-    template <>
-    struct GfxPipelineTraits<GfxPipelineType::Compute>
-    {
-        static constexpr size_t NumProgramTypes = ComputeShader::NumProgramTypes;
-        static constexpr size_t PixelProgramType = std::numeric_limits<size_t>::max(); // no pixel program
-
-        static constexpr auto SetRootSignature = &ID3D12GraphicsCommandList::SetComputeRootSignature;
-        static constexpr auto SetRootConstantBufferView = &ID3D12GraphicsCommandList::SetComputeRootConstantBufferView;
-        static constexpr auto SetRootShaderResourceView = &ID3D12GraphicsCommandList::SetComputeRootShaderResourceView;
-        static constexpr auto SetRootDescriptorTable = &ID3D12GraphicsCommandList::SetComputeRootDescriptorTable;
-    };
-
-    template <GfxPipelineType _PipelineType>
-    class GfxViewCache final
+    class GfxPipelineParameterCache final
     {
         using PipelineTraits = GfxPipelineTraits<_PipelineType>;
 
@@ -153,7 +238,7 @@ namespace march
         // 在创建 root signature 时，root srv/cbv buffer 是排在 descriptor table 前面的
         static constexpr size_t NumMaxRootSrvCbvBuffers = (64 - NumDescriptorTables) / 2;
 
-        using RootSignatureType = GfxRootSignature<NumProgramTypes>;
+        using RootSignatureType = ShaderRootSignature<NumProgramTypes>;
 
         GfxDevice* m_Device;
         RootSignatureType* m_RootSignature;
@@ -285,7 +370,7 @@ namespace march
             GfxDescriptorHeap** ppSamplerHeap);
 
     public:
-        GfxViewCache(GfxDevice* device)
+        GfxPipelineParameterCache(GfxDevice* device)
             : m_Device(device)
             , m_RootSignature(nullptr)
             , m_IsRootSignatureDirty(true)
@@ -328,13 +413,13 @@ namespace march
         {
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
-                for (const auto& buf : m_RootSignature->GetSrvCbvBufferRootParamIndices(i))
+                for (const auto& buf : m_RootSignature->GetSrvCbvBuffers(i))
                 {
                     GfxBufferElement element = GfxBufferElement::StructuredData;
 
                     if (GfxBuffer* buffer = fn(buf, &element))
                     {
-                        SetSrvCbvBuffer(i, buf.BindPoint, buffer, element, buf.IsConstantBuffer);
+                        SetSrvCbvBuffer(i, buf.RootParameterIndex, buffer, element, buf.IsConstantBuffer);
                     }
                 }
             }
@@ -345,17 +430,17 @@ namespace march
         {
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
-                for (const auto& tex : m_RootSignature->GetSrvTextureTableSlots(i))
+                for (const auto& tex : m_RootSignature->GetSrvTextures(i))
                 {
                     GfxTextureElement element = GfxTextureElement::Default;
 
                     if (GfxTexture* texture = fn(tex, &element))
                     {
-                        SetSrvTexture(i, tex.BindPointTexture, texture, element);
+                        SetSrvTexture(i, tex.DescriptorTableSlotTexture, texture, element);
 
-                        if (tex.BindPointSampler.has_value())
+                        if (tex.DescriptorTableSlotSampler.has_value())
                         {
-                            SetSampler(i, *tex.BindPointSampler, texture);
+                            SetSampler(i, *tex.DescriptorTableSlotSampler, texture);
                         }
                     }
                 }
@@ -367,13 +452,13 @@ namespace march
         {
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
-                for (const auto& buf : m_RootSignature->GetUavBufferTableSlots(i))
+                for (const auto& buf : m_RootSignature->GetUavBuffers(i))
                 {
                     GfxBufferElement element = GfxBufferElement::StructuredData;
 
                     if (GfxBuffer* buffer = fn(buf, &element))
                     {
-                        SetUavBuffer(i, buf.BindPoint, buffer, element);
+                        SetUavBuffer(i, buf.DescriptorTableSlot, buffer, element);
                     }
                 }
             }
@@ -384,13 +469,13 @@ namespace march
         {
             for (size_t i = 0; i < NumProgramTypes; i++)
             {
-                for (const auto& tex : m_RootSignature->GetUavTextureTableSlots(i))
+                for (const auto& tex : m_RootSignature->GetUavTextures(i))
                 {
                     GfxTextureElement element = GfxTextureElement::Default;
 
                     if (GfxTexture* texture = fn(tex, &element))
                     {
-                        SetUavTexture(i, tex.BindPoint, texture, element);
+                        SetUavTexture(i, tex.DescriptorTableSlot, texture, element);
                     }
                 }
             }
@@ -421,7 +506,7 @@ namespace march
     };
 
     template <GfxPipelineType _PipelineType>
-    void GfxViewCache<_PipelineType>::SetDescriptorHeaps(ID3D12GraphicsCommandList* cmd, GfxDescriptorHeap* viewHeap, GfxDescriptorHeap* samplerHeap)
+    void GfxPipelineParameterCache<_PipelineType>::SetDescriptorHeaps(ID3D12GraphicsCommandList* cmd, GfxDescriptorHeap* viewHeap, GfxDescriptorHeap* samplerHeap)
     {
         if (viewHeap != nullptr && samplerHeap != nullptr)
         {
@@ -441,7 +526,7 @@ namespace march
     }
 
     template <GfxPipelineType _PipelineType>
-    void GfxViewCache<_PipelineType>::SetRootDescriptorTablesAndHeaps(
+    void GfxPipelineParameterCache<_PipelineType>::SetRootDescriptorTablesAndHeaps(
         ID3D12GraphicsCommandList* cmd,
         GfxDescriptorHeap** ppViewHeap,
         GfxDescriptorHeap** ppSamplerHeap)

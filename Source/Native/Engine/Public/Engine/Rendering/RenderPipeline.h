@@ -1,11 +1,7 @@
 #pragma once
 
 #include "Engine/Rendering/Light.h"
-#include "Engine/Graphics/GfxMesh.h"
-#include "Engine/Graphics/GfxBuffer.h"
-#include "Engine/Graphics/Material.h"
-#include "Engine/Graphics/Shader.h"
-#include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/AssetManger.h"
 #include "Engine/Ints.h"
 #include <vector>

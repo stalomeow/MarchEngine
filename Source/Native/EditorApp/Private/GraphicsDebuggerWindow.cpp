@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Editor/GraphicsDebuggerWindow.h"
 #include "Editor/EditorGUI.h"
-#include "Engine/Graphics/GfxSettings.h"
-#include "Engine/Graphics/RenderDoc.h"
+#include "Engine/Rendering/D3D12.h"
+#include "Engine/Profiling/RenderDoc.h"
 #include <string>
 
 namespace march

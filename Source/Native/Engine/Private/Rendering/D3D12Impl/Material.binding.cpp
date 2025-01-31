@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Engine/Rendering/Material.h"
-#include "Engine/Rendering/Shader.h"
+#include "Engine/Rendering/D3D12Impl/Material.h"
+#include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO Material_New()
@@ -278,7 +278,7 @@ NATIVE_EXPORT_AUTO Material_SetKeyword(cs<Material*> pMaterial, cs_string keywor
 
 NATIVE_EXPORT_AUTO Material_GetAllKeywords(cs<Material*> pMaterial)
 {
-    const std::vector<std::string>& keywords = MaterialInternalUtility::GetRawEnabledKeywords(pMaterial);
+    std::vector<std::string> keywords = MaterialInternalUtility::GetRawEnabledKeywords(pMaterial);
 
     cs_array<cs_string> ks{};
     ks.assign(static_cast<int32_t>(keywords.size()));

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Graphics/RenderDoc.h"
+#include "Engine/Profiling/RenderDoc.h"
 #include "Engine/Debug.h"
 #include "renderdoc_app.h"
 #include <Windows.h>

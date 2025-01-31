@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Scripting/InteropServices.h"
 
 struct CSharpTextureDesc

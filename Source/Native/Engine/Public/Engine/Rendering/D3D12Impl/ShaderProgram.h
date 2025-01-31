@@ -1,15 +1,16 @@
 #pragma once
 
 #include "Engine/Ints.h"
-#include "Engine/HashUtils.h"
-#include "Engine/StringUtils.h"
-#include "Engine/Rendering/ShaderImpl/ShaderKeyword.h"
-#include "Engine/Rendering/ShaderImpl/ShaderUtils.h"
-#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Misc/HashUtils.h"
+#include "Engine/Misc/StringUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
+#include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
+#include "Engine/Rendering/D3D12Impl/ShaderKeyword.h"
 #include <directx/d3dx12.h>
 #include <d3d12shader.h> // Shader reflection
 #include <dxcapi.h>
 #include <wrl.h>
+#include <assert.h>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -17,6 +18,7 @@
 #include <memory>
 #include <limits>
 #include <functional>
+#include <algorithm>
 
 namespace march
 {
@@ -36,7 +38,7 @@ namespace march
         int32_t Id;
         uint32_t ShaderRegister;
         uint32_t RegisterSpace;
-        uint32_t ConstantBufferSize; // 只有 Constant Buffer 有值，其他为 0
+        bool IsConstantBuffer;
     };
 
     struct ShaderProgramTexture
@@ -63,6 +65,8 @@ namespace march
         friend class ShaderProgramGroup;
 
         friend struct ShaderCompilationInternalUtils;
+        friend struct ShaderBinding;
+        friend struct ComputeShaderBinding;
 
         ShaderProgramHash m_Hash{};
         ShaderKeywordSet m_Keywords{};
@@ -109,9 +113,9 @@ namespace march
     // srv texture 在 srv/uav table 中的位置和 sampler 在 sampler table 中的位置
     struct ShaderParamSrvTexture
     {
-        int32_t Id;
-        uint32_t DescriptorTableSlotTexture;
-        std::optional<uint32_t> DescriptorTableSlotSampler;
+        int32_t Id{};
+        uint32_t DescriptorTableSlotTexture{};
+        std::optional<uint32_t> DescriptorTableSlotSampler = std::nullopt;
     };
 
     // uav buffer 在 srv/uav table 中的位置
@@ -266,7 +270,6 @@ namespace march
         virtual bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) = 0;
         virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
         virtual void RecordEntrypointCallback(size_t programType, std::string& entrypoint) = 0;
-        virtual bool RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer, std::string& error) = 0;
 
     private:
         struct CompilationConfig
@@ -275,7 +278,9 @@ namespace march
             bool EnableDebugInfo = false;
             std::string Entrypoints[NumProgramTypes]{};
             std::vector<std::vector<std::string>> MultiCompile{};
-            ShaderKeywordSpace TempMultiCompileKeywordSpace{}; // MultiCompile 编译时使用的临时 KeywordSpace
+
+            // MultiCompile 编译时使用的临时 KeywordSpace
+            std::unique_ptr<ShaderKeywordSpace> MultiCompileKeywordSpace = std::make_unique<ShaderKeywordSpace>();
         };
 
         struct CompilationContext
@@ -294,16 +299,18 @@ namespace march
             std::vector<std::string> Keywords{};
             std::vector<std::string>* Warnings = nullptr;
             std::string* Error = nullptr;
+            std::function<void(ID3D12ShaderReflectionConstantBuffer*)> RecordConstantBufferCallback{};
 
             bool ShouldCompileKeywords()
             {
                 ShaderKeywordSet keywordSet{};
+                keywordSet.Reset(Config.MultiCompileKeywordSpace.get());
 
                 for (const std::string& kw : Keywords)
                 {
                     if (!kw.empty())
                     {
-                        keywordSet.EnableKeyword(Config.TempMultiCompileKeywordSpace, kw);
+                        keywordSet.EnableKeyword(kw);
                     }
                 }
 
@@ -318,11 +325,12 @@ namespace march
 
     protected:
         bool Compile(
-            ShaderKeywordSpace& keywordSpace,
+            ShaderKeywordSpace* keywordSpace,
             const std::string& filename,
             const std::string& source,
             std::vector<std::string>& warnings,
-            std::string& error)
+            std::string& error,
+            const std::function<void(ID3D12ShaderReflectionConstantBuffer*)>& recordConstantBufferCallback)
         {
             CompilationContext context{};
             context.Utils = ShaderUtils::GetDxcUtils();
@@ -331,7 +339,7 @@ namespace march
             //
             // Create default include handler. (You can create your own...)
             //
-            ComPtr<IDxcIncludeHandler> pIncludeHandler;
+            Microsoft::WRL::ComPtr<IDxcIncludeHandler> pIncludeHandler;
             GFX_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
             context.IncludeHandler = pIncludeHandler.Get();
 
@@ -345,9 +353,10 @@ namespace march
             context.Source.Ptr = source.data();
             context.Source.Size = static_cast<SIZE_T>(source.size());
             context.Source.Encoding = DXC_CP_UTF8;
-            context.KeywordSpace = &keywordSpace;
+            context.KeywordSpace = keywordSpace;
             context.Warnings = &warnings;
             context.Error = &error;
+            context.RecordConstantBufferCallback = recordConstantBufferCallback;
 
             return CompileRecursive(context);
         }
@@ -360,7 +369,7 @@ namespace march
     };
 
     template <size_t _NumProgramTypes>
-    ShaderProgramGroup<_NumProgramTypes>::RootSignatureType* ShaderProgramGroup<_NumProgramTypes>::GetRootSignature(const ShaderKeywordSet& keywords)
+    typename ShaderProgramGroup<_NumProgramTypes>::RootSignatureType* ShaderProgramGroup<_NumProgramTypes>::GetRootSignature(const ShaderKeywordSet& keywords)
     {
         const ProgramMatch& m = GetProgramMatch(keywords);
 
@@ -435,17 +444,16 @@ namespace march
                 ShaderParamSrvCbvBuffer& p = result->m_Params[i].SrvCbvBuffers.emplace_back();
                 p.Id = buf.Id;
 
-                if (buf.ConstantBufferSize == 0)
+                if (buf.IsConstantBuffer)
                 {
-                    params.emplace_back().InitAsShaderResourceView(buf.ShaderRegister, buf.RegisterSpace, visibility);
-                    p.IsConstantBuffer = false;
+                    params.emplace_back().InitAsConstantBufferView(buf.ShaderRegister, buf.RegisterSpace, visibility);
                 }
                 else
                 {
-                    params.emplace_back().InitAsConstantBufferView(buf.ShaderRegister, buf.RegisterSpace, visibility);
-                    p.IsConstantBuffer = true;
+                    params.emplace_back().InitAsShaderResourceView(buf.ShaderRegister, buf.RegisterSpace, visibility);
                 }
 
+                p.IsConstantBuffer = buf.IsConstantBuffer;
                 p.RootParameterIndex = static_cast<uint32_t>(params.size() - 1);
             }
 
@@ -512,7 +520,7 @@ namespace march
                     }
                     else
                     {
-                        if (!config.TempMultiCompileKeywordSpace.RegisterKeyword(args[i]))
+                        if (!config.MultiCompileKeywordSpace->RegisterKeyword(args[i]))
                         {
                             error = "Too many keywords!";
                             return false;
@@ -594,22 +602,21 @@ namespace march
                 return false;
             }
 
-            ShaderProgram* program = m_Programs[i].emplace_back(std::make_unique<ShaderProgram>()).get();
+            std::unique_ptr<ShaderProgram> program = std::make_unique<ShaderProgram>();
 
             // 保存 Keyword
+            program->m_Keywords.Reset(context.KeywordSpace);
             for (const std::string& kw : context.Keywords)
             {
                 if (!kw.empty())
                 {
-                    context.KeywordSpace->RegisterKeyword(kw);
-                    program->m_Keywords.EnableKeyword(*context.KeywordSpace, kw);
+                    assert(context.KeywordSpace->RegisterKeyword(kw));
+                    program->m_Keywords.EnableKeyword(kw);
                 }
             }
 
-            ShaderCompilationInternalUtils::SaveCompilationResults(context.Utils, pResults, program, [this](ID3D12ShaderReflectionConstantBuffer* cbuffer)
-            {
-                RecordConstantBufferCallback(cbuffer);
-            });
+            ShaderCompilationInternalUtils::SaveCompilationResults(context.Utils, pResults, program.get(), context.RecordConstantBufferCallback);
+            m_Programs[i].emplace_back(std::move(program));
         }
 
         return true;

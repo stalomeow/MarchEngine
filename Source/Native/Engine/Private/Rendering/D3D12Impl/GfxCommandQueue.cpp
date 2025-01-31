@@ -1,7 +1,8 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxCommand.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxCommand.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include <limits>
 #include <stdexcept>
 

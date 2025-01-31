@@ -6,9 +6,8 @@
 
 namespace march
 {
-    class RenderDoc final
+    struct RenderDoc final
     {
-    public:
         static bool IsLoaded();
         static void Load();
         static void CaptureSingleFrame();

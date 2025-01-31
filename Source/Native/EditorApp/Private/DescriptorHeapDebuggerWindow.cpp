@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Editor/DescriptorHeapDebuggerWindow.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxDescriptor.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/Application.h"
 #include <imgui.h>
 #include <stdint.h>

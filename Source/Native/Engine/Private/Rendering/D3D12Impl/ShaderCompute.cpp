@@ -1,6 +1,12 @@
 #include "pch.h"
-#include "Engine/Rendering/ShaderImpl/ComputeShader.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
+#include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
+#include "Engine/Debug.h"
 #include <algorithm>
+#include <wrl.h>
+
+using namespace Microsoft::WRL;
 
 namespace march
 {
@@ -43,15 +49,47 @@ namespace march
         return std::nullopt;
     }
 
-    void ComputeShader::GetThreadGroupSize(size_t kernelIndex, uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ)
+    void ComputeShader::GetThreadGroupSize(size_t kernelIndex, uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ) const
     {
-        ShaderProgram* program = m_Kernels[kernelIndex]->GetProgram(0, m_KeywordSet.GetKeywordSet());
+        ShaderProgram* program = m_Kernels[kernelIndex]->GetProgram(0, m_KeywordSet.GetKeywords());
         program->GetThreadGroupSize(pOutX, pOutY, pOutZ);
+    }
+
+    ComputeShader::RootSignatureType* ComputeShader::GetRootSignature(size_t kernelIndex) const
+    {
+        return m_Kernels[kernelIndex]->GetRootSignature(m_KeywordSet.GetKeywords());
+    }
+
+    ID3D12PipelineState* ComputeShader::GetPSO(size_t kernelIndex) const
+    {
+        ComputeShaderKernel* kernel = m_Kernels[kernelIndex].get();
+        const ShaderKeywordSet& keywords = m_KeywordSet.GetKeywords();
+
+        size_t hash = kernel->GetProgramMatch(keywords).Hash;
+        ComPtr<ID3D12PipelineState>& result = kernel->m_PipelineStates[hash];
+
+        if (result == nullptr)
+        {
+            D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+            psoDesc.pRootSignature = kernel->GetRootSignature(keywords)->GetD3DRootSignature();
+
+            ShaderProgram* program = kernel->GetProgram(0, keywords);
+            psoDesc.CS.pShaderBytecode = program->GetBinaryData();
+            psoDesc.CS.BytecodeLength = static_cast<SIZE_T>(program->GetBinarySize());
+
+            ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
+            GFX_HR(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
+            GfxUtils::SetName(result.Get(), GetName() + " - " + kernel->GetName());
+
+            LOG_TRACE("Create Compute PSO for '{}' Kernel of '{}' Shader", kernel->GetName(), GetName());
+        }
+
+        return result.Get();
     }
 
     bool ComputeShader::Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
-        m_KeywordSpace.Reset();
+        m_KeywordSpace->Clear();
         m_Kernels.clear();
 
         ShaderCompilationInternalUtils::EnumeratePragmas(source, [this](const std::vector<std::string>& args) -> bool
@@ -65,17 +103,20 @@ namespace march
             return true;
         });
 
+        bool success = true;
+
         for (std::unique_ptr<ComputeShaderKernel>& kernel : m_Kernels)
         {
-            if (!kernel->Compile(m_KeywordSpace, filename, source, warnings, error))
+            if (!kernel->Compile(m_KeywordSpace.get(), filename, source, warnings, error, [](auto) {}))
             {
-                m_KeywordSpace.Reset();
+                m_KeywordSpace->Clear();
                 m_Kernels.clear();
-                return false;
+                success = false;
+                break;
             }
         }
 
-        m_KeywordSet.TransformToSpace(m_KeywordSpace);
-        return true;
+        m_KeywordSet.TransformToSpace(m_KeywordSpace.get());
+        return success;
     }
 }

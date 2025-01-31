@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Graphics/GfxSettings.h"
+#include "Engine/Rendering/D3D12Impl/GfxSettings.h"
 #include <directx/d3d12.h>
 #include <string>
 

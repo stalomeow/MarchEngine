@@ -12,8 +12,6 @@ namespace march
     class MeshRenderer : public Component
     {
     public:
-        MeshRenderer() = default;
-
         GfxMesh* Mesh = nullptr;
         std::vector<Material*> Materials{};
 

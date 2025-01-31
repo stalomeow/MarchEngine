@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Engine/Object.h"
-#include "Engine/Graphics/GfxDescriptor.h"
-#include "Engine/Graphics/GfxPipelineState.h"
-#include "Engine/Graphics/GfxBuffer.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxUtils.h"
-#include "Engine/Graphics/Shader.h"
-#include "Engine/Graphics/GfxViewCache.h"
+#include "Engine/Memory/RefCounting.h"
+#include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
+#include "Engine/Rendering/D3D12Impl/GfxPipeline.h"
+#include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
+#include "Engine/Rendering/D3D12Impl/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
+#include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
+#include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
@@ -211,7 +211,7 @@ namespace march
 
         void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode);
 
-        void DispatchCompute(ComputeShader* shader, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
+        void DispatchCompute(ComputeShader* shader, size_t kernelIndex, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
 
         void ResolveTexture(GfxTexture* source, GfxTexture* destination);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement);
@@ -231,8 +231,8 @@ namespace march
         std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
         std::vector<GfxSyncPoint> m_SyncPointsToWait;
 
-        GfxViewCache<GfxPipelineType::Graphics> m_GraphicsViewCache;
-        GfxViewCache<GfxPipelineType::Compute> m_ComputeViewCache;
+        GfxPipelineParameterCache<GfxPipelineType::Graphics> m_GraphicsViewCache;
+        GfxPipelineParameterCache<GfxPipelineType::Compute> m_ComputeViewCache;
 
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
@@ -271,10 +271,8 @@ namespace march
         GfxBuffer* FindComputeBuffer(int32_t id, bool isConstantBuffer, GfxBufferElement* pOutElement);
         GfxBuffer* FindGraphicsBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement);
 
-        ID3D12PipelineState* GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex);
-
         void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex);
-        void SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords);
+        void SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex);
 
         void SetResolvedRenderState(const ShaderPassRenderState& state);
         void SetStencilRef(uint8_t value);

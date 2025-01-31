@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "Engine/Rendering/ShaderImpl/Shader.h"
-#include "Engine/Rendering/ShaderImpl/ShaderUtils.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
+#include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
+#include "Engine/Rendering/D3D12Impl/GfxTexture.h"
 #include <algorithm>
 
 namespace march
@@ -61,35 +61,34 @@ namespace march
         return program + "_" + model;
     }
 
-    bool ShaderPass::RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer, std::string& error)
+    bool Shader::CompilePass(size_t passIndex, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
-        D3D12_SHADER_BUFFER_DESC bufferDesc{};
-        GFX_HR(cbuffer->GetDesc(&bufferDesc));
-
-        // 记录 material 的 shader property location
-        if (strcmp(bufferDesc.Name, MaterialConstantBufferName) == 0)
+        auto recordConstantBufferCallback = [this](ID3D12ShaderReflectionConstantBuffer* cbuffer) -> void
         {
-            uint32_t size = static_cast<uint32_t>(bufferDesc.Size);
+            D3D12_SHADER_BUFFER_DESC bufferDesc{};
+            GFX_HR(cbuffer->GetDesc(&bufferDesc));
 
-            if (m_MaterialConstantBufferSize && *m_MaterialConstantBufferSize != size)
+            // 记录 material 的 shader property location
+            if (strcmp(bufferDesc.Name, MaterialConstantBufferName) == 0 && bufferDesc.Size > 0)
             {
-                error = "Material cbuffer size mismatch in programs";
-                return false;
+                m_MaterialConstantBufferSize = std::max(m_MaterialConstantBufferSize, static_cast<uint32_t>(bufferDesc.Size));
+
+                for (UINT i = 0; i < bufferDesc.Variables; i++)
+                {
+                    ID3D12ShaderReflectionVariable* var = cbuffer->GetVariableByIndex(i);
+                    D3D12_SHADER_VARIABLE_DESC varDesc{};
+                    GFX_HR(var->GetDesc(&varDesc));
+
+                    ShaderPropertyLocation& loc = m_PropertyLocations[ShaderUtils::GetIdFromString(varDesc.Name)];
+                    loc.Offset = static_cast<uint32_t>(varDesc.StartOffset);
+                    loc.Size = static_cast<uint32_t>(varDesc.Size);
+                }
             }
+        };
 
-            m_MaterialConstantBufferSize = size;
-
-            for (UINT i = 0; i < bufferDesc.Variables; i++)
-            {
-                ID3D12ShaderReflectionVariable* var = cbuffer->GetVariableByIndex(i);
-                D3D12_SHADER_VARIABLE_DESC varDesc{};
-                GFX_HR(var->GetDesc(&varDesc));
-
-                ShaderPropertyLocation& loc = m_PropertyLocations[ShaderUtils::GetIdFromString(varDesc.Name)];
-                loc.Offset = static_cast<uint32_t>(varDesc.StartOffset);
-                loc.Size = static_cast<uint32_t>(varDesc.Size);
-            }
-        }
+        m_Version++;
+        ShaderPass* pass = GetPass(passIndex);
+        return pass->Compile(m_KeywordSpace.get(), filename, source, warnings, error, recordConstantBufferCallback);
     }
 
     std::optional<size_t> Shader::GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const

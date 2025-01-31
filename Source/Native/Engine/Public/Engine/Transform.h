@@ -5,11 +5,9 @@
 
 namespace march
 {
-    class TransformInternalUtility;
-
     class Transform : public Component
     {
-        friend TransformInternalUtility;
+        friend class TransformInternalUtility;
 
     public:
         Transform();

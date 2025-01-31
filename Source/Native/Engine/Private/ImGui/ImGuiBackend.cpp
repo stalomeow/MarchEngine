@@ -1,14 +1,7 @@
 #include "pch.h"
-#include "Engine/Graphics/ImGuiDX12.h"
-#include "Engine/Graphics/GfxPipelineState.h"
-#include "Engine/Graphics/GfxCommand.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/Material.h"
-#include "Engine/Graphics/Shader.h"
-#include "Engine/Graphics/GfxMesh.h"
+#include "Engine/ImGui/ImGuiBackend.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/AssetManger.h"
-#include <directx/d3dx12.h>
 #include <memory>
 #include <DirectXMath.h>
 
@@ -285,8 +278,8 @@ namespace march
             globalIdxOffset += static_cast<uint32_t>(list->IdxBuffer.Size);
         }
 
-        static int32_t cbufferId = Shader::GetNameId("ImGuiConstants");
-        static int32_t textureId = Shader::GetNameId("_Texture");
+        static int32_t cbufferId = ShaderUtils::GetIdFromString("ImGuiConstants");
+        static int32_t textureId = ShaderUtils::GetIdFromString("_Texture");
 
         GfxCommandContext* context = bd->GetDevice()->RequestContext(GfxCommandType::Direct);
         SetConstantBufferData(cbuffer, drawData);

@@ -51,7 +51,7 @@ namespace March.Editor.ShaderLab
                 basePaths.Add(directory);
             }
 
-            basePaths.Add(Shader.EngineShaderPath);
+            basePaths.Add(ShaderUtility.EngineShaderPath);
         }
 
         private static string? GetFullPath(string path, List<string> basePaths)

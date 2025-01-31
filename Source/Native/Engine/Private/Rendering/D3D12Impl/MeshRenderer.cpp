@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Engine/Graphics/MeshRenderer.h"
-#include "Engine/Graphics/GfxMesh.h"
+#include "Engine/Rendering/D3D12Impl/MeshRenderer.h"
+#include "Engine/Rendering/D3D12Impl/GfxMesh.h"
 #include "Engine/Transform.h"
 
 using namespace DirectX;

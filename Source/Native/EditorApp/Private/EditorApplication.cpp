@@ -2,22 +2,18 @@
 #include "Editor/EditorApplication.h"
 #include "Editor/EditorGUI.h"
 #include "Editor/ConsoleWindow.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/RenderDoc.h"
-#include "Engine/Graphics/GfxUtils.h"
-#include "Engine/Graphics/Display.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxSwapChain.h"
-#include "Engine/Graphics/Shader.h"
-#include "Engine/Graphics/ImGuiDX12.h"
-#include "Engine/Scripting/DotNetRuntime.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderPipeline.h"
+#include "Engine/Rendering/Gizmos.h"
+#include "Engine/Rendering/Display.h"
+#include "Engine/ImGui/IconsFontAwesome6.h"
+#include "Engine/ImGui/IconsFontAwesome6Brands.h"
+#include "Engine/ImGui/ImGuiBackend.h"
+#include "Engine/Misc/StringUtils.h"
+#include "Engine/Misc/PathUtils.h"
+#include "Engine/Scripting/DotNetRuntime.h"
+#include "Engine/Profiling/RenderDoc.h"
 #include "Engine/Debug.h"
-#include "Engine/StringUtils.h"
-#include "Engine/PathUtils.h"
-#include "Engine/IconsFontAwesome6.h"
-#include "Engine/IconsFontAwesome6Brands.h"
-#include "Engine/Gizmos.h"
 #include <directx/d3dx12.h>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
@@ -92,7 +88,7 @@ namespace march
         GfxDevice* device = InitGfxDevice(desc);
 
         m_SwapChain = std::make_unique<GfxSwapChain>(device, GetWindowHandle(), GetClientWidth(), GetClientHeight());
-        Display::CreateMainDisplay(GetGfxDevice(), 10, 10); // dummy
+        Display::CreateMainDisplay(10, 10); // dummy
 
         InitImGui();
 
@@ -245,7 +241,7 @@ namespace march
         Gizmos::ReleaseResources();
         Display::DestroyMainDisplay();
         GfxTexture::ClearSamplerCache();
-        Shader::ClearRootSignatureCache();
+        ShaderUtils::ClearRootSignatureCache();
 
         DotNet::RuntimeInvoke(ManagedMethod::Application_FullGC);
         DotNet::DestroyRuntime();

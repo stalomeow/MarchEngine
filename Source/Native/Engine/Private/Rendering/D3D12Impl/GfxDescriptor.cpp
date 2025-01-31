@@ -1,9 +1,10 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxDescriptor.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Debug.h"
-#include "Engine/HashUtils.h"
+#include "Engine/Misc/HashUtils.h"
 #include <Windows.h>
 #include <stdexcept>
 

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Engine/Object.h"
-#include "Engine/Rendering/Shader.h"
+#include "Engine/Rendering/D3D12Impl/GfxPipeline.h"
+#include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
+#include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <unordered_map>
@@ -19,14 +21,11 @@ namespace march
     {
         friend struct MaterialInternalUtility;
 
-        struct PerPassData
+        struct ResolvedRenderState
         {
-            std::unique_ptr<GfxBuffer> ConstantBuffer = nullptr;
-            uint32_t ConstantBufferVersion{};
-
-            std::optional<ShaderPassRenderState> ResolvedRenderState = std::nullopt;
-            size_t ResolvedRenderStateHash{};
-            uint32_t ResolvedRenderStateVersion{};
+            std::optional<ShaderPassRenderState> State = std::nullopt;
+            size_t Hash{};
+            uint32_t Version{};
         };
 
         Shader* m_Shader = nullptr;
@@ -41,8 +40,11 @@ namespace march
         std::unordered_map<int32_t, DirectX::XMFLOAT4> m_Colors{};
         std::unordered_map<int32_t, GfxTexture*> m_Textures{};
 
-        std::vector<PerPassData> m_PerPassData{};
-        uint32_t m_ConstantBufferVersion = 0;
+        std::unique_ptr<GfxBuffer> m_ConstantBuffer = nullptr;
+        bool m_IsConstantBufferDirty = true;
+
+        // 每个 pass 都有一个 ResolvedRenderState
+        std::vector<ResolvedRenderState> m_ResolvedRenderStates{};
         uint32_t m_ResolvedRenderStateVersion = 0;
 
         void CheckShaderVersion();
@@ -91,6 +93,7 @@ namespace march
 
         GfxBuffer* GetConstantBuffer(size_t passIndex);
         const ShaderPassRenderState& GetResolvedRenderState(size_t passIndex, size_t* outHash = nullptr);
+        ID3D12PipelineState* GetPSO(size_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc);
     };
 
     struct MaterialInternalUtility
@@ -100,6 +103,6 @@ namespace march
         static const std::unordered_map<int32_t, DirectX::XMFLOAT4>& GetRawVectors(Material* m);
         static const std::unordered_map<int32_t, DirectX::XMFLOAT4>& GetRawColors(Material* m);
         static const std::unordered_map<int32_t, GfxTexture*>& GetRawTextures(Material* m);
-        static const std::vector<std::string>& GetRawEnabledKeywords(Material* m);
+        static std::vector<std::string> GetRawEnabledKeywords(Material* m);
     };
 }

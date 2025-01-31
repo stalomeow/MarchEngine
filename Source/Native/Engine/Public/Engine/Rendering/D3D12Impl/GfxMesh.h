@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Engine/Object.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxBuffer.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
 #include <directx/d3dx12.h>
 #include <stdint.h>
 #include <DirectXMath.h>

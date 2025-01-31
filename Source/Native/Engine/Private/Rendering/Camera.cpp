@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Engine/Rendering/Camera.h"
-#include "Engine/Graphics/Display.h"
-#include "Engine/Graphics/GfxSettings.h"
+#include "Engine/Rendering/Display.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/Transform.h"
 #include <algorithm>
 

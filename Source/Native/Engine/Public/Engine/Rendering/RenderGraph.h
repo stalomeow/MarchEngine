@@ -1,8 +1,6 @@
 #pragma once
 
-#include "Engine/Graphics/GfxCommand.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderGraphResource.h"
 #include <directx/d3d12.h>
 #include <vector>

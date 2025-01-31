@@ -243,3 +243,17 @@ namespace march
         }
     };
 }
+
+#include "Engine/Object.h"
+
+#define MARCH_MAKE_REF(T, ...) ::march::RefCountPtr<T>().Attach(MARCH_NEW T(__VA_ARGS__))
+
+template <typename T>
+struct std::hash<march::RefCountPtr<T>>
+{
+    auto operator()(const march::RefCountPtr<T>& ptr) const noexcept
+    {
+        return std::hash<T*>{}(ptr.Get());
+    }
+};
+

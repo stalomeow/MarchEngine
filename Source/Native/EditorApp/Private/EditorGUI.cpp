@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Editor/EditorGUI.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxTexture.h"
+#include "Engine/Rendering/D3D12.h"
 #include <utility>
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxSettings.h"
+#include "Engine/Rendering/D3D12Impl/GfxSettings.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO GfxSettings_GetUseReversedZBuffer()

@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Engine/Rendering/RenderPipeline.h"
-#include "Engine/Graphics/Material.h"
 #include "Engine/Scripting/InteropServices.h"
 #include "Engine/Application.h"
 

@@ -1,7 +1,5 @@
 #include "pch.h"
 #include "Engine/Rendering/RenderGraph.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxCommand.h"
 #include "Engine/Debug.h"
 #include <utility>
 #include <stdexcept>
@@ -432,7 +430,7 @@ namespace march
 
         if (resMap.find(id) != resMap.end())
         {
-            LOG_ERROR("Resource {} already exists", Shader::GetIdName(id));
+            LOG_ERROR("Resource {} already exists", ShaderUtils::GetStringFromId(id));
             return;
         }
 
@@ -445,7 +443,7 @@ namespace march
 
         if (resMap.find(id) != resMap.end())
         {
-            LOG_ERROR("Resource {} already exists", Shader::GetIdName(id));
+            LOG_ERROR("Resource {} already exists", ShaderUtils::GetStringFromId(id));
             return;
         }
 
@@ -476,7 +474,7 @@ namespace march
         {
             if (pass.ResourcesWritten.count(id) > 0)
             {
-                LOG_ERROR("Resource {} is both read and written in pass {}", Shader::GetIdName(id), pass.Name);
+                LOG_ERROR("Resource {} is both read and written in pass {}", ShaderUtils::GetStringFromId(id), pass.Name);
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -489,7 +487,7 @@ namespace march
             int32_t producerPassIndex = resIt->second.GetLastProducerPass();
             if (producerPassIndex < 0)
             {
-                LOG_ERROR("Failed to find producer pass for resource {} in pass {}", Shader::GetIdName(id), pass.Name);
+                LOG_ERROR("Failed to find producer pass for resource {} in pass {}", ShaderUtils::GetStringFromId(id), pass.Name);
                 return TextureHandle(m_Graph, -1);
             }
 
@@ -512,7 +510,7 @@ namespace march
         {
             if (pass.ResourcesRead.count(id) > 0)
             {
-                LOG_ERROR("Resource {} is both read and written in pass {}", Shader::GetIdName(id), pass.Name);
+                LOG_ERROR("Resource {} is both read and written in pass {}", ShaderUtils::GetStringFromId(id), pass.Name);
                 return TextureHandle(m_Graph, -1);
             }
 

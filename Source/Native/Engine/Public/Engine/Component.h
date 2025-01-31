@@ -5,21 +5,12 @@
 namespace march
 {
     class Transform;
-    class ComponentInternalUtility;
 
     class Component : public MarchObject
     {
-        friend ComponentInternalUtility;
+        friend struct ComponentInternalUtility;
 
     public:
-        Component() = default;
-        virtual ~Component() = default;
-
-        Component(const Component&) = delete;
-        Component& operator=(const Component&) = delete;
-        Component(Component&&) = delete;
-        Component& operator=(Component&&) = delete;
-
         virtual bool GetIsActiveAndEnabled() const { return m_IsActiveAndEnabled; }
         Transform* GetTransform() const { return m_Transform; }
 
@@ -38,9 +29,8 @@ namespace march
     };
 
     // C++ 侧提供给 C# 侧的接口，不要用它
-    class ComponentInternalUtility
+    struct ComponentInternalUtility
     {
-    public:
         static void SetIsActiveAndEnabled(Component* component, bool value) { component->m_IsActiveAndEnabled = value; }
         static void SetTransform(Component* component, Transform* value) { component->m_Transform = value; }
         static void InvokeOnMount(Component* component) { component->OnMount(); }

@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Rendering/ShaderImpl/ShaderUtils.h"
-#include "Engine/PathUtils.h"
-#include "Engine/StringUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
+#include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
+#include "Engine/Misc/PathUtils.h"
+#include "Engine/Misc/StringUtils.h"
 #include <unordered_map>
 #include <stdexcept>
 #include <wrl.h>

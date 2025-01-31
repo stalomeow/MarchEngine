@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxMesh.h"
+#include "Engine/Rendering/D3D12Impl/GfxMesh.h"
 #include "Engine/Scripting/InteropServices.h"
 
 struct CSharpMeshVertex

@@ -28,6 +28,12 @@ namespace march
         int32 GetKeywordId(size_t index) const;
 
         size_t GetNumKeywords() const { return m_KeywordIndexMap.size(); }
+
+        void Clear()
+        {
+            m_KeywordIndexMap.clear();
+            m_NextIndex = 0;
+        }
     };
 
     class ShaderKeywordSet

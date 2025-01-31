@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Editor/RenderGraphDebuggerWindow.h"
-#include "Engine/IconsFontAwesome6.h"
+#include "Engine/ImGui/IconsFontAwesome6.h"
 #include <math.h>
 
 namespace march
@@ -63,11 +63,11 @@ namespace march
                 if (pass.ColorTargets[i].Load)
                 {
                     tempData.InputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
-                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i].Id) + " (RW)");
+                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.ColorTargets[i].Id) + " (RW)");
                 }
                 else
                 {
-                    node.Resources.push_back(Shader::GetIdName(pass.ColorTargets[i].Id) + " (W)");
+                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.ColorTargets[i].Id) + " (W)");
                 }
             }
 
@@ -78,23 +78,23 @@ namespace march
                 if (pass.DepthStencilTarget.Load)
                 {
                     tempData.InputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
-                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget.Id) + " (RW)");
+                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.DepthStencilTarget.Id) + " (RW)");
                 }
                 else
                 {
-                    node.Resources.push_back(Shader::GetIdName(pass.DepthStencilTarget.Id) + " (W)");
+                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.DepthStencilTarget.Id) + " (W)");
                 }
             }
 
             for (int32_t res : pass.ResourcesRead)
             {
-                node.Resources.push_back(Shader::GetIdName(res) + " (R)");
+                node.Resources.push_back(ShaderUtils::GetStringFromId(res) + " (R)");
                 tempData.InputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
             }
 
             for (int32_t res : pass.ResourcesWritten)
             {
-                node.Resources.push_back(Shader::GetIdName(res) + " (W)");
+                node.Resources.push_back(ShaderUtils::GetStringFromId(res) + " (W)");
                 tempData.OutputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
             }
         }

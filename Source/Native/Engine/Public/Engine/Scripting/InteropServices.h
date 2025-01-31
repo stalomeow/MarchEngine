@@ -2,7 +2,7 @@
 
 #include "Engine/Scripting/DotNetTypeTraits.h"
 #include "Engine/Scripting/DotNetMarshal.h"
-#include "Engine/StringUtils.h"
+#include "Engine/Misc/StringUtils.h"
 #include "Engine/Debug.h"
 #include "Engine/Object.h"
 #include <DirectXMath.h>

@@ -1,15 +1,16 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxCommand.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxResource.h"
-#include "Engine/Graphics/GfxMesh.h"
-#include "Engine/Graphics/Material.h"
-#include "Engine/Graphics/MeshRenderer.h"
-#include "Engine/Graphics/RenderDoc.h"
-#include "Engine/MathUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxCommand.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxResource.h"
+#include "Engine/Rendering/D3D12Impl/GfxMesh.h"
+#include "Engine/Rendering/D3D12Impl/Material.h"
+#include "Engine/Rendering/D3D12Impl/MeshRenderer.h"
+#include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
+#include "Engine/Profiling/RenderDoc.h"
+#include "Engine/Misc/MathUtils.h"
+#include "Engine/Misc/StringUtils.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
-#include "Engine/StringUtils.h"
 #include <assert.h>
 
 using namespace DirectX;
@@ -171,7 +172,7 @@ namespace march
 
     void GfxCommandContext::SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element)
     {
-        SetTexture(Shader::GetNameId(name), value, element);
+        SetTexture(ShaderUtils::GetIdFromString(name), value, element);
     }
 
     void GfxCommandContext::SetTexture(int32_t id, GfxTexture* value, GfxTextureElement element)
@@ -186,7 +187,7 @@ namespace march
 
     void GfxCommandContext::SetBuffer(const std::string& name, GfxBuffer* value, GfxBufferElement element)
     {
-        SetBuffer(Shader::GetNameId(name), value, element);
+        SetBuffer(ShaderUtils::GetIdFromString(name), value, element);
     }
 
     void GfxCommandContext::SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element)
@@ -479,7 +480,7 @@ namespace march
         }
         else
         {
-            static int32_t instanceBufferId = Shader::GetNameId("_InstanceBuffer");
+            static int32_t instanceBufferId = ShaderUtils::GetIdFromString("_InstanceBuffer");
 
             if (id == instanceBufferId)
             {
@@ -489,11 +490,6 @@ namespace march
         }
 
         return FindComputeBuffer(id, isConstantBuffer, pOutElement);
-    }
-
-    ID3D12PipelineState* GfxCommandContext::GetGraphicsPipelineState(const GfxInputDesc& inputDesc, Material* material, size_t passIndex)
-    {
-        return GfxPipelineState::GetGraphicsPSO(material, passIndex, inputDesc, m_OutputDesc);
     }
 
     void GfxCommandContext::SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex)
@@ -508,22 +504,22 @@ namespace march
 
         m_GraphicsViewCache.SetRootSignature(pass->GetRootSignature(material->GetKeywords()));
 
-        m_GraphicsViewCache.SetSrvCbvBuffers([this, material, passIndex](const GfxRootSignatureBufferBinding& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
+        m_GraphicsViewCache.SetSrvCbvBuffers([this, material, passIndex](const ShaderParamSrvCbvBuffer& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
         {
             return FindGraphicsBuffer(buf.Id, buf.IsConstantBuffer, material, passIndex, pOutElement);
         });
 
-        m_GraphicsViewCache.SetSrvTexturesAndSamplers([this, material](const GfxRootSignatureTextureBinding& tex, GfxTextureElement* pOutElement) -> GfxTexture*
+        m_GraphicsViewCache.SetSrvTexturesAndSamplers([this, material](const ShaderParamSrvTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
         {
             return FindTexture(tex.Id, material, pOutElement);
         });
 
-        m_GraphicsViewCache.SetUavBuffers([this, material, passIndex](const GfxRootSignatureUavBinding& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
+        m_GraphicsViewCache.SetUavBuffers([this, material, passIndex](const ShaderParamUavBuffer& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
         {
             return FindGraphicsBuffer(buf.Id, false, material, passIndex, pOutElement);
         });
 
-        m_GraphicsViewCache.SetUavTextures([this, material](const GfxRootSignatureUavBinding& tex, GfxTextureElement* pOutElement) -> GfxTexture*
+        m_GraphicsViewCache.SetUavTextures([this, material](const ShaderParamUavTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
         {
             return FindTexture(tex.Id, material, pOutElement);
         });
@@ -538,7 +534,7 @@ namespace march
         SetResolvedRenderState(material->GetResolvedRenderState(passIndex));
     }
 
-    void GfxCommandContext::SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords)
+    void GfxCommandContext::SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex)
     {
         if (m_CurrentPipelineState != pso)
         {
@@ -546,24 +542,24 @@ namespace march
             m_CommandList->SetPipelineState(pso);
         }
 
-        m_ComputeViewCache.SetRootSignature(kernel->GetRootSignature(keywords));
+        m_ComputeViewCache.SetRootSignature(shader->GetRootSignature(kernelIndex));
 
-        m_ComputeViewCache.SetSrvCbvBuffers([this](const GfxRootSignatureBufferBinding& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
+        m_ComputeViewCache.SetSrvCbvBuffers([this](const ShaderParamSrvCbvBuffer& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
         {
             return FindComputeBuffer(buf.Id, buf.IsConstantBuffer, pOutElement);
         });
 
-        m_ComputeViewCache.SetSrvTexturesAndSamplers([this](const GfxRootSignatureTextureBinding& tex, GfxTextureElement* pOutElement) -> GfxTexture*
+        m_ComputeViewCache.SetSrvTexturesAndSamplers([this](const ShaderParamSrvTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
         {
             return FindTexture(tex.Id, pOutElement);
         });
 
-        m_ComputeViewCache.SetUavBuffers([this](const GfxRootSignatureUavBinding& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
+        m_ComputeViewCache.SetUavBuffers([this](const ShaderParamUavBuffer& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
         {
             return FindComputeBuffer(buf.Id, false, pOutElement);
         });
 
-        m_ComputeViewCache.SetUavTextures([this](const GfxRootSignatureUavBinding& tex, GfxTextureElement* pOutElement) -> GfxTexture*
+        m_ComputeViewCache.SetUavTextures([this](const ShaderParamUavTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
         {
             return FindTexture(tex.Id, pOutElement);
         });
@@ -687,7 +683,7 @@ namespace march
     {
         SetInstanceBufferData(1, &CreateInstanceData(matrix));
 
-        ID3D12PipelineState* pso = GetGraphicsPipelineState(subMesh.InputDesc, material, shaderPassIndex);
+        ID3D12PipelineState* pso = material->GetPSO(shaderPassIndex, subMesh.InputDesc, m_OutputDesc);
         SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
 
         DrawSubMesh(subMesh, 1);
@@ -750,7 +746,7 @@ namespace march
                     continue;
                 }
 
-                ID3D12PipelineState* pso = GetGraphicsPipelineState(renderer->Mesh->GetInputDesc(), mat, *shaderPassIndex);
+                ID3D12PipelineState* pso = mat->GetPSO(*shaderPassIndex, renderer->Mesh->GetInputDesc(), m_OutputDesc);
                 DrawCall dc{ renderer->Mesh, j, mat, *shaderPassIndex };
                 psoMap[pso][dc].emplace_back(CreateInstanceData(renderer->GetTransform()->GetLocalToWorldMatrix()));
             }
@@ -768,10 +764,9 @@ namespace march
         }
     }
 
-    void GfxCommandContext::DispatchCompute(ComputeShader* shader, ComputeShaderKernel* kernel, const ShaderKeywordSet& keywords, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
+    void GfxCommandContext::DispatchCompute(ComputeShader* shader, size_t kernelIndex, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
     {
-        ID3D12PipelineState* pso = GfxPipelineState::GetComputePSO(shader, kernel, keywords);
-        SetComputePipelineParameters(pso, kernel, keywords);
+        SetComputePipelineParameters(shader->GetPSO(kernelIndex), shader, kernelIndex);
         FlushResourceBarriers();
 
         m_CommandList->Dispatch(

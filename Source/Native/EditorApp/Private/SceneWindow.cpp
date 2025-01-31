@@ -2,14 +2,12 @@
 #include "Editor/SceneWindow.h"
 #include "Editor/EditorGUI.h"
 #include "Engine/Application.h"
-#include "Engine/Graphics/Display.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxDescriptor.h"
+#include "Engine/Rendering/Display.h"
+#include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/Camera.h"
+#include "Engine/Rendering/Gizmos.h"
+#include "Engine/ImGui/IconsFontAwesome6.h"
 #include "Engine/Debug.h"
-#include "Engine/IconsFontAwesome6.h"
-#include "Engine/Gizmos.h"
 #include <stdint.h>
 #include <ImGuizmo.h>
 #include <imoguizmo.hpp>
@@ -107,15 +105,13 @@ namespace march
 
     Display* SceneWindow::UpdateDisplay()
     {
-        GfxDevice* device = GetGfxDevice();
         ImVec2 size = ImGui::GetContentRegionAvail();
-
         uint32_t width = static_cast<uint32_t>(std::max(size.x, 1.0f));
         uint32_t height = static_cast<uint32_t>(std::max(size.y, 1.0f));
 
         if (m_Display == nullptr)
         {
-            m_Display = std::make_unique<Display>(device, "EditorSceneView", width, height);
+            m_Display = std::make_unique<Display>("EditorSceneView", width, height);
             m_Display->SetEnableMSAA(m_EnableMSAA);
         }
         else if (m_Display->GetPixelWidth() != width || m_Display->GetPixelHeight() != height)

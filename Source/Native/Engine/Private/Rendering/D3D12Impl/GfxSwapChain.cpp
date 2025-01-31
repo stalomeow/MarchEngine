@@ -1,8 +1,9 @@
 #include "pch.h"
-#include "Engine/Graphics/GfxSwapChain.h"
-#include "Engine/Graphics/GfxCommand.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxSwapChain.h"
+#include "Engine/Rendering/D3D12Impl/GfxCommand.h"
+#include "Engine/Rendering/D3D12Impl/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
 
 using namespace Microsoft::WRL;
 

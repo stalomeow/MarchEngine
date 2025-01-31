@@ -37,7 +37,7 @@ namespace March.Editor.AssetPipeline
         static AssetDatabase()
         {
             s_ProjectAssetFileWatcher = new FileSystemWatcher(Path.Combine(Application.DataPath, "Assets"));
-            s_EngineShaderWatcher = new FileSystemWatcher(Shader.EngineShaderPath);
+            s_EngineShaderWatcher = new FileSystemWatcher(ShaderUtility.EngineShaderPath);
         }
 
         internal static void Initialize()
@@ -54,7 +54,7 @@ namespace March.Editor.AssetPipeline
         private static void PreImportAllAssets()
         {
             CreateImportersOnly(Path.Combine(Application.DataPath, "Assets"));
-            CreateImportersOnly(Shader.EngineShaderPath);
+            CreateImportersOnly(ShaderUtility.EngineShaderPath);
 
             // 现在 guid 表已经构建完毕，可以导入资产了
             AssetManager.Impl = new EditorAssetManagerImpl();

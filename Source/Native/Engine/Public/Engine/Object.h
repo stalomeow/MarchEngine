@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Engine/Ints.h"
-#include <atomic>
-
 namespace march
 {
     class MarchObject
@@ -20,14 +17,3 @@ namespace march
 #else
     #define MARCH_NEW new
 #endif
-
-#define MARCH_MAKE_REF(T, ...) ::march::RefCountPtr<T>().Attach(MARCH_NEW T(__VA_ARGS__))
-
-template <typename T>
-struct std::hash<march::RefCountPtr<T>>
-{
-    auto operator()(const march::RefCountPtr<T>& ptr) const noexcept
-    {
-        return std::hash<T*>{}(ptr.Get());
-    }
-};

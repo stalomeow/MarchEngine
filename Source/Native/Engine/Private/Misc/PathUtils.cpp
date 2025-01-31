@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Engine/PathUtils.h"
-#include "Engine/StringUtils.h"
+#include "Engine/Misc/PathUtils.h"
+#include "Engine/Misc/StringUtils.h"
 #include <Windows.h>
 #include <algorithm>
 

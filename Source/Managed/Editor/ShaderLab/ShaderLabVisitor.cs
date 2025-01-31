@@ -1,6 +1,7 @@
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using March.Core;
+using March.Core.Interop;
 using March.Core.Rendering;
 using March.Editor.ShaderLab.Internal;
 using System.Numerics;
@@ -136,16 +137,18 @@ namespace March.Editor.ShaderLab
                 return new ShaderPassDepthState
                 {
                     Enable = write.PropertyId.HasValue || write.Value, // 如果强制要求写入深度，则启用深度测试，否则写不进去
-                    Write = write,
+                    Write = (NativeBool)write.Value,
                     Compare = CompareFunction.Always, // 深度测试关闭时，默认通过
                 };
             }
             else
             {
+                ShaderPassVar<bool> write = m_ZWrite ?? parent.m_ZWrite ?? true;
+
                 return new ShaderPassDepthState
                 {
                     Enable = true,
-                    Write = m_ZWrite ?? parent.m_ZWrite ?? true,
+                    Write = (NativeBool)write.Value,
                     Compare = m_ZTest ?? parent.m_ZTest ?? CompareFunction.Less,
                 };
             }

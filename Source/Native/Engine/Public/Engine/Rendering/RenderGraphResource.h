@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Graphics/GfxTexture.h"
+#include "Engine/Rendering/D3D12.h"
 #include <memory>
 #include <list>
 #include <vector>

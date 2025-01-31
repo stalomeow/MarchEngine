@@ -2,26 +2,12 @@
 #include "Engine/Rendering/RenderPipeline.h"
 #include "Engine/Rendering/RenderGraph.h"
 #include "Engine/Rendering/Camera.h"
-#include "Engine/Graphics/GfxTexture.h"
-#include "Engine/Graphics/MeshRenderer.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxMesh.h"
-#include "Engine/Graphics/GfxDescriptor.h"
-#include "Engine/Graphics/GfxBuffer.h"
-#include "Engine/Graphics/GfxCommand.h"
-#include "Engine/Graphics/Material.h"
-#include "Engine/Graphics/Display.h"
-#include "Engine/Graphics/GfxUtils.h"
-#include "Engine/Graphics/GfxSettings.h"
+#include "Engine/Rendering/Display.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
-#include "Engine/Gizmos.h"
-#include "Engine/MathUtils.h"
-#include <DirectXColors.h>
-#include <D3Dcompiler.h>
+#include "Engine/Rendering/Gizmos.h"
+#include "Engine/Misc/MathUtils.h"
 #include <vector>
-#include <array>
-#include <fstream>
 #include <DirectXCollision.h>
 
 using namespace DirectX;
@@ -37,10 +23,10 @@ namespace march
         m_FullScreenTriangleMesh = GfxMesh::GetGeometry(GfxMeshGeometry::FullScreenTriangle);
         m_SphereMesh = GfxMesh::GetGeometry(GfxMeshGeometry::Sphere);
 
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer0"), DXGI_FORMAT_R8G8B8A8_UNORM, true);
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer2"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
-        m_GBuffers.emplace_back(Shader::GetNameId("_GBuffer3"), DXGI_FORMAT_R32_FLOAT, false);
+        m_GBuffers.emplace_back(ShaderUtils::GetIdFromString("_GBuffer0"), DXGI_FORMAT_R8G8B8A8_UNORM, true);
+        m_GBuffers.emplace_back(ShaderUtils::GetIdFromString("_GBuffer1"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
+        m_GBuffers.emplace_back(ShaderUtils::GetIdFromString("_GBuffer2"), DXGI_FORMAT_R8G8B8A8_UNORM, false);
+        m_GBuffers.emplace_back(ShaderUtils::GetIdFromString("_GBuffer3"), DXGI_FORMAT_R32_FLOAT, false);
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
@@ -65,9 +51,9 @@ namespace march
 
             Display* display = camera->GetTargetDisplay();
 
-            int32_t colorTargetId = Shader::GetNameId("_CameraColorTarget");
-            int32_t colorTargetResolvedId = Shader::GetNameId("_CameraColorTargetResolved");
-            int32_t depthStencilTargetId = Shader::GetNameId("_CameraDepthStencilTarget");
+            int32_t colorTargetId = ShaderUtils::GetIdFromString("_CameraColorTarget");
+            int32_t colorTargetResolvedId = ShaderUtils::GetIdFromString("_CameraColorTargetResolved");
+            int32_t depthStencilTargetId = ShaderUtils::GetIdFromString("_CameraDepthStencilTarget");
 
             ImportTextures(colorTargetId, display->GetColorBuffer());
             ImportTextures(depthStencilTargetId, display->GetDepthStencilBuffer());
@@ -79,16 +65,16 @@ namespace march
                 ImportTextures(colorTargetResolvedId, display->GetResolvedColorBuffer());
             }
 
-            static int32 shadowMapId = Shader::GetNameId("_ShadowMap");
+            static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
             XMFLOAT4X4 shadowMatrix = DrawShadowCasters(shadowMapId);
 
             SetCameraGlobalConstantBuffer("CameraConstantBuffer", &m_CameraConstantBuffer, camera);
-            SetLightGlobalConstantBuffer(Shader::GetNameId("cbLight"));
+            SetLightGlobalConstantBuffer(ShaderUtils::GetIdFromString("cbLight"));
 
             ClearTargets(colorTargetId, depthStencilTargetId);
             DrawObjects(colorTargetId, depthStencilTargetId, camera->GetEnableWireframe());
 
-            static int32 screenSpaceShadowMapId = Shader::GetNameId("_ScreenSpaceShadowMap");
+            static int32 screenSpaceShadowMapId = ShaderUtils::GetIdFromString("_ScreenSpaceShadowMap");
             ScreenSpaceShadow(shadowMatrix, colorTargetId, shadowMapId, screenSpaceShadowMapId);
 
             DeferredLighting(colorTargetId, depthStencilTargetId, screenSpaceShadowMapId);
@@ -116,7 +102,7 @@ namespace march
 
     void RenderPipeline::ImportTextures(int32_t id, GfxRenderTexture* texture)
     {
-        auto builder = m_RenderGraph->AddPass("Import" + Shader::GetIdName(id));
+        auto builder = m_RenderGraph->AddPass("Import" + ShaderUtils::GetStringFromId(id));
         builder.ImportTexture(id, texture);
     }
 
@@ -127,7 +113,7 @@ namespace march
 
     XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
     {
-        static int32_t bufferId = Shader::GetNameId("cbCamera");
+        static int32_t bufferId = ShaderUtils::GetIdFromString("cbCamera");
 
         auto builder = m_RenderGraph->AddPass(passName);
 
@@ -392,7 +378,7 @@ namespace march
             gBuffers[numGBuffers++] = builder.ReadTexture(id);
         }
 
-        static int32_t bufferId = Shader::GetNameId("cbShadow");
+        static int32_t bufferId = ShaderUtils::GetIdFromString("cbShadow");
 
         TextureHandle shadowMap = builder.ReadTexture(shadowMapId);
 
@@ -425,7 +411,7 @@ namespace march
         auto builder = m_RenderGraph->AddPass("TestCompute");
         builder.AllowPassCulling(false);
 
-        static int32_t texId = Shader::GetNameId("res");
+        static int32_t texId = ShaderUtils::GetIdFromString("res");
         GfxTextureDesc desc{};
         desc.Format = GfxTextureFormat::R32G32B32A32_Float;
         desc.Flags = GfxTextureFlags::UnorderedAccess;
@@ -444,8 +430,8 @@ namespace march
         {
             context.SetTexture(texId, t.Get());
 
-            ComputeShaderKernel* kernel = m_ComputeShader->GetKernel("FillWithRed");
-            context.GetCommandContext()->DispatchCompute(m_ComputeShader.get(), kernel, {}, 4, 4, 1);
+            std::optional<size_t> kernelIndex = m_ComputeShader->FindKernel("FillWithRed");
+            context.GetCommandContext()->DispatchCompute(m_ComputeShader.get(), *kernelIndex, 4, 4, 1);
         });
     }
 }

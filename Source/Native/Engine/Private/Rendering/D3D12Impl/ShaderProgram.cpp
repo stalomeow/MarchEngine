@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "Engine/Rendering/ShaderImpl/ShaderProgram.h"
-#include "Engine/Rendering/ShaderImpl/ShaderUtils.h"
-#include "Engine/Graphics/GfxSettings.h"
-#include "Engine/Graphics/GfxDevice.h"
-#include "Engine/Graphics/GfxUtils.h"
+#include "Engine/Rendering/D3D12Impl/ShaderProgram.h"
+#include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
+#include "Engine/Rendering/D3D12Impl/GfxSettings.h"
+#include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Debug.h"
 #include <vector>
 #include <string>
@@ -241,7 +241,7 @@ namespace march
                     buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
                     buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
                     buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
-                    buffer.ConstantBufferSize = static_cast<uint32_t>(cbDesc.Size);
+                    buffer.IsConstantBuffer = true;
                     recordConstantBufferCallback(cb);
                     break;
                 }
@@ -257,7 +257,7 @@ namespace march
                     buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
                     buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
                     buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
-                    buffer.ConstantBufferSize = 0;
+                    buffer.IsConstantBuffer = false;
                     break;
                 }
 
@@ -271,7 +271,7 @@ namespace march
                     buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
                     buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
                     buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
-                    buffer.ConstantBufferSize = 0;
+                    buffer.IsConstantBuffer = false;
                     break;
                 }
 
@@ -338,7 +338,7 @@ namespace march
                         buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);
                         buffer.ShaderRegister = static_cast<uint32_t>(bindDesc.BindPoint);
                         buffer.RegisterSpace = static_cast<uint32_t>(bindDesc.Space);
-                        buffer.ConstantBufferSize = 0;
+                        buffer.IsConstantBuffer = false;
                     }
 
                     break;

@@ -1,21 +1,18 @@
 #pragma once
 
-#include <directx/d3dx12.h>
 #include <stdint.h>
 #include <memory>
 #include <string>
 
 namespace march
 {
-    class GfxDevice;
-    class GfxRenderTexture;
-
     enum class GfxTextureFormat;
+    class GfxRenderTexture;
 
     class Display
     {
     public:
-        Display(GfxDevice* device, const std::string& name, uint32_t width, uint32_t height);
+        Display(const std::string& name, uint32_t width, uint32_t height);
 
         bool GetEnableMSAA() const;
         void SetEnableMSAA(bool value);
@@ -33,13 +30,12 @@ namespace march
         GfxRenderTexture* GetResolvedDepthStencilBuffer() const;
 
         static Display* GetMainDisplay();
-        static void CreateMainDisplay(GfxDevice* device, uint32_t width, uint32_t height);
+        static void CreateMainDisplay(uint32_t width, uint32_t height);
         static void DestroyMainDisplay();
 
     private:
         void CreateBuffers(uint32_t width, uint32_t height);
 
-        GfxDevice* m_Device;
         std::string m_Name;
         bool m_EnableMSAA;
 
