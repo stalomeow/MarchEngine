@@ -23,7 +23,7 @@ namespace march
         bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
         std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
         void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override;
-        void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override {}
+        bool RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer, std::string& error) override {}
     };
 
     class ComputeShader : public MarchObject

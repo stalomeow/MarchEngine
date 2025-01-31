@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Engine/Graphics/Material.h"
-#include "Engine/Graphics/Shader.h"
+#include "Engine/Rendering/Material.h"
+#include "Engine/Rendering/Shader.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO Material_New()
@@ -110,7 +110,7 @@ NATIVE_EXPORT_AUTO Material_GetAllInts(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         IntProperty& dst = props[i++];
-        dst.Name.assign(Shader::GetIdName(p.first));
+        dst.Name.assign(ShaderUtils::GetStringFromId(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -146,7 +146,7 @@ NATIVE_EXPORT_AUTO Material_GetAllFloats(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         FloatProperty& dst = props[i++];
-        dst.Name.assign(Shader::GetIdName(p.first));
+        dst.Name.assign(ShaderUtils::GetStringFromId(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -182,7 +182,7 @@ NATIVE_EXPORT_AUTO Material_GetAllVectors(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         VectorProperty& dst = props[i++];
-        dst.Name.assign(Shader::GetIdName(p.first));
+        dst.Name.assign(ShaderUtils::GetStringFromId(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -218,7 +218,7 @@ NATIVE_EXPORT_AUTO Material_GetAllColors(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         ColorProperty& dst = props[i++];
-        dst.Name.assign(Shader::GetIdName(p.first));
+        dst.Name.assign(ShaderUtils::GetStringFromId(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -254,7 +254,7 @@ NATIVE_EXPORT_AUTO Material_GetAllTextures(cs<Material*> pMaterial)
     for (auto& p : allValues)
     {
         TextureProperty& dst = props[i++];
-        dst.Name.assign(Shader::GetIdName(p.first));
+        dst.Name.assign(ShaderUtils::GetStringFromId(p.first));
         dst.Value.assign(p.second);
     }
 
@@ -278,7 +278,7 @@ NATIVE_EXPORT_AUTO Material_SetKeyword(cs<Material*> pMaterial, cs_string keywor
 
 NATIVE_EXPORT_AUTO Material_GetAllKeywords(cs<Material*> pMaterial)
 {
-    const std::unordered_set<std::string>& keywords = MaterialInternalUtility::GetRawEnabledKeywords(pMaterial);
+    const std::vector<std::string>& keywords = MaterialInternalUtility::GetRawEnabledKeywords(pMaterial);
 
     cs_array<cs_string> ks{};
     ks.assign(static_cast<int32_t>(keywords.size()));

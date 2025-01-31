@@ -1,26 +1,56 @@
 #pragma once
 
 #include "Engine/Object.h"
-#include "Engine/Graphics/Shader.h"
-#include "Engine/Graphics/GfxBuffer.h"
+#include "Engine/Rendering/Shader.h"
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <optional>
+#include <memory>
 
 namespace march
 {
+    class GfxBuffer;
     class GfxTexture;
-    class MaterialInternalUtility;
 
     class Material final : public MarchObject
     {
-        friend MaterialInternalUtility;
+        friend struct MaterialInternalUtility;
+
+        struct PerPassData
+        {
+            std::unique_ptr<GfxBuffer> ConstantBuffer = nullptr;
+            uint32_t ConstantBufferVersion{};
+
+            std::optional<ShaderPassRenderState> ResolvedRenderState = std::nullopt;
+            size_t ResolvedRenderStateHash{};
+            uint32_t ResolvedRenderStateVersion{};
+        };
+
+        Shader* m_Shader = nullptr;
+        uint32_t m_ShaderVersion = 0;
+
+        DynamicShaderKeywordSet m_Keywords{};
+        bool m_IsKeywordDirty = true;
+
+        std::unordered_map<int32_t, int32_t> m_Ints{};
+        std::unordered_map<int32_t, float> m_Floats{};
+        std::unordered_map<int32_t, DirectX::XMFLOAT4> m_Vectors{};
+        std::unordered_map<int32_t, DirectX::XMFLOAT4> m_Colors{};
+        std::unordered_map<int32_t, GfxTexture*> m_Textures{};
+
+        std::vector<PerPassData> m_PerPassData{};
+        uint32_t m_ConstantBufferVersion = 0;
+        uint32_t m_ResolvedRenderStateVersion = 0;
+
+        void CheckShaderVersion();
+        void UpdateKeywords();
 
     public:
-        Material();
-        Material(Shader* shader);
+        Material() = default;
+        Material(Shader* shader) : Material() { SetShader(shader); }
 
         void Reset();
 
@@ -49,45 +79,27 @@ namespace march
         bool GetTexture(const std::string& name, GfxTexture** outValue) const;
 
         Shader* GetShader() const;
-        void SetShader(Shader* pShader);
+        void SetShader(Shader* shader);
 
         const ShaderKeywordSet& GetKeywords();
+        void SetKeyword(int32_t id, bool value);
+        void EnableKeyword(int32_t id);
+        void DisableKeyword(int32_t id);
+        void SetKeyword(const std::string& keyword, bool value);
         void EnableKeyword(const std::string& keyword);
         void DisableKeyword(const std::string& keyword);
-        void SetKeyword(const std::string& keyword, bool value);
+
         GfxBuffer* GetConstantBuffer(size_t passIndex);
         const ShaderPassRenderState& GetResolvedRenderState(size_t passIndex, size_t* outHash = nullptr);
-
-    private:
-        void CheckShaderVersion();
-        void RebuildKeywordCache();
-        void ClearConstantBuffers();
-        void ClearResolvedRenderStates();
-
-        Shader* m_Shader;
-        uint32_t m_ShaderVersion;
-        ShaderKeywordSet m_KeywordCache;
-        std::unordered_set<std::string> m_EnabledKeywords;
-        std::unordered_map<size_t, GfxBuffer> m_ConstantBuffers; // Key 是 ShaderPassIndex
-
-        // Key 是 ShaderPassIndex, Value 是 ShaderPassRenderState 和对应的 Hash
-        std::unordered_map<size_t, std::pair<ShaderPassRenderState, size_t>> m_ResolvedRenderStates;
-
-        std::unordered_map<int32_t, int32_t> m_Ints;
-        std::unordered_map<int32_t, float> m_Floats;
-        std::unordered_map<int32_t, DirectX::XMFLOAT4> m_Vectors;
-        std::unordered_map<int32_t, DirectX::XMFLOAT4> m_Colors;
-        std::unordered_map<int32_t, GfxTexture*> m_Textures;
     };
 
-    class MaterialInternalUtility
+    struct MaterialInternalUtility
     {
-    public:
         static const std::unordered_map<int32_t, int32_t>& GetRawInts(Material* m);
         static const std::unordered_map<int32_t, float>& GetRawFloats(Material* m);
         static const std::unordered_map<int32_t, DirectX::XMFLOAT4>& GetRawVectors(Material* m);
         static const std::unordered_map<int32_t, DirectX::XMFLOAT4>& GetRawColors(Material* m);
         static const std::unordered_map<int32_t, GfxTexture*>& GetRawTextures(Material* m);
-        static const std::unordered_set<std::string>& GetRawEnabledKeywords(Material* m);
+        static const std::vector<std::string>& GetRawEnabledKeywords(Material* m);
     };
 }

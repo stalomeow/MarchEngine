@@ -61,78 +61,109 @@ namespace march
         throw std::invalid_argument(StringUtils::Format("Invalid keyword index: {}", index));
     }
 
-    std::vector<std::string> ShaderKeywordSet::GetEnabledKeywordStrings(const ShaderKeywordSpace& space) const
+    std::vector<std::string> ShaderKeywordSet::GetEnabledKeywordStringsInSpace() const
     {
         std::vector<std::string> results{};
 
-        for (size_t i = 0; i < m_Keywords.size(); i++)
+        if (m_Space)
         {
-            if (m_Keywords[i])
+            for (size_t i = 0; i < m_Keywords.size(); i++)
             {
-                results.push_back(space.GetKeywordString(i));
+                if (m_Keywords[i])
+                {
+                    results.push_back(m_Space->GetKeywordString(i));
+                }
             }
         }
 
         return results;
     }
 
-    std::vector<int32> ShaderKeywordSet::GetEnabledKeywordIds(const ShaderKeywordSpace& space) const
+    std::vector<int32> ShaderKeywordSet::GetEnabledKeywordIdsInSpace() const
     {
         std::vector<int32> results{};
 
-        for (size_t i = 0; i < m_Keywords.size(); i++)
+        if (m_Space)
         {
-            if (m_Keywords[i])
+            for (size_t i = 0; i < m_Keywords.size(); i++)
             {
-                results.push_back(space.GetKeywordId(i));
+                if (m_Keywords[i])
+                {
+                    results.push_back(m_Space->GetKeywordId(i));
+                }
             }
         }
 
         return results;
     }
 
-    void ShaderKeywordSet::SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value)
+    void ShaderKeywordSet::SetKeyword(const std::string& keyword, bool value)
     {
-        SetKeyword(space, ShaderUtils::GetIdFromString(keyword), value);
+        SetKeyword(ShaderUtils::GetIdFromString(keyword), value);
     }
 
-    void ShaderKeywordSet::SetKeyword(const ShaderKeywordSpace& space, int32 keywordId, bool value)
+    void ShaderKeywordSet::SetKeyword(int32 keywordId, bool value)
     {
-        if (std::optional<size_t> i = space.GetKeywordIndex(keywordId))
+        if (!m_Space)
+        {
+            return;
+        }
+
+        if (std::optional<size_t> i = m_Space->GetKeywordIndex(keywordId))
         {
             m_Keywords[*i] = value;
         }
     }
 
-    void DynamicShaderKeywordSet::TransformToSpace(const ShaderKeywordSpace& space)
+    void DynamicShaderKeywordSet::TransformToSpace(const ShaderKeywordSpace* space)
     {
-        m_KeywordSet.Clear();
+        m_KeywordSet.Reset(space);
 
-        for (int32 id : m_EnabledKeywordIds)
+        if (space)
         {
-            m_KeywordSet.EnableKeyword(space, id);
+            for (int32 id : m_EnabledKeywordIds)
+            {
+                m_KeywordSet.EnableKeyword(id);
+            }
         }
     }
 
-    void DynamicShaderKeywordSet::SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value)
+    std::vector<std::string> DynamicShaderKeywordSet::GetEnabledKeywordStrings() const
     {
-        SetKeyword(space, ShaderUtils::GetIdFromString(keyword), value);
+        std::vector<std::string> results{};
+
+        for (int32 id : m_EnabledKeywordIds)
+        {
+            results.push_back(ShaderUtils::GetStringFromId(id));
+        }
+
+        return results;
     }
 
-    void DynamicShaderKeywordSet::SetKeyword(const ShaderKeywordSpace& space, int32 keywordId, bool value)
+    std::vector<int32> DynamicShaderKeywordSet::GetEnabledKeywordIds() const
+    {
+        return std::vector<int32>(m_EnabledKeywordIds.begin(), m_EnabledKeywordIds.end());
+    }
+
+    void DynamicShaderKeywordSet::SetKeyword(const std::string& keyword, bool value)
+    {
+        SetKeyword(ShaderUtils::GetIdFromString(keyword), value);
+    }
+
+    void DynamicShaderKeywordSet::SetKeyword(int32 keywordId, bool value)
     {
         if (value)
         {
             if (m_EnabledKeywordIds.insert(keywordId).second)
             {
-                m_KeywordSet.SetKeyword(space, keywordId, value);
+                m_KeywordSet.SetKeyword(keywordId, value);
             }
         }
         else
         {
-            if (m_EnabledKeywordIds.erase(keywordId) == 1)
+            if (m_EnabledKeywordIds.erase(keywordId) > 0)
             {
-                m_KeywordSet.SetKeyword(space, keywordId, value);
+                m_KeywordSet.SetKeyword(keywordId, value);
             }
         }
     }

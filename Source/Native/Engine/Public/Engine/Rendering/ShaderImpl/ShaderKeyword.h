@@ -27,53 +27,36 @@ namespace march
         const std::string& GetKeywordString(size_t index) const;
         int32 GetKeywordId(size_t index) const;
 
-        size_t GetNumKeywords() const
-        {
-            return m_KeywordIndexMap.size();
-        }
-
-        void Reset()
-        {
-            m_KeywordIndexMap.clear();
-            m_NextIndex = 0;
-        }
+        size_t GetNumKeywords() const { return m_KeywordIndexMap.size(); }
     };
 
     class ShaderKeywordSet
     {
         friend ::std::hash<ShaderKeywordSet>;
 
+        const ShaderKeywordSpace* m_Space = nullptr;
         std::bitset<ShaderKeywordSpace::NumMaxKeywords> m_Keywords{};
 
     public:
-        std::vector<std::string> GetEnabledKeywordStrings(const ShaderKeywordSpace& space) const;
-        std::vector<int32> GetEnabledKeywordIds(const ShaderKeywordSpace& space) const;
+        std::vector<std::string> GetEnabledKeywordStringsInSpace() const;
+        std::vector<int32> GetEnabledKeywordIdsInSpace() const;
 
-        void SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value);
-        void SetKeyword(const ShaderKeywordSpace& space, int32 keywordId, bool value);
+        void SetKeyword(const std::string& keyword, bool value);
+        void SetKeyword(int32 keywordId, bool value);
 
-        void EnableKeyword(const ShaderKeywordSpace& space, const std::string& keyword)
+        void EnableKeyword(const std::string& keyword) { SetKeyword(keyword, true); }
+
+        void EnableKeyword(int32 keywordId) { SetKeyword(keywordId, true); }
+
+        void DisableKeyword(const std::string& keyword) { SetKeyword(keyword, false); }
+
+        void DisableKeyword(int32 keywordId) { SetKeyword(keywordId, false); }
+
+        const ShaderKeywordSpace* GetSpace() const { return m_Space; }
+
+        void Reset(const ShaderKeywordSpace* space)
         {
-            SetKeyword(space, keyword, true);
-        }
-
-        void EnableKeyword(const ShaderKeywordSpace& space, int32 keywordId)
-        {
-            SetKeyword(space, keywordId, true);
-        }
-
-        void DisableKeyword(const ShaderKeywordSpace& space, const std::string& keyword)
-        {
-            SetKeyword(space, keyword, false);
-        }
-
-        void DisableKeyword(const ShaderKeywordSpace& space, int32 keywordId)
-        {
-            SetKeyword(space, keywordId, false);
-        }
-
-        void Clear()
-        {
+            m_Space = space;
             m_Keywords.reset();
         }
 
@@ -84,17 +67,22 @@ namespace march
 
         size_t ShaderKeywordSet::GetNumMatchingKeywords(const ShaderKeywordSet& other) const
         {
+            if (m_Space != other.m_Space)
+            {
+                return 0;
+            }
+
             return (m_Keywords & other.m_Keywords).count();
         }
 
         bool operator==(const ShaderKeywordSet& other) const
         {
-            return m_Keywords == other.m_Keywords;
+            return m_Space == other.m_Space && m_Keywords == other.m_Keywords;
         }
 
         bool operator!=(const ShaderKeywordSet& other) const
         {
-            return m_Keywords != other.m_Keywords;
+            return !(*this == other);
         }
     };
 
@@ -104,40 +92,28 @@ namespace march
         ShaderKeywordSet m_KeywordSet{};
 
     public:
-        void TransformToSpace(const ShaderKeywordSpace& space);
+        void TransformToSpace(const ShaderKeywordSpace* space);
 
-        void SetKeyword(const ShaderKeywordSpace& space, const std::string& keyword, bool value);
-        void SetKeyword(const ShaderKeywordSpace& space, int32 keywordId, bool value);
+        std::vector<std::string> GetEnabledKeywordStrings() const;
+        std::vector<int32> GetEnabledKeywordIds() const;
 
-        void EnableKeyword(const ShaderKeywordSpace& space, const std::string& keyword)
-        {
-            SetKeyword(space, keyword, true);
-        }
+        void SetKeyword(const std::string& keyword, bool value);
+        void SetKeyword(int32 keywordId, bool value);
 
-        void EnableKeyword(const ShaderKeywordSpace& space, int32 keywordId)
-        {
-            SetKeyword(space, keywordId, true);
-        }
+        void EnableKeyword(const std::string& keyword) { SetKeyword(keyword, true); }
 
-        void DisableKeyword(const ShaderKeywordSpace& space, const std::string& keyword)
-        {
-            SetKeyword(space, keyword, false);
-        }
+        void EnableKeyword(int32 keywordId) { SetKeyword(keywordId, true); }
 
-        void DisableKeyword(const ShaderKeywordSpace& space, int32 keywordId)
-        {
-            SetKeyword(space, keywordId, false);
-        }
+        void DisableKeyword(const std::string& keyword) { SetKeyword(keyword, false); }
+
+        void DisableKeyword(int32 keywordId) { SetKeyword(keywordId, false); }
+
+        const ShaderKeywordSet& GetKeywords() const { return m_KeywordSet; }
 
         void Clear()
         {
             m_EnabledKeywordIds.clear();
-            m_KeywordSet.Clear();
-        }
-
-        const ShaderKeywordSet& GetKeywordSet() const
-        {
-            return m_KeywordSet;
+            m_KeywordSet.Reset(m_KeywordSet.GetSpace());
         }
     };
 }
@@ -147,6 +123,8 @@ struct std::hash<march::ShaderKeywordSet>
 {
     size_t operator()(const march::ShaderKeywordSet& keywords) const
     {
-        return std::hash<decltype(keywords.m_Keywords)>{}(keywords.m_Keywords);
+        size_t hash1 = std::hash<decltype(keywords.m_Space)>{}(keywords.m_Space);
+        size_t hash2 = std::hash<decltype(keywords.m_Keywords)>{}(keywords.m_Keywords);
+        return hash1 ^ hash2;
     }
 };

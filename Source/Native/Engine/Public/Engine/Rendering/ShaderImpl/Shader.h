@@ -191,18 +191,20 @@ namespace march
         std::unordered_map<std::string, std::string> m_Tags{};
         std::unordered_map<int32_t, ShaderPropertyLocation> m_PropertyLocations{}; // shader property 在 cbuffer 中的位置
         ShaderPassRenderState m_RenderState{};
+        std::optional<uint32_t> m_MaterialConstantBufferSize = std::nullopt;
 
     public:
         const std::unordered_map<std::string, std::string>& GetTags() const { return m_Tags; }
         const std::unordered_map<int32_t, ShaderPropertyLocation>& GetPropertyLocations() const { return m_PropertyLocations; }
         const ShaderPassRenderState& GetRenderState() const { return m_RenderState; }
+        std::optional<uint32_t> GetMaterialConstantBufferSize() const { return m_MaterialConstantBufferSize; }
 
     protected:
         D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
         bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
         std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
         void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override {}
-        void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) override;
+        bool RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer, std::string& error) override;
     };
 
     class Shader : public MarchObject
@@ -213,14 +215,14 @@ namespace march
 
     private:
         std::string m_Name{};
-        ShaderKeywordSpace m_KeywordSpace{};
+        std::unique_ptr<ShaderKeywordSpace> m_KeywordSpace = std::make_unique<ShaderKeywordSpace>();
         std::unordered_map<int32_t, ShaderProperty> m_Properties{};
         std::vector<std::unique_ptr<ShaderPass>> m_Passes{};
         uint32_t m_Version = 0;
 
     public:
         const std::string& GetName() const { return m_Name; }
-        const ShaderKeywordSpace& GetKeywordSpace() const { return m_KeywordSpace; }
+        const ShaderKeywordSpace* GetKeywordSpace() const { return m_KeywordSpace.get(); }
         const std::unordered_map<int32_t, ShaderProperty>& GetProperties() const { return m_Properties; }
         ShaderPass* GetPass(size_t index) const { return m_Passes[index].get(); }
         size_t GetPassCount() const { return m_Passes.size(); }

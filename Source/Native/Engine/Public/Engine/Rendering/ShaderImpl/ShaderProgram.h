@@ -266,7 +266,7 @@ namespace march
         virtual bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) = 0;
         virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
         virtual void RecordEntrypointCallback(size_t programType, std::string& entrypoint) = 0;
-        virtual void RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer) = 0;
+        virtual bool RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer, std::string& error) = 0;
 
     private:
         struct CompilationConfig

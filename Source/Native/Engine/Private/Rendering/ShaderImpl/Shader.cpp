@@ -61,7 +61,7 @@ namespace march
         return program + "_" + model;
     }
 
-    void ShaderPass::RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer)
+    bool ShaderPass::RecordConstantBufferCallback(ID3D12ShaderReflectionConstantBuffer* cbuffer, std::string& error)
     {
         D3D12_SHADER_BUFFER_DESC bufferDesc{};
         GFX_HR(cbuffer->GetDesc(&bufferDesc));
@@ -69,6 +69,16 @@ namespace march
         // 记录 material 的 shader property location
         if (strcmp(bufferDesc.Name, MaterialConstantBufferName) == 0)
         {
+            uint32_t size = static_cast<uint32_t>(bufferDesc.Size);
+
+            if (m_MaterialConstantBufferSize && *m_MaterialConstantBufferSize != size)
+            {
+                error = "Material cbuffer size mismatch in programs";
+                return false;
+            }
+
+            m_MaterialConstantBufferSize = size;
+
             for (UINT i = 0; i < bufferDesc.Variables; i++)
             {
                 ID3D12ShaderReflectionVariable* var = cbuffer->GetVariableByIndex(i);
