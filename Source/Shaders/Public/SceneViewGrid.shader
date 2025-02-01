@@ -26,15 +26,6 @@ Shader "SceneViewGrid"
 
         #include "Includes/Common.hlsl"
 
-        cbuffer cbMaterial
-        {
-            float4 _XAxisColor;
-            float4 _ZAxisColor;
-            float4 _LineColor;
-            float _Antialiasing;
-            float _FadeOut;
-        };
-
         struct Varyings
         {
             float4 positionCS : SV_Position;

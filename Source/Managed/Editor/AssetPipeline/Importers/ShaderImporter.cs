@@ -12,7 +12,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = 71)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = 73)]
     internal class ShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -45,7 +45,20 @@ namespace March.Editor.AssetPipeline.Importers
             ParsedShaderData result = ParseShaderLabWithFallback(shader, content);
 
             shader.Name = result.Name;
-            shader.Properties = result.Properties.ToArray();
+            shader.Properties = result.Properties.Select(p => new ShaderProperty()
+            {
+                Name = p.Name,
+                Label = p.Label,
+                Tooltip = p.Tooltip,
+                Attributes = p.Attributes,
+                Type = p.Type,
+                DefaultFloat = p.DefaultFloat,
+                DefaultInt = p.DefaultInt,
+                DefaultColor = p.DefaultColor,
+                DefaultVector = p.DefaultVector,
+                TexDimension = p.TexDimension,
+                DefaultTex = p.DefaultTex,
+            }).ToArray();
             shader.Passes = result.Passes.Select(p => new ShaderPass()
             {
                 Name = p.Name,

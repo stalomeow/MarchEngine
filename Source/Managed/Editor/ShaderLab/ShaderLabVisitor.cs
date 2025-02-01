@@ -1,10 +1,13 @@
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.Interop;
+using March.Core.Pool;
 using March.Core.Rendering;
 using March.Editor.ShaderLab.Internal;
 using System.Numerics;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace March.Editor.ShaderLab
@@ -235,10 +238,28 @@ namespace March.Editor.ShaderLab
         public string? HlslProgram;
     }
 
+    internal class ParsedShaderProperty
+    {
+        public int LineNumber;
+        public string Name = string.Empty;
+        public string Label = string.Empty;
+        public string Tooltip = string.Empty;
+        public List<ShaderPropertyAttribute> Attributes = [];
+        public ShaderPropertyType Type;
+
+        public float DefaultFloat;
+        public int DefaultInt;
+        public Color DefaultColor;
+        public Vector4 DefaultVector;
+
+        public TextureDimension TexDimension;
+        public DefaultTexture DefaultTex;
+    }
+
     internal class ParsedShaderData : ParsedMetadataContainer
     {
         public string Name = "UnnamedShader";
-        public List<ShaderProperty> Properties = [];
+        public List<ParsedShaderProperty> Properties = [];
         public List<string> HlslIncludes = [];
         public List<ParsedShaderPass> Passes = [];
 
@@ -249,8 +270,10 @@ namespace March.Editor.ShaderLab
                 return string.Empty;
             }
 
+            string code = DefineMaterialProperties();
+
             ParsedShaderPass pass = Passes[passIndex];
-            string code = string.Join("\n", HlslIncludes);
+            code += "\n" + string.Join("\n", HlslIncludes);
 
             if (pass.HlslProgram != null)
             {
@@ -258,6 +281,58 @@ namespace March.Editor.ShaderLab
             }
 
             return code;
+        }
+
+        private string DefineMaterialProperties()
+        {
+            using var texBuilder = StringBuilderPool.Get();
+            using var cbBuilder = StringBuilderPool.Get();
+
+            foreach (ParsedShaderProperty prop in Properties)
+            {
+                switch (prop.Type)
+                {
+                    case ShaderPropertyType.Texture:
+                        string type = prop.TexDimension switch
+                        {
+                            TextureDimension.Tex2D => "Texture2D",
+                            TextureDimension.Tex3D => "Texture3D",
+                            TextureDimension.Cube => "TextureCube",
+                            TextureDimension.Tex2DArray => "Texture2DArray",
+                            TextureDimension.CubeArray => "TextureCubeArray",
+                            _ => throw new NotSupportedException("Unknown texture dimension"),
+                        };
+
+                        // 保证行号和源文件一致
+                        // 注意：#line 设置的是下一行的行号
+                        texBuilder.Value.AppendLine($"#line {prop.LineNumber}");
+                        texBuilder.Value.AppendLine($"{type} {prop.Name}; SamplerState sampler{prop.Name};");
+                        break;
+                    case ShaderPropertyType.Float:
+                        cbBuilder.Value.AppendLine($"#line {prop.LineNumber}");
+                        cbBuilder.Value.AppendLine($"float {prop.Name};");
+                        break;
+                    case ShaderPropertyType.Int:
+                        cbBuilder.Value.AppendLine($"#line {prop.LineNumber}");
+                        cbBuilder.Value.AppendLine($"int {prop.Name};");
+                        break;
+                    case ShaderPropertyType.Color:
+                    case ShaderPropertyType.Vector:
+                        cbBuilder.Value.AppendLine($"#line {prop.LineNumber}");
+                        cbBuilder.Value.AppendLine($"float4 {prop.Name};");
+                        break;
+                    default:
+                        throw new NotSupportedException("Unknown property type");
+                }
+            }
+
+            if (cbBuilder.Value.Length > 0)
+            {
+                cbBuilder.Value.Insert(0, "cbuffer cbMaterial\n{\n");
+                cbBuilder.Value.AppendLine("};");
+            }
+
+            return texBuilder.Value.ToString() + cbBuilder.Value.ToString();
         }
     }
 
@@ -320,8 +395,9 @@ namespace March.Editor.ShaderLab
 
         public override int VisitPropertyDeclaration([NotNull] ShaderLabParser.PropertyDeclarationContext context)
         {
-            ShaderProperty prop = new();
+            ParsedShaderProperty prop = new();
 
+            prop.LineNumber = context.Identifier().Symbol.Line;
             prop.Name = context.Identifier().GetText();
             prop.Label = context.StringLiteral().GetText()[1..^1]; // remove quotes
 

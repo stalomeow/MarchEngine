@@ -18,9 +18,6 @@ Shader "Skybox"
 
         #include "Includes/Common.hlsl"
 
-        TextureCube _Cubemap;
-        SamplerState sampler_Cubemap;
-
         struct Attributes
         {
             float3 positionOS : POSITION;

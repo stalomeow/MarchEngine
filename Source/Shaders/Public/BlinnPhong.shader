@@ -13,20 +13,6 @@ Shader "BlinnPhong"
 
     HLSLINCLUDE
     #include "Includes/Common.hlsl"
-
-    Texture2D _DiffuseMap;
-    SamplerState sampler_DiffuseMap;
-    Texture2D _BumpMap;
-    SamplerState sampler_BumpMap;
-
-    cbuffer cbMaterial
-    {
-        float4 _DiffuseAlbedo;
-        float3 _FresnelR0;
-        float _Roughness;
-        float _DitherAlpha;
-        float _Cutoff;
-    };
     ENDHLSL
 
     Pass
@@ -114,7 +100,7 @@ Shader "BlinnPhong"
             data.shininess = 1 - _Roughness;
             data.normalWS = bumpedNomalWS;
             data.depth = input.positionCS.z;
-            data.fresnelR0 = _FresnelR0;
+            data.fresnelR0 = _FresnelR0.rgb;
             return PackGBufferData(data);
         }
         ENDHLSL

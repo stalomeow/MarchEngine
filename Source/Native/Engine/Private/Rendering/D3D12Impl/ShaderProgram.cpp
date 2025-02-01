@@ -176,6 +176,8 @@ namespace march
 
         m.push_back(L"MARCH_NEAR_CLIP_VALUE=" + std::to_wstring(GfxUtils::NearClipPlaneDepth));
         m.push_back(L"MARCH_FAR_CLIP_VALUE=" + std::to_wstring(GfxUtils::FarClipPlaneDepth));
+
+        m.push_back(L"MARCH_SHADER_PROPERTIES");
     }
 
     void ShaderCompilationInternalUtils::SaveCompilationResults(
