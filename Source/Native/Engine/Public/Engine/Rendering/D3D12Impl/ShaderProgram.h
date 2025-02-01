@@ -28,8 +28,6 @@ namespace march
 
         void SetData(const DxcShaderHash& hash) { std::copy_n(hash.HashDigest, std::size(hash.HashDigest), Data); }
 
-        std::string ToString() const { return std::string(reinterpret_cast<const char*>(Data), sizeof(Data)); }
-
         bool operator==(const ShaderProgramHash& other) const { return memcmp(Data, other.Data, sizeof(Data)) == 0; }
 
         bool operator!=(const ShaderProgramHash& other) const { return memcmp(Data, other.Data, sizeof(Data)) != 0; }
@@ -324,7 +322,6 @@ namespace march
         bool PreprocessAndGetCompilationConfig(const std::string& source, CompilationConfig& config, std::string& error);
         bool CompileRecursive(CompilationContext& context);
         Microsoft::WRL::ComPtr<IDxcResult> CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile);
-        void ReduceProgramsAfterCompilation();
 
     protected:
         bool Compile(
@@ -361,13 +358,7 @@ namespace march
             context.Error = &error;
             context.RecordConstantBufferCallback = recordConstantBufferCallback;
 
-            if (CompileRecursive(context))
-            {
-                ReduceProgramsAfterCompilation();
-                return true;
-            }
-
-            return false;
+            return CompileRecursive(context);
         }
     };
 
@@ -710,60 +701,5 @@ namespace march
         }
 
         return pResults;
-    }
-
-    template <size_t _NumProgramTypes>
-    void ShaderProgramGroup<_NumProgramTypes>::ReduceProgramsAfterCompilation()
-    {
-        // 如果两个 program 的 binary 相同，只保留 keyword 少的那个
-
-        std::unordered_multimap<std::string, size_t> hashToIndex{};
-
-        for (size_t i = 0; i < NumProgramTypes; i++)
-        {
-            hashToIndex.clear();
-
-            for (size_t j = 0; j < m_Programs[i].size(); j++)
-            {
-                ShaderProgram* program = m_Programs[i][j].get();
-                std::string hash = program->GetHash().ToString();
-                bool needInsert = true;
-
-                for (auto [it, end] = hashToIndex.equal_range(hash); it != end; ++it)
-                {
-                    ShaderProgram* other = m_Programs[i][it->second].get();
-
-                    uint64_t binSize1 = program->GetBinarySize();
-                    uint64_t binSize2 = other->GetBinarySize();
-
-                    if (binSize1 == binSize2 && memcmp(program->GetBinaryData(), other->GetBinaryData(), binSize1) == 0)
-                    {
-                        size_t keywordCount1 = program->GetKeywords().GetNumEnabledKeywords();
-                        size_t keywordCount2 = other->GetKeywords().GetNumEnabledKeywords();
-
-                        // 保留 keyword 少的那个
-                        if (keywordCount1 <= keywordCount2)
-                        {
-                            m_Programs[i][it->second].reset();
-                            it->second = j;
-                        }
-                        else
-                        {
-                            m_Programs[i][j].reset();
-                        }
-
-                        needInsert = false;
-                        break;
-                    }
-                }
-
-                if (needInsert)
-                {
-                    hashToIndex.emplace(hash, j);
-                }
-            }
-
-            m_Programs[i].erase(std::remove(m_Programs[i].begin(), m_Programs[i].end(), nullptr), m_Programs[i].end());
-        }
     }
 }
