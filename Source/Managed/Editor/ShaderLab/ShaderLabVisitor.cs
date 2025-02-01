@@ -1,13 +1,11 @@
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using March.Core;
-using March.Core.Diagnostics;
 using March.Core.Interop;
 using March.Core.Pool;
 using March.Core.Rendering;
 using March.Editor.ShaderLab.Internal;
 using System.Numerics;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace March.Editor.ShaderLab
@@ -328,7 +326,8 @@ namespace March.Editor.ShaderLab
 
             if (cbBuilder.Value.Length > 0)
             {
-                cbBuilder.Value.Insert(0, "cbuffer cbMaterial\n{\n");
+                string cbName = ShaderUtility.GetStringFromId(Shader.MaterialConstantBufferId);
+                cbBuilder.Value.Insert(0, $"cbuffer {cbName}\n{{\n");
                 cbBuilder.Value.AppendLine("};");
             }
 

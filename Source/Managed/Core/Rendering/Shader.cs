@@ -781,6 +781,9 @@ namespace March.Core.Rendering
             return success;
         }
 
+        [NativeProperty]
+        internal static partial int MaterialConstantBufferId { get; }
+
         [NativeMethod]
         private static partial nint New();
 

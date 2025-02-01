@@ -623,6 +623,11 @@ NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_
     retcs ShaderBinding::CompilePass(pShader, passIndex, filename, source, warnings, error);
 }
 
+NATIVE_EXPORT_AUTO Shader_GetMaterialConstantBufferId()
+{
+    retcs Shader::GetMaterialConstantBufferId();
+}
+
 NATIVE_EXPORT_AUTO ShaderUtils_GetEngineShaderPathUnixStyle()
 {
     retcs ShaderUtils::GetEngineShaderPathUnixStyle();
