@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Engine/Rendering/RenderPipeline.h"
-#include "Engine/Rendering/RenderGraph.h"
 #include "Engine/Rendering/Camera.h"
 #include "Engine/Rendering/Display.h"
 #include "Engine/Debug.h"
@@ -51,27 +50,25 @@ namespace march
 
             Display* display = camera->GetTargetDisplay();
 
-            int32_t colorTargetId = ShaderUtils::GetIdFromString("_CameraColorTarget");
-            int32_t colorTargetResolvedId = ShaderUtils::GetIdFromString("_CameraColorTargetResolved");
-            int32_t depthStencilTargetId = ShaderUtils::GetIdFromString("_CameraDepthStencilTarget");
-
-            ImportTextures(colorTargetId, display->GetColorBuffer());
-            ImportTextures(depthStencilTargetId, display->GetDepthStencilBuffer());
-
-            TestCompute();
+            TextureHandle colorTarget = m_RenderGraph->Import("_CameraColorTarget", display->GetColorBuffer());
+            TextureHandle depthStencilTarget = m_RenderGraph->Import("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
+            TextureHandle colorTargetResolved{};
 
             if (display->GetEnableMSAA())
             {
-                ImportTextures(colorTargetResolvedId, display->GetResolvedColorBuffer());
+                colorTargetResolved = m_RenderGraph->Import("_CameraColorTargetResolved", display->GetResolvedColorBuffer());
             }
 
-            static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
-            XMFLOAT4X4 shadowMatrix = DrawShadowCasters(shadowMapId);
+            TestCompute();
 
-            SetCameraGlobalConstantBuffer("CameraConstantBuffer", &m_CameraConstantBuffer, camera);
-            SetLightGlobalConstantBuffer(ShaderUtils::GetIdFromString("cbLight"));
+            XMFLOAT4X4 shadowMatrix{};
+            TextureHandle shadowMap = DrawShadowCasters(shadowMatrix);
 
-            ClearTargets(colorTargetId, depthStencilTargetId);
+            XMFLOAT4X4 temp{};
+            BufferHandle cbCamera = CreateCameraConstantBuffer("CameraConstantBuffer", camera, temp);
+            BufferHandle cbLight = CreateLightConstantBuffer();
+
+            ClearTargets(colorTarget, depthStencilTarget);
             DrawObjects(colorTargetId, depthStencilTargetId, camera->GetEnableWireframe());
 
             static int32 screenSpaceShadowMapId = ShaderUtils::GetIdFromString("_ScreenSpaceShadowMap");
@@ -100,23 +97,13 @@ namespace march
         }
     }
 
-    void RenderPipeline::ImportTextures(int32_t id, GfxRenderTexture* texture)
+    BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& passName, Camera* camera, XMFLOAT4X4& viewProjMatrix)
     {
-        auto builder = m_RenderGraph->AddPass("Import" + ShaderUtils::GetStringFromId(id));
-        builder.ImportTexture(id, texture);
+        return CreateCameraConstantBuffer(passName, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix(), viewProjMatrix);
     }
 
-    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, Camera* camera)
+    BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& passName, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix, XMFLOAT4X4& viewProjMatrix)
     {
-        return SetCameraGlobalConstantBuffer(passName, buffer, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
-    }
-
-    XMFLOAT4X4 RenderPipeline::SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
-    {
-        static int32_t bufferId = ShaderUtils::GetIdFromString("cbCamera");
-
-        auto builder = m_RenderGraph->AddPass(passName);
-
         XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
         XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
         XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
@@ -130,63 +117,72 @@ namespace march
         XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
         consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
 
-        builder.AllowPassCulling(false);
+        GfxBufferDesc desc{};
+        desc.Stride = sizeof(CameraConstants);
+        desc.Count = 1;
+        desc.Usages = GfxBufferUsages::Constant;
+        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        static int32_t bufferId = ShaderUtils::GetIdFromString("cbCamera");
+        BufferHandle buffer = m_RenderGraph->Request(bufferId, desc);
+
+        auto builder = m_RenderGraph->AddPass(passName);
+
+        builder.Write(buffer);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            GfxBufferDesc desc{};
-            desc.Stride = sizeof(CameraConstants);
-            desc.Count = 1;
-            desc.Usages = GfxBufferUsages::Constant;
-            desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
-
             buffer->SetData(desc, &consts);
-            context.SetBuffer(bufferId, buffer);
         });
 
-        return consts.ViewProjectionMatrix;
+        viewProjMatrix = consts.ViewProjectionMatrix;
+        return buffer;
     }
 
-    void RenderPipeline::SetLightGlobalConstantBuffer(int32_t id)
+    BufferHandle RenderPipeline::CreateLightConstantBuffer()
     {
-        auto builder = m_RenderGraph->AddPass("LightConstantBuffer");
+        LightConstants consts{};
+        consts.LightCount = static_cast<int32_t>(m_Lights.size());
 
-        builder.AllowPassCulling(false);
-        builder.SetRenderFunc([=](RenderGraphContext& context)
+        for (int i = 0; i < m_Lights.size(); i++)
         {
-            LightConstants consts{};
-            consts.LightCount = static_cast<int32_t>(m_Lights.size());
-
-            for (int i = 0; i < m_Lights.size(); i++)
+            if (!m_Lights[i]->GetIsActiveAndEnabled())
             {
-                if (!m_Lights[i]->GetIsActiveAndEnabled())
-                {
-                    continue;
-                }
-
-                m_Lights[i]->FillLightData(consts.Lights[i]);
+                continue;
             }
 
-            GfxBufferDesc desc{};
-            desc.Stride = sizeof(LightConstants);
-            desc.Count = 1;
-            desc.Usages = GfxBufferUsages::Constant;
-            desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+            m_Lights[i]->FillLightData(consts.Lights[i]);
+        }
 
-            m_LightConstantBuffer.SetData(desc, &consts);
-            context.SetBuffer(id, &m_LightConstantBuffer);
+        GfxBufferDesc desc{};
+        desc.Stride = sizeof(LightConstants);
+        desc.Count = 1;
+        desc.Usages = GfxBufferUsages::Constant;
+        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        static int32 bufferId = ShaderUtils::GetIdFromString("cbLight");
+        BufferHandle buffer = m_RenderGraph->Request(bufferId, desc);
+
+        auto builder = m_RenderGraph->AddPass("LightConstantBuffer");
+
+        builder.Write(buffer);
+        builder.SetRenderFunc([=](RenderGraphContext& context)
+        {
+            buffer->SetData(desc, &consts);
         });
+
+        return buffer;
     }
 
-    void RenderPipeline::ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId)
+    void RenderPipeline::ClearTargets(const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget)
     {
         auto builder = m_RenderGraph->AddPass("ClearTargets");
 
-        builder.SetColorTarget(colorTargetId, false);
-        builder.SetDepthStencilTarget(depthStencilTargetId, false);
+        builder.SetColorTarget(colorTarget, false);
+        builder.SetDepthStencilTarget(depthStencilTarget, false);
         builder.ClearRenderTargets();
     }
 
-    void RenderPipeline::DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe)
+    void RenderPipeline::DrawObjects(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget, bool wireframe)
     {
         auto builder = m_RenderGraph->AddPass("DrawObjects");
 
@@ -249,11 +245,12 @@ namespace march
         });
     }
 
-    XMFLOAT4X4 RenderPipeline::DrawShadowCasters(int32_t targetId)
+    TextureHandle RenderPipeline::DrawShadowCasters(XMFLOAT4X4& shadowMatrix)
     {
         if (m_Lights.empty() || m_Renderers.empty())
         {
-            return MathUtils::Identity4x4();
+            shadowMatrix = MathUtils::Identity4x4();
+            return TextureHandle();
         }
 
         BoundingBox aabb = m_Renderers[0]->GetBounds();
@@ -275,9 +272,9 @@ namespace march
 
         XMFLOAT4X4 proj = {};
         XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(sphere.Radius * 2, sphere.Radius * 2, sphere.Radius * 2 + 1.0f, 1.0f));
-        XMFLOAT4X4 viewProj = SetCameraGlobalConstantBuffer("ShadowCameraConstantBuffer", &m_ShadowCameraConstantBuffer, pos, view, proj);
 
-        auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
+        XMFLOAT4X4 viewProj{};
+        BufferHandle cbCamera = CreateCameraConstantBuffer("ShadowCameraConstantBuffer", pos, view, proj, viewProj);
 
         GfxTextureDesc desc = {};
         desc.Format = GfxTextureFormat::D24_UNorm_S8_UInt;
@@ -291,13 +288,18 @@ namespace march
         desc.Wrap = GfxTextureWrapMode::Clamp;
         desc.MipmapBias = 0.0f;
 
-        builder.CreateTransientTexture(targetId, desc);
-        builder.SetDepthStencilTarget(targetId);
+        static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
+        TextureHandle shadowMap = m_RenderGraph->Request(shadowMapId, desc);
+
+        auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
+
+        builder.SetDepthStencilTarget(shadowMap, false);
+        builder.Read(cbCamera);
         builder.SetDepthBias(GfxSettings::ShadowDepthBias, GfxSettings::ShadowSlopeScaledDepthBias, GfxSettings::ShadowDepthBiasClamp);
         builder.ClearRenderTargets(GfxClearFlags::DepthStencil);
-
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            context.SetBuffer(cbCamera.GetId(), cbCamera);
             context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
         });
 
@@ -305,9 +307,8 @@ namespace march
         XMMATRIX scale = XMMatrixScaling(0.5f, -0.5f, 1.0f);
         XMMATRIX trans = XMMatrixTranslation(0.5f, 0.5f, 0.0f);
 
-        XMFLOAT4X4 shadowMatrix{};
         XMStoreFloat4x4(&shadowMatrix, XMMatrixMultiply(XMMatrixMultiply(vp, scale), trans)); // DirectX 用的行向量
-        return shadowMatrix;
+        return shadowMap;
     }
 
     void RenderPipeline::DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId)

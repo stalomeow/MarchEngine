@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Rendering/Light.h"
+#include "Engine/Rendering/RenderGraph.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/AssetManger.h"
 #include "Engine/Ints.h"
@@ -72,14 +73,13 @@ namespace march
             }
         }
 
-        void ImportTextures(int32_t id, GfxRenderTexture* texture);
-        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, Camera* camera);
-        DirectX::XMFLOAT4X4 SetCameraGlobalConstantBuffer(const std::string& passName, GfxBuffer* buffer, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
-        void SetLightGlobalConstantBuffer(int32_t id);
-        void ClearTargets(int32_t colorTargetId, int32_t depthStencilTargetId);
+        BufferHandle CreateCameraConstantBuffer(const std::string& passName, Camera* camera, DirectX::XMFLOAT4X4& viewProjMatrix);
+        BufferHandle CreateCameraConstantBuffer(const std::string& passName, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix, DirectX::XMFLOAT4X4& viewProjMatrix);
+        BufferHandle CreateLightConstantBuffer();
+        void ClearTargets(const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
         void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId, int32 screenSpaceShadowMapId);
-        DirectX::XMFLOAT4X4 DrawShadowCasters(int32_t targetId);
-        void DrawObjects(int32_t colorTargetId, int32_t depthStencilTargetId, bool wireframe);
+        TextureHandle DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
+        void DrawObjects(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget, bool wireframe);
         void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
         void DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId);
         void ResolveMSAA(int32_t sourceId, int32_t destinationId);
@@ -98,11 +98,6 @@ namespace march
         asset_ptr<Shader> m_ScreenSpaceShadowShader = nullptr;
         asset_ptr<ComputeShader> m_ComputeShader = nullptr;
         std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
-
-        GfxBuffer m_CameraConstantBuffer;
-        GfxBuffer m_ShadowCameraConstantBuffer;
-        GfxBuffer m_LightConstantBuffer;
-        GfxBuffer m_ShadowConstantBuffer;
 
     private:
         std::vector<MeshRenderer*> m_Renderers{};

@@ -47,6 +47,7 @@
     <ClInclude Include="Public\Engine\Rendering\Camera.h" />
     <ClInclude Include="Public\Engine\Rendering\Light.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
+    <ClInclude Include="Public\Engine\Rendering\RenderGraphImpl\RenderGraphCore.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraphImpl\RenderGraphResource.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderPipeline.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\ShaderCompute.h" />
@@ -118,7 +119,7 @@
     <ClCompile Include="Private\Rendering\Camera.cpp" />
     <ClCompile Include="Private\Rendering\Light.binding.cpp" />
     <ClCompile Include="Private\Rendering\Light.cpp" />
-    <ClCompile Include="Private\Rendering\RenderGraph.cpp" />
+    <ClCompile Include="Private\Rendering\RenderGraphImpl\RenderGraphCore.cpp" />
     <ClCompile Include="Private\Rendering\RenderGraphImpl\RenderGraphResource.cpp" />
     <ClCompile Include="Private\Rendering\RenderPipeline.binding.cpp" />
     <ClCompile Include="Private\Rendering\RenderPipeline.cpp" />

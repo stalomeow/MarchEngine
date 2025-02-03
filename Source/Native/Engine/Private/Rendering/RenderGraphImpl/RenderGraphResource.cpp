@@ -1,188 +1,247 @@
 #include "pch.h"
 #include "Engine/Rendering/RenderGraphImpl/RenderGraphResource.h"
 #include "Engine/Debug.h"
-#include <limits>
 #include <utility>
 #include <stdexcept>
+#include <assert.h>
 
 namespace march
 {
-    RenderGraphResourcePool::RenderGraphResourcePool() : m_AllTextures{}, m_TextureMap{}, m_FreeTextures{}
-    {
-    }
+    // https://en.cppreference.com/w/cpp/utility/variant/visit2
+    template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+    template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-    GfxRenderTexture* RenderGraphResourcePool::RentTexture(const GfxTextureDesc& desc)
+    bool RenderGraphResourceData::IsExternal() const
     {
-        auto it = m_FreeTextures.begin();
-
-        while (it != m_FreeTextures.end())
+        return std::visit([](auto&& arg) -> bool
         {
-            GfxRenderTexture* tex = it->Texture;
+            using T = std::decay_t<decltype(arg)>;
 
-            if (tex->GetDesc().IsCompatibleWith(desc))
-            {
-                m_FreeTextures.erase(it);
-                return tex;
-            }
+            constexpr bool isExternalBuffer = std::is_same_v<T, RenderGraphResourceExternalBuffer>;
+            constexpr bool isExternalTexture = std::is_same_v<T, RenderGraphResourceExternalTexture>;
+            constexpr bool result = isExternalBuffer || isExternalTexture;
 
-            it->FailCount++;
-
-            // 失败次数太多
-            if (it->FailCount >= MaxFailCount)
-            {
-                auto texIt = m_TextureMap.find(tex);
-                m_AllTextures.erase(texIt->second);
-                m_TextureMap.erase(texIt);
-                it = m_FreeTextures.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        GfxDevice* device = GetGfxDevice();
-        m_AllTextures.emplace_back(std::make_unique<GfxRenderTexture>(device, "PooledTexture", desc, GfxTexureAllocStrategy::DefaultHeapPlaced));
-        GfxRenderTexture* texture = m_AllTextures.back().get();
-        m_TextureMap[texture] = std::prev(m_AllTextures.end());
-        return texture;
+            return result;
+        }, m_Resource);
     }
 
-    void RenderGraphResourcePool::ReturnTexture(GfxRenderTexture* texture)
+    GfxBuffer* RenderGraphResourceData::GetBuffer()
     {
-        if (m_TextureMap.find(texture) == m_TextureMap.end())
-        {
-            LOG_WARNING("Trying to return a texture that is not from the pool");
-            return;
-        }
-
-        m_FreeTextures.push_back({ texture, 0 });
+        return std::visit(overloaded{
+            [](RenderGraphResourceTempBuffer& buffer) -> GfxBuffer* { return &buffer.Buffer; },
+            [](RenderGraphResourcePooledBuffer& buffer) -> GfxBuffer* { return buffer.Buffer.get(); },
+            [](RenderGraphResourceExternalBuffer& buffer) -> GfxBuffer* { return buffer.Buffer; },
+            [](auto&&) -> GfxBuffer* { throw std::runtime_error("Resource is not a buffer"); },
+        }, m_Resource);
     }
 
-    RenderGraphResourceData::RenderGraphResourceData(RenderGraphResourcePool* pool, const GfxTextureDesc& desc)
-        : m_ProducerPasses{}
-        , m_ResourceType(RenderGraphResourceType::Texture)
-        , m_ResourcePtr(nullptr)
-        , m_TransientResourcePool(pool)
-        , m_TransientTextureDesc(desc)
-        , m_TransientLifeTimeMinIndex(std::numeric_limits<int32_t>::max())
-        , m_TransientLifeTimeMaxIndex(std::numeric_limits<int32_t>::min())
+    const GfxBufferDesc& RenderGraphResourceData::GetBufferDesc() const
     {
+        return std::visit(overloaded{
+            [](const RenderGraphResourceTempBuffer& buffer) -> const GfxBufferDesc& { return buffer.Buffer.GetDesc(); },
+            [](const RenderGraphResourcePooledBuffer& buffer) -> const GfxBufferDesc& { return buffer.Desc; },
+            [](const RenderGraphResourceExternalBuffer& buffer) -> const GfxBufferDesc& { return buffer.Buffer->GetDesc(); },
+            [](auto&&) -> const GfxBufferDesc& { throw std::runtime_error("Resource is not a buffer"); },
+        }, m_Resource);
     }
 
-    RenderGraphResourceData::RenderGraphResourceData(GfxRenderTexture* texture)
-        : m_ProducerPasses{}
-        , m_ResourceType(RenderGraphResourceType::Texture)
-        , m_ResourcePtr(texture)
-        , m_TransientResourcePool(nullptr)
-        , m_TransientTextureDesc{}
-        , m_TransientLifeTimeMinIndex(std::numeric_limits<int32_t>::max())
-        , m_TransientLifeTimeMaxIndex(std::numeric_limits<int32_t>::min())
+    GfxRenderTexture* RenderGraphResourceData::GetTexture()
     {
-    }
-
-    int32_t RenderGraphResourceData::GetLastProducerPass() const
-    {
-        if (m_ProducerPasses.empty())
-        {
-            return -1;
-        }
-
-        return m_ProducerPasses.back();
-    }
-
-    void RenderGraphResourceData::AddProducerPass(int32_t passIndex)
-    {
-        m_ProducerPasses.push_back(passIndex);
-    }
-
-    RenderGraphResourceType RenderGraphResourceData::GetResourceType() const
-    {
-        return m_ResourceType;
-    }
-
-    GfxRenderTexture* RenderGraphResourceData::GetTexture() const
-    {
-        if (m_ResourceType != RenderGraphResourceType::Texture)
-        {
-            throw std::runtime_error("Resource is not a texture");
-        }
-
-        return static_cast<GfxRenderTexture*>(m_ResourcePtr);
+        return std::visit(overloaded{
+            [](RenderGraphResourcePooledTexture& texture) -> GfxRenderTexture* { return texture.Texture.get(); },
+            [](RenderGraphResourceExternalTexture& texture) -> GfxRenderTexture* { return texture.Texture; },
+            [](auto&&) -> GfxRenderTexture* { throw std::runtime_error("Resource is not a texture"); },
+        }, m_Resource);
     }
 
     const GfxTextureDesc& RenderGraphResourceData::GetTextureDesc() const
     {
-        if (m_ResourceType != RenderGraphResourceType::Texture)
-        {
-            throw std::runtime_error("Resource is not a texture");
-        }
-
-        if (IsTransient())
-        {
-            return m_TransientTextureDesc;
-        }
-
-        return static_cast<GfxRenderTexture*>(m_ResourcePtr)->GetDesc();
+        return std::visit(overloaded{
+            [](const RenderGraphResourcePooledTexture& texture) -> const GfxTextureDesc& { return texture.Desc; },
+            [](const RenderGraphResourceExternalTexture& texture) -> const GfxTextureDesc& { return texture.Texture->GetDesc(); },
+            [](auto&&) -> const GfxTextureDesc& { throw std::runtime_error("Resource is not a texture"); },
+        }, m_Resource);
     }
 
-    bool RenderGraphResourceData::IsTransient() const
+    void RenderGraphResourceData::RequestResource()
     {
-        return m_TransientResourcePool != nullptr;
+        std::visit(overloaded{
+            [](RenderGraphResourcePooledBuffer& buffer) { buffer.RequestBuffer(); },
+            [](RenderGraphResourcePooledTexture& texture) { texture.RequestTexture(); },
+            [](auto&&) {},
+        }, m_Resource);
     }
 
-    void RenderGraphResourceData::RentTransientResource()
+    void RenderGraphResourceData::ReleaseResource()
     {
-        if (!IsTransient())
+        std::visit(overloaded{
+            [](RenderGraphResourcePooledBuffer& buffer) { buffer.ReleaseBuffer(); },
+            [](RenderGraphResourcePooledTexture& texture) { texture.ReleaseTexture(); },
+            [](auto&&) {},
+        }, m_Resource);
+    }
+
+    std::optional<size_t> RenderGraphResourceData::GetLastProducerBeforePassIndex(size_t passIndex) const
+    {
+        // 如果自己是自己的 producer 就会产生环，所以要从后往前找第一个不等于自己的 producer
+        for (auto it = m_ProducerPassIndices.rbegin(); it != m_ProducerPassIndices.rend(); ++it)
         {
-            return;
+            if (size_t v = *it; v != passIndex)
+            {
+                return v;
+            }
         }
 
-        if (m_ResourceType == RenderGraphResourceType::Texture)
+        return std::nullopt;
+    }
+
+    void RenderGraphResourceData::AddProducerPassIndex(size_t passIndex)
+    {
+        m_ProducerPassIndices.push_back(passIndex);
+    }
+
+    void RenderGraphResourceData::SetAlive(size_t passIndex)
+    {
+        if (m_LifetimePassIndexRange)
         {
-            m_ResourcePtr = m_TransientResourcePool->RentTexture(m_TransientTextureDesc);
+            std::pair<size_t, size_t>& range = m_LifetimePassIndexRange.value();
+            range.first = std::min(range.first, passIndex);
+            range.second = std::max(range.second, passIndex);
         }
         else
         {
-            throw std::runtime_error("Unsupported resource type");
+            m_LifetimePassIndexRange = std::make_pair(passIndex, passIndex);
         }
     }
 
-    void RenderGraphResourceData::ReturnTransientResource()
+    RenderGraphResourceManager::RenderGraphResourceManager()
+        : m_Resources{}
     {
-        if (!IsTransient())
-        {
-            return;
-        }
+        m_BufferPool = std::make_unique<RenderGraphResourcePool<GfxBuffer>>();
+        m_TexturePool = std::make_unique<RenderGraphResourcePool<GfxRenderTexture>>();
+    }
 
-        if (m_ResourceType == RenderGraphResourceType::Texture)
+    void RenderGraphResourceManager::ClearResources()
+    {
+        m_Resources.clear();
+    }
+
+    BufferHandle RenderGraphResourceManager::CreateBuffer(int32 id, const GfxBufferDesc& desc)
+    {
+        RenderGraphResourceData& resData = m_Resources.emplace_back();
+        GfxBufferAllocStrategy allocStrategy = desc.GetAllocStrategy();
+
+        if (GfxBufferAllocUtils::IsSubAlloc(allocStrategy))
         {
-            m_TransientResourcePool->ReturnTexture(static_cast<GfxRenderTexture*>(m_ResourcePtr));
+            // SubAlloc 开销小，没必要再复用了
+            resData.InitAsTempBuffer(id, desc);
+        }
+        else if (GfxBufferAllocUtils::IsHeapCpuAccessible(allocStrategy))
+        {
+            // 在 GPU 没使用完成前，复用 CPU 可访问的 Buffer 可能导致 CPU 和 GPU 之间的竞争
+            // 另外，对于 CPU 可访问的 Buffer，GfxBuffer::SetData(...) 每次都会重新创建资源，复用了也没什么意义
+            LOG_WARNING("RenderGraphBuffer '{}' can not be pooled because it is CPU accessible. Consider to use a sub-allocated buffer instead.", ShaderUtils::GetStringFromId(id));
+
+            resData.InitAsTempBuffer(id, desc);
         }
         else
         {
-            throw std::runtime_error("Unsupported resource type");
-        }
-    }
-
-    void RenderGraphResourceData::UpdateTransientLifeTime(int32_t index)
-    {
-        if (!IsTransient())
-        {
-            return;
+            resData.InitAsPooledBuffer(id, desc, m_BufferPool.get());
         }
 
-        m_TransientLifeTimeMinIndex = std::min(m_TransientLifeTimeMinIndex, index);
-        m_TransientLifeTimeMaxIndex = std::max(m_TransientLifeTimeMaxIndex, index);
+        return BufferHandle(this, m_Resources.size() - 1);
     }
 
-    int32_t RenderGraphResourceData::GetTransientLifeTimeMinIndex() const
+    BufferHandle RenderGraphResourceManager::ImportBuffer(int32 id, GfxBuffer* buffer)
     {
-        return IsTransient() ? m_TransientLifeTimeMinIndex : -1;
+        RenderGraphResourceData& resData = m_Resources.emplace_back();
+        resData.InitAsExternalBuffer(id, buffer);
+        return BufferHandle(this, m_Resources.size() - 1);
     }
 
-    int32_t RenderGraphResourceData::GetTransientLifeTimeMaxIndex() const
+    TextureHandle RenderGraphResourceManager::CreateTexture(int32 id, const GfxTextureDesc& desc)
     {
-        return IsTransient() ? m_TransientLifeTimeMaxIndex : -1;
+        RenderGraphResourceData& resData = m_Resources.emplace_back();
+        resData.InitAsPooledTexture(id, desc, m_TexturePool.get());
+        return TextureHandle(this, m_Resources.size() - 1);
+    }
+
+    TextureHandle RenderGraphResourceManager::ImportTexture(int32 id, GfxRenderTexture* texture)
+    {
+        RenderGraphResourceData& resData = m_Resources.emplace_back();
+        resData.InitAsExternalTexture(id, texture);
+        return TextureHandle(this, m_Resources.size() - 1);
+    }
+
+    size_t RenderGraphResourceManager::GetResourceIndex(const BufferHandle& handle) const
+    {
+        assert(handle.m_Manager == this);
+        return handle.m_ResourceIndex;
+    }
+
+    size_t RenderGraphResourceManager::GetResourceIndex(const TextureHandle& handle) const
+    {
+        assert(handle.m_Manager == this);
+        return handle.m_ResourceIndex;
+    }
+
+    int32 RenderGraphResourceManager::GetResourceId(size_t resourceIndex) const
+    {
+        return m_Resources[resourceIndex].GetId();
+    }
+
+    bool RenderGraphResourceManager::IsResourceExternal(size_t resourceIndex) const
+    {
+        return m_Resources[resourceIndex].IsExternal();
+    }
+
+    GfxBuffer* RenderGraphResourceManager::GetBuffer(size_t resourceIndex)
+    {
+        return m_Resources[resourceIndex].GetBuffer();
+    }
+
+    const GfxBufferDesc& RenderGraphResourceManager::GetBufferDesc(size_t resourceIndex) const
+    {
+        return m_Resources[resourceIndex].GetBufferDesc();
+    }
+
+    GfxRenderTexture* RenderGraphResourceManager::GetTexture(size_t resourceIndex)
+    {
+        return m_Resources[resourceIndex].GetTexture();
+    }
+
+    const GfxTextureDesc& RenderGraphResourceManager::GetTextureDesc(size_t resourceIndex) const
+    {
+        return m_Resources[resourceIndex].GetTextureDesc();
+    }
+
+    void RenderGraphResourceManager::RequestResource(size_t resourceIndex)
+    {
+        m_Resources[resourceIndex].RequestResource();
+    }
+
+    void RenderGraphResourceManager::ReleaseResource(size_t resourceIndex)
+    {
+        m_Resources[resourceIndex].ReleaseResource();
+    }
+
+    std::optional<size_t> RenderGraphResourceManager::GetLastProducerBeforePassIndex(size_t resourceIndex, size_t passIndex) const
+    {
+        return m_Resources[resourceIndex].GetLastProducerBeforePassIndex(passIndex);
+    }
+
+    void RenderGraphResourceManager::AddProducerPassIndex(size_t resourceIndex, size_t passIndex)
+    {
+        m_Resources[resourceIndex].AddProducerPassIndex(passIndex);
+    }
+
+    void RenderGraphResourceManager::SetAlive(size_t resourceIndex, size_t passIndex)
+    {
+        m_Resources[resourceIndex].SetAlive(passIndex);
+    }
+
+    std::optional<std::pair<size_t, size_t>> RenderGraphResourceManager::GetLifetimePassIndexRange(size_t resourceIndex) const
+    {
+        return m_Resources[resourceIndex].GetLifetimePassIndexRange();
     }
 }
