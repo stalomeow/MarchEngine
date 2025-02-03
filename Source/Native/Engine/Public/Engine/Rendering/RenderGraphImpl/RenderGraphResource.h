@@ -9,6 +9,16 @@
 
 namespace march
 {
+    class TextureHandle
+    {
+
+    };
+
+    class BufferHandle
+    {
+
+    };
+
     enum class RenderGraphResourceType
     {
         Texture,
@@ -25,15 +35,6 @@ namespace march
         static constexpr uint32_t MaxFailCount = 20;
 
     public:
-        RenderGraphResourcePool();
-        ~RenderGraphResourcePool() = default;
-
-        RenderGraphResourcePool(const RenderGraphResourcePool&) = delete;
-        RenderGraphResourcePool& operator=(const RenderGraphResourcePool&) = delete;
-
-        RenderGraphResourcePool(RenderGraphResourcePool&&) = default;
-        RenderGraphResourcePool& operator=(RenderGraphResourcePool&&) = default;
-
         GfxRenderTexture* RentTexture(const GfxTextureDesc& desc);
         void ReturnTexture(GfxRenderTexture* texture);
 
@@ -48,13 +49,6 @@ namespace march
     public:
         RenderGraphResourceData(RenderGraphResourcePool* pool, const GfxTextureDesc& desc);
         RenderGraphResourceData(GfxRenderTexture* texture);
-        ~RenderGraphResourceData() = default;
-
-        RenderGraphResourceData(const RenderGraphResourceData&) = delete;
-        RenderGraphResourceData& operator=(const RenderGraphResourceData&) = delete;
-
-        RenderGraphResourceData(RenderGraphResourceData&&) = default;
-        RenderGraphResourceData& operator=(RenderGraphResourceData&&) = default;
 
         int32_t GetLastProducerPass() const;
         void AddProducerPass(int32_t passIndex);

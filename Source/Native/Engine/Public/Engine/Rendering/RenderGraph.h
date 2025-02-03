@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <functional>
+#include <optional>
 #include <DirectXColors.h>
 
 namespace march
@@ -74,6 +75,8 @@ namespace march
 
         bool HasSideEffects; // 如果写入了 persistent resource，那么就有副作用
         bool AllowPassCulling;
+        bool EnableAsyncCompute;
+
         std::unordered_set<int32_t> ResourcesRead;    // 相当于进来的边
         std::unordered_set<int32_t> ResourcesWritten; // 相当于出去的边
 
@@ -86,11 +89,8 @@ namespace march
         float ClearDepthValue;
         uint8_t ClearStencilValue;
 
-        bool HasCustomViewport;
-        D3D12_VIEWPORT CustomViewport;
-
-        bool HasCustomScissorRect;
-        D3D12_RECT CustomScissorRect;
+        std::optional<D3D12_VIEWPORT> CustomViewport;
+        std::optional<D3D12_RECT> CustomScissorRect;
 
         bool HashCustomDepthBias;
         int32_t DepthBias;
@@ -105,14 +105,6 @@ namespace march
         std::vector<int32_t> ResourcesDead; // 生命周期到本结点结束的资源
 
         std::function<void(RenderGraphContext&)> RenderFunc;
-
-        RenderGraphPass(const std::string& name);
-
-        RenderGraphPass(const RenderGraphPass&) = delete;
-        RenderGraphPass& operator=(const RenderGraphPass&) = delete;
-
-        RenderGraphPass(RenderGraphPass&&) = default;
-        RenderGraphPass& operator=(RenderGraphPass&&) = default;
     };
 
     class IRenderGraphCompiledEventListener

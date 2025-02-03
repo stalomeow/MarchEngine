@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Rendering/RenderGraphResource.h"
+#include "Engine/Rendering/RenderGraphImpl/RenderGraphResource.h"
 #include "Engine/Debug.h"
 #include <limits>
 #include <utility>

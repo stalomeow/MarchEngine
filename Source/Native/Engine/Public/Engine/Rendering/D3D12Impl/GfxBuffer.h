@@ -58,6 +58,14 @@ namespace march
         RawCounter,
     };
 
+    enum class GfxBufferAllocStrategy
+    {
+        DefaultHeapPlaced,
+        UploadHeapPlaced,
+        UploadHeapSubAlloc,
+        UploadHeapFastOneFrame,
+    };
+
     struct GfxBufferDesc
     {
         uint32_t Stride;
@@ -82,6 +90,28 @@ namespace march
         uint32_t GetSizeInBytes(GfxBufferElement element) const;
 
         bool IsCompatibleWith(const GfxBufferDesc& other) const;
+
+        GfxBufferAllocStrategy GetAllocStrategy() const;
+
+        bool operator==(const GfxBufferDesc& other) const
+        {
+            return Stride == other.Stride
+                && Count == other.Count
+                && Usages == other.Usages
+                && Flags == other.Flags;
+        }
+
+        bool operator!=(const GfxBufferDesc& other) const
+        {
+            return !(*this == other);
+        }
+    };
+
+    struct GfxBufferAllocUtils
+    {
+        static bool IsSubAlloc(GfxBufferAllocStrategy allocStrategy);
+        static D3D12_HEAP_TYPE GetHeapType(GfxBufferAllocStrategy allocStrategy);
+        static bool IsHeapCpuAccessible(GfxBufferAllocStrategy allocStrategy);
     };
 
     class GfxBuffer final
@@ -121,8 +151,8 @@ namespace march
         GfxBuffer(const GfxBuffer&) = delete;
         GfxBuffer& operator=(const GfxBuffer&) = delete;
 
-        GfxBuffer(GfxBuffer&& other);
-        GfxBuffer& operator=(GfxBuffer&& other);
+        GfxBuffer(GfxBuffer&& other) noexcept;
+        GfxBuffer& operator=(GfxBuffer&& other) noexcept;
 
     private:
         GfxDevice* m_Device;

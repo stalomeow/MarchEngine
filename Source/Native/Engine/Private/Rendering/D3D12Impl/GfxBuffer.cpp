@@ -6,6 +6,7 @@
 #include "Engine/Misc/MathUtils.h"
 #include "Engine/Debug.h"
 #include <stdexcept>
+#include <assert.h>
 
 namespace march
 {
@@ -97,10 +98,65 @@ namespace march
 
     bool GfxBufferDesc::IsCompatibleWith(const GfxBufferDesc& other) const
     {
-        return Stride == other.Stride
-            && Count >= other.Count
-            && HasAllUsages(other.Usages)
-            && Flags == other.Flags;
+        return *this == other;
+    }
+
+    GfxBufferAllocStrategy GfxBufferDesc::GetAllocStrategy() const
+    {
+        bool ua = AllowUnorderedAccess();
+        bool dynamic = HasAnyFlags(GfxBufferFlags::Dynamic);
+        bool transient = HasAnyFlags(GfxBufferFlags::Transient);
+
+        if (!ua && (dynamic || transient))
+        {
+            return transient ? GfxBufferAllocStrategy::UploadHeapFastOneFrame : GfxBufferAllocStrategy::UploadHeapSubAlloc;
+        }
+
+#ifdef _DEBUG
+        if (ua && transient)
+        {
+            // Unordered Access 需要在创建 Resource 时指定 D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
+            // 用来 SubAlloc 的 Buffer 都没有这个 Flag，所以只能分配一个完整的 Buffer
+            LOG_WARNING("The Transient flag will be ignored because the buffer allows unordered access");
+        }
+#endif
+
+        return dynamic ? GfxBufferAllocStrategy::UploadHeapPlaced : GfxBufferAllocStrategy::DefaultHeapPlaced;
+    }
+
+    bool GfxBufferAllocUtils::IsSubAlloc(GfxBufferAllocStrategy allocStrategy)
+    {
+        switch (allocStrategy)
+        {
+        case GfxBufferAllocStrategy::DefaultHeapPlaced:
+        case GfxBufferAllocStrategy::UploadHeapPlaced:
+            return false;
+        case GfxBufferAllocStrategy::UploadHeapSubAlloc:
+        case GfxBufferAllocStrategy::UploadHeapFastOneFrame:
+            return true;
+        default:
+            throw std::invalid_argument("Invalid buffer allocation strategy");
+        }
+    }
+
+    D3D12_HEAP_TYPE GfxBufferAllocUtils::GetHeapType(GfxBufferAllocStrategy allocStrategy)
+    {
+        switch (allocStrategy)
+        {
+        case GfxBufferAllocStrategy::DefaultHeapPlaced:
+            return D3D12_HEAP_TYPE_DEFAULT;
+        case GfxBufferAllocStrategy::UploadHeapPlaced:
+        case GfxBufferAllocStrategy::UploadHeapSubAlloc:
+        case GfxBufferAllocStrategy::UploadHeapFastOneFrame:
+            return D3D12_HEAP_TYPE_UPLOAD;
+        default:
+            throw std::invalid_argument("Invalid buffer allocation strategy");
+        }
+    }
+
+    bool GfxBufferAllocUtils::IsHeapCpuAccessible(GfxBufferAllocStrategy allocStrategy)
+    {
+        return CD3DX12_HEAP_PROPERTIES(GetHeapType(allocStrategy)).IsCPUAccessible();
     }
 
     GfxBuffer::GfxBuffer(GfxDevice* device, const std::string& name) : GfxBuffer(device, name, GfxBufferDesc{}) {}
@@ -276,15 +332,17 @@ namespace march
 
     void GfxBuffer::SetData(const void* pData, std::optional<uint32_t> counter)
     {
-        D3D12_RANGE resourceRange = ReallocateResource();
-
         if (!pData && !counter)
         {
             return;
         }
 
-        if (m_Resource->IsHeapCpuAccessible())
+        if (GfxBufferAllocUtils::IsHeapCpuAccessible(m_Desc.GetAllocStrategy()))
         {
+            // CPU 可以直接写入，但为了避免和 GPU 竞争，每次都会重新分配资源
+            D3D12_RANGE resourceRange = ReallocateResource();
+            assert(m_Resource->IsHeapCpuAccessible());
+
             // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-map
             // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12resource-unmap
 
@@ -319,6 +377,10 @@ namespace march
         }
         else
         {
+            // 借助一个临时的 Upload Buffer 来写入数据，理论上 CPU 和 GPU 不会竞争，所以能重复使用 Resource
+            AllocateResourceIfNot();
+            assert(!m_Resource->IsHeapCpuAccessible());
+
             GfxCommandContext* context = m_Device->RequestContext(GfxCommandType::Direct);
 
             if (pData)
@@ -363,7 +425,12 @@ namespace march
 
     void GfxBuffer::SetData(const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
     {
-        m_Desc = desc;
+        if (m_Desc != desc)
+        {
+            m_Desc = desc;
+            ReleaseResource(); // 强制重新分配资源
+        }
+
         SetData(pData, counter);
     }
 
@@ -431,35 +498,17 @@ namespace march
             dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT);
         }
 
-        bool isSubAlloc;
-
-        if (m_Desc.AllowUnorderedAccess())
-        {
-            isSubAlloc = false;
-
-            if (m_Desc.HasAnyFlags(GfxBufferFlags::Transient))
-            {
-                LOG_WARNING("GfxBuffer::AllocateResource: The Transient flag will be ignored because the buffer allows unordered access");
-            }
-        }
-        else
-        {
-            // 尽可能使用 SubAlloc，优化性能
-            isSubAlloc = m_Desc.HasAnyFlags(GfxBufferFlags::Dynamic | GfxBufferFlags::Transient);
-        }
-
+        GfxBufferAllocStrategy allocStrategy = m_Desc.GetAllocStrategy();
         uint32_t resourceOffsetInBytes = 0;
 
-        if (isSubAlloc)
+        if (GfxBufferAllocUtils::IsSubAlloc(allocStrategy))
         {
-            bool isFastOneFrame = m_Desc.HasAnyFlags(GfxBufferFlags::Transient);
-            m_Allocator = m_Device->GetUploadHeapBufferSubAllocator(isFastOneFrame);
+            m_Allocator = m_Device->GetUploadHeapBufferSubAllocator(allocStrategy == GfxBufferAllocStrategy::UploadHeapFastOneFrame);
             m_Resource = m_Allocator->Allocate(sizeInBytes, dataPlacementAlignment, &resourceOffsetInBytes, &m_Allocation);
         }
         else
         {
-            GfxResourceAllocator* allocator = m_Device->GetPlacedBufferAllocator(
-                m_Desc.HasAnyFlags(GfxBufferFlags::Dynamic) ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT);
+            GfxResourceAllocator* allocator = m_Device->GetPlacedBufferAllocator(GfxBufferAllocUtils::GetHeapType(allocStrategy));
 
             UINT64 width = static_cast<UINT64>(sizeInBytes);
             D3D12_RESOURCE_FLAGS flags = m_Desc.AllowUnorderedAccess() ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
@@ -467,11 +516,11 @@ namespace march
         }
 
         m_DataOffsetInBytes = resourceOffsetInBytes + dataOffsetInResource;
-        m_CounterOffsetInBytes = resourceOffsetInBytes;
+        m_CounterOffsetInBytes = resourceOffsetInBytes + 0; // Counter 永远在最前面
         return CD3DX12_RANGE(resourceOffsetInBytes, resourceOffsetInBytes + sizeInBytes);
     }
 
-    GfxBuffer::GfxBuffer(GfxBuffer&& other)
+    GfxBuffer::GfxBuffer(GfxBuffer&& other) noexcept
         : m_Device(other.m_Device)
         , m_Name(std::move(other.m_Name))
         , m_Desc(other.m_Desc)
@@ -488,7 +537,7 @@ namespace march
         }
     }
 
-    GfxBuffer& GfxBuffer::operator=(GfxBuffer&& other)
+    GfxBuffer& GfxBuffer::operator=(GfxBuffer&& other) noexcept
     {
         if (this != &other)
         {
