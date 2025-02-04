@@ -28,97 +28,97 @@ namespace march
         std::unordered_map<int32_t, int32_t> OutputIndexMap{}; // 输出资源 id -> node resources index
     };
 
-    void RenderGraphDebuggerWindow::OnGraphCompiled(const RenderGraph& graph, const std::vector<int32_t>& sortedPasses)
+    void RenderGraphDebuggerWindow::OnGraphCompiled(const RenderGraph& graph, const std::vector<RenderGraphPass>& passes)
     {
         m_Nodes.clear();
         m_Links.clear();
 
-        ImVec2 nextNodePos = ImVec2(40, 50);
-        std::unordered_map<int32_t, RenderPassTempData> tempMap{}; // pass index -> temp data
+        //ImVec2 nextNodePos = ImVec2(40, 50);
+        //std::unordered_map<int32_t, RenderPassTempData> tempMap{}; // pass index -> temp data
 
-        // 添加 node
-        for (int32_t passIndex : sortedPasses)
-        {
-            const RenderGraphPass& pass = graph.GetPass(passIndex);
-            RenderPassTempData& tempData = tempMap[passIndex];
-            RenderPassNode& node = m_Nodes.emplace_back(pass.Name);
-            tempData.NodeIndex = static_cast<int32_t>(m_Nodes.size() - 1);
+        //// 添加 node
+        //for (int32_t passIndex : sortedPasses)
+        //{
+        //    const RenderGraphPass& pass = graph.GetPass(passIndex);
+        //    RenderPassTempData& tempData = tempMap[passIndex];
+        //    RenderPassNode& node = m_Nodes.emplace_back(pass.Name);
+        //    tempData.NodeIndex = static_cast<int32_t>(m_Nodes.size() - 1);
 
-            // 给新 node 分配位置
-            if (m_NodeStates.count(pass.Name) == 0)
-            {
-                m_NodeStates[pass.Name].Position = nextNodePos;
-                nextNodePos.x += 250;
-            }
+        //    // 给新 node 分配位置
+        //    if (m_NodeStates.count(pass.Name) == 0)
+        //    {
+        //        m_NodeStates[pass.Name].Position = nextNodePos;
+        //        nextNodePos.x += 250;
+        //    }
 
-            for (uint32_t i = 0; i < pass.NumColorTargets; i++)
-            {
-                if (!pass.ColorTargets[i].IsSet)
-                {
-                    continue;
-                }
+        //    for (uint32_t i = 0; i < pass.NumColorTargets; i++)
+        //    {
+        //        if (!pass.ColorTargets[i].IsSet)
+        //        {
+        //            continue;
+        //        }
 
-                tempData.OutputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
+        //        tempData.OutputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
 
-                if (pass.ColorTargets[i].Load)
-                {
-                    tempData.InputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
-                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.ColorTargets[i].Id) + " (RW)");
-                }
-                else
-                {
-                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.ColorTargets[i].Id) + " (W)");
-                }
-            }
+        //        if (pass.ColorTargets[i].Load)
+        //        {
+        //            tempData.InputIndexMap[pass.ColorTargets[i].Id] = static_cast<int32_t>(node.Resources.size());
+        //            node.Resources.push_back(ShaderUtils::GetStringFromId(pass.ColorTargets[i].Id) + " (RW)");
+        //        }
+        //        else
+        //        {
+        //            node.Resources.push_back(ShaderUtils::GetStringFromId(pass.ColorTargets[i].Id) + " (W)");
+        //        }
+        //    }
 
-            if (pass.DepthStencilTarget.IsSet)
-            {
-                tempData.OutputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
+        //    if (pass.DepthStencilTarget.IsSet)
+        //    {
+        //        tempData.OutputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
 
-                if (pass.DepthStencilTarget.Load)
-                {
-                    tempData.InputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
-                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.DepthStencilTarget.Id) + " (RW)");
-                }
-                else
-                {
-                    node.Resources.push_back(ShaderUtils::GetStringFromId(pass.DepthStencilTarget.Id) + " (W)");
-                }
-            }
+        //        if (pass.DepthStencilTarget.Load)
+        //        {
+        //            tempData.InputIndexMap[pass.DepthStencilTarget.Id] = static_cast<int32_t>(node.Resources.size());
+        //            node.Resources.push_back(ShaderUtils::GetStringFromId(pass.DepthStencilTarget.Id) + " (RW)");
+        //        }
+        //        else
+        //        {
+        //            node.Resources.push_back(ShaderUtils::GetStringFromId(pass.DepthStencilTarget.Id) + " (W)");
+        //        }
+        //    }
 
-            for (int32_t res : pass.ResourcesRead)
-            {
-                node.Resources.push_back(ShaderUtils::GetStringFromId(res) + " (R)");
-                tempData.InputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
-            }
+        //    for (int32_t res : pass.ResourcesRead)
+        //    {
+        //        node.Resources.push_back(ShaderUtils::GetStringFromId(res) + " (R)");
+        //        tempData.InputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
+        //    }
 
-            for (int32_t res : pass.ResourcesWritten)
-            {
-                node.Resources.push_back(ShaderUtils::GetStringFromId(res) + " (W)");
-                tempData.OutputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
-            }
-        }
+        //    for (int32_t res : pass.ResourcesWritten)
+        //    {
+        //        node.Resources.push_back(ShaderUtils::GetStringFromId(res) + " (W)");
+        //        tempData.OutputIndexMap[res] = static_cast<int32_t>(node.Resources.size() - 1);
+        //    }
+        //}
 
-        // 添加 link
-        for (int32_t passIndex : sortedPasses)
-        {
-            const RenderGraphPass& pass = graph.GetPass(passIndex);
-            const RenderPassTempData& srcData = tempMap[passIndex];
+        //// 添加 link
+        //for (int32_t passIndex : sortedPasses)
+        //{
+        //    const RenderGraphPass& pass = graph.GetPass(passIndex);
+        //    const RenderPassTempData& srcData = tempMap[passIndex];
 
-            for (auto& kv : srcData.OutputIndexMap)
-            {
-                for (int32_t nextPassIndex : pass.NextPasses)
-                {
-                    const RenderPassTempData& dstData = tempMap[nextPassIndex];
+        //    for (auto& kv : srcData.OutputIndexMap)
+        //    {
+        //        for (int32_t nextPassIndex : pass.NextPasses)
+        //        {
+        //            const RenderPassTempData& dstData = tempMap[nextPassIndex];
 
-                    if (auto it = dstData.InputIndexMap.find(kv.first); it != dstData.InputIndexMap.end())
-                    {
-                        m_Links.emplace_back(srcData.NodeIndex, kv.second, dstData.NodeIndex, it->second);
-                        //break;
-                    }
-                }
-            }
-        }
+        //            if (auto it = dstData.InputIndexMap.find(kv.first); it != dstData.InputIndexMap.end())
+        //            {
+        //                m_Links.emplace_back(srcData.NodeIndex, kv.second, dstData.NodeIndex, it->second);
+        //                //break;
+        //            }
+        //        }
+        //    }
+        //}
     }
 
     bool RenderGraphDebuggerWindow::Begin()

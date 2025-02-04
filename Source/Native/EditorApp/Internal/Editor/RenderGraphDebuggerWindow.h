@@ -42,7 +42,7 @@ namespace march
         RenderGraphDebuggerWindow() = default;
         virtual ~RenderGraphDebuggerWindow() = default;
 
-        void OnGraphCompiled(const RenderGraph& graph, const std::vector<int32_t>& sortedPasses) override;
+        void OnGraphCompiled(const RenderGraph& graph, const std::vector<RenderGraphPass>& passes) override;
 
     protected:
         bool Begin() override;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Rendering/RenderGraph.h"
 #include <DirectXMath.h>
 #include <string>
 #include <imgui.h>
@@ -37,6 +38,6 @@ namespace march
 
         static void InitResources();
         static void ReleaseResources();
-        static void AddRenderGraphPass(RenderGraph* graph, int32_t colorTargetId, int32_t depthStencilTargetId);
+        static void AddRenderGraphPass(RenderGraph* graph, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
     };
 }

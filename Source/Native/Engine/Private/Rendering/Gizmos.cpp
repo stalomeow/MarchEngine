@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Engine/Rendering/Gizmos.h"
 #include "Engine/Rendering/D3D12.h"
-#include "Engine/Rendering/RenderGraph.h"
 #include "Engine/Rendering/Camera.h"
 #include "Engine/Debug.h"
 #include "Engine/AssetManger.h"
@@ -362,14 +361,14 @@ namespace march
         g_LineListShader.reset();
     }
 
-    void Gizmos::AddRenderGraphPass(RenderGraph* graph, int32_t colorTargetId, int32_t depthStencilTargetId)
+    void Gizmos::AddRenderGraphPass(RenderGraph* graph, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget)
     {
         FlushLineListIfNeeded(true);
 
         auto builder = graph->AddPass("Gizmos");
 
-        builder.SetColorTarget(colorTargetId);
-        builder.SetDepthStencilTarget(depthStencilTargetId);
+        builder.SetColorTarget(colorTarget);
+        builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             // Visible part

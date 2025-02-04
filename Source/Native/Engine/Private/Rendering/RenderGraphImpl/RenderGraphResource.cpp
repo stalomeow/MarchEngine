@@ -81,6 +81,18 @@ namespace march
         }, m_Resource);
     }
 
+    void RenderGraphResourceData::SetAsVariable(GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc)
+    {
+        std::visit(overloaded{
+            [=](RenderGraphResourceTempBuffer& buffer) { cmd->SetBuffer(desc.AliasId, &buffer.Buffer, desc.BufferElement); },
+            [=](RenderGraphResourcePooledBuffer& buffer) { cmd->SetBuffer(desc.AliasId, buffer.Buffer.get(), desc.BufferElement); },
+            [=](RenderGraphResourceExternalBuffer& buffer) { cmd->SetBuffer(desc.AliasId, buffer.Buffer, desc.BufferElement); },
+            [=](RenderGraphResourcePooledTexture& texture) { cmd->SetTexture(desc.AliasId, texture.Texture.get(), desc.TextureElement); },
+            [=](RenderGraphResourceExternalTexture& texture) { cmd->SetTexture(desc.AliasId, texture.Texture, desc.TextureElement); },
+            [=](auto&&) { throw std::runtime_error("Resource is not a buffer or texture"); },
+        }, m_Resource);
+    }
+
     std::optional<size_t> RenderGraphResourceData::GetLastProducerBeforePassIndex(size_t passIndex) const
     {
         // 如果自己是自己的 producer 就会产生环，所以要从后往前找第一个不等于自己的 producer
@@ -223,6 +235,11 @@ namespace march
     void RenderGraphResourceManager::ReleaseResource(size_t resourceIndex)
     {
         m_Resources[resourceIndex].ReleaseResource();
+    }
+
+    void RenderGraphResourceManager::SetAsVariable(size_t resourceIndex, GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc)
+    {
+        m_Resources[resourceIndex].SetAsVariable(cmd, desc);
     }
 
     std::optional<size_t> RenderGraphResourceManager::GetLastProducerBeforePassIndex(size_t resourceIndex, size_t passIndex) const

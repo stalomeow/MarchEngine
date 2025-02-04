@@ -65,7 +65,7 @@ namespace march
         uint32_t m_AllocCounter = 0; // 记录分配数量
 
     public:
-        std::unique_ptr<_ResourceType> Request(const ResourceTraits::DescType& desc)
+        std::unique_ptr<_ResourceType> Request(const typename ResourceTraits::DescType& desc)
         {
             auto it = m_FreeItems.begin();
 
@@ -106,6 +106,12 @@ namespace march
             : Buffer(GetGfxDevice(), "RenderGraphTempBuffer", desc)
         {
         }
+
+        RenderGraphResourceTempBuffer(const RenderGraphResourceTempBuffer&) = delete;
+        RenderGraphResourceTempBuffer& operator=(const RenderGraphResourceTempBuffer&) = delete;
+
+        RenderGraphResourceTempBuffer(RenderGraphResourceTempBuffer&&) = default;
+        RenderGraphResourceTempBuffer& operator=(RenderGraphResourceTempBuffer&&) = default;
     };
 
     struct RenderGraphResourcePooledBuffer
@@ -143,6 +149,12 @@ namespace march
                 Buffer = nullptr;
             }
         }
+
+        RenderGraphResourcePooledBuffer(const RenderGraphResourcePooledBuffer&) = delete;
+        RenderGraphResourcePooledBuffer& operator=(const RenderGraphResourcePooledBuffer&) = delete;
+
+        RenderGraphResourcePooledBuffer(RenderGraphResourcePooledBuffer&&) = default;
+        RenderGraphResourcePooledBuffer& operator=(RenderGraphResourcePooledBuffer&&) = default;
     };
 
     struct RenderGraphResourceExternalBuffer
@@ -150,6 +162,12 @@ namespace march
         GfxBuffer* Buffer;
 
         RenderGraphResourceExternalBuffer(GfxBuffer* buffer) : Buffer(buffer) {}
+
+        RenderGraphResourceExternalBuffer(const RenderGraphResourceExternalBuffer&) = delete;
+        RenderGraphResourceExternalBuffer& operator=(const RenderGraphResourceExternalBuffer&) = delete;
+
+        RenderGraphResourceExternalBuffer(RenderGraphResourceExternalBuffer&&) = default;
+        RenderGraphResourceExternalBuffer& operator=(RenderGraphResourceExternalBuffer&&) = default;
     };
 
     struct RenderGraphResourcePooledTexture
@@ -187,6 +205,12 @@ namespace march
                 Texture = nullptr;
             }
         }
+
+        RenderGraphResourcePooledTexture(const RenderGraphResourcePooledTexture&) = delete;
+        RenderGraphResourcePooledTexture& operator=(const RenderGraphResourcePooledTexture&) = delete;
+
+        RenderGraphResourcePooledTexture(RenderGraphResourcePooledTexture&&) = default;
+        RenderGraphResourcePooledTexture& operator=(RenderGraphResourcePooledTexture&&) = default;
     };
 
     struct RenderGraphResourceExternalTexture
@@ -194,6 +218,23 @@ namespace march
         GfxRenderTexture* Texture;
 
         RenderGraphResourceExternalTexture(GfxRenderTexture* texture) : Texture(texture) {}
+
+        RenderGraphResourceExternalTexture(const RenderGraphResourceExternalTexture&) = delete;
+        RenderGraphResourceExternalTexture& operator=(const RenderGraphResourceExternalTexture&) = delete;
+
+        RenderGraphResourceExternalTexture(RenderGraphResourceExternalTexture&&) = default;
+        RenderGraphResourceExternalTexture& operator=(RenderGraphResourceExternalTexture&&) = default;
+    };
+
+    struct RenderGraphResourceVariableDesc
+    {
+        int32 AliasId;
+
+        union
+        {
+            GfxBufferElement BufferElement;
+            GfxTextureElement TextureElement;
+        };
     };
 
     class RenderGraphResourceData final
@@ -206,8 +247,8 @@ namespace march
             RenderGraphResourcePooledBuffer,
             RenderGraphResourceExternalBuffer,
             RenderGraphResourcePooledTexture,
-            RenderGraphResourceExternalTexture,
-        > m_Resource;
+            RenderGraphResourceExternalTexture
+        > m_Resource{};
 
         std::vector<size_t> m_ProducerPassIndices;
         std::optional<std::pair<size_t, size_t>> m_LifetimePassIndexRange = std::nullopt;
@@ -223,6 +264,8 @@ namespace march
 
         void RequestResource();
         void ReleaseResource();
+
+        void SetAsVariable(GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc);
 
         std::optional<size_t> GetLastProducerBeforePassIndex(size_t passIndex) const;
         void AddProducerPassIndex(size_t passIndex);
@@ -262,6 +305,15 @@ namespace march
             m_Id = id;
             m_Resource.emplace<RenderGraphResourceExternalTexture>(texture);
         }
+
+        RenderGraphResourceData() = default;
+        ~RenderGraphResourceData() = default;
+
+        RenderGraphResourceData(const RenderGraphResourceData&) = delete;
+        RenderGraphResourceData& operator=(const RenderGraphResourceData&) = delete;
+
+        RenderGraphResourceData(RenderGraphResourceData&&) = default;
+        RenderGraphResourceData& operator=(RenderGraphResourceData&&) = default;
     };
 
     class BufferHandle;
@@ -301,6 +353,8 @@ namespace march
 
         void RequestResource(size_t resourceIndex);
         void ReleaseResource(size_t resourceIndex);
+
+        void SetAsVariable(size_t resourceIndex, GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc);
 
         std::optional<size_t> GetLastProducerBeforePassIndex(size_t resourceIndex, size_t passIndex) const;
         void AddProducerPassIndex(size_t resourceIndex, size_t passIndex);

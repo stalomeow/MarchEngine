@@ -322,6 +322,34 @@ namespace march
         }
     }
 
+    void GfxCommandContext::ClearColorTarget(uint32_t index, const float color[4])
+    {
+        if (index >= m_OutputDesc.NumRTV)
+        {
+            LOG_WARNING("Failed to clear color target: index out of range");
+            return;
+        }
+
+        FlushResourceBarriers();
+
+        m_CommandList->ClearRenderTargetView(m_ColorTargets[index]->GetRtvDsv(), color, 0, nullptr);
+    }
+
+    void GfxCommandContext::ClearDepthStencilTarget(float depth, uint8_t stencil)
+    {
+        if (m_DepthStencilTarget == nullptr)
+        {
+            LOG_WARNING("Failed to clear depth-stencil target: no depth-stencil target is set");
+            return;
+        }
+
+        FlushResourceBarriers();
+
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsv();
+        constexpr D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL;
+        m_CommandList->ClearDepthStencilView(dsv, flags, depth, static_cast<UINT8>(stencil), 0, nullptr);
+    }
+
     void GfxCommandContext::SetViewport(const D3D12_VIEWPORT& viewport)
     {
         SetViewports(1, &viewport);

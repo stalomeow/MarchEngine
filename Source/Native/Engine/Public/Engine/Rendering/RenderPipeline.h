@@ -73,25 +73,40 @@ namespace march
             }
         }
 
-        BufferHandle CreateCameraConstantBuffer(const std::string& passName, Camera* camera, DirectX::XMFLOAT4X4& viewProjMatrix);
-        BufferHandle CreateCameraConstantBuffer(const std::string& passName, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix, DirectX::XMFLOAT4X4& viewProjMatrix);
+        BufferHandle CreateCameraConstantBuffer(const std::string& passName, Camera* camera);
+        BufferHandle CreateCameraConstantBuffer(const std::string& passName, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         BufferHandle CreateLightConstantBuffer();
-        void ClearTargets(const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
-        void DeferredLighting(int32_t colorTargetId, int32_t depthStencilTargetId, int32 screenSpaceShadowMapId);
-        TextureHandle DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
-        void DrawObjects(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget, bool wireframe);
-        void DrawSceneViewGrid(int32_t colorTargetId, int32_t depthStencilTargetId, Material* material);
-        void DrawSkybox(int32_t colorTargetId, int32_t depthStencilTargetId);
-        void ResolveMSAA(int32_t sourceId, int32_t destinationId);
 
-        void ScreenSpaceShadow(const DirectX::XMFLOAT4X4& shadowMatrix, int32_t cameraColorTargetId, int32_t shadowMapId, int32_t destinationId);
+        void DeferredLighting(
+            const BufferHandle& cbCamera,
+            const BufferHandle& cbLight,
+            const TextureHandle& colorTarget,
+            const TextureHandle& depthStencilTarget,
+            const std::vector<TextureHandle>& gBuffers,
+            const TextureHandle& screenSpaceShadowMap);
+        TextureHandle DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
+        void ClearAndDrawObjects(
+            const BufferHandle& cbCamera,
+            const TextureHandle& colorTarget,
+            const TextureHandle& depthStencilTarget,
+            std::vector<TextureHandle>& gBuffers,
+            bool wireframe);
+        void DrawSceneViewGrid(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget, Material* material);
+        void DrawSkybox(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
+        void ResolveMSAA(const TextureHandle& source, const TextureHandle& destination);
+
+        TextureHandle ScreenSpaceShadow(
+            const BufferHandle& cbCamera,
+            const DirectX::XMFLOAT4X4& shadowMatrix,
+            const TextureHandle& colorTarget,
+            const std::vector<TextureHandle>& gBuffers,
+            const TextureHandle& shadowMap);
 
         void TestCompute();
 
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
         GfxMesh* m_SphereMesh = nullptr;
-        std::vector<std::tuple<int32_t, DXGI_FORMAT, bool>> m_GBuffers{};
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;

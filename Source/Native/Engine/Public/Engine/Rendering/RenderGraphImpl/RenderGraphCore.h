@@ -6,8 +6,10 @@
 #include <directx/d3d12.h>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <memory>
 #include <string>
+#include <optional>
 #include <functional>
 #include <DirectXColors.h>
 
@@ -24,11 +26,36 @@ namespace march
         Culled,
     };
 
-    struct RenderGraphPassRenderTarget
+    enum class RenderTargetInitMode
+    {
+        Load,
+        Discard,
+        Clear,
+    };
+
+    struct RenderGraphPassColorTarget
     {
         size_t ResourceIndex = 0;
         bool IsSet = false;
-        bool Load = false;
+
+        RenderTargetInitMode InitMode = RenderTargetInitMode::Load;
+        float ClearColor[4]{};
+    };
+
+    struct RenderGraphPassDepthStencilTarget
+    {
+        size_t ResourceIndex = 0;
+        bool IsSet = false;
+
+        RenderTargetInitMode InitMode = RenderTargetInitMode::Load;
+        float ClearDepthValue = GfxUtils::FarClipPlaneDepth;
+        uint8_t ClearStencilValue = 0;
+    };
+
+    struct RenderGraphPassVariable
+    {
+        size_t ResourceIndex;
+        RenderGraphResourceVariableDesc Desc;
     };
 
     struct RenderGraphPass final
@@ -42,14 +69,11 @@ namespace march
         std::unordered_set<size_t> ResourcesRead{};    // 所有读取的资源，包括 render target
         std::unordered_set<size_t> ResourcesWritten{}; // 所有写入的资源，包括 render target
 
-        uint32_t NumColorTargets = 0;
-        RenderGraphPassRenderTarget ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
-        RenderGraphPassRenderTarget DepthStencilTarget{};
+        std::unordered_map<int32, RenderGraphPassVariable> Variables{}; // 用于设置 shader 中的变量
 
-        GfxClearFlags RenderTargetsClearFlags = GfxClearFlags::None;
-        float ClearColorValue[4]{};
-        float ClearDepthValue = GfxUtils::FarClipPlaneDepth;
-        uint8_t ClearStencilValue = 0;
+        uint32_t NumColorTargets = 0;
+        RenderGraphPassColorTarget ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+        RenderGraphPassDepthStencilTarget DepthStencilTarget{};
 
         bool HasCustomViewport = false;
         D3D12_VIEWPORT CustomViewport{};
@@ -57,7 +81,7 @@ namespace march
         bool HasCustomScissorRect = false;
         D3D12_RECT CustomScissorRect{};
 
-        bool HashCustomDepthBias = false;
+        bool HasCustomDepthBias = false;
         int32_t DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
         float DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
         float SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
@@ -78,8 +102,18 @@ namespace march
         size_t m_PassIndex;
 
         RenderGraphPass& GetPass() const;
-        void ReadResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex);
-        void WriteResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex);
+
+        void ReadResource(
+            RenderGraphResourceManager* resourceManager,
+            size_t resourceIndex,
+            const std::optional<RenderGraphResourceVariableDesc>& variableDesc);
+
+        void WriteResource(
+            RenderGraphResourceManager* resourceManager,
+            size_t resourceIndex,
+            const std::optional<RenderGraphResourceVariableDesc>& variableDesc);
+
+        void SetResourceVariable(size_t resourceIndex, const RenderGraphResourceVariableDesc& variableDesc);
 
     public:
         RenderGraphBuilder(RenderGraph* graph, size_t passIndex) : m_Graph(graph), m_PassIndex(passIndex) {}
@@ -87,18 +121,33 @@ namespace march
         void AllowPassCulling(bool value);
         void EnableAsyncCompute(bool value);
 
-        void Read(const BufferHandle& buffer);
-        void Write(const BufferHandle& buffer);
-        void ReadWrite(const BufferHandle& buffer);
+        void Read(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void Write(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void ReadWrite(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
 
-        void Read(const TextureHandle& texture);
-        void Write(const TextureHandle& texture);
-        void ReadWrite(const TextureHandle& texture);
+        void ReadAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void WriteAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void ReadWriteAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
 
-        void SetColorTarget(const TextureHandle& texture, bool load);
-        void SetColorTarget(const TextureHandle& texture, uint32_t index = 0, bool load = true);
-        void SetDepthStencilTarget(const TextureHandle& texture, bool load = true);
-        void ClearRenderTargets(GfxClearFlags flags = GfxClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
+        void ReadAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void WriteAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void ReadWriteAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
+
+        void Read(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default);
+        void Write(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default);
+        void ReadWrite(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default);
+
+        void ReadAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default);
+        void WriteAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default);
+        void ReadWriteAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default);
+
+        void ReadAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default);
+        void WriteAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default);
+        void ReadWriteAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default);
+
+        void SetColorTarget(const TextureHandle& texture, RenderTargetInitMode initMode, const float color[4] = DirectX::Colors::Black);
+        void SetColorTarget(const TextureHandle& texture, uint32_t index = 0, RenderTargetInitMode initMode = RenderTargetInitMode::Load, const float color[4] = DirectX::Colors::Black);
+        void SetDepthStencilTarget(const TextureHandle& texture, RenderTargetInitMode initMode = RenderTargetInitMode::Load, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
 
         void SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
 
@@ -129,7 +178,9 @@ namespace march
         void ComputeResourceLifetime();
         bool CompilePasses();
 
-        void SetPassRenderTargets(GfxCommandContext* context, RenderGraphPass& pass);
+        void RequestPassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
+        void ReleasePassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
+        void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ExecutePasses();
 
     public:
@@ -155,16 +206,11 @@ namespace march
 
     class RenderGraphContext final
     {
-        friend class RenderGraph;
+        GfxCommandContext* m_Context;
 
     public:
         RenderGraphContext();
         ~RenderGraphContext();
-
-        void SetTexture(const std::string& name, GfxTexture* value) { m_Context->SetTexture(name, value); }
-        void SetTexture(int32_t id, GfxTexture* value) { m_Context->SetTexture(id, value); }
-        void SetBuffer(const std::string& name, GfxBuffer* value) { m_Context->SetBuffer(name, value); }
-        void SetBuffer(int32_t id, GfxBuffer* value) { m_Context->SetBuffer(id, value); }
 
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex) { m_Context->DrawMesh(geometry, material, shaderPassIndex); }
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(geometry, material, shaderPassIndex, matrix); }
@@ -179,16 +225,5 @@ namespace march
 
         GfxDevice* GetDevice() const { return m_Context->GetDevice(); }
         GfxCommandContext* GetCommandContext() const { return m_Context; }
-
-        RenderGraphContext(const RenderGraphContext&) = delete;
-        RenderGraphContext& operator=(const RenderGraphContext&) = delete;
-
-        RenderGraphContext(RenderGraphContext&&) = delete;
-        RenderGraphContext& operator=(RenderGraphContext&&) = delete;
-
-    private:
-        GfxCommandContext* m_Context;
-
-        void ClearPassData();
     };
 }
