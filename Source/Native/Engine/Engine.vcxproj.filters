@@ -56,6 +56,7 @@
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxException.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxPipeline.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
+    <ClInclude Include="Public\Engine\Profiling\PIX3.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />
@@ -117,5 +118,9 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderUtils.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderCompute.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
+    <ClCompile Include="Private\Profiling\PIX3.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

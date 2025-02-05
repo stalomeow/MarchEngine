@@ -13,6 +13,7 @@
 #include "Engine/Misc/PathUtils.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Profiling/RenderDoc.h"
+#include "Engine/Profiling/PIX3.h"
 #include "Engine/Debug.h"
 #include <directx/d3dx12.h>
 #include <imgui.h>
@@ -68,6 +69,11 @@ namespace march
         if (std::count(args.begin(), args.end(), "-load-renderdoc") > 0)
         {
             RenderDoc::Load(); // 越早越好
+        }
+
+        if (std::count(args.begin(), args.end(), "-load-pix") > 0)
+        {
+            PIX3::Load(); // 越早越好
         }
 
         DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
@@ -282,12 +288,18 @@ namespace march
                 RenderDoc::CaptureSingleFrame();
             }
 
-            ImGui::BeginDisabled(!RenderDoc::IsLoaded());
+            if (PIX3::IsLoaded() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
+            {
+                PIX3::CaptureSingleFrame();
+            }
+
+            ImGui::BeginDisabled(!RenderDoc::IsLoaded() && !PIX3::IsLoaded());
             bool capture = ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
             ImGui::SetItemTooltip("Capture Frame (Alt+C)");
             if (capture)
             {
-                RenderDoc::CaptureSingleFrame();
+                if (RenderDoc::IsLoaded()) RenderDoc::CaptureSingleFrame();
+                if (PIX3::IsLoaded()) PIX3::CaptureSingleFrame();
             }
             ImGui::EndDisabled();
 

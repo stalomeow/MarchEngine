@@ -51,13 +51,13 @@ namespace march
                 colorTargetResolved = m_RenderGraph->Import("_CameraColorTargetResolved", display->GetResolvedColorBuffer());
             }
 
-            TestCompute();
-
             BufferHandle cbCamera = CreateCameraConstantBuffer("CameraConstantBuffer", camera);
             BufferHandle cbLight = CreateLightConstantBuffer();
 
             std::vector<TextureHandle> gBuffers{};
             ClearAndDrawObjects(cbCamera, colorTarget, depthStencilTarget, gBuffers, camera->GetEnableWireframe());
+
+            TestCompute();
 
             XMFLOAT4X4 shadowMatrix{};
             TextureHandle shadowMap = DrawShadowCasters(shadowMatrix);
@@ -399,8 +399,8 @@ namespace march
         desc.Format = GfxTextureFormat::R32G32B32A32_Float;
         desc.Flags = GfxTextureFlags::UnorderedAccess;
         desc.Dimension = GfxTextureDimension::Tex2D;
-        desc.Width = 4;
-        desc.Height = 4;
+        desc.Width = 1024;
+        desc.Height = 1024;
         desc.DepthOrArraySize = 1;
         desc.MSAASamples = 1;
         desc.Filter = GfxTextureFilterMode::Point;
@@ -418,7 +418,7 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             std::optional<size_t> kernelIndex = m_ComputeShader->FindKernel("FillWithRed");
-            context.GetCommandContext()->DispatchCompute(m_ComputeShader.get(), *kernelIndex, 4, 4, 1);
+            context.GetCommandContext()->DispatchCompute(m_ComputeShader.get(), *kernelIndex, 1024, 1024, 1);
         });
     }
 }

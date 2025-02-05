@@ -214,12 +214,11 @@ namespace march
 
         void New(GfxCommandType type, bool waitPreviousOneOnGpu);
         void Ensure(GfxCommandType type);
-        GfxSyncPoint Submit();
+
+        GfxSyncPoint UncheckedSubmit();
+        void Submit();
 
     public:
-        RenderGraphContext() = default;
-        ~RenderGraphContext();
-
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex) { m_Cmd->DrawMesh(geometry, material, shaderPassIndex); }
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Cmd->DrawMesh(geometry, material, shaderPassIndex, matrix); }
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex) { m_Cmd->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex); }

@@ -6,11 +6,10 @@
 #include "Engine/Rendering/D3D12Impl/Material.h"
 #include "Engine/Rendering/D3D12Impl/MeshRenderer.h"
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
-#include "Engine/Profiling/RenderDoc.h"
 #include "Engine/Misc/MathUtils.h"
-#include "Engine/Misc/StringUtils.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
+#include <pix3.h>
 #include <assert.h>
 
 using namespace DirectX;
@@ -114,19 +113,12 @@ namespace march
 
     void GfxCommandContext::BeginEvent(const std::string& name)
     {
-        if (RenderDoc::IsLoaded())
-        {
-            std::wstring wName = StringUtils::Utf8ToUtf16(name);
-            m_CommandList->BeginEvent(0, wName.c_str(), static_cast<UINT>(wName.size() * sizeof(wchar_t))); // 第一个参数貌似是颜色
-        }
+        PIXBeginEvent(m_CommandList.Get(), 0, name.c_str());
     }
 
     void GfxCommandContext::EndEvent()
     {
-        if (RenderDoc::IsLoaded())
-        {
-            m_CommandList->EndEvent();
-        }
+        PIXEndEvent(m_CommandList.Get());
     }
 
     void GfxCommandContext::TransitionResource(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter)

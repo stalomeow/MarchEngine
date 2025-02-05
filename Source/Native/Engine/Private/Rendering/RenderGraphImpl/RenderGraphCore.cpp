@@ -616,14 +616,16 @@ namespace march
                 }
 
                 ReleasePassResources(cmd, pass);
-
-                if (pass.IsAsyncCompute)
-                {
-                    pass.SyncPoint = context.Submit();
-                }
             }
             cmd->EndEvent();
+
+            if (pass.IsAsyncCompute)
+            {
+                pass.SyncPoint = context.UncheckedSubmit();
+            }
         }
+
+        context.Submit();
 
         // 保证所有 async compute pass 都执行完
         if (m_PassIndexToWaitFallback)
@@ -730,14 +732,6 @@ namespace march
         return m_ResourceManager->CreateTexture(id, desc);
     }
 
-    RenderGraphContext::~RenderGraphContext()
-    {
-        if (m_Cmd != nullptr)
-        {
-            m_Cmd->SubmitAndRelease();
-        }
-    }
-
     void RenderGraphContext::New(GfxCommandType type, bool waitPreviousOneOnGpu)
     {
         GfxSyncPoint prevSyncPoint{};
@@ -775,9 +769,17 @@ namespace march
         }
     }
 
-    GfxSyncPoint RenderGraphContext::Submit()
+    GfxSyncPoint RenderGraphContext::UncheckedSubmit()
     {
-        assert(m_Cmd != nullptr);
         return std::exchange(m_Cmd, nullptr)->SubmitAndRelease();
+    }
+
+    void RenderGraphContext::Submit()
+    {
+        if (m_Cmd != nullptr)
+        {
+            m_Cmd->SubmitAndRelease();
+            m_Cmd = nullptr;
+        }
     }
 }
