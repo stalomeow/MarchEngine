@@ -18,15 +18,12 @@
 #include <stdint.h>
 #include <memory>
 #include <unordered_map>
-#include <bitset>
 #include <optional>
 
 namespace march
 {
     class GfxDevice;
     class GfxResource;
-    class GfxTexture;
-    class GfxRenderTexture;
     class Material;
     class MeshRenderer;
     class GfxMesh;
@@ -182,8 +179,8 @@ namespace march
 
         void WaitOnGpu(const GfxSyncPoint& syncPoint);
 
-        void SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element = GfxTextureElement::Default);
-        void SetTexture(int32_t id, GfxTexture* value, GfxTextureElement element = GfxTextureElement::Default);
+        void SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
+        void SetTexture(int32_t id, GfxTexture* value, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
         void UnsetTextures();
         void SetBuffer(const std::string& name, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
         void SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
@@ -256,8 +253,21 @@ namespace march
         D3D12_INDEX_BUFFER_VIEW m_CurrentIndexBuffer;
         std::optional<uint8_t> m_CurrentStencilRef;
 
-        std::unordered_map<int32_t, std::pair<GfxTexture*, GfxTextureElement>> m_GlobalTextures;
-        std::unordered_map<int32_t, std::pair<GfxBuffer*, GfxBufferElement>> m_GlobalBuffers;
+        struct GlobalTextureData
+        {
+            GfxTexture* Texture;
+            GfxTextureElement Element;
+            uint32_t UnorderedAccessMipSlice;
+        };
+
+        struct GlobalBufferData
+        {
+            GfxBuffer* Buffer;
+            GfxBufferElement Element;
+        };
+
+        std::unordered_map<int32_t, GlobalTextureData> m_GlobalTextures;
+        std::unordered_map<int32_t, GlobalBufferData> m_GlobalBuffers;
 
         struct InstanceData
         {
@@ -268,8 +278,8 @@ namespace march
         GfxBuffer m_InstanceBuffer;
 
         GfxTexture* GetFirstRenderTarget() const;
-        GfxTexture* FindTexture(int32_t id, GfxTextureElement* pOutElement);
-        GfxTexture* FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement);
+        GfxTexture* FindTexture(int32_t id, GfxTextureElement* pOutElement, uint32_t* pOutUnorderedAccessMipSlice);
+        GfxTexture* FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement, uint32_t* pOutUnorderedAccessMipSlice);
         GfxBuffer* FindComputeBuffer(int32_t id, bool isConstantBuffer, GfxBufferElement* pOutElement);
         GfxBuffer* FindGraphicsBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement);
 

@@ -361,12 +361,13 @@ namespace march
         g_LineListShader.reset();
     }
 
-    void Gizmos::AddRenderGraphPass(RenderGraph* graph, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget)
+    void Gizmos::AddRenderGraphPass(RenderGraph* graph, const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget)
     {
         FlushLineListIfNeeded(true);
 
         auto builder = graph->AddPass("Gizmos");
 
+        builder.In(cbCamera);
         builder.SetColorTarget(colorTarget);
         builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)

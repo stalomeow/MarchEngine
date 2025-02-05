@@ -69,7 +69,7 @@ namespace march
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
             {
                 DrawSceneViewGrid(cbCamera, colorTarget, depthStencilTarget, gridGizmoMaterial);
-                Gizmos::AddRenderGraphPass(m_RenderGraph.get(), colorTarget, depthStencilTarget);
+                Gizmos::AddRenderGraphPass(m_RenderGraph.get(), cbCamera, colorTarget, depthStencilTarget);
             }
 
             if (display->GetEnableMSAA())
@@ -103,7 +103,7 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass(passName);
 
-        builder.Write(buffer);
+        builder.Out(buffer);
         builder.SetRenderFunc([
             buffer,
             position = position,
@@ -143,7 +143,7 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass("LightConstantBuffer");
 
-        builder.Write(buffer);
+        builder.Out(buffer);
         builder.SetRenderFunc([buffer, this](RenderGraphContext& context)
         {
             LightConstants consts{};
@@ -192,7 +192,7 @@ namespace march
             builder.SetColorTarget(gBuffers[i], i, RenderTargetInitMode::Clear);
         }
 
-        builder.Read(cbCamera);
+        builder.In(cbCamera);
         builder.SetDepthStencilTarget(depthStencilTarget, RenderTargetInitMode::Clear);
         builder.SetWireframe(wireframe);
         builder.SetRenderFunc([=](RenderGraphContext& context)
@@ -213,18 +213,18 @@ namespace march
 
         for (const TextureHandle& tex : gBuffers)
         {
-            builder.Read(tex);
+            builder.In(tex);
         }
 
         bool hasShadow = !m_Lights.empty() && !m_Renderers.empty();
 
         if (hasShadow)
         {
-            builder.Read(screenSpaceShadowMap);
+            builder.In(screenSpaceShadowMap);
         }
 
-        builder.Read(cbCamera);
-        builder.Read(cbLight);
+        builder.In(cbCamera);
+        builder.In(cbLight);
 
         builder.SetColorTarget(colorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(depthStencilTarget);
@@ -281,7 +281,7 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 
-        builder.Read(cbCamera);
+        builder.In(cbCamera);
         builder.SetDepthStencilTarget(shadowMap, RenderTargetInitMode::Clear);
         builder.SetDepthBias(GfxSettings::ShadowDepthBias, GfxSettings::ShadowSlopeScaledDepthBias, GfxSettings::ShadowDepthBiasClamp);
         builder.SetRenderFunc([=](RenderGraphContext& context)
@@ -301,7 +301,7 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("Skybox");
 
-        builder.Read(cbCamera);
+        builder.In(cbCamera);
         builder.SetColorTarget(colorTarget);
         builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)
@@ -314,7 +314,7 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("SceneViewGrid");
 
-        builder.Read(cbCamera);
+        builder.In(cbCamera);
         builder.SetColorTarget(colorTarget);
         builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)
@@ -327,8 +327,8 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("ResolveMSAA");
 
-        builder.Read(source);
-        builder.Write(destination);
+        builder.In(source);
+        builder.Out(destination);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             context.ResolveTexture(source, destination);
@@ -374,12 +374,12 @@ namespace march
 
         for (const TextureHandle& tex : gBuffers)
         {
-            builder.Read(tex);
+            builder.In(tex);
         }
 
-        builder.Read(cbCamera);
-        builder.ReadWrite(buffer);
-        builder.Read(shadowMap);
+        builder.In(cbCamera);
+        builder.In(shadowMap);
+        builder.Out(buffer);
 
         builder.AllowPassCulling(false);
         builder.SetColorTarget(dest, RenderTargetInitMode::Discard);
@@ -414,7 +414,7 @@ namespace march
 
         builder.AllowPassCulling(false);
         builder.EnableAsyncCompute(true);
-        builder.Write(tex);
+        builder.Out(tex);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             std::optional<size_t> kernelIndex = m_ComputeShader->FindKernel("FillWithRed");

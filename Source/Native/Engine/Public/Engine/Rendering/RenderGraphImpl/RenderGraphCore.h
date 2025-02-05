@@ -66,8 +66,8 @@ namespace march
         bool AllowPassCulling = true;
         bool EnableAsyncCompute = false;
 
-        std::unordered_set<size_t> ResourcesRead{};    // 所有读取的资源，包括 render target
-        std::unordered_set<size_t> ResourcesWritten{}; // 所有写入的资源，包括 render target
+        std::unordered_set<size_t> ResourcesIn{};  // 所有输入的资源，包括 render target
+        std::unordered_set<size_t> ResourcesOut{}; // 所有输出的资源，包括 render target
 
         std::unordered_map<int32, RenderGraphPassVariable> Variables{}; // 用于设置 shader 中的变量
 
@@ -103,12 +103,12 @@ namespace march
 
         RenderGraphPass& GetPass() const;
 
-        void ReadResource(
+        void InResource(
             RenderGraphResourceManager* resourceManager,
             size_t resourceIndex,
             const std::optional<RenderGraphResourceVariableDesc>& variableDesc);
 
-        void WriteResource(
+        void OutResource(
             RenderGraphResourceManager* resourceManager,
             size_t resourceIndex,
             const std::optional<RenderGraphResourceVariableDesc>& variableDesc);
@@ -121,29 +121,23 @@ namespace march
         void AllowPassCulling(bool value);
         void EnableAsyncCompute(bool value);
 
-        void Read(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
-        void Write(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
-        void ReadWrite(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
+        // 需要读取前面 pass 写入 buffer 的数据
+        void In(const BufferElementHandle& buffer);
 
-        void ReadAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
-        void WriteAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
-        void ReadWriteAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
+        // 需要写入 buffer，当前和之后的 pass 可以读取
+        void Out(const BufferElementHandle& buffer);
 
-        void ReadAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
-        void WriteAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
-        void ReadWriteAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
+        // Shortcut for In and Out
+        void InOut(const BufferElementHandle& buffer);
 
-        void Read(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default);
-        void Write(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default);
-        void ReadWrite(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default);
+        // 需要读取前面 pass 写入 texture 的数据
+        void In(const TextureElementHandle& texture);
 
-        void ReadAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default);
-        void WriteAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default);
-        void ReadWriteAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default);
+        // 需要写入 texture，当前和之后的 pass 可以读取
+        void Out(const TextureElementHandle& texture);
 
-        void ReadAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default);
-        void WriteAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default);
-        void ReadWriteAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default);
+        // Shortcut for In and Out
+        void InOut(const TextureElementHandle& texture);
 
         void SetColorTarget(const TextureHandle& texture, RenderTargetInitMode initMode, const float color[4] = DirectX::Colors::Black);
         void SetColorTarget(const TextureHandle& texture, uint32_t index = 0, RenderTargetInitMode initMode = RenderTargetInitMode::Load, const float color[4] = DirectX::Colors::Black);

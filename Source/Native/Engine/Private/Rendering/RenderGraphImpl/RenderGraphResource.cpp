@@ -84,11 +84,11 @@ namespace march
     void RenderGraphResourceData::SetAsVariable(GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc)
     {
         std::visit(overloaded{
-            [=](RenderGraphResourceTempBuffer& buffer) { cmd->SetBuffer(desc.AliasId, &buffer.Buffer, desc.BufferElement); },
-            [=](RenderGraphResourcePooledBuffer& buffer) { cmd->SetBuffer(desc.AliasId, buffer.Buffer.get(), desc.BufferElement); },
-            [=](RenderGraphResourceExternalBuffer& buffer) { cmd->SetBuffer(desc.AliasId, buffer.Buffer, desc.BufferElement); },
-            [=](RenderGraphResourcePooledTexture& texture) { cmd->SetTexture(desc.AliasId, texture.Texture.get(), desc.TextureElement); },
-            [=](RenderGraphResourceExternalTexture& texture) { cmd->SetTexture(desc.AliasId, texture.Texture, desc.TextureElement); },
+            [=](RenderGraphResourceTempBuffer& buffer) { cmd->SetBuffer(desc.Id, &buffer.Buffer, desc.BufferElement); },
+            [=](RenderGraphResourcePooledBuffer& buffer) { cmd->SetBuffer(desc.Id, buffer.Buffer.get(), desc.BufferElement); },
+            [=](RenderGraphResourceExternalBuffer& buffer) { cmd->SetBuffer(desc.Id, buffer.Buffer, desc.BufferElement); },
+            [=](RenderGraphResourcePooledTexture& texture) { cmd->SetTexture(desc.Id, texture.Texture.get(), desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
+            [=](RenderGraphResourceExternalTexture& texture) { cmd->SetTexture(desc.Id, texture.Texture, desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
             [=](auto&&) { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }
@@ -260,5 +260,45 @@ namespace march
     std::optional<std::pair<size_t, size_t>> RenderGraphResourceManager::GetLifetimePassIndexRange(size_t resourceIndex) const
     {
         return m_Resources[resourceIndex].GetLifetimePassIndexRange();
+    }
+
+    BufferElementHandle BufferHandle::GetElementAs(int32 aliasId, GfxBufferElement element) const
+    {
+        return BufferElementHandle{ *this, element, aliasId };
+    }
+
+    BufferElementHandle BufferHandle::GetElementAs(const std::string& aliasName, GfxBufferElement element) const
+    {
+        return GetElementAs(ShaderUtils::GetIdFromString(aliasName), element);
+    }
+
+    BufferElementHandle BufferHandle::GetElement(GfxBufferElement element) const
+    {
+        return GetElementAs(GetId(), element);
+    }
+
+    BufferHandle::operator BufferElementHandle() const
+    {
+        return GetElement(GfxBufferElement::StructuredData);
+    }
+
+    TextureElementHandle TextureHandle::GetElementAs(int32 aliasId, GfxTextureElement element, uint32_t unorderedAccessMipSlice) const
+    {
+        return TextureElementHandle{ *this, element, unorderedAccessMipSlice, aliasId };
+    }
+
+    TextureElementHandle TextureHandle::GetElementAs(const std::string& aliasName, GfxTextureElement element, uint32_t unorderedAccessMipSlice) const
+    {
+        return GetElementAs(ShaderUtils::GetIdFromString(aliasName), element, unorderedAccessMipSlice);
+    }
+
+    TextureElementHandle TextureHandle::GetElement(GfxTextureElement element, uint32_t unorderedAccessMipSlice) const
+    {
+        return GetElementAs(GetId(), element, unorderedAccessMipSlice);
+    }
+
+    TextureHandle::operator TextureElementHandle() const
+    {
+        return GetElement(GfxTextureElement::Default);
     }
 }

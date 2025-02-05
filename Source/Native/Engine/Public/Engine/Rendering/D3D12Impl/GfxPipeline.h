@@ -316,9 +316,9 @@ namespace march
             m_StagedResourceStates[buffer->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         }
 
-        void SetUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
+        void SetUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element, uint32_t mipSlice)
         {
-            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetUav(element);
+            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetUav(element, mipSlice);
             m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
 
             // 记录状态，之后会统一使用 ResourceBarrier
@@ -472,10 +472,11 @@ namespace march
                 for (const auto& tex : m_RootSignature->GetUavTextures(i))
                 {
                     GfxTextureElement element = GfxTextureElement::Default;
+                    uint32_t mipSlice = 0;
 
-                    if (GfxTexture* texture = fn(tex, &element))
+                    if (GfxTexture* texture = fn(tex, &element, &mipSlice))
                     {
-                        SetUavTexture(i, tex.DescriptorTableSlot, texture, element);
+                        SetUavTexture(i, tex.DescriptorTableSlot, texture, element, mipSlice);
                     }
                 }
             }

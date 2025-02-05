@@ -10,14 +10,14 @@ namespace march
         return m_Graph->m_Passes[m_PassIndex];
     }
 
-    void RenderGraphBuilder::ReadResource(
+    void RenderGraphBuilder::InResource(
         RenderGraphResourceManager* resourceManager,
         size_t resourceIndex,
         const std::optional<RenderGraphResourceVariableDesc>& variableDesc)
     {
         RenderGraphPass& pass = GetPass();
 
-        if (pass.ResourcesRead.insert(resourceIndex).second)
+        if (pass.ResourcesIn.insert(resourceIndex).second)
         {
             std::optional<size_t> producerPassIndex = resourceManager->GetLastProducerBeforePassIndex(resourceIndex, m_PassIndex);
 
@@ -38,14 +38,14 @@ namespace march
         }
     }
 
-    void RenderGraphBuilder::WriteResource(
+    void RenderGraphBuilder::OutResource(
         RenderGraphResourceManager* resourceManager,
         size_t resourceIndex,
         const std::optional<RenderGraphResourceVariableDesc>& variableDesc)
     {
         RenderGraphPass& pass = GetPass();
 
-        if (pass.ResourcesWritten.insert(resourceIndex).second)
+        if (pass.ResourcesOut.insert(resourceIndex).second)
         {
             pass.HasSideEffects |= resourceManager->IsResourceExternal(resourceIndex);
             resourceManager->AddProducerPassIndex(resourceIndex, m_PassIndex);
@@ -61,7 +61,7 @@ namespace march
     {
         RenderGraphPass& pass = GetPass();
         RenderGraphPassVariable newVariable = { resourceIndex, variableDesc };
-        int32 aliasId = newVariable.Desc.AliasId;
+        int32 aliasId = newVariable.Desc.Id;
 
         if (auto result = pass.Variables.emplace(aliasId, newVariable); !result.second)
         {
@@ -84,124 +84,66 @@ namespace march
         GetPass().EnableAsyncCompute = value;
     }
 
-    void RenderGraphBuilder::Read(const BufferHandle& buffer, GfxBufferElement element)
-    {
-        ReadAs(buffer, buffer.GetId(), element);
-    }
-
-    void RenderGraphBuilder::Write(const BufferHandle& buffer, GfxBufferElement element)
-    {
-        WriteAs(buffer, buffer.GetId(), element);
-    }
-
-    void RenderGraphBuilder::ReadWrite(const BufferHandle& buffer, GfxBufferElement element)
-    {
-        ReadWriteAs(buffer, buffer.GetId(), element);
-    }
-
-    void RenderGraphBuilder::ReadAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element)
-    {
-        ReadAs(buffer, ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    void RenderGraphBuilder::WriteAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element)
-    {
-        WriteAs(buffer, ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    void RenderGraphBuilder::ReadWriteAs(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element)
-    {
-        ReadWriteAs(buffer, ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    void RenderGraphBuilder::ReadAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element)
+    void RenderGraphBuilder::In(const BufferElementHandle& buffer)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(buffer);
+        size_t resourceIndex = resourceManager->GetResourceIndex(buffer.Buffer);
 
         RenderGraphResourceVariableDesc varDesc{};
-        varDesc.AliasId = aliasId;
-        varDesc.BufferElement = element;
+        varDesc.Id = buffer.AliasId;
+        varDesc.BufferElement = buffer.Element;
 
-        ReadResource(resourceManager, resourceIndex, varDesc);
+        InResource(resourceManager, resourceIndex, varDesc);
     }
 
-    void RenderGraphBuilder::WriteAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element)
+    void RenderGraphBuilder::Out(const BufferElementHandle& buffer)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(buffer);
+        size_t resourceIndex = resourceManager->GetResourceIndex(buffer.Buffer);
 
         RenderGraphResourceVariableDesc varDesc{};
-        varDesc.AliasId = aliasId;
-        varDesc.BufferElement = element;
+        varDesc.Id = buffer.AliasId;
+        varDesc.BufferElement = buffer.Element;
 
-        WriteResource(resourceManager, resourceIndex, varDesc);
+        OutResource(resourceManager, resourceIndex, varDesc);
     }
 
-    void RenderGraphBuilder::ReadWriteAs(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element)
+    void RenderGraphBuilder::InOut(const BufferElementHandle& buffer)
     {
-        ReadAs(buffer, aliasId, element);
-        WriteAs(buffer, aliasId, element);
+        In(buffer);
+        Out(buffer);
     }
 
-    void RenderGraphBuilder::Read(const TextureHandle& texture, GfxTextureElement element)
-    {
-        ReadAs(texture, texture.GetId(), element);
-    }
-
-    void RenderGraphBuilder::Write(const TextureHandle& texture, GfxTextureElement element)
-    {
-        WriteAs(texture, texture.GetId(), element);
-    }
-
-    void RenderGraphBuilder::ReadWrite(const TextureHandle& texture, GfxTextureElement element)
-    {
-        ReadWriteAs(texture, texture.GetId(), element);
-    }
-
-    void RenderGraphBuilder::ReadAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element)
-    {
-        ReadAs(texture, ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    void RenderGraphBuilder::WriteAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element)
-    {
-        WriteAs(texture, ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    void RenderGraphBuilder::ReadWriteAs(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element)
-    {
-        ReadWriteAs(texture, ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    void RenderGraphBuilder::ReadAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element)
+    void RenderGraphBuilder::In(const TextureElementHandle& texture)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(texture);
+        size_t resourceIndex = resourceManager->GetResourceIndex(texture.Texture);
 
         RenderGraphResourceVariableDesc varDesc{};
-        varDesc.AliasId = aliasId;
-        varDesc.TextureElement = element;
+        varDesc.Id = texture.AliasId;
+        varDesc.TextureElement = texture.Element;
+        varDesc.TextureUnorderedAccessMipSlice = texture.UnorderedAccessMipSlice;
 
-        ReadResource(resourceManager, resourceIndex, varDesc);
+        InResource(resourceManager, resourceIndex, varDesc);
     }
 
-    void RenderGraphBuilder::WriteAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element)
+    void RenderGraphBuilder::Out(const TextureElementHandle& texture)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(texture);
+        size_t resourceIndex = resourceManager->GetResourceIndex(texture.Texture);
 
         RenderGraphResourceVariableDesc varDesc{};
-        varDesc.AliasId = aliasId;
-        varDesc.TextureElement = element;
+        varDesc.Id = texture.AliasId;
+        varDesc.TextureElement = texture.Element;
+        varDesc.TextureUnorderedAccessMipSlice = texture.UnorderedAccessMipSlice;
 
-        WriteResource(resourceManager, resourceIndex, varDesc);
+        OutResource(resourceManager, resourceIndex, varDesc);
     }
 
-    void RenderGraphBuilder::ReadWriteAs(const TextureHandle& texture, int32 aliasId, GfxTextureElement element)
+    void RenderGraphBuilder::InOut(const TextureElementHandle& texture)
     {
-        ReadAs(texture, aliasId, element);
-        WriteAs(texture, aliasId, element);
+        In(texture);
+        Out(texture);
     }
 
     void RenderGraphBuilder::SetColorTarget(const TextureHandle& texture, RenderTargetInitMode initMode, const float color[4])
@@ -237,11 +179,11 @@ namespace march
         if (initMode == RenderTargetInitMode::Load)
         {
             // RenderTarget 不设置成 Variable
-            ReadResource(resourceManager, target.ResourceIndex, std::nullopt);
+            InResource(resourceManager, target.ResourceIndex, std::nullopt);
         }
 
         // RenderTarget 不设置成 Variable
-        WriteResource(resourceManager, target.ResourceIndex, std::nullopt);
+        OutResource(resourceManager, target.ResourceIndex, std::nullopt);
     }
 
     void RenderGraphBuilder::SetDepthStencilTarget(const TextureHandle& texture, RenderTargetInitMode initMode, float depth, uint8_t stencil)
@@ -265,11 +207,11 @@ namespace march
         if (initMode == RenderTargetInitMode::Load)
         {
             // RenderTarget 不设置成 Variable
-            ReadResource(resourceManager, target.ResourceIndex, std::nullopt);
+            InResource(resourceManager, target.ResourceIndex, std::nullopt);
         }
 
         // RenderTarget 不设置成 Variable
-        WriteResource(resourceManager, target.ResourceIndex, std::nullopt);
+        OutResource(resourceManager, target.ResourceIndex, std::nullopt);
     }
 
     void RenderGraphBuilder::SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
@@ -388,12 +330,12 @@ namespace march
                 continue;
             }
 
-            for (size_t resourceIndex : pass.ResourcesRead)
+            for (size_t resourceIndex : pass.ResourcesIn)
             {
                 m_ResourceManager->SetAlive(resourceIndex, i);
             }
 
-            for (size_t resourceIndex : pass.ResourcesWritten)
+            for (size_t resourceIndex : pass.ResourcesOut)
             {
                 m_ResourceManager->SetAlive(resourceIndex, i);
             }

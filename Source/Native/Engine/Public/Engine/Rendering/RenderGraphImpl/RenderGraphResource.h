@@ -228,18 +228,23 @@ namespace march
 
     struct RenderGraphResourceVariableDesc
     {
-        int32 AliasId;
+        int32 Id; // Variable 的 Id，可以和 Resource 的 Id 不同
 
         union
         {
             GfxBufferElement BufferElement;
-            GfxTextureElement TextureElement;
+
+            struct
+            {
+                GfxTextureElement TextureElement;
+                uint32_t TextureUnorderedAccessMipSlice;
+            };
         };
     };
 
     class RenderGraphResourceData final
     {
-        int32 m_Id;
+        int32 m_Id{};
 
         std::variant<
             std::monostate,
@@ -250,7 +255,7 @@ namespace march
             RenderGraphResourceExternalTexture
         > m_Resource{};
 
-        std::vector<size_t> m_ProducerPassIndices;
+        std::vector<size_t> m_ProducerPassIndices{};
         std::optional<std::pair<size_t, size_t>> m_LifetimePassIndexRange = std::nullopt;
 
     public:
@@ -364,6 +369,9 @@ namespace march
         std::optional<std::pair<size_t, size_t>> GetLifetimePassIndexRange(size_t resourceIndex) const;
     };
 
+    struct BufferElementHandle;
+    struct TextureElementHandle;
+
     class BufferHandle
     {
         friend RenderGraphResourceManager;
@@ -391,6 +399,11 @@ namespace march
         int32 GetId() const { return m_Manager->GetResourceId(m_ResourceIndex); }
 
         const GfxBufferDesc& GetDesc() const { return m_Manager->GetBufferDesc(m_ResourceIndex); }
+
+        BufferElementHandle GetElementAs(int32 aliasId, GfxBufferElement element) const;
+        BufferElementHandle GetElementAs(const std::string& aliasName, GfxBufferElement element) const;
+        BufferElementHandle GetElement(GfxBufferElement element) const;
+        operator BufferElementHandle() const;
     };
 
     class TextureHandle
@@ -420,5 +433,25 @@ namespace march
         int32 GetId() const { return m_Manager->GetResourceId(m_ResourceIndex); }
 
         const GfxTextureDesc& GetDesc() const { return m_Manager->GetTextureDesc(m_ResourceIndex); }
+
+        TextureElementHandle GetElementAs(int32 aliasId, GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
+        TextureElementHandle GetElementAs(const std::string& aliasName, GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
+        TextureElementHandle GetElement(GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
+        operator TextureElementHandle() const;
+    };
+
+    struct BufferElementHandle
+    {
+        BufferHandle Buffer;
+        GfxBufferElement Element;
+        int32 AliasId; // 别名，代替 BufferHandle 的 Id
+    };
+
+    struct TextureElementHandle
+    {
+        TextureHandle Texture;
+        GfxTextureElement Element;
+        uint32_t UnorderedAccessMipSlice;
+        int32 AliasId; // 别名，代替 TextureHandle 的 Id
     };
 }

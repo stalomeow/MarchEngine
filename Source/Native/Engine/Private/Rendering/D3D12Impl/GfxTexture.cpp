@@ -37,7 +37,7 @@ namespace march
         ReleaseResource();
     }
 
-    GfxTexture::GfxTexture(GfxTexture&& other)
+    GfxTexture::GfxTexture(GfxTexture&& other) noexcept
         : m_Device(other.m_Device)
         , m_Resource(std::move(other.m_Resource))
         , m_Desc(other.m_Desc)
@@ -59,7 +59,7 @@ namespace march
         }
     }
 
-    GfxTexture& GfxTexture::operator=(GfxTexture&& other)
+    GfxTexture& GfxTexture::operator=(GfxTexture&& other) noexcept
     {
         if (this != &other)
         {
@@ -101,9 +101,9 @@ namespace march
             srv.DeferredRelease();
         }
 
-        for (GfxOfflineDescriptor& uav : m_UavDescriptors)
+        for (std::unordered_map<uint32_t, GfxOfflineDescriptor>& uavMap : m_UavDescriptors)
         {
-            uav.DeferredRelease();
+            uavMap.clear();
         }
 
         m_RtvDsvDescriptors.clear();
@@ -222,21 +222,29 @@ namespace march
         return srv.GetHandle();
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetUav(GfxTextureElement element)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetUav(GfxTextureElement element, uint32_t mipSlice)
     {
         if (!m_Desc.HasFlag(GfxTextureFlags::UnorderedAccess))
         {
             throw GfxException("Texture is not created with UnorderedAccess flag");
         }
 
-        GfxOfflineDescriptor& uav = m_UavDescriptors[GetSrvUavIndex(m_Desc, element)];
+        bool useMSAA = m_Desc.MSAASamples > 1;
+
+        // 如果有 MSAA 的话，就没有 mip slice
+        if (useMSAA)
+        {
+            mipSlice = 0;
+        }
+
+        GfxOfflineDescriptor& uav = m_UavDescriptors[GetSrvUavIndex(m_Desc, element)][mipSlice];
 
         if (!uav)
         {
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
             uavDesc.Format = m_Desc.GetSrvUavDXGIFormat(element);
 
-            if (m_Desc.MSAASamples > 1)
+            if (useMSAA)
             {
                 switch (m_Desc.Dimension)
                 {
@@ -268,32 +276,32 @@ namespace march
                 {
                 case GfxTextureDimension::Tex2D:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-                    uavDesc.Texture2D.MipSlice = 0;
+                    uavDesc.Texture2D.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2D.PlaneSlice = 0;
                     break;
                 case GfxTextureDimension::Tex3D:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-                    uavDesc.Texture3D.MipSlice = 0;
+                    uavDesc.Texture3D.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture3D.FirstWSlice = 0;
                     uavDesc.Texture3D.WSize = static_cast<UINT>(m_Desc.DepthOrArraySize);
                     break;
                 case GfxTextureDimension::Cube:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                    uavDesc.Texture2DArray.MipSlice = 0;
+                    uavDesc.Texture2DArray.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2DArray.FirstArraySlice = 0;
                     uavDesc.Texture2DArray.ArraySize = 6;
                     uavDesc.Texture2DArray.PlaneSlice = 0;
                     break;
                 case GfxTextureDimension::Tex2DArray:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                    uavDesc.Texture2DArray.MipSlice = 0;
+                    uavDesc.Texture2DArray.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2DArray.FirstArraySlice = 0;
                     uavDesc.Texture2DArray.ArraySize = static_cast<UINT>(m_Desc.DepthOrArraySize);
                     uavDesc.Texture2DArray.PlaneSlice = 0;
                     break;
                 case GfxTextureDimension::CubeArray:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                    uavDesc.Texture2DArray.MipSlice = 0;
+                    uavDesc.Texture2DArray.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2DArray.FirstArraySlice = 0;
                     uavDesc.Texture2DArray.ArraySize = static_cast<UINT>(m_Desc.DepthOrArraySize) * 6;
                     uavDesc.Texture2DArray.PlaneSlice = 0;

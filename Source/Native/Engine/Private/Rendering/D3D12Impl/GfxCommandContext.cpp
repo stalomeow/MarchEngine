@@ -170,14 +170,14 @@ namespace march
         m_SyncPointsToWait.push_back(syncPoint);
     }
 
-    void GfxCommandContext::SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element)
+    void GfxCommandContext::SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
     {
-        SetTexture(ShaderUtils::GetIdFromString(name), value, element);
+        SetTexture(ShaderUtils::GetIdFromString(name), value, element, unorderedAccessMipSlice);
     }
 
-    void GfxCommandContext::SetTexture(int32_t id, GfxTexture* value, GfxTextureElement element)
+    void GfxCommandContext::SetTexture(int32_t id, GfxTexture* value, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
     {
-        m_GlobalTextures[id] = std::make_pair(value, element);
+        m_GlobalTextures[id] = GlobalTextureData{ value, element , unorderedAccessMipSlice };
     }
 
     void GfxCommandContext::UnsetTextures()
@@ -192,7 +192,7 @@ namespace march
 
     void GfxCommandContext::SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element)
     {
-        m_GlobalBuffers[id] = std::make_pair(value, element);
+        m_GlobalBuffers[id] = GlobalBufferData{ value, element };
     }
 
     void GfxCommandContext::UnsetBuffers()
@@ -458,37 +458,39 @@ namespace march
         return m_OutputDesc.NumRTV > 0 ? m_ColorTargets[0] : m_DepthStencilTarget;
     }
 
-    GfxTexture* GfxCommandContext::FindTexture(int32_t id, GfxTextureElement* pOutElement)
+    GfxTexture* GfxCommandContext::FindTexture(int32_t id, GfxTextureElement* pOutElement, uint32_t* pOutUnorderedAccessMipSlice)
     {
         if (auto it = m_GlobalTextures.find(id); it != m_GlobalTextures.end())
         {
-            *pOutElement = it->second.second;
-            return it->second.first;
+            *pOutElement = it->second.Element;
+            *pOutUnorderedAccessMipSlice = it->second.UnorderedAccessMipSlice;
+            return it->second.Texture;
         }
 
         return nullptr;
     }
 
-    GfxTexture* GfxCommandContext::FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement)
+    GfxTexture* GfxCommandContext::FindTexture(int32_t id, Material* material, GfxTextureElement* pOutElement, uint32_t* pOutUnorderedAccessMipSlice)
     {
         if (GfxTexture* texture = nullptr; material->GetTexture(id, &texture))
         {
             *pOutElement = GfxTextureElement::Default;
+            *pOutUnorderedAccessMipSlice = 0;
             return texture;
         }
 
-        return FindTexture(id, pOutElement);
+        return FindTexture(id, pOutElement, pOutUnorderedAccessMipSlice);
     }
 
     GfxBuffer* GfxCommandContext::FindComputeBuffer(int32_t id, bool isConstantBuffer, GfxBufferElement* pOutElement)
     {
         if (auto it = m_GlobalBuffers.find(id); it != m_GlobalBuffers.end())
         {
-            GfxBuffer* buffer = it->second.first;
+            GfxBuffer* buffer = it->second.Buffer;
 
             if (!isConstantBuffer || (isConstantBuffer && buffer->GetDesc().HasAnyUsages(GfxBufferUsages::Constant)))
             {
-                *pOutElement = it->second.second;
+                *pOutElement = it->second.Element;
                 return buffer;
             }
         }
@@ -539,7 +541,8 @@ namespace march
 
         m_GraphicsViewCache.SetSrvTexturesAndSamplers([this, material](const ShaderParamSrvTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
         {
-            return FindTexture(tex.Id, material, pOutElement);
+            uint32_t mipSliceUnused = 0;
+            return FindTexture(tex.Id, material, pOutElement, &mipSliceUnused);
         });
 
         m_GraphicsViewCache.SetUavBuffers([this, material, passIndex](const ShaderParamUavBuffer& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
@@ -547,9 +550,9 @@ namespace march
             return FindGraphicsBuffer(buf.Id, false, material, passIndex, pOutElement);
         });
 
-        m_GraphicsViewCache.SetUavTextures([this, material](const ShaderParamUavTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
+        m_GraphicsViewCache.SetUavTextures([this, material](const ShaderParamUavTexture& tex, GfxTextureElement* pOutElement, uint32_t* pOutMipSlice) -> GfxTexture*
         {
-            return FindTexture(tex.Id, material, pOutElement);
+            return FindTexture(tex.Id, material, pOutElement, pOutMipSlice);
         });
 
         m_GraphicsViewCache.TransitionResources([this](auto resource, auto state) -> void
@@ -579,7 +582,8 @@ namespace march
 
         m_ComputeViewCache.SetSrvTexturesAndSamplers([this](const ShaderParamSrvTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
         {
-            return FindTexture(tex.Id, pOutElement);
+            uint32_t mipSliceUnused = 0;
+            return FindTexture(tex.Id, pOutElement, &mipSliceUnused);
         });
 
         m_ComputeViewCache.SetUavBuffers([this](const ShaderParamUavBuffer& buf, GfxBufferElement* pOutElement) -> GfxBuffer*
@@ -587,9 +591,9 @@ namespace march
             return FindComputeBuffer(buf.Id, false, pOutElement);
         });
 
-        m_ComputeViewCache.SetUavTextures([this](const ShaderParamUavTexture& tex, GfxTextureElement* pOutElement) -> GfxTexture*
+        m_ComputeViewCache.SetUavTextures([this](const ShaderParamUavTexture& tex, GfxTextureElement* pOutElement, uint32_t* pOutMipSlice) -> GfxTexture*
         {
-            return FindTexture(tex.Id, pOutElement);
+            return FindTexture(tex.Id, pOutElement, pOutMipSlice);
         });
 
         m_ComputeViewCache.TransitionResources([this](auto resource, auto state) -> void

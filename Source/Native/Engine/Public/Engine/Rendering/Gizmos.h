@@ -38,6 +38,6 @@ namespace march
 
         static void InitResources();
         static void ReleaseResources();
-        static void AddRenderGraphPass(RenderGraph* graph, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
+        static void AddRenderGraphPass(RenderGraph* graph, const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
     };
 }
