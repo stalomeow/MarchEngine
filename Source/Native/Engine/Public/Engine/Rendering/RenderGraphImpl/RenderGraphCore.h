@@ -18,14 +18,6 @@ namespace march
     class RenderGraph;
     class RenderGraphContext;
 
-    enum class RenderGraphPassState
-    {
-        None,
-        Visiting,
-        Visited,
-        Culled,
-    };
-
     enum class RenderTargetInitMode
     {
         Load,
@@ -60,11 +52,15 @@ namespace march
 
     struct RenderGraphPass final
     {
+        // -----------------------
+        // Config Data
+        // -----------------------
+
         std::string Name{};
 
         bool HasSideEffects = false; // 如果写入了 external resource，就有副作用
         bool AllowPassCulling = true;
-        bool EnableAsyncCompute = false;
+        bool EnableAsyncCompute = false; // 只是一个建议，会根据实际情况决定是否启用 async-compute
 
         std::unordered_set<size_t> ResourcesIn{};  // 所有输入的资源，包括 render target
         std::unordered_set<size_t> ResourcesOut{}; // 所有输出的资源，包括 render target
@@ -90,10 +86,20 @@ namespace march
 
         std::function<void(RenderGraphContext&)> RenderFunc{};
 
-        RenderGraphPassState State = RenderGraphPassState::None;
+        // -----------------------
+        // Runtime Data
+        // -----------------------
+
+        bool IsVisited = false;
+        bool IsCulled = false;
+
         std::vector<size_t> NextPassIndices{}; // 后继结点
         std::vector<size_t> ResourcesBorn{};   // 生命周期从本结点开始的资源
         std::vector<size_t> ResourcesDead{};   // 生命周期到本结点结束的资源
+
+        bool IsAsyncCompute = false;
+        GfxSyncPoint SyncPoint{};                             // 如果当前 pass 是 async-compute，则会产生一个 sync point
+        std::optional<size_t> PassIndexToWait = std::nullopt; // 在执行当前 pass 前需要等待的 pass，利用 sync point 实现
     };
 
     class RenderGraphBuilder final
@@ -121,19 +127,19 @@ namespace march
         void AllowPassCulling(bool value);
         void EnableAsyncCompute(bool value);
 
-        // 需要读取前面 pass 写入 buffer 的数据
+        // 表示需要读取前面 pass 写入 buffer 的数据
         void In(const BufferElementHandle& buffer);
 
-        // 需要写入 buffer，当前和之后的 pass 可以读取
+        // 表示需要写入 buffer，当前和之后的 pass 可以读取
         void Out(const BufferElementHandle& buffer);
 
         // Shortcut for In and Out
         void InOut(const BufferElementHandle& buffer);
 
-        // 需要读取前面 pass 写入 texture 的数据
+        // 表示需要读取前面 pass 写入 texture 的数据
         void In(const TextureElementHandle& texture);
 
-        // 需要写入 texture，当前和之后的 pass 可以读取
+        // 表示需要写入 texture，当前和之后的 pass 可以读取
         void Out(const TextureElementHandle& texture);
 
         // Shortcut for In and Out
@@ -165,13 +171,15 @@ namespace march
         friend RenderGraphBuilder;
 
         std::vector<RenderGraphPass> m_Passes{};
+        std::optional<size_t> m_PassIndexToWaitFallback = std::nullopt; // 用于等待不被任何 pass 依赖的 async compute 结束
         std::unique_ptr<RenderGraphResourceManager> m_ResourceManager = std::make_unique<RenderGraphResourceManager>();
 
-        bool CullPasses();
-        bool CullPassDFS(size_t passIndex);
-        void ComputeResourceLifetime();
-        bool CompilePasses();
+        void CompilePasses();
+        void CullPass(size_t passIndex, size_t& asyncComputeDeadlineIndexExclusive);
+        void CompileAsyncCompute(size_t passIndex, size_t& deadlineIndexExclusive);
+        size_t AvoidAsyncComputeResourceCompetition(size_t passIndex, size_t& deadlineIndexExclusive);
 
+        GfxCommandContext* EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass);
         void RequestPassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ReleasePassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
@@ -200,24 +208,30 @@ namespace march
 
     class RenderGraphContext final
     {
-        GfxCommandContext* m_Context;
+        friend RenderGraph;
+
+        GfxCommandContext* m_Cmd = nullptr;
+
+        void New(GfxCommandType type, bool waitPreviousOneOnGpu);
+        void Ensure(GfxCommandType type);
+        GfxSyncPoint Submit();
 
     public:
-        RenderGraphContext();
+        RenderGraphContext() = default;
         ~RenderGraphContext();
 
-        void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex) { m_Context->DrawMesh(geometry, material, shaderPassIndex); }
-        void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(geometry, material, shaderPassIndex, matrix); }
-        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex); }
-        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, matrix); }
-        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex) { m_Context->DrawMesh(subMesh, material, shaderPassIndex); }
-        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Context->DrawMesh(subMesh, material, shaderPassIndex, matrix); }
-        void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode) { m_Context->DrawMeshRenderers(numRenderers, renderers, lightMode); }
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex) { m_Cmd->DrawMesh(geometry, material, shaderPassIndex); }
+        void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Cmd->DrawMesh(geometry, material, shaderPassIndex, matrix); }
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex) { m_Cmd->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex); }
+        void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Cmd->DrawMesh(mesh, subMeshIndex, material, shaderPassIndex, matrix); }
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex) { m_Cmd->DrawMesh(subMesh, material, shaderPassIndex); }
+        void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix) { m_Cmd->DrawMesh(subMesh, material, shaderPassIndex, matrix); }
+        void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode) { m_Cmd->DrawMeshRenderers(numRenderers, renderers, lightMode); }
 
-        void ResolveTexture(GfxTexture* source, GfxTexture* destination) { m_Context->ResolveTexture(source, destination); }
-        void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement) { m_Context->CopyBuffer(sourceBuffer, sourceElement, destinationBuffer, destinationElement); }
+        void ResolveTexture(GfxTexture* source, GfxTexture* destination) { m_Cmd->ResolveTexture(source, destination); }
+        void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement) { m_Cmd->CopyBuffer(sourceBuffer, sourceElement, destinationBuffer, destinationElement); }
 
-        GfxDevice* GetDevice() const { return m_Context->GetDevice(); }
-        GfxCommandContext* GetCommandContext() const { return m_Context; }
+        GfxDevice* GetDevice() const { return m_Cmd->GetDevice(); }
+        GfxCommandContext* GetCommandContext() const { return m_Cmd; }
     };
 }

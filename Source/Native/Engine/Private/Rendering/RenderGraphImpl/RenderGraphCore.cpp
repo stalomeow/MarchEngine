@@ -2,6 +2,7 @@
 #include "Engine/Rendering/RenderGraphImpl/RenderGraphCore.h"
 #include "Engine/Debug.h"
 #include <utility>
+#include <assert.h>
 
 namespace march
 {
@@ -260,87 +261,22 @@ namespace march
         GetPass().RenderFunc = func;
     }
 
-    bool RenderGraph::CullPasses()
+    void RenderGraph::CompilePasses()
     {
-        for (size_t i = 0; i < m_Passes.size(); i++)
+        // 每个 pass 的计算都依赖后面的 pass，所以从后往前遍历
+
+        // 所有 pass 结束后，有一个 m_PassIndexToWaitFallback
+        // 可以把它当作一个依赖所有 async compute 的虚拟 pass，所以初始化为 m_Passes.size()
+        // 如果后面的 async compute 执行完了，那前面的肯定也执行完了，所以 deadline 的值会逐渐变小
+        size_t asyncComputeDeadlineIndexExclusive = m_Passes.size();
+
+        // 注意 size_t 是无符号的，所以不能用 i >= 0
+        for (size_t passIndex = m_Passes.size() - 1; passIndex != -1; passIndex--)
         {
-            if (m_Passes[i].State == RenderGraphPassState::None)
-            {
-                if (!CullPassDFS(i))
-                {
-                    return false;
-                }
-            }
+            CullPass(passIndex, asyncComputeDeadlineIndexExclusive);
         }
 
-        return true;
-    }
-
-    bool RenderGraph::CullPassDFS(size_t passIndex)
-    {
-        RenderGraphPass& pass = m_Passes[passIndex];
-        pass.State = RenderGraphPassState::Visiting;
-
-        size_t outdegree = 0;
-
-        for (size_t adjIndex : pass.NextPassIndices)
-        {
-            RenderGraphPass& adjPass = m_Passes[adjIndex];
-
-            if (adjPass.State == RenderGraphPassState::Visiting)
-            {
-                LOG_ERROR("A cycle is detected in the render graph");
-                return false;
-            }
-
-            if (adjPass.State == RenderGraphPassState::None)
-            {
-                if (!CullPassDFS(adjIndex))
-                {
-                    return false;
-                }
-            }
-
-            if (adjPass.State != RenderGraphPassState::Culled)
-            {
-                outdegree++;
-            }
-        }
-
-        if (outdegree == 0 && !pass.HasSideEffects && pass.AllowPassCulling)
-        {
-            pass.State = RenderGraphPassState::Culled;
-        }
-        else
-        {
-            pass.State = RenderGraphPassState::Visited;
-        }
-
-        return true;
-    }
-
-    void RenderGraph::ComputeResourceLifetime()
-    {
-        for (size_t i = 0; i < m_Passes.size(); i++)
-        {
-            const RenderGraphPass& pass = m_Passes[i];
-
-            if (pass.State == RenderGraphPassState::Culled)
-            {
-                continue;
-            }
-
-            for (size_t resourceIndex : pass.ResourcesIn)
-            {
-                m_ResourceManager->SetAlive(resourceIndex, i);
-            }
-
-            for (size_t resourceIndex : pass.ResourcesOut)
-            {
-                m_ResourceManager->SetAlive(resourceIndex, i);
-            }
-        }
-
+        // 设置资源的生命周期
         for (size_t i = 0; i < m_ResourceManager->GetNumResources(); i++)
         {
             if (std::optional<std::pair<size_t, size_t>> lifetime = m_ResourceManager->GetLifetimePassIndexRange(i))
@@ -352,15 +288,187 @@ namespace march
         }
     }
 
-    bool RenderGraph::CompilePasses()
+    void RenderGraph::CullPass(size_t passIndex, size_t& asyncComputeDeadlineIndexExclusive)
     {
-        if (CullPasses())
+        RenderGraphPass& pass = m_Passes[passIndex];
+        assert(!pass.IsVisited);
+
+        size_t outdegree = 0;
+        size_t asyncComputeDeadlineIndexExclusiveCopy = asyncComputeDeadlineIndexExclusive;
+
+        for (size_t adjIndex : pass.NextPassIndices)
         {
-            ComputeResourceLifetime();
-            return true;
+            RenderGraphPass& adjPass = m_Passes[adjIndex];
+            assert(adjPass.IsVisited);
+
+            if (!adjPass.IsCulled)
+            {
+                outdegree++;
+
+                if (!adjPass.IsAsyncCompute)
+                {
+                    asyncComputeDeadlineIndexExclusiveCopy = std::min(asyncComputeDeadlineIndexExclusiveCopy, adjIndex);
+                }
+            }
         }
 
-        return false;
+        if (outdegree == 0 && !pass.HasSideEffects && pass.AllowPassCulling)
+        {
+            pass.IsCulled = true;
+        }
+        else
+        {
+            pass.IsCulled = false;
+
+            CompileAsyncCompute(passIndex, asyncComputeDeadlineIndexExclusiveCopy);
+
+            if (pass.IsAsyncCompute)
+            {
+                asyncComputeDeadlineIndexExclusive = asyncComputeDeadlineIndexExclusiveCopy;
+            }
+
+            for (size_t resourceIndex : pass.ResourcesIn)
+            {
+                m_ResourceManager->SetAlive(resourceIndex, passIndex);
+
+                // async compute 需要延长资源的生命周期
+                if (pass.IsAsyncCompute)
+                {
+                    m_ResourceManager->SetAlive(resourceIndex, asyncComputeDeadlineIndexExclusive - 1);
+                }
+            }
+
+            for (size_t resourceIndex : pass.ResourcesOut)
+            {
+                m_ResourceManager->SetAlive(resourceIndex, passIndex);
+
+                // async compute 需要延长资源的生命周期
+                if (pass.IsAsyncCompute)
+                {
+                    m_ResourceManager->SetAlive(resourceIndex, asyncComputeDeadlineIndexExclusive - 1);
+                }
+            }
+        }
+
+        pass.IsVisited = true;
+    }
+
+    void RenderGraph::CompileAsyncCompute(size_t passIndex, size_t& deadlineIndexExclusive)
+    {
+        RenderGraphPass& pass = m_Passes[passIndex];
+        assert(!pass.IsVisited);
+
+        if (!pass.EnableAsyncCompute)
+        {
+            pass.IsAsyncCompute = false;
+            return;
+        }
+
+        size_t overlappedPassCount = AvoidAsyncComputeResourceCompetition(passIndex, deadlineIndexExclusive);
+
+        // 有重叠的 pass 时 async compute 才有意义
+        if (overlappedPassCount == 0)
+        {
+            pass.IsAsyncCompute = false;
+            return;
+        }
+
+        pass.IsAsyncCompute = true;
+
+        // 如果后面的 async compute 执行完了，那前面的肯定也执行完了
+        // 因为 compile 时是从后往前遍历的，所以第一次赋给 PassIndexToWait 的值一定是最大的，不用再更新
+
+        if (deadlineIndexExclusive == m_Passes.size())
+        {
+            if (!m_PassIndexToWaitFallback)
+            {
+                m_PassIndexToWaitFallback = passIndex;
+            }
+        }
+        else
+        {
+            RenderGraphPass& deadlinePass = m_Passes[deadlineIndexExclusive];
+
+            if (!deadlinePass.PassIndexToWait)
+            {
+                deadlinePass.PassIndexToWait = passIndex;
+            }
+        }
+    }
+
+    size_t RenderGraph::AvoidAsyncComputeResourceCompetition(size_t passIndex, size_t& deadlineIndexExclusive)
+    {
+        const RenderGraphPass& pass = m_Passes[passIndex];
+        assert(!pass.IsVisited);
+
+        size_t overlappedPassCount = 0;
+
+        for (size_t i = passIndex + 1; i < deadlineIndexExclusive; i++)
+        {
+            const RenderGraphPass& overlappedPass = m_Passes[i];
+            assert(overlappedPass.IsVisited);
+
+            if (overlappedPass.IsCulled || overlappedPass.IsAsyncCompute)
+            {
+                continue;
+            }
+
+            overlappedPassCount++;
+
+            // 允许同时读，但不能同时写 or 一个读一个写
+
+            for (size_t resourceIndex : pass.ResourcesIn)
+            {
+                if (overlappedPass.ResourcesOut.count(resourceIndex) > 0)
+                {
+                    deadlineIndexExclusive = i;
+                    goto End;
+                }
+            }
+
+            for (size_t resourceIndex : pass.ResourcesOut)
+            {
+                if (overlappedPass.ResourcesIn.count(resourceIndex) > 0)
+                {
+                    deadlineIndexExclusive = i;
+                    goto End;
+                }
+
+                if (overlappedPass.ResourcesOut.count(resourceIndex) > 0)
+                {
+                    deadlineIndexExclusive = i;
+                    goto End;
+                }
+            }
+        }
+
+    End:
+        return overlappedPassCount;
+    }
+
+    GfxCommandContext* RenderGraph::EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass)
+    {
+        if (pass.IsAsyncCompute)
+        {
+            // 对于 async compute pass，每次都要创建新的 context，这样才能得到对应的 sync point
+            // 为了避免竞争，还需要等待之前的非 async compute pass 执行完
+            context.New(GfxCommandType::AsyncCompute, /* waitPreviousOneOnGpu */ true);
+        }
+        else if (pass.PassIndexToWait)
+        {
+            // 需要等待某个 sync point，所以要新建一个 context
+            context.New(GfxCommandType::Direct, /* waitPreviousOneOnGpu */ false);
+
+            const GfxSyncPoint& syncPoint = m_Passes[*pass.PassIndexToWait].SyncPoint;
+            assert(syncPoint.IsValid());
+            context.GetCommandContext()->WaitOnGpu(syncPoint);
+        }
+        else
+        {
+            context.Ensure(GfxCommandType::Direct);
+        }
+
+        return context.GetCommandContext();
     }
 
     void RenderGraph::RequestPassResources(GfxCommandContext* cmd, const RenderGraphPass& pass)
@@ -378,9 +486,17 @@ namespace march
 
     void RenderGraph::ReleasePassResources(GfxCommandContext* cmd, const RenderGraphPass& pass)
     {
-        for (size_t resourceIndex : pass.ResourcesDead)
+        if (pass.IsAsyncCompute)
         {
-            m_ResourceManager->ReleaseResource(resourceIndex);
+            // async compute 资源的生命周期会被延长，所以这个 pass 不该释放任何资源
+            assert(pass.ResourcesDead.empty());
+        }
+        else
+        {
+            for (size_t resourceIndex : pass.ResourcesDead)
+            {
+                m_ResourceManager->ReleaseResource(resourceIndex);
+            }
         }
 
         cmd->UnsetBuffers();
@@ -398,6 +514,13 @@ namespace march
         // 如果没有 render target，说明这个 pass 不渲染物体，不用设置 render states
         if (pass.NumColorTargets == 0 && !pass.DepthStencilTarget.IsSet)
         {
+            return;
+        }
+
+        // async compute pass 不支持设置 render states
+        if (pass.IsAsyncCompute)
+        {
+            LOG_WARNING("Async compute pass '{}' can not have render states", pass.Name);
             return;
         }
 
@@ -472,19 +595,19 @@ namespace march
     void RenderGraph::ExecutePasses()
     {
         RenderGraphContext context{};
-        GfxCommandContext* cmd = context.GetCommandContext();
 
         for (RenderGraphPass& pass : m_Passes)
         {
-            if (pass.State == RenderGraphPassState::Culled)
+            if (pass.IsCulled)
             {
                 continue;
             }
 
+            GfxCommandContext* cmd = EnsurePassContext(context, pass);
+
             cmd->BeginEvent(pass.Name);
             {
                 RequestPassResources(cmd, pass);
-
                 SetPassRenderStates(cmd, pass);
 
                 if (pass.RenderFunc)
@@ -493,8 +616,24 @@ namespace march
                 }
 
                 ReleasePassResources(cmd, pass);
+
+                if (pass.IsAsyncCompute)
+                {
+                    pass.SyncPoint = context.Submit();
+                }
             }
             cmd->EndEvent();
+        }
+
+        // 保证所有 async compute pass 都执行完
+        if (m_PassIndexToWaitFallback)
+        {
+            GfxCommandManager* cmdManager = GetGfxDevice()->GetCommandManager();
+            GfxCommandQueue* cmdQueue = cmdManager->GetQueue(GfxCommandType::Direct);
+
+            const GfxSyncPoint& syncPoint = m_Passes[*m_PassIndexToWaitFallback].SyncPoint;
+            assert(syncPoint.IsValid());
+            cmdQueue->WaitOnGpu(syncPoint);
         }
     }
 
@@ -519,25 +658,25 @@ namespace march
 
         try
         {
-            if (CompilePasses())
-            {
-                for (IRenderGraphCompiledEventListener* listener : g_GraphCompiledEventListeners)
-                {
-                    listener->OnGraphCompiled(*this, m_Passes);
-                }
+            CompilePasses();
 
-                ExecutePasses();
+            for (IRenderGraphCompiledEventListener* listener : g_GraphCompiledEventListeners)
+            {
+                listener->OnGraphCompiled(*this, m_Passes);
             }
+
+            ExecutePasses();
         }
         catch (std::exception& e)
         {
-            LOG_ERROR("error: {}", e.what());
+            LOG_ERROR("render graph error: {}", e.what());
         }
 
         // TODO check resource leaks
 
         // Clean up
         m_Passes.clear();
+        m_PassIndexToWaitFallback = std::nullopt;
         m_ResourceManager->ClearResources();
     }
 
@@ -591,13 +730,54 @@ namespace march
         return m_ResourceManager->CreateTexture(id, desc);
     }
 
-    RenderGraphContext::RenderGraphContext()
-    {
-        m_Context = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
-    }
-
     RenderGraphContext::~RenderGraphContext()
     {
-        m_Context->SubmitAndRelease();
+        if (m_Cmd != nullptr)
+        {
+            m_Cmd->SubmitAndRelease();
+        }
+    }
+
+    void RenderGraphContext::New(GfxCommandType type, bool waitPreviousOneOnGpu)
+    {
+        GfxSyncPoint prevSyncPoint{};
+
+        if (m_Cmd != nullptr)
+        {
+            GfxSyncPoint syncPoint = m_Cmd->SubmitAndRelease();
+
+            // 不在一个 command queue 里的才需要等待
+            if (waitPreviousOneOnGpu && m_Cmd->GetType() != type)
+            {
+                prevSyncPoint = syncPoint;
+            }
+        }
+
+        m_Cmd = GetGfxDevice()->RequestContext(type);
+
+        if (prevSyncPoint.IsValid())
+        {
+            m_Cmd->WaitOnGpu(prevSyncPoint);
+        }
+    }
+
+    void RenderGraphContext::Ensure(GfxCommandType type)
+    {
+        if (m_Cmd != nullptr && m_Cmd->GetType() != type)
+        {
+            m_Cmd->SubmitAndRelease();
+            m_Cmd = nullptr;
+        }
+
+        if (m_Cmd == nullptr)
+        {
+            m_Cmd = GetGfxDevice()->RequestContext(type);
+        }
+    }
+
+    GfxSyncPoint RenderGraphContext::Submit()
+    {
+        assert(m_Cmd != nullptr);
+        return std::exchange(m_Cmd, nullptr)->SubmitAndRelease();
     }
 }

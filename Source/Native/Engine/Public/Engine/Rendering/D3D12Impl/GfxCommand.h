@@ -58,15 +58,22 @@ namespace march
     {
         friend class GfxCommandQueue;
 
+        GfxFence* m_Fence;
+        uint64_t m_Value;
+
     public:
         GfxSyncPoint(GfxFence* fence, uint64_t value) : m_Fence(fence), m_Value(value) {}
+        GfxSyncPoint() : GfxSyncPoint(nullptr, 0) {}
 
         void WaitOnCpu() const { m_Fence->WaitOnCpu(m_Value); }
         bool IsCompleted() const { return m_Fence->IsCompleted(m_Value); }
+        bool IsValid() const { return m_Fence != nullptr; }
 
-    private:
-        GfxFence* m_Fence;
-        const uint64_t m_Value;
+        GfxSyncPoint(const GfxSyncPoint&) = default;
+        GfxSyncPoint& operator=(const GfxSyncPoint&) = default;
+
+        GfxSyncPoint(GfxSyncPoint&&) = default;
+        GfxSyncPoint& operator=(GfxSyncPoint&&) = default;
     };
 
     struct GfxCommandQueueDesc
