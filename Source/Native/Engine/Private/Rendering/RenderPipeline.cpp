@@ -418,7 +418,7 @@ namespace march
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
             std::optional<size_t> kernelIndex = m_ComputeShader->FindKernel("FillWithRed");
-            context.GetCommandContext()->DispatchCompute(m_ComputeShader.get(), *kernelIndex, 1024, 1024, 1);
+            context.DispatchCompute(m_ComputeShader.get(), *kernelIndex, 1024, 1024, 1);
         });
     }
 }
