@@ -48,10 +48,10 @@ namespace march
     {
         RenderGraphPass& pass = GetPass();
 
-        if (!resourceManager->AllowWritingResource(resourceIndex))
+        if (!resourceManager->AllowGpuWritingResource(resourceIndex))
         {
             int32 id = resourceManager->GetResourceId(resourceIndex);
-            LOG_ERROR("Resource '{}' is not allowed to be written in pass '{}'", ShaderUtils::GetStringFromId(id), pass.Name);
+            LOG_ERROR("Resource '{}' is not allowed to be written in pass '{}' on GPU", ShaderUtils::GetStringFromId(id), pass.Name);
             return;
         }
 
@@ -468,6 +468,14 @@ namespace march
         return overlappedPassCount;
     }
 
+    void RenderGraph::RequestPassResources(const RenderGraphPass& pass)
+    {
+        for (size_t resourceIndex : pass.ResourcesBorn)
+        {
+            m_ResourceManager->RequestResource(resourceIndex);
+        }
+    }
+
     void RenderGraph::EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass)
     {
         assert(pass.IsAsyncCompute);
@@ -557,39 +565,12 @@ namespace march
         return context.GetCommandContext();
     }
 
-    void RenderGraph::RequestPassResources(const RenderGraphPass& pass)
-    {
-        for (size_t resourceIndex : pass.ResourcesBorn)
-        {
-            m_ResourceManager->RequestResource(resourceIndex);
-        }
-    }
-
     void RenderGraph::SetPassVariables(GfxCommandContext* cmd, const RenderGraphPass& pass)
     {
         for (const auto& [_, variable] : pass.Variables)
         {
             m_ResourceManager->SetAsVariable(variable.ResourceIndex, cmd, variable.Desc);
         }
-    }
-
-    void RenderGraph::ReleasePassResources(GfxCommandContext* cmd, const RenderGraphPass& pass)
-    {
-        if (pass.IsAsyncCompute)
-        {
-            // async compute 资源的生命周期会被延长，所以这个 pass 不该释放任何资源
-            assert(pass.ResourcesDead.empty());
-        }
-        else
-        {
-            for (size_t resourceIndex : pass.ResourcesDead)
-            {
-                m_ResourceManager->ReleaseResource(resourceIndex);
-            }
-        }
-
-        cmd->UnsetBuffers();
-        cmd->UnsetTextures();
     }
 
     void RenderGraph::SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass)
@@ -681,6 +662,22 @@ namespace march
         }
     }
 
+    void RenderGraph::ReleasePassResources(const RenderGraphPass& pass)
+    {
+        if (pass.IsAsyncCompute)
+        {
+            // async compute 资源的生命周期会被延长，所以这个 pass 不该释放任何资源
+            assert(pass.ResourcesDead.empty());
+        }
+        else
+        {
+            for (size_t resourceIndex : pass.ResourcesDead)
+            {
+                m_ResourceManager->ReleaseResource(resourceIndex);
+            }
+        }
+    }
+
     void RenderGraph::ExecutePasses()
     {
         RenderGraphContext context{};
@@ -705,7 +702,9 @@ namespace march
                     pass.RenderFunc(context);
                 }
 
-                ReleasePassResources(cmd, pass);
+                cmd->UnsetBuffers();
+                cmd->UnsetTextures();
+                ReleasePassResources(pass);
             }
             cmd->EndEvent();
 

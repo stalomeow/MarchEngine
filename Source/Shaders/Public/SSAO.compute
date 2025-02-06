@@ -33,7 +33,7 @@ cbuffer cbSSAO
     float _SurfaceEpsilon;
 };
 
-Texture2D _RamdomVecMap;
+Texture2D _RandomVecMap;
 RWTexture2D<float> _SSAOMap;
 
 float OcclusionFunction(float distZ)
@@ -52,7 +52,7 @@ void SSAOMain(uint3 dtid : SV_DispatchThreadID)
     GBufferData gbuffer = SampleGBufferData(uv);
     float3 p = ComputeViewSpacePosition(uv, gbuffer.depth);
     float3 n = TransformWorldToViewNormal(gbuffer.normalWS);
-    float3 randVec = _RamdomVecMap.SampleLevel(sampler_LinearRepeat, 4.0 * uv, 0).xyz * 2.0 - 1.0;
+    float3 randVec = _RandomVecMap.SampleLevel(sampler_LinearRepeat, 4.0 * uv, 0).xyz * 2.0 - 1.0;
 
     float occlusionSum = 0;
 

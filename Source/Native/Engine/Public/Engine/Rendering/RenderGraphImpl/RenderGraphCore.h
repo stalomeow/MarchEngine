@@ -179,12 +179,12 @@ namespace march
         void CompileAsyncCompute(size_t passIndex, size_t& deadlineIndexExclusive);
         size_t AvoidAsyncComputeResourceCompetition(size_t passIndex, size_t& deadlineIndexExclusive);
 
+        void RequestPassResources(const RenderGraphPass& pass);
         void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass);
         GfxCommandContext* EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass);
-        void RequestPassResources(const RenderGraphPass& pass);
         void SetPassVariables(GfxCommandContext* cmd, const RenderGraphPass& pass);
-        void ReleasePassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
+        void ReleasePassResources(const RenderGraphPass& pass);
         void ExecutePasses();
 
     public:

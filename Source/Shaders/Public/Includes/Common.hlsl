@@ -71,7 +71,8 @@ float3 TransformObjectToWorldNormal(uint instanceID, float3 normalOS)
 
 float3 TransformWorldToViewNormal(float3 normalWS)
 {
-    // 使用逆转置，把向量当成行向量可以省去转置
+    // 需要使用逆转置矩阵
+    // Tips: 把向量当成行向量可以省去转置
     return normalize(mul(normalWS, (float3x3) _MatrixInvView));
 }
 

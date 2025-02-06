@@ -261,7 +261,7 @@ namespace march
     public:
         bool IsExternal() const;
         bool IsGenericallyReadable();
-        bool AllowWriting() const;
+        bool AllowGpuWriting() const;
 
         GfxBuffer* GetBuffer();
         const GfxBufferDesc& GetBufferDesc() const;
@@ -354,7 +354,7 @@ namespace march
 
         bool IsExternalResource(size_t resourceIndex) const;
         bool IsGenericallyReadableResource(size_t resourceIndex);
-        bool AllowWritingResource(size_t resourceIndex) const;
+        bool AllowGpuWritingResource(size_t resourceIndex) const;
 
         GfxBuffer* GetBuffer(size_t resourceIndex);
         const GfxBufferDesc& GetBufferDesc(size_t resourceIndex) const;

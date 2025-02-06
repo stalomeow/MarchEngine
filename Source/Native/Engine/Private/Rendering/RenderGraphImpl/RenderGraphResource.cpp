@@ -11,12 +11,17 @@ namespace march
     template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
     template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+    __forceinline static bool IsCpuAccessibleBuffer(const GfxBuffer* buffer)
+    {
+        return GfxBufferAllocUtils::IsHeapCpuAccessible(buffer->GetDesc().GetAllocStrategy());
+    }
+
     bool RenderGraphResourceData::IsExternal() const
     {
-        // temp buffer 通常用于 cbuffer，CPU 在初始化时写入数据，之后不再修改，所以当成 external
+        // 如果 temp buffer 是 CPU 可写的，那通常就是 CPU 在初始化时写入数据，之后不再修改，所以当成 external
 
         return std::visit(overloaded{
-            [](const RenderGraphResourceTempBuffer& b) -> bool { return true; },
+            [](const RenderGraphResourceTempBuffer& b) -> bool { return IsCpuAccessibleBuffer(&b.Buffer); },
             [](const RenderGraphResourcePooledBuffer& b) -> bool { return false; },
             [](const RenderGraphResourceExternalBuffer& b) -> bool { return true; },
             [](const RenderGraphResourcePooledTexture& t) -> bool { return false; },
@@ -60,9 +65,8 @@ namespace march
         return GfxBufferAllocUtils::IsSubAlloc(buffer->GetDesc().GetAllocStrategy());
     }
 
-    bool RenderGraphResourceData::AllowWriting() const
+    bool RenderGraphResourceData::AllowGpuWriting() const
     {
-        // 此处的 Write 仅包括 GPU Write
         // 如果 buffer 是 SubAlloc 得到的，绝对不能让 GPU 写，否则会有 resource barrier 改变整个原始资源的状态
         // PooledBuffer 一定不是 SubAlloc 的
 
@@ -289,9 +293,9 @@ namespace march
         return m_Resources[resourceIndex].IsGenericallyReadable();
     }
 
-    bool RenderGraphResourceManager::AllowWritingResource(size_t resourceIndex) const
+    bool RenderGraphResourceManager::AllowGpuWritingResource(size_t resourceIndex) const
     {
-        return m_Resources[resourceIndex].AllowWriting();
+        return m_Resources[resourceIndex].AllowGpuWriting();
     }
 
     GfxBuffer* RenderGraphResourceManager::GetBuffer(size_t resourceIndex)

@@ -448,7 +448,7 @@ namespace march
         static int32 ssaoMapId = ShaderUtils::GetIdFromString("_SSAOMap");
         TextureHandle ssaoMap = m_RenderGraph->RequestTexture(ssaoMapId, ssaoMapDesc);
 
-        static int32 randVecMapId = ShaderUtils::GetIdFromString("_RamdomVecMap");
+        static int32 randVecMapId = ShaderUtils::GetIdFromString("_RandomVecMap");
         TextureHandle randVecMap = m_RenderGraph->ImportTexture(randVecMapId, m_SSAORandomVectorMap.get());
 
         auto builder = m_RenderGraph->AddPass("SSAO");
