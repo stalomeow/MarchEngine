@@ -464,7 +464,7 @@ namespace march
         {
             D3D12_SAMPLER_DESC samplerDesc = {};
             samplerDesc.MipLODBias = m_Desc.MipmapBias;
-            samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+            samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
             samplerDesc.MinLOD = 0;
             samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
 

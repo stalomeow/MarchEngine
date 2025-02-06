@@ -192,7 +192,7 @@ namespace march
         m_GlobalBuffers.clear();
     }
 
-    void GfxCommandContext::SetRenderTarget(GfxRenderTexture* colorTarget, GfxRenderTexture* depthStencilTarget)
+    void GfxCommandContext::SetRenderTarget(GfxTexture* colorTarget, GfxTexture* depthStencilTarget)
     {
         if (colorTarget == nullptr)
         {
@@ -204,7 +204,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, GfxRenderTexture* const* colorTargets, GfxRenderTexture* depthStencilTarget)
+    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, GfxTexture* const* colorTargets, GfxTexture* depthStencilTarget)
     {
         assert(numColorTargets <= std::size(m_ColorTargets));
 

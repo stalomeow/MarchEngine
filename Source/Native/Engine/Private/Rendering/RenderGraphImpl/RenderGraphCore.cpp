@@ -26,8 +26,10 @@ namespace march
             {
                 m_Graph->m_Passes[*producerPassIndex].NextPassIndices.push_back(m_PassIndex);
             }
-            else
+            else if (!resourceManager->IsExternalResource(resourceIndex))
             {
+                // 非外部导入的资源应该有生产者
+
                 int32 id = resourceManager->GetResourceId(resourceIndex);
                 LOG_WARNING("Failed to find producer pass for resource '{}' in pass '{}'", ShaderUtils::GetStringFromId(id), pass.Name);
             }
@@ -46,9 +48,16 @@ namespace march
     {
         RenderGraphPass& pass = GetPass();
 
+        if (!resourceManager->AllowWritingResource(resourceIndex))
+        {
+            int32 id = resourceManager->GetResourceId(resourceIndex);
+            LOG_ERROR("Resource '{}' is not allowed to be written in pass '{}'", ShaderUtils::GetStringFromId(id), pass.Name);
+            return;
+        }
+
         if (pass.ResourcesOut.insert(resourceIndex).second)
         {
-            pass.HasSideEffects |= resourceManager->IsResourceExternal(resourceIndex);
+            pass.HasSideEffects |= resourceManager->IsExternalResource(resourceIndex);
             resourceManager->AddProducerPassIndex(resourceIndex, m_PassIndex);
         }
 
@@ -413,12 +422,21 @@ namespace march
                 continue;
             }
 
-            overlappedPassCount++;
-
-            // 允许同时读，但不能同时写 or 一个读一个写
-
             for (size_t resourceIndex : pass.ResourcesIn)
             {
+                // 在没有 resource barrier 时允许两个同时读
+                if (overlappedPass.ResourcesIn.count(resourceIndex) > 0)
+                {
+                    // 如果不是 D3D12_RESOURCE_STATE_GENERIC_READ 的话，读取前可能会有一个 resource barrier
+                    // 当两个 pass 在 GPU 上并行时，两个 barrier 的顺序不确定，可能导致状态损坏
+                    if (!m_ResourceManager->IsGenericallyReadableResource(resourceIndex))
+                    {
+                        deadlineIndexExclusive = i;
+                        goto End;
+                    }
+                }
+
+                // 禁止一个读一个写
                 if (overlappedPass.ResourcesOut.count(resourceIndex) > 0)
                 {
                     deadlineIndexExclusive = i;
@@ -428,30 +446,98 @@ namespace march
 
             for (size_t resourceIndex : pass.ResourcesOut)
             {
+                // 禁止一个读一个写
                 if (overlappedPass.ResourcesIn.count(resourceIndex) > 0)
                 {
                     deadlineIndexExclusive = i;
                     goto End;
                 }
 
+                // 禁止两个同时写
                 if (overlappedPass.ResourcesOut.count(resourceIndex) > 0)
                 {
                     deadlineIndexExclusive = i;
                     goto End;
                 }
             }
+
+            overlappedPassCount++;
         }
 
     End:
         return overlappedPassCount;
     }
 
+    void RenderGraph::EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass)
+    {
+        assert(pass.IsAsyncCompute);
+
+        // https://microsoft.github.io/DirectX-Specs/d3d/CPUEfficiency.html#state-support-by-command-list-type
+        constexpr D3D12_RESOURCE_STATES disallowedComputeStates
+            = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
+            | D3D12_RESOURCE_STATE_INDEX_BUFFER
+            | D3D12_RESOURCE_STATE_RENDER_TARGET
+            | D3D12_RESOURCE_STATE_DEPTH_WRITE
+            | D3D12_RESOURCE_STATE_DEPTH_READ
+            | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+            | D3D12_RESOURCE_STATE_STREAM_OUT
+            | D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT
+            | D3D12_RESOURCE_STATE_RESOLVE_DEST
+            | D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+
+        // 需要避免在 AsyncComputeCommandList 中使用含有 disallowedComputeStates 的 Resource Barriers，
+        // BeforeState 和 AfterState 都不行，否则会报错！！！
+        // 这里检查资源的状态，如果不符合要求，就提前在 DirectCommandList 中将资源转换成 Common 状态
+
+        bool hasValidDirectContext = false;
+
+        for (size_t resourceIndex : pass.ResourcesIn)
+        {
+            // Generic Read 的资源之前 Compile 时已经检查过了，且保证不会产生 Resource Barrier
+            if (m_ResourceManager->IsGenericallyReadableResource(resourceIndex))
+            {
+                continue;
+            }
+
+            auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
+
+            if ((res->GetState() & disallowedComputeStates) != 0)
+            {
+                if (!hasValidDirectContext)
+                {
+                    context.Ensure(GfxCommandType::Direct);
+                    hasValidDirectContext = true;
+                }
+
+                context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_COMMON);
+            }
+        }
+
+        for (size_t resourceIndex : pass.ResourcesOut)
+        {
+            auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
+
+            if ((res->GetState() & disallowedComputeStates) != 0)
+            {
+                if (!hasValidDirectContext)
+                {
+                    context.Ensure(GfxCommandType::Direct);
+                    hasValidDirectContext = true;
+                }
+
+                context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_COMMON);
+            }
+        }
+    }
+
     GfxCommandContext* RenderGraph::EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass)
     {
         if (pass.IsAsyncCompute)
         {
+            EnsureAsyncComputePassResourceStates(context, pass);
+
             // 对于 async compute pass，每次都要创建新的 context，这样才能得到对应的 sync point
-            // 为了避免竞争，还需要等待之前的非 async compute pass 执行完
+            // 为了避免资源竞争，还需要等待之前的非 async compute pass 执行完
             context.New(GfxCommandType::AsyncCompute, /* waitPreviousOneOnGpu */ true);
         }
         else if (pass.PassIndexToWait)
@@ -471,13 +557,16 @@ namespace march
         return context.GetCommandContext();
     }
 
-    void RenderGraph::RequestPassResources(GfxCommandContext* cmd, const RenderGraphPass& pass)
+    void RenderGraph::RequestPassResources(const RenderGraphPass& pass)
     {
         for (size_t resourceIndex : pass.ResourcesBorn)
         {
             m_ResourceManager->RequestResource(resourceIndex);
         }
+    }
 
+    void RenderGraph::SetPassVariables(GfxCommandContext* cmd, const RenderGraphPass& pass)
+    {
         for (const auto& [_, variable] : pass.Variables)
         {
             m_ResourceManager->SetAsVariable(variable.ResourceIndex, cmd, variable.Desc);
@@ -524,8 +613,8 @@ namespace march
             return;
         }
 
-        GfxRenderTexture* colorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
-        GfxRenderTexture* depthStencilTarget = nullptr;
+        GfxTexture* colorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+        GfxTexture* depthStencilTarget = nullptr;
 
         for (uint32_t i = 0; i < pass.NumColorTargets; i++)
         {
@@ -603,11 +692,12 @@ namespace march
                 continue;
             }
 
+            RequestPassResources(pass);
             GfxCommandContext* cmd = EnsurePassContext(context, pass);
 
             cmd->BeginEvent(pass.Name);
             {
-                RequestPassResources(cmd, pass);
+                SetPassVariables(cmd, pass);
                 SetPassRenderStates(cmd, pass);
 
                 if (pass.RenderFunc)
@@ -692,42 +782,52 @@ namespace march
         g_GraphCompiledEventListeners.erase(listener);
     }
 
-    BufferHandle RenderGraph::Import(const std::string& name, GfxBuffer* buffer)
+    BufferHandle RenderGraph::ImportBuffer(const std::string& name, GfxBuffer* buffer)
     {
-        return Import(ShaderUtils::GetIdFromString(name), buffer);
+        return ImportBuffer(ShaderUtils::GetIdFromString(name), buffer);
     }
 
-    BufferHandle RenderGraph::Import(int32 id, GfxBuffer* buffer)
+    BufferHandle RenderGraph::ImportBuffer(int32 id, GfxBuffer* buffer)
     {
         return m_ResourceManager->ImportBuffer(id, buffer);
     }
 
-    BufferHandle RenderGraph::Request(const std::string& name, const GfxBufferDesc& desc)
+    BufferHandle RenderGraph::RequestBuffer(const std::string& name, const GfxBufferDesc& desc)
     {
-        return Request(ShaderUtils::GetIdFromString(name), desc);
+        return RequestBuffer(ShaderUtils::GetIdFromString(name), desc);
     }
 
-    BufferHandle RenderGraph::Request(int32 id, const GfxBufferDesc& desc)
+    BufferHandle RenderGraph::RequestBuffer(int32 id, const GfxBufferDesc& desc)
     {
-        return m_ResourceManager->CreateBuffer(id, desc);
+        return m_ResourceManager->CreateBuffer(id, desc, nullptr, std::nullopt);
     }
 
-    TextureHandle RenderGraph::Import(const std::string& name, GfxRenderTexture* texture)
+    BufferHandle RenderGraph::RequestBufferWithInitialContent(const std::string& name, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
     {
-        return Import(ShaderUtils::GetIdFromString(name), texture);
+        return RequestBufferWithInitialContent(ShaderUtils::GetIdFromString(name), desc, pData, counter);
     }
 
-    TextureHandle RenderGraph::Import(int32 id, GfxRenderTexture* texture)
+    BufferHandle RenderGraph::RequestBufferWithInitialContent(int32 id, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
+    {
+        return m_ResourceManager->CreateBuffer(id, desc, pData, counter);
+    }
+
+    TextureHandle RenderGraph::ImportTexture(const std::string& name, GfxTexture* texture)
+    {
+        return ImportTexture(ShaderUtils::GetIdFromString(name), texture);
+    }
+
+    TextureHandle RenderGraph::ImportTexture(int32 id, GfxTexture* texture)
     {
         return m_ResourceManager->ImportTexture(id, texture);
     }
 
-    TextureHandle RenderGraph::Request(const std::string& name, const GfxTextureDesc& desc)
+    TextureHandle RenderGraph::RequestTexture(const std::string& name, const GfxTextureDesc& desc)
     {
-        return Request(ShaderUtils::GetIdFromString(name), desc);
+        return RequestTexture(ShaderUtils::GetIdFromString(name), desc);
     }
 
-    TextureHandle RenderGraph::Request(int32 id, const GfxTextureDesc& desc)
+    TextureHandle RenderGraph::RequestTexture(int32 id, const GfxTextureDesc& desc)
     {
         return m_ResourceManager->CreateTexture(id, desc);
     }

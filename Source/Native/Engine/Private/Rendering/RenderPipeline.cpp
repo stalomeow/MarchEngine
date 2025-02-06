@@ -7,7 +7,9 @@
 #include "Engine/Rendering/Gizmos.h"
 #include "Engine/Misc/MathUtils.h"
 #include <vector>
+#include <random>
 #include <DirectXCollision.h>
+#include <DirectXPackedVector.h>
 
 using namespace DirectX;
 
@@ -24,7 +26,8 @@ namespace march
         m_SkyboxMaterial.reset("Assets/skybox.mat");
         m_ScreenSpaceShadowShader.reset("Engine/Shaders/ScreenSpaceShadow.shader");
         m_ScreenSpaceShadowMaterial = std::make_unique<Material>(m_ScreenSpaceShadowShader.get());
-        m_ComputeShader.reset("Engine/Shaders/Test.compute");
+        m_SSAOShader.reset("Engine/Shaders/SSAO.compute");
+        GenerateSSAORandomVectorMap();
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -42,13 +45,13 @@ namespace march
 
             Display* display = camera->GetTargetDisplay();
 
-            TextureHandle colorTarget = m_RenderGraph->Import("_CameraColorTarget", display->GetColorBuffer());
-            TextureHandle depthStencilTarget = m_RenderGraph->Import("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
+            TextureHandle colorTarget = m_RenderGraph->ImportTexture("_CameraColorTarget", display->GetColorBuffer());
+            TextureHandle depthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
             TextureHandle colorTargetResolved{};
 
             if (display->GetEnableMSAA())
             {
-                colorTargetResolved = m_RenderGraph->Import("_CameraColorTargetResolved", display->GetResolvedColorBuffer());
+                colorTargetResolved = m_RenderGraph->ImportTexture("_CameraColorTargetResolved", display->GetResolvedColorBuffer());
             }
 
             BufferHandle cbCamera = CreateCameraConstantBuffer("CameraConstantBuffer", camera);
@@ -57,7 +60,7 @@ namespace march
             std::vector<TextureHandle> gBuffers{};
             ClearAndDrawObjects(cbCamera, colorTarget, depthStencilTarget, gBuffers, camera->GetEnableWireframe());
 
-            TestCompute();
+            TextureHandle ssaoMap = SSAO(cbCamera, gBuffers);
 
             XMFLOAT4X4 shadowMatrix{};
             TextureHandle shadowMap = DrawShadowCasters(shadowMatrix);
@@ -92,6 +95,19 @@ namespace march
 
     BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& passName, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
     {
+        XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
+        XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
+        XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
+
+        CameraConstants consts{};
+        XMStoreFloat4x4(&consts.ViewMatrix, view);
+        XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, view));
+        XMStoreFloat4x4(&consts.ProjectionMatrix, proj);
+        XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
+        XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
+        XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
+        consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
+
         GfxBufferDesc desc{};
         desc.Stride = sizeof(CameraConstants);
         desc.Count = 1;
@@ -99,39 +115,24 @@ namespace march
         desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
         static int32_t bufferId = ShaderUtils::GetIdFromString("cbCamera");
-        BufferHandle buffer = m_RenderGraph->Request(bufferId, desc);
-
-        auto builder = m_RenderGraph->AddPass(passName);
-
-        builder.Out(buffer);
-        builder.SetRenderFunc([
-            buffer,
-            position = position,
-            viewMatrix = viewMatrix,
-            projectionMatrix = projectionMatrix
-        ](RenderGraphContext& context)
-        {
-            XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
-            XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
-            XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
-
-            CameraConstants consts{};
-            XMStoreFloat4x4(&consts.ViewMatrix, view);
-            XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, view));
-            XMStoreFloat4x4(&consts.ProjectionMatrix, proj);
-            XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
-            XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
-            XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
-            consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
-
-            buffer->SetData(&consts);
-        });
-
-        return buffer;
+        return m_RenderGraph->RequestBufferWithInitialContent(bufferId, desc, &consts);
     }
 
     BufferHandle RenderPipeline::CreateLightConstantBuffer()
     {
+        LightConstants consts{};
+        consts.LightCount = static_cast<int32_t>(m_Lights.size());
+
+        for (int i = 0; i < m_Lights.size(); i++)
+        {
+            if (!m_Lights[i]->GetIsActiveAndEnabled())
+            {
+                continue;
+            }
+
+            m_Lights[i]->FillLightData(consts.Lights[i]);
+        }
+
         GfxBufferDesc desc{};
         desc.Stride = sizeof(LightConstants);
         desc.Count = 1;
@@ -139,30 +140,7 @@ namespace march
         desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
         static int32 bufferId = ShaderUtils::GetIdFromString("cbLight");
-        BufferHandle buffer = m_RenderGraph->Request(bufferId, desc);
-
-        auto builder = m_RenderGraph->AddPass("LightConstantBuffer");
-
-        builder.Out(buffer);
-        builder.SetRenderFunc([buffer, this](RenderGraphContext& context)
-        {
-            LightConstants consts{};
-            consts.LightCount = static_cast<int32_t>(m_Lights.size());
-
-            for (int i = 0; i < m_Lights.size(); i++)
-            {
-                if (!m_Lights[i]->GetIsActiveAndEnabled())
-                {
-                    continue;
-                }
-
-                m_Lights[i]->FillLightData(consts.Lights[i]);
-            }
-
-            buffer->SetData(&consts);
-        });
-
-        return buffer;
+        return m_RenderGraph->RequestBufferWithInitialContent(bufferId, desc, &consts);
     }
 
     void RenderPipeline::ClearAndDrawObjects(
@@ -176,14 +154,14 @@ namespace march
 
         gBufferDesc.Format = GfxTextureFormat::R8G8B8A8_UNorm;
         gBufferDesc.Flags = GfxTextureFlags::SRGB;
-        gBuffers.push_back(m_RenderGraph->Request("_GBuffer0", gBufferDesc));
+        gBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer0", gBufferDesc));
 
         gBufferDesc.Flags = GfxTextureFlags::None;
-        gBuffers.push_back(m_RenderGraph->Request("_GBuffer1", gBufferDesc));
-        gBuffers.push_back(m_RenderGraph->Request("_GBuffer2", gBufferDesc));
+        gBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer1", gBufferDesc));
+        gBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer2", gBufferDesc));
 
         gBufferDesc.Format = GfxTextureFormat::R32_Float;
-        gBuffers.push_back(m_RenderGraph->Request("_GBuffer3", gBufferDesc));
+        gBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer3", gBufferDesc));
 
         auto builder = m_RenderGraph->AddPass("DrawObjects");
 
@@ -277,7 +255,7 @@ namespace march
         desc.MipmapBias = 0.0f;
 
         static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
-        TextureHandle shadowMap = m_RenderGraph->Request(shadowMapId, desc);
+        TextureHandle shadowMap = m_RenderGraph->RequestTexture(shadowMapId, desc);
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 
@@ -359,7 +337,7 @@ namespace march
         destDesc.Wrap = GfxTextureWrapMode::Clamp;
         destDesc.MipmapBias = 0.0f;
 
-        TextureHandle dest = m_RenderGraph->Request("_ScreenSpaceShadowMap", destDesc);
+        TextureHandle dest = m_RenderGraph->RequestTexture("_ScreenSpaceShadowMap", destDesc);
 
         GfxBufferDesc bufDesc{};
         bufDesc.Stride = sizeof(ShadowConstants);
@@ -367,8 +345,10 @@ namespace march
         bufDesc.Usages = GfxBufferUsages::Constant;
         bufDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
+        ShadowConstants consts{ shadowMatrix };
+
         static int32_t bufferId = ShaderUtils::GetIdFromString("cbShadow");
-        BufferHandle buffer = m_RenderGraph->Request(bufferId, bufDesc);
+        BufferHandle buffer = m_RenderGraph->RequestBufferWithInitialContent(bufferId, bufDesc, &consts);
 
         auto builder = m_RenderGraph->AddPass("ScreenSpaceShadow");
 
@@ -379,46 +359,125 @@ namespace march
 
         builder.In(cbCamera);
         builder.In(shadowMap);
-        builder.Out(buffer);
+        builder.In(buffer);
 
         builder.AllowPassCulling(false);
         builder.SetColorTarget(dest, RenderTargetInitMode::Discard);
-        builder.SetRenderFunc([this, buffer, shadowMatrix = shadowMatrix](RenderGraphContext& context)
+        builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            ShadowConstants consts{ shadowMatrix };
-            buffer->SetData(&consts);
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_ScreenSpaceShadowMaterial.get(), 0);
         });
 
         return dest;
     }
 
-    void RenderPipeline::TestCompute()
+    struct SSAOConstants
     {
+        float OcclusionRadius;
+        float OcclusionFadeStart;
+        float OcclusionFadeEnd;
+        float SurfaceEpsilon;
+    };
+
+    void RenderPipeline::GenerateSSAORandomVectorMap()
+    {
+        m_SSAORandomVectorMap = std::make_unique<GfxExternalTexture>(GetGfxDevice());
+
         GfxTextureDesc desc{};
-        desc.Format = GfxTextureFormat::R32G32B32A32_Float;
-        desc.Flags = GfxTextureFlags::UnorderedAccess;
+        desc.Format = GfxTextureFormat::R8G8B8A8_UNorm;
+        desc.Flags = GfxTextureFlags::None;
         desc.Dimension = GfxTextureDimension::Tex2D;
-        desc.Width = 1024;
-        desc.Height = 1024;
+        desc.Width = 256;
+        desc.Height = 256;
         desc.DepthOrArraySize = 1;
         desc.MSAASamples = 1;
-        desc.Filter = GfxTextureFilterMode::Point;
-        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.Filter = GfxTextureFilterMode::Bilinear;
+        desc.Wrap = GfxTextureWrapMode::Repeat;
         desc.MipmapBias = 0;
 
-        static int32_t texId = ShaderUtils::GetIdFromString("res");
-        TextureHandle tex = m_RenderGraph->Request(texId, desc);
+        std::random_device dev{};
+        std::mt19937 gen(dev());  // Mersenne Twister 生成器
+        std::uniform_real_distribution<float> dis(0.0, 1.0);
 
-        auto builder = m_RenderGraph->AddPass("TestCompute");
+        std::vector<DirectX::PackedVector::XMCOLOR> data(256 * 256);
+
+        for (size_t i = 0; i < 256; ++i)
+        {
+            for (size_t j = 0; j < 256; ++j)
+            {
+                // Random vector in [0,1].  We will decompress in shader to [-1,1].
+                data[i * 256 + j] = DirectX::PackedVector::XMCOLOR(dis(gen), dis(gen), dis(gen), 0.0f);
+            }
+        }
+
+        m_SSAORandomVectorMap->LoadFromPixels("_SSAORandomVectorMap", desc,
+            data.data(), data.size() * sizeof(DirectX::PackedVector::XMCOLOR), 1);
+    }
+
+    TextureHandle RenderPipeline::SSAO(
+        const BufferHandle& cbCamera,
+        const std::vector<TextureHandle>& gBuffers)
+    {
+        SSAOConstants ssaoConsts{};
+        ssaoConsts.OcclusionRadius = 0.5f;
+        ssaoConsts.OcclusionFadeStart = 0.2f;
+        ssaoConsts.OcclusionFadeEnd = 1.0f;
+        ssaoConsts.SurfaceEpsilon = 0.05f;
+
+        GfxBufferDesc ssaoCbDesc{};
+        ssaoCbDesc.Stride = sizeof(SSAOConstants);
+        ssaoCbDesc.Count = 1;
+        ssaoCbDesc.Usages = GfxBufferUsages::Constant;
+        ssaoCbDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        static int32 ssaoCbId = ShaderUtils::GetIdFromString("cbSSAO");
+        BufferHandle ssaoCb = m_RenderGraph->RequestBufferWithInitialContent(ssaoCbId, ssaoCbDesc, &ssaoConsts);
+
+        GfxTextureDesc ssaoMapDesc{};
+        ssaoMapDesc.Format = GfxTextureFormat::R8_UNorm;
+        ssaoMapDesc.Flags = GfxTextureFlags::UnorderedAccess;
+        ssaoMapDesc.Dimension = GfxTextureDimension::Tex2D;
+        ssaoMapDesc.Width = static_cast<uint32_t>(ceil(gBuffers[0].GetDesc().Width * 0.25f));
+        ssaoMapDesc.Height = static_cast<uint32_t>(ceil(gBuffers[0].GetDesc().Height * 0.25f));
+        ssaoMapDesc.DepthOrArraySize = 1;
+        ssaoMapDesc.MSAASamples = 1;
+        ssaoMapDesc.Filter = GfxTextureFilterMode::Point;
+        ssaoMapDesc.Wrap = GfxTextureWrapMode::Clamp;
+        ssaoMapDesc.MipmapBias = 0;
+
+        static int32 ssaoMapId = ShaderUtils::GetIdFromString("_SSAOMap");
+        TextureHandle ssaoMap = m_RenderGraph->RequestTexture(ssaoMapId, ssaoMapDesc);
+
+        static int32 randVecMapId = ShaderUtils::GetIdFromString("_RamdomVecMap");
+        TextureHandle randVecMap = m_RenderGraph->ImportTexture(randVecMapId, m_SSAORandomVectorMap.get());
+
+        auto builder = m_RenderGraph->AddPass("SSAO");
 
         builder.AllowPassCulling(false);
         builder.EnableAsyncCompute(true);
-        builder.Out(tex);
-        builder.SetRenderFunc([=](RenderGraphContext& context)
+
+        builder.In(cbCamera);
+        builder.In(ssaoCb);
+        builder.In(randVecMap);
+        builder.Out(ssaoMap);
+
+        for (const TextureHandle& tex : gBuffers)
         {
-            std::optional<size_t> kernelIndex = m_ComputeShader->FindKernel("FillWithRed");
-            context.DispatchCompute(m_ComputeShader.get(), *kernelIndex, 1024, 1024, 1);
+            builder.In(tex);
+        }
+
+        builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
+        {
+            std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("SSAOMain");
+
+            uint32_t groupSize[3]{};
+            m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
+
+            uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
+            uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
+            context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
         });
+
+        return ssaoMap;
     }
 }

@@ -69,6 +69,12 @@ float3 TransformObjectToWorldNormal(uint instanceID, float3 normalOS)
     return normalize(mul((float3x3) GetObjectToWorldMatrixIT(instanceID), normalOS));
 }
 
+float3 TransformWorldToViewNormal(float3 normalWS)
+{
+    // 使用逆转置，把向量当成行向量可以省去转置
+    return normalize(mul(normalWS, (float3x3) _MatrixInvView));
+}
+
 float2 GetFullScreenTriangleTexCoord(uint vertexID)
 {
     // https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl
@@ -95,6 +101,26 @@ float3 ComputeWorldSpacePosition(float2 screenUV, float ndcDepth)
 
     float4 positionWS = mul(_MatrixInvViewProjection, ndc);
     return positionWS.xyz / positionWS.w;
+}
+
+float3 ComputeViewSpacePosition(float2 screenUV, float ndcDepth)
+{
+    // screen uv 原点在左上角，xy 范围是 [0, 1]，y 轴朝下
+    // ndc 原点在中心，xy 范围是 [-1, 1]，z 范围是 [0, 1]，y 轴朝上
+
+    float4 ndc = float4(screenUV.x, 1 - screenUV.y, ndcDepth, 1);
+    ndc.xy = ndc.xy * 2 - 1;
+
+    float4 positionVS = mul(_MatrixInvProjection, ndc);
+    return positionVS.xyz / positionVS.w;
+}
+
+// TODO not tested
+float GetLinearEyeDepth(float ndcDepth)
+{
+    // ndcDepth = A + B / viewZ
+    // A = Proj[2][2]; B = Proj[2][3]
+    return _MatrixProjection[2][3] / (ndcDepth - _MatrixProjection[2][2]);
 }
 
 #endif

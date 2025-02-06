@@ -13,24 +13,75 @@ namespace march
 
     bool RenderGraphResourceData::IsExternal() const
     {
-        return std::visit([](auto&& arg) -> bool
-        {
-            using T = std::decay_t<decltype(arg)>;
+        // temp buffer 通常用于 cbuffer，CPU 在初始化时写入数据，之后不再修改，所以当成 external
 
-            constexpr bool isExternalBuffer = std::is_same_v<T, RenderGraphResourceExternalBuffer>;
-            constexpr bool isExternalTexture = std::is_same_v<T, RenderGraphResourceExternalTexture>;
-            constexpr bool result = isExternalBuffer || isExternalTexture;
+        return std::visit(overloaded{
+            [](const RenderGraphResourceTempBuffer& b) -> bool { return true; },
+            [](const RenderGraphResourcePooledBuffer& b) -> bool { return false; },
+            [](const RenderGraphResourceExternalBuffer& b) -> bool { return true; },
+            [](const RenderGraphResourcePooledTexture& t) -> bool { return false; },
+            [](const RenderGraphResourceExternalTexture& t) -> bool { return true; },
+            [](auto&&) -> bool { throw std::runtime_error("Resource is not a buffer or texture"); },
+        }, m_Resource);
+    }
 
-            return result;
+    __forceinline static bool IsInGenericReadState(RefCountPtr<GfxResource> resource)
+    {
+        D3D12_RESOURCE_STATES state = resource->GetState();
+        return (state & D3D12_RESOURCE_STATE_GENERIC_READ) == D3D12_RESOURCE_STATE_GENERIC_READ;
+    }
+
+    __forceinline static bool IsInGenericReadState(GfxBuffer* buffer)
+    {
+        return IsInGenericReadState(buffer->GetUnderlyingResource());
+    }
+
+    __forceinline static bool IsInGenericReadState(GfxTexture* texture)
+    {
+        return IsInGenericReadState(texture->GetUnderlyingResource());
+    }
+
+    bool RenderGraphResourceData::IsGenericallyReadable()
+    {
+        // pool 中的资源是按需分配的（此处可能还没分配），且状态不会是 D3D12_RESOURCE_STATE_GENERIC_READ
+
+        return std::visit(overloaded{
+            [](RenderGraphResourceTempBuffer& b) -> bool { return IsInGenericReadState(&b.Buffer); },
+            [](RenderGraphResourcePooledBuffer& b) -> bool { return false; },
+            [](RenderGraphResourceExternalBuffer& b) -> bool {return IsInGenericReadState(b.Buffer); },
+            [](RenderGraphResourcePooledTexture& t) -> bool { return false; },
+            [](RenderGraphResourceExternalTexture& t) -> bool {return IsInGenericReadState(t.Texture); },
+            [](auto&&) -> bool { throw std::runtime_error("Resource is not a buffer or texture"); },
+        }, m_Resource);
+    }
+
+    __forceinline static bool IsSubAllocatedBuffer(const GfxBuffer* buffer)
+    {
+        return GfxBufferAllocUtils::IsSubAlloc(buffer->GetDesc().GetAllocStrategy());
+    }
+
+    bool RenderGraphResourceData::AllowWriting() const
+    {
+        // 此处的 Write 仅包括 GPU Write
+        // 如果 buffer 是 SubAlloc 得到的，绝对不能让 GPU 写，否则会有 resource barrier 改变整个原始资源的状态
+        // PooledBuffer 一定不是 SubAlloc 的
+
+        return std::visit(overloaded{
+            [](const RenderGraphResourceTempBuffer& b) -> bool { return !IsSubAllocatedBuffer(&b.Buffer); },
+            [](const RenderGraphResourcePooledBuffer& b) -> bool { return true; },
+            [](const RenderGraphResourceExternalBuffer& b) -> bool { return !IsSubAllocatedBuffer(b.Buffer); },
+            [](const RenderGraphResourcePooledTexture& t) -> bool { return true; },
+            [](const RenderGraphResourceExternalTexture& t) -> bool { return t.Texture->AllowRendering(); },
+            [](auto&&) -> bool { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }
 
     GfxBuffer* RenderGraphResourceData::GetBuffer()
     {
         return std::visit(overloaded{
-            [](RenderGraphResourceTempBuffer& buffer) -> GfxBuffer* { return &buffer.Buffer; },
-            [](RenderGraphResourcePooledBuffer& buffer) -> GfxBuffer* { return buffer.Buffer.get(); },
-            [](RenderGraphResourceExternalBuffer& buffer) -> GfxBuffer* { return buffer.Buffer; },
+            [](RenderGraphResourceTempBuffer& b) -> GfxBuffer* { return &b.Buffer; },
+            [](RenderGraphResourcePooledBuffer& b) -> GfxBuffer* { return b.Buffer.get(); },
+            [](RenderGraphResourceExternalBuffer& b) -> GfxBuffer* { return b.Buffer; },
             [](auto&&) -> GfxBuffer* { throw std::runtime_error("Resource is not a buffer"); },
         }, m_Resource);
     }
@@ -38,36 +89,48 @@ namespace march
     const GfxBufferDesc& RenderGraphResourceData::GetBufferDesc() const
     {
         return std::visit(overloaded{
-            [](const RenderGraphResourceTempBuffer& buffer) -> const GfxBufferDesc& { return buffer.Buffer.GetDesc(); },
-            [](const RenderGraphResourcePooledBuffer& buffer) -> const GfxBufferDesc& { return buffer.Desc; },
-            [](const RenderGraphResourceExternalBuffer& buffer) -> const GfxBufferDesc& { return buffer.Buffer->GetDesc(); },
+            [](const RenderGraphResourceTempBuffer& b) -> const GfxBufferDesc& { return b.Buffer.GetDesc(); },
+            [](const RenderGraphResourcePooledBuffer& b) -> const GfxBufferDesc& { return b.Desc; },
+            [](const RenderGraphResourceExternalBuffer& b) -> const GfxBufferDesc& { return b.Buffer->GetDesc(); },
             [](auto&&) -> const GfxBufferDesc& { throw std::runtime_error("Resource is not a buffer"); },
         }, m_Resource);
     }
 
-    GfxRenderTexture* RenderGraphResourceData::GetTexture()
+    GfxTexture* RenderGraphResourceData::GetTexture()
     {
         return std::visit(overloaded{
-            [](RenderGraphResourcePooledTexture& texture) -> GfxRenderTexture* { return texture.Texture.get(); },
-            [](RenderGraphResourceExternalTexture& texture) -> GfxRenderTexture* { return texture.Texture; },
-            [](auto&&) -> GfxRenderTexture* { throw std::runtime_error("Resource is not a texture"); },
+            [](RenderGraphResourcePooledTexture& t) -> GfxTexture* { return t.Texture.get(); },
+            [](RenderGraphResourceExternalTexture& t) -> GfxTexture* { return t.Texture; },
+            [](auto&&) -> GfxTexture* { throw std::runtime_error("Resource is not a texture"); },
         }, m_Resource);
     }
 
     const GfxTextureDesc& RenderGraphResourceData::GetTextureDesc() const
     {
         return std::visit(overloaded{
-            [](const RenderGraphResourcePooledTexture& texture) -> const GfxTextureDesc& { return texture.Desc; },
-            [](const RenderGraphResourceExternalTexture& texture) -> const GfxTextureDesc& { return texture.Texture->GetDesc(); },
+            [](const RenderGraphResourcePooledTexture& t) -> const GfxTextureDesc& { return t.Desc; },
+            [](const RenderGraphResourceExternalTexture& t) -> const GfxTextureDesc& { return t.Texture->GetDesc(); },
             [](auto&&) -> const GfxTextureDesc& { throw std::runtime_error("Resource is not a texture"); },
+        }, m_Resource);
+    }
+
+    RefCountPtr<GfxResource> RenderGraphResourceData::GetUnderlyingResource()
+    {
+        return std::visit(overloaded{
+            [](RenderGraphResourceTempBuffer& b) -> RefCountPtr<GfxResource> { return b.Buffer.GetUnderlyingResource(); },
+            [](RenderGraphResourcePooledBuffer& b) -> RefCountPtr<GfxResource> { return b.Buffer->GetUnderlyingResource(); },
+            [](RenderGraphResourceExternalBuffer& b) -> RefCountPtr<GfxResource> { return b.Buffer->GetUnderlyingResource(); },
+            [](RenderGraphResourcePooledTexture& t) -> RefCountPtr<GfxResource> { return t.Texture->GetUnderlyingResource(); },
+            [](RenderGraphResourceExternalTexture& t) -> RefCountPtr<GfxResource> { return t.Texture->GetUnderlyingResource(); },
+            [](auto&&) -> RefCountPtr<GfxResource> { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }
 
     void RenderGraphResourceData::RequestResource()
     {
         std::visit(overloaded{
-            [](RenderGraphResourcePooledBuffer& buffer) { buffer.RequestBuffer(); },
-            [](RenderGraphResourcePooledTexture& texture) { texture.RequestTexture(); },
+            [](RenderGraphResourcePooledBuffer& b) { b.RequestBuffer(); },
+            [](RenderGraphResourcePooledTexture& t) { t.RequestTexture(); },
             [](auto&&) {},
         }, m_Resource);
     }
@@ -75,8 +138,8 @@ namespace march
     void RenderGraphResourceData::ReleaseResource()
     {
         std::visit(overloaded{
-            [](RenderGraphResourcePooledBuffer& buffer) { buffer.ReleaseBuffer(); },
-            [](RenderGraphResourcePooledTexture& texture) { texture.ReleaseTexture(); },
+            [](RenderGraphResourcePooledBuffer& b) { b.ReleaseBuffer(); },
+            [](RenderGraphResourcePooledTexture& t) { t.ReleaseTexture(); },
             [](auto&&) {},
         }, m_Resource);
     }
@@ -84,11 +147,11 @@ namespace march
     void RenderGraphResourceData::SetAsVariable(GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc)
     {
         std::visit(overloaded{
-            [=](RenderGraphResourceTempBuffer& buffer) { cmd->SetBuffer(desc.Id, &buffer.Buffer, desc.BufferElement); },
-            [=](RenderGraphResourcePooledBuffer& buffer) { cmd->SetBuffer(desc.Id, buffer.Buffer.get(), desc.BufferElement); },
-            [=](RenderGraphResourceExternalBuffer& buffer) { cmd->SetBuffer(desc.Id, buffer.Buffer, desc.BufferElement); },
-            [=](RenderGraphResourcePooledTexture& texture) { cmd->SetTexture(desc.Id, texture.Texture.get(), desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
-            [=](RenderGraphResourceExternalTexture& texture) { cmd->SetTexture(desc.Id, texture.Texture, desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
+            [=](RenderGraphResourceTempBuffer& b) { cmd->SetBuffer(desc.Id, &b.Buffer, desc.BufferElement); },
+            [=](RenderGraphResourcePooledBuffer& b) { cmd->SetBuffer(desc.Id, b.Buffer.get(), desc.BufferElement); },
+            [=](RenderGraphResourceExternalBuffer& b) { cmd->SetBuffer(desc.Id, b.Buffer, desc.BufferElement); },
+            [=](RenderGraphResourcePooledTexture& t) { cmd->SetTexture(desc.Id, t.Texture.get(), desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
+            [=](RenderGraphResourceExternalTexture& t) { cmd->SetTexture(desc.Id, t.Texture, desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
             [=](auto&&) { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }
@@ -138,17 +201,18 @@ namespace march
         m_Resources.clear();
     }
 
-    BufferHandle RenderGraphResourceManager::CreateBuffer(int32 id, const GfxBufferDesc& desc)
+    BufferHandle RenderGraphResourceManager::CreateBuffer(int32 id, const GfxBufferDesc& desc, const void* pInitialData, std::optional<uint32_t> initialCounter)
     {
         RenderGraphResourceData& resData = m_Resources.emplace_back();
         GfxBufferAllocStrategy allocStrategy = desc.GetAllocStrategy();
+        bool isHeapCpuAccessible = GfxBufferAllocUtils::IsHeapCpuAccessible(allocStrategy);
 
         if (GfxBufferAllocUtils::IsSubAlloc(allocStrategy))
         {
             // SubAlloc 开销小，没必要再复用了
             resData.InitAsTempBuffer(id, desc);
         }
-        else if (GfxBufferAllocUtils::IsHeapCpuAccessible(allocStrategy))
+        else if (isHeapCpuAccessible)
         {
             // 在 GPU 没使用完成前，复用 CPU 可访问的 Buffer 可能导致 CPU 和 GPU 之间的竞争
             // 另外，对于 CPU 可访问的 Buffer，GfxBuffer::SetData(...) 每次都会重新创建资源，复用了也没什么意义
@@ -159,6 +223,19 @@ namespace march
         else
         {
             resData.InitAsPooledBuffer(id, desc, m_BufferPool.get());
+        }
+
+        if (pInitialData != nullptr || initialCounter)
+        {
+            if (isHeapCpuAccessible)
+            {
+                // 此时一定是 TempBuffer，会立刻分配资源，所以能放心设置 Data
+                resData.GetBuffer()->SetData(pInitialData, initialCounter);
+            }
+            else
+            {
+                LOG_ERROR("Can not set the initial content of RenderGraphBuffer '{}' because it is not CPU accessible.", ShaderUtils::GetStringFromId(id));
+            }
         }
 
         return BufferHandle(this, m_Resources.size() - 1);
@@ -178,7 +255,7 @@ namespace march
         return TextureHandle(this, m_Resources.size() - 1);
     }
 
-    TextureHandle RenderGraphResourceManager::ImportTexture(int32 id, GfxRenderTexture* texture)
+    TextureHandle RenderGraphResourceManager::ImportTexture(int32 id, GfxTexture* texture)
     {
         RenderGraphResourceData& resData = m_Resources.emplace_back();
         resData.InitAsExternalTexture(id, texture);
@@ -202,9 +279,19 @@ namespace march
         return m_Resources[resourceIndex].GetId();
     }
 
-    bool RenderGraphResourceManager::IsResourceExternal(size_t resourceIndex) const
+    bool RenderGraphResourceManager::IsExternalResource(size_t resourceIndex) const
     {
         return m_Resources[resourceIndex].IsExternal();
+    }
+
+    bool RenderGraphResourceManager::IsGenericallyReadableResource(size_t resourceIndex)
+    {
+        return m_Resources[resourceIndex].IsGenericallyReadable();
+    }
+
+    bool RenderGraphResourceManager::AllowWritingResource(size_t resourceIndex) const
+    {
+        return m_Resources[resourceIndex].AllowWriting();
     }
 
     GfxBuffer* RenderGraphResourceManager::GetBuffer(size_t resourceIndex)
@@ -217,7 +304,7 @@ namespace march
         return m_Resources[resourceIndex].GetBufferDesc();
     }
 
-    GfxRenderTexture* RenderGraphResourceManager::GetTexture(size_t resourceIndex)
+    GfxTexture* RenderGraphResourceManager::GetTexture(size_t resourceIndex)
     {
         return m_Resources[resourceIndex].GetTexture();
     }
@@ -225,6 +312,11 @@ namespace march
     const GfxTextureDesc& RenderGraphResourceManager::GetTextureDesc(size_t resourceIndex) const
     {
         return m_Resources[resourceIndex].GetTextureDesc();
+    }
+
+    RefCountPtr<GfxResource> RenderGraphResourceManager::GetUnderlyingResource(size_t resourceIndex)
+    {
+        return m_Resources[resourceIndex].GetUnderlyingResource();
     }
 
     void RenderGraphResourceManager::RequestResource(size_t resourceIndex)

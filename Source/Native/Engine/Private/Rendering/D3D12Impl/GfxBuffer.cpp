@@ -467,7 +467,7 @@ namespace march
         ReleaseResource();
 
         uint32_t sizeInBytes = m_Desc.GetSizeInBytes(GfxBufferElement::StructuredData);
-        uint32_t dataPlacementAlignment = 0; // TODO: 不知道默认能不能用 0，或许要用 16 字节（float4）？
+        uint32_t dataPlacementAlignment = 16; // 我电脑上是 4，保险起见用 16
 
         if (m_Desc.HasAllUsages(GfxBufferUsages::Index) && m_Desc.Stride != 2 && m_Desc.Stride != 4)
         {

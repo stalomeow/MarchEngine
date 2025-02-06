@@ -215,9 +215,9 @@ namespace march
 
     struct RenderGraphResourceExternalTexture
     {
-        GfxRenderTexture* Texture;
+        GfxTexture* Texture;
 
-        RenderGraphResourceExternalTexture(GfxRenderTexture* texture) : Texture(texture) {}
+        RenderGraphResourceExternalTexture(GfxTexture* texture) : Texture(texture) {}
 
         RenderGraphResourceExternalTexture(const RenderGraphResourceExternalTexture&) = delete;
         RenderGraphResourceExternalTexture& operator=(const RenderGraphResourceExternalTexture&) = delete;
@@ -260,12 +260,16 @@ namespace march
 
     public:
         bool IsExternal() const;
+        bool IsGenericallyReadable();
+        bool AllowWriting() const;
 
         GfxBuffer* GetBuffer();
         const GfxBufferDesc& GetBufferDesc() const;
 
-        GfxRenderTexture* GetTexture();
+        GfxTexture* GetTexture();
         const GfxTextureDesc& GetTextureDesc() const;
+
+        RefCountPtr<GfxResource> GetUnderlyingResource();
 
         void RequestResource();
         void ReleaseResource();
@@ -305,7 +309,7 @@ namespace march
             m_Resource.emplace<RenderGraphResourcePooledTexture>(desc, pool);
         }
 
-        void InitAsExternalTexture(int32 id, GfxRenderTexture* texture)
+        void InitAsExternalTexture(int32 id, GfxTexture* texture)
         {
             m_Id = id;
             m_Resource.emplace<RenderGraphResourceExternalTexture>(texture);
@@ -337,24 +341,28 @@ namespace march
 
         void ClearResources();
 
-        BufferHandle CreateBuffer(int32 id, const GfxBufferDesc& desc);
+        BufferHandle CreateBuffer(int32 id, const GfxBufferDesc& desc, const void* pInitialData, std::optional<uint32_t> initialCounter);
         BufferHandle ImportBuffer(int32 id, GfxBuffer* buffer);
 
         TextureHandle CreateTexture(int32 id, const GfxTextureDesc& desc);
-        TextureHandle ImportTexture(int32 id, GfxRenderTexture* texture);
+        TextureHandle ImportTexture(int32 id, GfxTexture* texture);
 
         size_t GetResourceIndex(const BufferHandle& handle) const;
         size_t GetResourceIndex(const TextureHandle& handle) const;
 
         int32 GetResourceId(size_t resourceIndex) const;
 
-        bool IsResourceExternal(size_t resourceIndex) const;
+        bool IsExternalResource(size_t resourceIndex) const;
+        bool IsGenericallyReadableResource(size_t resourceIndex);
+        bool AllowWritingResource(size_t resourceIndex) const;
 
         GfxBuffer* GetBuffer(size_t resourceIndex);
         const GfxBufferDesc& GetBufferDesc(size_t resourceIndex) const;
 
-        GfxRenderTexture* GetTexture(size_t resourceIndex);
+        GfxTexture* GetTexture(size_t resourceIndex);
         const GfxTextureDesc& GetTextureDesc(size_t resourceIndex) const;
+
+        RefCountPtr<GfxResource> GetUnderlyingResource(size_t resourceIndex);
 
         void RequestResource(size_t resourceIndex);
         void ReleaseResource(size_t resourceIndex);
@@ -426,9 +434,9 @@ namespace march
 
         operator bool() const { return m_Manager != nullptr; }
 
-        operator GfxRenderTexture* () const { return m_Manager->GetTexture(m_ResourceIndex); }
+        operator GfxTexture* () const { return m_Manager->GetTexture(m_ResourceIndex); }
 
-        GfxRenderTexture* operator->() const { return m_Manager->GetTexture(m_ResourceIndex); }
+        GfxTexture* operator->() const { return m_Manager->GetTexture(m_ResourceIndex); }
 
         int32 GetId() const { return m_Manager->GetResourceId(m_ResourceIndex); }
 

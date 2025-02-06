@@ -102,7 +102,10 @@ namespace march
             const std::vector<TextureHandle>& gBuffers,
             const TextureHandle& shadowMap);
 
-        void TestCompute();
+        void GenerateSSAORandomVectorMap();
+        TextureHandle SSAO(
+            const BufferHandle& cbCamera,
+            const std::vector<TextureHandle>& gBuffers);
 
     public:
         GfxMesh* m_FullScreenTriangleMesh = nullptr;
@@ -111,8 +114,9 @@ namespace march
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
         asset_ptr<Shader> m_ScreenSpaceShadowShader = nullptr;
-        asset_ptr<ComputeShader> m_ComputeShader = nullptr;
+        asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
+        std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
     private:
         std::vector<MeshRenderer*> m_Renderers{};

@@ -179,8 +179,10 @@ namespace march
         void CompileAsyncCompute(size_t passIndex, size_t& deadlineIndexExclusive);
         size_t AvoidAsyncComputeResourceCompetition(size_t passIndex, size_t& deadlineIndexExclusive);
 
+        void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass);
         GfxCommandContext* EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass);
-        void RequestPassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
+        void RequestPassResources(const RenderGraphPass& pass);
+        void SetPassVariables(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ReleasePassResources(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ExecutePasses();
@@ -190,17 +192,20 @@ namespace march
         RenderGraphBuilder AddPass(const std::string& name);
         void CompileAndExecute();
 
-        BufferHandle Import(const std::string& name, GfxBuffer* buffer);
-        BufferHandle Import(int32 id, GfxBuffer* buffer);
+        BufferHandle ImportBuffer(const std::string& name, GfxBuffer* buffer);
+        BufferHandle ImportBuffer(int32 id, GfxBuffer* buffer);
 
-        BufferHandle Request(const std::string& name, const GfxBufferDesc& desc);
-        BufferHandle Request(int32 id, const GfxBufferDesc& desc);
+        BufferHandle RequestBuffer(const std::string& name, const GfxBufferDesc& desc);
+        BufferHandle RequestBuffer(int32 id, const GfxBufferDesc& desc);
 
-        TextureHandle Import(const std::string& name, GfxRenderTexture* texture);
-        TextureHandle Import(int32 id, GfxRenderTexture* texture);
+        BufferHandle RequestBufferWithInitialContent(const std::string& name, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
+        BufferHandle RequestBufferWithInitialContent(int32 id, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
 
-        TextureHandle Request(const std::string& name, const GfxTextureDesc& desc);
-        TextureHandle Request(int32 id, const GfxTextureDesc& desc);
+        TextureHandle ImportTexture(const std::string& name, GfxTexture* texture);
+        TextureHandle ImportTexture(int32 id, GfxTexture* texture);
+
+        TextureHandle RequestTexture(const std::string& name, const GfxTextureDesc& desc);
+        TextureHandle RequestTexture(int32 id, const GfxTextureDesc& desc);
 
         static void AddGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener);
         static void RemoveGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener);

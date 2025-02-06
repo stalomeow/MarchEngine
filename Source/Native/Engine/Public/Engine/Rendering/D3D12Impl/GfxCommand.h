@@ -193,8 +193,8 @@ namespace march
         void SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
         void UnsetBuffers();
 
-        void SetRenderTarget(GfxRenderTexture* colorTarget, GfxRenderTexture* depthStencilTarget = nullptr);
-        void SetRenderTargets(uint32_t numColorTargets, GfxRenderTexture* const* colorTargets, GfxRenderTexture* depthStencilTarget);
+        void SetRenderTarget(GfxTexture* colorTarget, GfxTexture* depthStencilTarget = nullptr);
+        void SetRenderTargets(uint32_t numColorTargets, GfxTexture* const* colorTargets, GfxTexture* depthStencilTarget);
         void ClearRenderTargets(GfxClearFlags flags = GfxClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
         void ClearColorTarget(uint32_t index, const float color[4] = DirectX::Colors::Black);
         void ClearDepthStencilTarget(float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);

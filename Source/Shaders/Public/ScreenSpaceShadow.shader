@@ -33,8 +33,7 @@ Shader "ScreenSpaceShadow"
 
         float4 frag(Varyings input) : SV_Target
         {
-            int3 location = int3(input.positionCS.xy, 0);
-            GBufferData gbuffer = LoadGBufferData(location);
+            GBufferData gbuffer = LoadGBufferData(input.positionCS.xy);
 
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
             float4 shadowCoord = TransformWorldToShadowCoord(positionWS);

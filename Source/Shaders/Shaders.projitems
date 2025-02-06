@@ -20,6 +20,7 @@
     <None Include="$(MSBuildThisFileDirectory)Public\DeferredLight.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Gizmos.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\Shadow.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)public\SSAO.compute" />
     <None Include="$(MSBuildThisFileDirectory)README.md" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\ScreenSpaceShadow.shader" />
