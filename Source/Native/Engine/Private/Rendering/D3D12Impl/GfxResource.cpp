@@ -4,6 +4,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Debug.h"
+#include <stdexcept>
 
 using namespace Microsoft::WRL;
 
@@ -13,6 +14,7 @@ namespace march
         : m_Device(device)
         , m_Resource(resource)
         , m_State(state)
+        , m_IsStateLocked(false)
         , m_Allocator(nullptr)
         , m_Allocation{}
     {
@@ -22,6 +24,7 @@ namespace march
         : m_Device(allocator->GetDevice())
         , m_Resource(resource)
         , m_State(state)
+        , m_IsStateLocked(false)
         , m_Allocator(allocator)
         , m_Allocation(allocation)
     {
@@ -61,6 +64,21 @@ namespace march
         }
 
         return false;
+    }
+
+    void GfxResource::SetState(D3D12_RESOURCE_STATES state)
+    {
+        if (m_IsStateLocked)
+        {
+            throw GfxException("Resource state is locked");
+        }
+
+        m_State = state;
+    }
+
+    void GfxResource::LockState(bool lock)
+    {
+        m_IsStateLocked = lock;
     }
 
     GfxResourceAllocator::GfxResourceAllocator(GfxDevice* device, D3D12_HEAP_TYPE heapType, D3D12_HEAP_FLAGS heapFlags)

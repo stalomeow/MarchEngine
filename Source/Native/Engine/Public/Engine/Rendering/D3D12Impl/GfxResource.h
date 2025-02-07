@@ -22,28 +22,28 @@ namespace march
 
     class GfxResource final : public ThreadSafeRefCountedObject
     {
+        GfxDevice* m_Device;
+        Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource;
+        D3D12_RESOURCE_STATES m_State;
+        bool m_IsStateLocked;
+
+        GfxResourceAllocator* m_Allocator; // 可以没有
+        GfxResourceAllocation m_Allocation;
+
     public:
         GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
         GfxResource(GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
         ~GfxResource();
 
         bool IsHeapCpuAccessible() const;
+        void SetState(D3D12_RESOURCE_STATES state);
+        void LockState(bool lock);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxResourceAllocator* GetAllocator() const { return m_Allocator; }
         ID3D12Resource* GetD3DResource() const { return m_Resource.Get(); }
         D3D12_RESOURCE_DESC GetD3DResourceDesc() const { return m_Resource->GetDesc(); }
-
         D3D12_RESOURCE_STATES GetState() const { return m_State; }
-        void SetState(D3D12_RESOURCE_STATES state) { m_State = state; }
-
-    private:
-        GfxDevice* m_Device;
-        Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource;
-        D3D12_RESOURCE_STATES m_State;
-
-        GfxResourceAllocator* m_Allocator; // 可以没有
-        GfxResourceAllocation m_Allocation;
     };
 
     class GfxResourceAllocator

@@ -574,7 +574,9 @@ namespace march
             UINT64 pageWidth = static_cast<UINT64>(sizeInBytes);
             std::string pageName = m_Allocator->GetName() + "Page";
             D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
-            m_Pages.emplace_back(pageAllocator->Allocate(pageName, &CD3DX12_RESOURCE_DESC::Buffer(pageWidth), pageState));
+            RefCountPtr<GfxResource>& page = m_Pages.emplace_back(
+                pageAllocator->Allocate(pageName, &CD3DX12_RESOURCE_DESC::Buffer(pageWidth), pageState));
+            page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
         };
 
         m_Allocator = std::make_unique<MultiBuddyAllocator>(name, desc.MinBlockSize, desc.DefaultMaxBlockSize, appendPageFunc);
@@ -652,7 +654,9 @@ namespace march
 
                 UINT64 pageWidth = static_cast<UINT64>(sizeInBytes);
                 D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
-                pages.emplace_back(allocator->Allocate(pageName, &CD3DX12_RESOURCE_DESC::Buffer(pageWidth), pageState));
+                RefCountPtr<GfxResource>& page = pages.emplace_back(
+                    allocator->Allocate(pageName, &CD3DX12_RESOURCE_DESC::Buffer(pageWidth), pageState));
+                page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
             }
 
             return pages.size() - 1;

@@ -833,6 +833,8 @@ namespace march
             0, static_cast<uint32_t>(subresources.size()), subresources.data());
         context->TransitionResource(GetUnderlyingResource(), D3D12_RESOURCE_STATE_GENERIC_READ); // 方便后续读取，尤其是 AsyncCompute
         context->SubmitAndRelease().WaitOnCpu();
+
+        GetUnderlyingResource()->LockState(true); // 外部导入的资源，始终保持 GENERIC_READ，不允许修改状态
     }
 
     GfxRenderTexture::GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocStrategy allocationStrategy)
