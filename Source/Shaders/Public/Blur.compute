@@ -1,0 +1,90 @@
+#pragma kernel HBlurMain
+#pragma kernel VBlurMain
+
+#define N      256
+#define RADIUS 5
+
+static const float _Weights[1 + 2 * RADIUS] =
+{
+    1.4867195248729356e-06,
+    0.00013383022667753645,
+    0.00443184844216086,
+    0.053990966881377785,
+    0.24197072616925525,
+    0.39894228312200725,
+    0.24197072616925525,
+    0.053990966881377785,
+    0.00443184844216086,
+    0.00013383022667753645,
+    1.4867195248729356e-06
+};
+
+Texture2D _Input;
+RWTexture2D<float4> _Output;
+groupshared float4 _ColorCache[N + 2 * RADIUS];
+
+[numthreads(N, 1, 1)]
+void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
+{
+    uint width, height;
+    _Input.GetDimensions(width, height);
+
+    if (gtid.x < RADIUS)
+    {
+        uint x = max(0, dtid.x - RADIUS);
+        _ColorCache[gtid.x] = _Input[uint2(x, dtid.y)];
+    }
+
+    if (gtid.x >= N - RADIUS)
+    {
+        uint x = min(width - 1, dtid.x + RADIUS);
+        _ColorCache[gtid.x + 2 * RADIUS] = _Input[uint2(x, dtid.y)];
+    }
+
+    _ColorCache[gtid.x + RADIUS] = _Input[min(dtid.xy, uint2(width - 1, height - 1))];
+
+    GroupMemoryBarrierWithGroupSync();
+
+    float4 result = 0;
+
+    [unroll]
+    for (int i = -RADIUS; i <= RADIUS; ++i)
+    {
+        result += _Weights[RADIUS + i] * _ColorCache[gtid.x + RADIUS + i];
+    }
+
+    _Output[dtid.xy] = result;
+}
+
+[numthreads(1, N, 1)]
+void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
+{
+    uint width, height;
+    _Input.GetDimensions(width, height);
+
+    if (gtid.y < RADIUS)
+    {
+        uint y = max(0, dtid.y - RADIUS);
+        _ColorCache[gtid.y] = _Input[uint2(dtid.x, y)];
+    }
+
+    if (gtid.y >= N - RADIUS)
+    {
+        uint y = min(height - 1, dtid.y + RADIUS);
+        _ColorCache[gtid.y + 2 * RADIUS] = _Input[uint2(dtid.x, y)];
+    }
+
+    _ColorCache[gtid.y + RADIUS] = _Input[min(dtid.xy, uint2(width - 1, height - 1))];
+
+    GroupMemoryBarrierWithGroupSync();
+
+    float4 result = 0;
+
+    [unroll]
+    for (int i = -RADIUS; i <= RADIUS; ++i)
+    {
+        result += _Weights[RADIUS + i] * _ColorCache[gtid.y + RADIUS + i];
+    }
+
+    _Output[dtid.xy] = result;
+}

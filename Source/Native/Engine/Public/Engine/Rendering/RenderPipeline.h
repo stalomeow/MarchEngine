@@ -82,6 +82,7 @@ namespace march
             const BufferHandle& cbLight,
             const TextureHandle& colorTarget,
             const TextureHandle& depthStencilTarget,
+            const TextureHandle& ssaoMap,
             const std::vector<TextureHandle>& gBuffers,
             const TextureHandle& screenSpaceShadowMap);
         TextureHandle DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);

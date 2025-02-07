@@ -408,8 +408,8 @@ namespace march
 
         const GfxBufferDesc& GetDesc() const { return m_Manager->GetBufferDesc(m_ResourceIndex); }
 
-        BufferElementHandle GetElementAs(int32 aliasId, GfxBufferElement element) const;
-        BufferElementHandle GetElementAs(const std::string& aliasName, GfxBufferElement element) const;
+        BufferElementHandle GetElementAs(int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData) const;
+        BufferElementHandle GetElementAs(const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData) const;
         BufferElementHandle GetElement(GfxBufferElement element) const;
         operator BufferElementHandle() const;
     };
@@ -442,8 +442,8 @@ namespace march
 
         const GfxTextureDesc& GetDesc() const { return m_Manager->GetTextureDesc(m_ResourceIndex); }
 
-        TextureElementHandle GetElementAs(int32 aliasId, GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
-        TextureElementHandle GetElementAs(const std::string& aliasName, GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
+        TextureElementHandle GetElementAs(int32 aliasId, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0) const;
+        TextureElementHandle GetElementAs(const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0) const;
         TextureElementHandle GetElement(GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
         operator TextureElementHandle() const;
     };

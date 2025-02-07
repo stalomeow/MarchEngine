@@ -54,9 +54,9 @@ float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
     return reflectPercent;
 }
 
-float3 BlinnPhong(float3 positionWS, float3 normalWS, float3 viewDirWS, float3 diffuseAlbedo, float3 fresnelR0, float shininess)
+float3 BlinnPhong(float3 positionWS, float3 normalWS, float3 viewDirWS, float3 diffuseAlbedo, float3 fresnelR0, float shininess, float ao)
 {
-    float3 result = 0.4 * diffuseAlbedo;
+    float3 result = ao * 0.4 * diffuseAlbedo;
     float m = shininess * 256.0;
 
     for (int i = 0; i < _LightCount; i++)

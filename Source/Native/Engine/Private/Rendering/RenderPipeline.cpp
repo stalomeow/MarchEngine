@@ -66,7 +66,7 @@ namespace march
             TextureHandle shadowMap = DrawShadowCasters(shadowMatrix);
             TextureHandle sssMap = ScreenSpaceShadow(cbCamera, shadowMatrix, colorTarget, gBuffers, shadowMap);
 
-            DeferredLighting(cbCamera, cbLight, colorTarget, depthStencilTarget, gBuffers, sssMap);
+            DeferredLighting(cbCamera, cbLight, colorTarget, depthStencilTarget, ssaoMap, gBuffers, sssMap);
             DrawSkybox(cbCamera, colorTarget, depthStencilTarget);
 
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
@@ -184,6 +184,7 @@ namespace march
         const BufferHandle& cbLight,
         const TextureHandle& colorTarget,
         const TextureHandle& depthStencilTarget,
+        const TextureHandle& ssaoMap,
         const std::vector<TextureHandle>& gBuffers,
         const TextureHandle& screenSpaceShadowMap)
     {
@@ -203,6 +204,7 @@ namespace march
 
         builder.In(cbCamera);
         builder.In(cbLight);
+        builder.In(ssaoMap.GetElementAs("_AOMap"));
 
         builder.SetColorTarget(colorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(depthStencilTarget);
@@ -419,10 +421,10 @@ namespace march
         const std::vector<TextureHandle>& gBuffers)
     {
         SSAOConstants ssaoConsts{};
-        ssaoConsts.OcclusionRadius = 0.5f;
-        ssaoConsts.OcclusionFadeStart = 0.2f;
-        ssaoConsts.OcclusionFadeEnd = 1.0f;
-        ssaoConsts.SurfaceEpsilon = 0.05f;
+        ssaoConsts.OcclusionRadius = 0.25f;
+        ssaoConsts.OcclusionFadeStart = 0.08f;
+        ssaoConsts.OcclusionFadeEnd = 0.8f;
+        ssaoConsts.SurfaceEpsilon = 0.02f;
 
         GfxBufferDesc ssaoCbDesc{};
         ssaoCbDesc.Stride = sizeof(SSAOConstants);
@@ -437,16 +439,17 @@ namespace march
         ssaoMapDesc.Format = GfxTextureFormat::R8_UNorm;
         ssaoMapDesc.Flags = GfxTextureFlags::UnorderedAccess;
         ssaoMapDesc.Dimension = GfxTextureDimension::Tex2D;
-        ssaoMapDesc.Width = static_cast<uint32_t>(ceil(gBuffers[0].GetDesc().Width * 0.25f));
-        ssaoMapDesc.Height = static_cast<uint32_t>(ceil(gBuffers[0].GetDesc().Height * 0.25f));
+        ssaoMapDesc.Width = static_cast<uint32_t>(ceil(gBuffers[0].GetDesc().Width * 0.5f));
+        ssaoMapDesc.Height = static_cast<uint32_t>(ceil(gBuffers[0].GetDesc().Height * 0.5f));
         ssaoMapDesc.DepthOrArraySize = 1;
         ssaoMapDesc.MSAASamples = 1;
-        ssaoMapDesc.Filter = GfxTextureFilterMode::Point;
+        ssaoMapDesc.Filter = GfxTextureFilterMode::Bilinear;
         ssaoMapDesc.Wrap = GfxTextureWrapMode::Clamp;
         ssaoMapDesc.MipmapBias = 0;
 
         static int32 ssaoMapId = ShaderUtils::GetIdFromString("_SSAOMap");
         TextureHandle ssaoMap = m_RenderGraph->RequestTexture(ssaoMapId, ssaoMapDesc);
+        TextureHandle ssaoMap1 = m_RenderGraph->RequestTexture(ssaoMapId, ssaoMapDesc);
 
         static int32 randVecMapId = ShaderUtils::GetIdFromString("_RandomVecMap");
         TextureHandle randVecMap = m_RenderGraph->ImportTexture(randVecMapId, m_SSAORandomVectorMap.get());
@@ -469,6 +472,56 @@ namespace march
         builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
         {
             std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("SSAOMain");
+
+            uint32_t groupSize[3]{};
+            m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
+
+            uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
+            uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
+            context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
+        });
+
+        builder = m_RenderGraph->AddPass("SSAOBlur1");
+
+        builder.AllowPassCulling(false);
+        builder.EnableAsyncCompute(true);
+
+        builder.In(ssaoMap.GetElementAs("_Input"));
+        builder.Out(ssaoMap1.GetElementAs("_Output"));
+
+        for (const TextureHandle& tex : gBuffers)
+        {
+            builder.In(tex);
+        }
+
+        builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
+        {
+            std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("HBlurMain");
+
+            uint32_t groupSize[3]{};
+            m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
+
+            uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
+            uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
+            context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
+        });
+
+        builder = m_RenderGraph->AddPass("SSAOBlur2");
+
+        builder.AllowPassCulling(false);
+        builder.EnableAsyncCompute(true);
+
+        builder.In(ssaoMap1.GetElementAs("_Input"));
+        builder.Out(ssaoMap.GetElementAs("_Output"));
+
+        for (const TextureHandle& tex : gBuffers)
+        {
+            builder.In(tex);
+        }
+
+        builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
+        {
+            std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("VBlurMain");
 
             uint32_t groupSize[3]{};
             m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
