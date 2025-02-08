@@ -30,32 +30,32 @@ namespace march
         }, m_Resource);
     }
 
-    __forceinline static bool IsInGenericReadState(RefCountPtr<GfxResource> resource)
+    __forceinline static bool AllowGenericRead(RefCountPtr<GfxResource> resource)
     {
-        D3D12_RESOURCE_STATES state = resource->GetState();
-        return (state & D3D12_RESOURCE_STATE_GENERIC_READ) == D3D12_RESOURCE_STATE_GENERIC_READ;
+        return (resource->GetState() & D3D12_RESOURCE_STATE_GENERIC_READ) == D3D12_RESOURCE_STATE_GENERIC_READ
+            || !resource->IsStateLocked(); // 允许把状态改为 GENERIC_READ 的也算
     }
 
-    __forceinline static bool IsInGenericReadState(GfxBuffer* buffer)
+    __forceinline static bool AllowGenericRead(GfxBuffer* buffer)
     {
-        return IsInGenericReadState(buffer->GetUnderlyingResource());
+        return AllowGenericRead(buffer->GetUnderlyingResource());
     }
 
-    __forceinline static bool IsInGenericReadState(GfxTexture* texture)
+    __forceinline static bool AllowGenericRead(GfxTexture* texture)
     {
-        return IsInGenericReadState(texture->GetUnderlyingResource());
+        return AllowGenericRead(texture->GetUnderlyingResource());
     }
 
     bool RenderGraphResourceData::IsGenericallyReadable()
     {
-        // pool 中的资源是按需分配的（此处可能还没分配），且状态不会是 D3D12_RESOURCE_STATE_GENERIC_READ
+        // pool 中的资源是按需分配的（此处可能还没分配），且状态是可以转为 D3D12_RESOURCE_STATE_GENERIC_READ 的
 
         return std::visit(overloaded{
-            [](RenderGraphResourceTempBuffer& b) -> bool { return IsInGenericReadState(&b.Buffer); },
-            [](RenderGraphResourcePooledBuffer& b) -> bool { return false; },
-            [](RenderGraphResourceExternalBuffer& b) -> bool {return IsInGenericReadState(b.Buffer); },
-            [](RenderGraphResourcePooledTexture& t) -> bool { return false; },
-            [](RenderGraphResourceExternalTexture& t) -> bool {return IsInGenericReadState(t.Texture); },
+            [](RenderGraphResourceTempBuffer& b) -> bool { return AllowGenericRead(&b.Buffer); },
+            [](RenderGraphResourcePooledBuffer& b) -> bool { return true; },
+            [](RenderGraphResourceExternalBuffer& b) -> bool {return AllowGenericRead(b.Buffer); },
+            [](RenderGraphResourcePooledTexture& t) -> bool { return true; },
+            [](RenderGraphResourceExternalTexture& t) -> bool {return AllowGenericRead(t.Texture); },
             [](auto&&) -> bool { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }

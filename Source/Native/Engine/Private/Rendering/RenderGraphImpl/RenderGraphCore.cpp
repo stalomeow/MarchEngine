@@ -21,7 +21,7 @@ namespace march
 
             if (producerPassIndex)
             {
-                m_Graph->m_Passes[*producerPassIndex].NextPassIndices.push_back(m_PassIndex);
+                m_Graph->m_Passes[*producerPassIndex].NextPassIndices.insert(m_PassIndex);
             }
             else if (!resourceManager->IsExternalResource(resourceIndex))
             {
@@ -328,7 +328,7 @@ namespace march
         // 如果后面的 async compute 执行完了，那前面的肯定也执行完了
         // 因为 compile 时是从后往前遍历的，所以第一次赋给 PassIndexToWait 的值一定是最大的，不用再更新
 
-        if (deadlineIndexExclusive == m_Passes.size())
+        if (deadlineIndexExclusive >= m_Passes.size())
         {
             if (!m_PassIndexToWaitFallback)
             {
@@ -442,15 +442,15 @@ namespace march
 
         for (size_t resourceIndex : pass.ResourcesIn)
         {
-            // Generic Read 的资源之前 Compile 时已经检查过了，且保证不会产生 Resource Barrier
-            if (m_ResourceManager->IsGenericallyReadableResource(resourceIndex))
+            // 如果既读又写，那么当作写，在下面一个循环中处理
+            if (pass.ResourcesOut.count(resourceIndex) > 0)
             {
                 continue;
             }
 
             auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
 
-            if ((res->GetState() & disallowedComputeStates) != 0)
+            if ((res->GetState() & D3D12_RESOURCE_STATE_GENERIC_READ) != D3D12_RESOURCE_STATE_GENERIC_READ)
             {
                 if (!hasValidDirectContext)
                 {
@@ -458,7 +458,8 @@ namespace march
                     hasValidDirectContext = true;
                 }
 
-                context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_COMMON);
+                // 只读的资源都转成 GENERIC_READ，避免两个并行的 pass 中出现 Resource Barrier
+                context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_GENERIC_READ);
             }
         }
 
@@ -474,6 +475,7 @@ namespace march
                     hasValidDirectContext = true;
                 }
 
+                // 需要写的资源都转成 COMMON，避免 Resource Barrier 中出现 disallowedComputeStates
                 context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_COMMON);
             }
         }

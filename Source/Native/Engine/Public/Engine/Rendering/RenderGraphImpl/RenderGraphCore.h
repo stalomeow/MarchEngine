@@ -84,9 +84,9 @@ namespace march
         bool IsVisited = false;
         bool IsCulled = false;
 
-        std::vector<size_t> NextPassIndices{}; // 后继结点
-        std::vector<size_t> ResourcesBorn{};   // 生命周期从本结点开始的资源
-        std::vector<size_t> ResourcesDead{};   // 生命周期到本结点结束的资源
+        std::unordered_set<size_t> NextPassIndices{}; // 后继结点
+        std::vector<size_t> ResourcesBorn{};          // 生命周期从本结点开始的资源
+        std::vector<size_t> ResourcesDead{};          // 生命周期到本结点结束的资源
 
         bool IsAsyncCompute = false;
         GfxSyncPoint SyncPoint{};                             // 如果当前 pass 是 async-compute，则会产生一个 sync point

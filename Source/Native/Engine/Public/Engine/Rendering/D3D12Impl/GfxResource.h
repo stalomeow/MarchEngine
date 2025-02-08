@@ -44,6 +44,7 @@ namespace march
         ID3D12Resource* GetD3DResource() const { return m_Resource.Get(); }
         D3D12_RESOURCE_DESC GetD3DResourceDesc() const { return m_Resource->GetDesc(); }
         D3D12_RESOURCE_STATES GetState() const { return m_State; }
+        bool IsStateLocked() const { return m_IsStateLocked; }
     };
 
     class GfxResourceAllocator
