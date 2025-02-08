@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Engine/Ints.h"
+#include "Engine/Misc/StringUtils.h"
 #include "Engine/Memory/RefCounting.h"
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
 #include "Engine/Rendering/D3D12Impl/GfxTexture.h"
+#include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
 #include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
@@ -421,6 +423,14 @@ namespace march
                     {
                         SetSrvCbvBuffer(i, buf.RootParameterIndex, buffer, element, buf.IsConstantBuffer);
                     }
+                    else if (buf.IsConstantBuffer)
+                    {
+                        throw GfxException(StringUtils::Format("Failed to find root cbv buffer parameter '{}'", ShaderUtils::GetStringFromId(buf.Id)));
+                    }
+                    else
+                    {
+                        throw GfxException(StringUtils::Format("Failed to find root srv buffer parameter '{}'", ShaderUtils::GetStringFromId(buf.Id)));
+                    }
                 }
             }
         }
@@ -443,6 +453,10 @@ namespace march
                             SetSampler(i, *tex.DescriptorTableSlotSampler, texture);
                         }
                     }
+                    else
+                    {
+                        throw GfxException(StringUtils::Format("Failed to find root srv texture parameter '{}'", ShaderUtils::GetStringFromId(tex.Id)));
+                    }
                 }
             }
         }
@@ -459,6 +473,10 @@ namespace march
                     if (GfxBuffer* buffer = fn(buf, &element))
                     {
                         SetUavBuffer(i, buf.DescriptorTableSlot, buffer, element);
+                    }
+                    else
+                    {
+                        throw GfxException(StringUtils::Format("Failed to find root uav buffer parameter '{}'", ShaderUtils::GetStringFromId(buf.Id)));
                     }
                 }
             }
@@ -477,6 +495,10 @@ namespace march
                     if (GfxTexture* texture = fn(tex, &element, &mipSlice))
                     {
                         SetUavTexture(i, tex.DescriptorTableSlot, texture, element, mipSlice);
+                    }
+                    else
+                    {
+                        throw GfxException(StringUtils::Format("Failed to find root uav texture parameter '{}'", ShaderUtils::GetStringFromId(tex.Id)));
                     }
                 }
             }

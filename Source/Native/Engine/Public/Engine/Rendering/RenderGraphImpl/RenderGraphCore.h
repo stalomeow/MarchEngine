@@ -187,6 +187,21 @@ namespace march
         void ReleasePassResources(const RenderGraphPass& pass);
         void ExecutePasses();
 
+        class DeferredCleanup
+        {
+            RenderGraph* m_Graph;
+
+        public:
+            DeferredCleanup(RenderGraph* graph) : m_Graph(graph) {}
+
+            ~DeferredCleanup()
+            {
+                m_Graph->m_Passes.clear();
+                m_Graph->m_PassIndexToWaitFallback = std::nullopt;
+                m_Graph->m_ResourceManager->ClearResources();
+            }
+        };
+
     public:
         RenderGraphBuilder AddPass();
         RenderGraphBuilder AddPass(const std::string& name);
@@ -198,8 +213,8 @@ namespace march
         BufferHandle RequestBuffer(const std::string& name, const GfxBufferDesc& desc);
         BufferHandle RequestBuffer(int32 id, const GfxBufferDesc& desc);
 
-        BufferHandle RequestBufferWithInitialContent(const std::string& name, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
-        BufferHandle RequestBufferWithInitialContent(int32 id, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
+        BufferHandle RequestBufferWithContent(const std::string& name, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
+        BufferHandle RequestBufferWithContent(int32 id, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter = std::nullopt);
 
         TextureHandle ImportTexture(const std::string& name, GfxTexture* texture);
         TextureHandle ImportTexture(int32 id, GfxTexture* texture);

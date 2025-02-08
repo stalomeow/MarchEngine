@@ -115,7 +115,7 @@ namespace march
         desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
         static int32_t bufferId = ShaderUtils::GetIdFromString("cbCamera");
-        return m_RenderGraph->RequestBufferWithInitialContent(bufferId, desc, &consts);
+        return m_RenderGraph->RequestBufferWithContent(bufferId, desc, &consts);
     }
 
     BufferHandle RenderPipeline::CreateLightConstantBuffer()
@@ -140,7 +140,7 @@ namespace march
         desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
         static int32 bufferId = ShaderUtils::GetIdFromString("cbLight");
-        return m_RenderGraph->RequestBufferWithInitialContent(bufferId, desc, &consts);
+        return m_RenderGraph->RequestBufferWithContent(bufferId, desc, &consts);
     }
 
     void RenderPipeline::ClearAndDrawObjects(
@@ -350,7 +350,7 @@ namespace march
         ShadowConstants consts{ shadowMatrix };
 
         static int32_t bufferId = ShaderUtils::GetIdFromString("cbShadow");
-        BufferHandle buffer = m_RenderGraph->RequestBufferWithInitialContent(bufferId, bufDesc, &consts);
+        BufferHandle buffer = m_RenderGraph->RequestBufferWithContent(bufferId, bufDesc, &consts);
 
         auto builder = m_RenderGraph->AddPass("ScreenSpaceShadow");
 
@@ -433,7 +433,7 @@ namespace march
         ssaoCbDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
         static int32 ssaoCbId = ShaderUtils::GetIdFromString("cbSSAO");
-        BufferHandle ssaoCb = m_RenderGraph->RequestBufferWithInitialContent(ssaoCbId, ssaoCbDesc, &ssaoConsts);
+        BufferHandle ssaoCb = m_RenderGraph->RequestBufferWithContent(ssaoCbId, ssaoCbDesc, &ssaoConsts);
 
         GfxTextureDesc ssaoMapDesc{};
         ssaoMapDesc.Format = GfxTextureFormat::R8_UNorm;

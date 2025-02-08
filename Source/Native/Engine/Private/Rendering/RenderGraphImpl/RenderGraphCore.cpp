@@ -682,36 +682,43 @@ namespace march
     {
         RenderGraphContext context{};
 
-        for (RenderGraphPass& pass : m_Passes)
+        try
         {
-            if (pass.IsCulled)
+            for (RenderGraphPass& pass : m_Passes)
             {
-                continue;
-            }
-
-            RequestPassResources(pass);
-            GfxCommandContext* cmd = EnsurePassContext(context, pass);
-
-            cmd->BeginEvent(pass.Name);
-            {
-                SetPassVariables(cmd, pass);
-                SetPassRenderStates(cmd, pass);
-
-                if (pass.RenderFunc)
+                if (pass.IsCulled)
                 {
-                    pass.RenderFunc(context);
+                    continue;
                 }
 
-                cmd->UnsetBuffers();
-                cmd->UnsetTextures();
-                ReleasePassResources(pass);
-            }
-            cmd->EndEvent();
+                RequestPassResources(pass);
+                GfxCommandContext* cmd = EnsurePassContext(context, pass);
 
-            if (pass.IsAsyncCompute)
-            {
-                pass.SyncPoint = context.UncheckedSubmit();
+                cmd->BeginEvent(pass.Name);
+                {
+                    SetPassVariables(cmd, pass);
+                    SetPassRenderStates(cmd, pass);
+
+                    if (pass.RenderFunc)
+                    {
+                        pass.RenderFunc(context);
+                    }
+
+                    cmd->UnsetBuffers();
+                    cmd->UnsetTextures();
+                    ReleasePassResources(pass);
+                }
+                cmd->EndEvent();
+
+                if (pass.IsAsyncCompute)
+                {
+                    pass.SyncPoint = context.UncheckedSubmit();
+                }
             }
+        }
+        catch (std::exception& e)
+        {
+            LOG_ERROR("RenderGraphExecutionError: {}", e.what());
         }
 
         context.Submit();
@@ -719,12 +726,14 @@ namespace march
         // 保证所有 async compute pass 都执行完
         if (m_PassIndexToWaitFallback)
         {
-            GfxCommandManager* cmdManager = GetGfxDevice()->GetCommandManager();
-            GfxCommandQueue* cmdQueue = cmdManager->GetQueue(GfxCommandType::Direct);
-
             const GfxSyncPoint& syncPoint = m_Passes[*m_PassIndexToWaitFallback].SyncPoint;
-            assert(syncPoint.IsValid());
-            cmdQueue->WaitOnGpu(syncPoint);
+
+            if (syncPoint.IsValid())
+            {
+                GfxCommandManager* cmdManager = GetGfxDevice()->GetCommandManager();
+                GfxCommandQueue* cmdQueue = cmdManager->GetQueue(GfxCommandType::Direct);
+                cmdQueue->WaitOnGpu(syncPoint);
+            }
         }
     }
 
@@ -745,30 +754,16 @@ namespace march
 
     void RenderGraph::CompileAndExecute()
     {
-        // TODO error guard
+        DeferredCleanup cleanup{ this };
 
-        try
+        CompilePasses();
+
+        for (IRenderGraphCompiledEventListener* listener : g_GraphCompiledEventListeners)
         {
-            CompilePasses();
-
-            for (IRenderGraphCompiledEventListener* listener : g_GraphCompiledEventListeners)
-            {
-                listener->OnGraphCompiled(*this, m_Passes);
-            }
-
-            ExecutePasses();
-        }
-        catch (std::exception& e)
-        {
-            LOG_ERROR("render graph error: {}", e.what());
+            listener->OnGraphCompiled(*this, m_Passes);
         }
 
-        // TODO check resource leaks
-
-        // Clean up
-        m_Passes.clear();
-        m_PassIndexToWaitFallback = std::nullopt;
-        m_ResourceManager->ClearResources();
+        ExecutePasses();
     }
 
     void RenderGraph::AddGraphCompiledEventListener(IRenderGraphCompiledEventListener* listener)
@@ -801,12 +796,12 @@ namespace march
         return m_ResourceManager->CreateBuffer(id, desc, nullptr, std::nullopt);
     }
 
-    BufferHandle RenderGraph::RequestBufferWithInitialContent(const std::string& name, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
+    BufferHandle RenderGraph::RequestBufferWithContent(const std::string& name, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
     {
-        return RequestBufferWithInitialContent(ShaderUtils::GetIdFromString(name), desc, pData, counter);
+        return RequestBufferWithContent(ShaderUtils::GetIdFromString(name), desc, pData, counter);
     }
 
-    BufferHandle RenderGraph::RequestBufferWithInitialContent(int32 id, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
+    BufferHandle RenderGraph::RequestBufferWithContent(int32 id, const GfxBufferDesc& desc, const void* pData, std::optional<uint32_t> counter)
     {
         return m_ResourceManager->CreateBuffer(id, desc, pData, counter);
     }
