@@ -258,7 +258,8 @@ namespace march
 
                     for (int32_t k = 0; k < p.Keywords.size(); k++)
                     {
-                        assert(pShader->m_KeywordSpace->RegisterKeyword(p.Keywords[k]));
+                        bool result = pShader->m_KeywordSpace->RegisterKeyword(p.Keywords[k]);
+                        assert(result);
                         program->m_Keywords.EnableKeyword(p.Keywords[k]);
                     }
 
@@ -782,7 +783,8 @@ namespace march
 
                     for (int32_t k = 0; k < p.Keywords.size(); k++)
                     {
-                        assert(s->m_KeywordSpace->RegisterKeyword(p.Keywords[k]));
+                        bool result = s->m_KeywordSpace->RegisterKeyword(p.Keywords[k]);
+                        assert(result);
                         program->m_Keywords.EnableKeyword(p.Keywords[k]);
                     }
 

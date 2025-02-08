@@ -610,7 +610,8 @@ namespace march
             {
                 if (!kw.empty())
                 {
-                    assert(context.KeywordSpace->RegisterKeyword(kw));
+                    bool result = context.KeywordSpace->RegisterKeyword(kw);
+                    assert(result);
                     program->m_Keywords.EnableKeyword(kw);
                 }
             }

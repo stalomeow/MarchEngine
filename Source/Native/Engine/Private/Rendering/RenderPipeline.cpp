@@ -454,9 +454,9 @@ namespace march
     {
         SSAOConstants ssaoConsts{};
         ssaoConsts.OcclusionRadius = 0.25f;
-        ssaoConsts.OcclusionFadeStart = 0.08f;
-        ssaoConsts.OcclusionFadeEnd = 0.8f;
-        ssaoConsts.SurfaceEpsilon = 0.02f;
+        ssaoConsts.OcclusionFadeStart = 0.02f;
+        ssaoConsts.OcclusionFadeEnd = 0.6f;
+        ssaoConsts.SurfaceEpsilon = 0.01f;
 
         GfxBufferDesc ssaoCbDesc{};
         ssaoCbDesc.Stride = sizeof(SSAOConstants);
