@@ -195,13 +195,7 @@ namespace march
             builder.In(tex);
         }
 
-        bool hasShadow = !m_Lights.empty() && !m_Renderers.empty();
-
-        if (hasShadow)
-        {
-            builder.In(screenSpaceShadowMap);
-        }
-
+        builder.In(screenSpaceShadowMap);
         builder.In(cbCamera);
         builder.In(cbLight);
         builder.In(ssaoMap.GetElementAs("_AOMap"));
@@ -216,33 +210,7 @@ namespace march
 
     TextureHandle RenderPipeline::DrawShadowCasters(XMFLOAT4X4& shadowMatrix)
     {
-        if (m_Lights.empty() || m_Renderers.empty())
-        {
-            shadowMatrix = MathUtils::Identity4x4();
-            return TextureHandle();
-        }
-
-        BoundingBox aabb = m_Renderers[0]->GetBounds();
-
-        BoundingSphere sphere = {};
-        BoundingSphere::CreateFromBoundingBox(sphere, aabb);
-
-        XMVECTOR forward = m_Lights[0]->GetTransform()->LoadForward();
-        XMVECTOR up = m_Lights[0]->GetTransform()->LoadUp();
-
-        XMVECTOR eyePos = XMLoadFloat3(&sphere.Center);
-        eyePos = XMVectorSubtract(eyePos, XMVectorScale(forward, sphere.Radius + 1));
-
-        XMFLOAT3 pos = {};
-        XMStoreFloat3(&pos, eyePos);
-
-        XMFLOAT4X4 view = {};
-        XMStoreFloat4x4(&view, XMMatrixLookToLH(eyePos, forward, up));
-
-        XMFLOAT4X4 proj = {};
-        XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(sphere.Radius * 2, sphere.Radius * 2, sphere.Radius * 2 + 1.0f, 1.0f));
-
-        BufferHandle cbCamera = CreateCameraConstantBuffer("ShadowCameraConstantBuffer", pos, view, proj);
+        BufferHandle cbCamera{};
 
         GfxTextureDesc desc = {};
         desc.Format = GfxTextureFormat::D24_UNorm_S8_UInt;
@@ -256,24 +224,70 @@ namespace march
         desc.Wrap = GfxTextureWrapMode::Clamp;
         desc.MipmapBias = 0.0f;
 
+        bool drawShadow;
+
+        if (m_Lights.empty() || m_Renderers.empty())
+        {
+            drawShadow = false;
+
+            shadowMatrix = MathUtils::Identity4x4();
+
+            desc.Width = 1;
+            desc.Height = 1;
+        }
+        else
+        {
+            drawShadow = true;
+
+            BoundingBox aabb = m_Renderers[0]->GetBounds();
+
+            BoundingSphere sphere = {};
+            BoundingSphere::CreateFromBoundingBox(sphere, aabb);
+
+            XMVECTOR forward = m_Lights[0]->GetTransform()->LoadForward();
+            XMVECTOR up = m_Lights[0]->GetTransform()->LoadUp();
+
+            XMVECTOR eyePos = XMLoadFloat3(&sphere.Center);
+            eyePos = XMVectorSubtract(eyePos, XMVectorScale(forward, sphere.Radius + 1));
+
+            XMFLOAT3 pos = {};
+            XMStoreFloat3(&pos, eyePos);
+
+            XMFLOAT4X4 view = {};
+            XMStoreFloat4x4(&view, XMMatrixLookToLH(eyePos, forward, up));
+
+            XMFLOAT4X4 proj = {};
+            XMStoreFloat4x4(&proj, XMMatrixOrthographicLH(sphere.Radius * 2, sphere.Radius * 2, sphere.Radius * 2 + 1.0f, 1.0f));
+
+            XMMATRIX vp = XMMatrixMultiply(XMLoadFloat4x4(&view), XMLoadFloat4x4(&proj)); // DirectX 用的行向量
+            XMMATRIX scale = XMMatrixScaling(0.5f, -0.5f, 1.0f);
+            XMMATRIX trans = XMMatrixTranslation(0.5f, 0.5f, 0.0f);
+
+            XMStoreFloat4x4(&shadowMatrix, XMMatrixMultiply(XMMatrixMultiply(vp, scale), trans)); // DirectX 用的行向量
+
+            cbCamera = CreateCameraConstantBuffer("ShadowCameraConstantBuffer", pos, view, proj);
+        }
+
         static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
         TextureHandle shadowMap = m_RenderGraph->RequestTexture(shadowMapId, desc);
 
         auto builder = m_RenderGraph->AddPass("DrawShadowCasters");
 
-        builder.In(cbCamera);
+        if (drawShadow)
+        {
+            builder.In(cbCamera);
+        }
+
         builder.SetDepthStencilTarget(shadowMap, RenderTargetInitMode::Clear);
         builder.SetDepthBias(GfxSettings::ShadowDepthBias, GfxSettings::ShadowSlopeScaledDepthBias, GfxSettings::ShadowDepthBiasClamp);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
-            context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
+            if (drawShadow)
+            {
+                context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
+            }
         });
 
-        XMMATRIX vp = XMMatrixMultiply(XMLoadFloat4x4(&view), XMLoadFloat4x4(&proj)); // DirectX 用的行向量
-        XMMATRIX scale = XMMatrixScaling(0.5f, -0.5f, 1.0f);
-        XMMATRIX trans = XMMatrixTranslation(0.5f, 0.5f, 0.0f);
-
-        XMStoreFloat4x4(&shadowMatrix, XMMatrixMultiply(XMMatrixMultiply(vp, scale), trans)); // DirectX 用的行向量
         return shadowMap;
     }
 
@@ -322,11 +336,6 @@ namespace march
         const std::vector<TextureHandle>& gBuffers,
         const TextureHandle& shadowMap)
     {
-        if (m_Lights.empty() || m_Renderers.empty())
-        {
-            return TextureHandle();
-        }
-
         GfxTextureDesc destDesc{};
         destDesc.Format = GfxTextureFormat::R8_UNorm;
         destDesc.Flags = GfxTextureFlags::None;
