@@ -175,6 +175,7 @@ namespace march
         builder.SetWireframe(wireframe);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            context.SetVariable(cbCamera);
             context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "GBuffer");
         });
     }
@@ -198,12 +199,22 @@ namespace march
         builder.In(screenSpaceShadowMap);
         builder.In(cbCamera);
         builder.In(cbLight);
-        builder.In(ssaoMap.GetElementAs("_AOMap"));
+        builder.In(ssaoMap);
 
         builder.SetColorTarget(colorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            context.SetVariable(screenSpaceShadowMap);
+            context.SetVariable(cbCamera);
+            context.SetVariable(cbLight);
+            context.SetVariable(ssaoMap, "_AOMap");
+
+            for (const TextureHandle& tex : gBuffers)
+            {
+                context.SetVariable(tex);
+            }
+
             context.DrawMesh(m_FullScreenTriangleMesh, 0, m_DeferredLitMaterial.get(), 0);
         });
     }
@@ -284,6 +295,7 @@ namespace march
         {
             if (drawShadow)
             {
+                context.SetVariable(cbCamera);
                 context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
             }
         });
@@ -300,6 +312,7 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            context.SetVariable(cbCamera);
             context.DrawMesh(m_SphereMesh, 0, m_SkyboxMaterial.get(), 0);
         });
     }
@@ -313,6 +326,7 @@ namespace march
         builder.SetDepthStencilTarget(depthStencilTarget);
         builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            context.SetVariable(cbCamera);
             context.DrawMesh(m_FullScreenTriangleMesh, 0, material, 0);
         });
     }
@@ -374,8 +388,17 @@ namespace march
 
         builder.AllowPassCulling(false);
         builder.SetColorTarget(dest, RenderTargetInitMode::Discard);
-        builder.SetRenderFunc([this](RenderGraphContext& context)
+        builder.SetRenderFunc([=](RenderGraphContext& context)
         {
+            context.SetVariable(cbCamera);
+            context.SetVariable(shadowMap);
+            context.SetVariable(buffer);
+
+            for (const TextureHandle& tex : gBuffers)
+            {
+                context.SetVariable(tex);
+            }
+
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_ScreenSpaceShadowMaterial.get(), 0);
         });
 
@@ -472,14 +495,25 @@ namespace march
         builder.In(ssaoCb);
         builder.In(randVecMap);
         builder.Out(ssaoMap);
+        builder.Out(ssaoMap1);
 
         for (const TextureHandle& tex : gBuffers)
         {
             builder.In(tex);
         }
 
-        builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
+        builder.SetRenderFunc([=, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
         {
+            context.SetVariable(cbCamera);
+            context.SetVariable(ssaoCb);
+            context.SetVariable(randVecMap);
+            context.SetVariable(ssaoMap);
+
+            for (const TextureHandle& tex : gBuffers)
+            {
+                context.SetVariable(tex);
+            }
+
             std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("SSAOMain");
 
             uint32_t groupSize[3]{};
@@ -488,55 +522,23 @@ namespace march
             uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
             uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
             context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
-        });
 
-        builder = m_RenderGraph->AddPass("SSAOBlur1");
+            context.SetVariable(ssaoMap, "_Input");
+            context.SetVariable(ssaoMap1, "_Output");
 
-        builder.AllowPassCulling(false);
-        builder.EnableAsyncCompute(true);
-
-        builder.In(ssaoMap.GetElementAs("_Input"));
-        builder.Out(ssaoMap1.GetElementAs("_Output"));
-
-        for (const TextureHandle& tex : gBuffers)
-        {
-            builder.In(tex);
-        }
-
-        builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
-        {
-            std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("HBlurMain");
-
-            uint32_t groupSize[3]{};
+            kernelIndex = m_SSAOShader->FindKernel("HBlurMain");
             m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
-
-            uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
-            uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
+            countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
+            countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
             context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
-        });
 
-        builder = m_RenderGraph->AddPass("SSAOBlur2");
+            context.SetVariable(ssaoMap1, "_Input");
+            context.SetVariable(ssaoMap, "_Output");
 
-        builder.AllowPassCulling(false);
-        builder.EnableAsyncCompute(true);
-
-        builder.In(ssaoMap1.GetElementAs("_Input"));
-        builder.Out(ssaoMap.GetElementAs("_Output"));
-
-        for (const TextureHandle& tex : gBuffers)
-        {
-            builder.In(tex);
-        }
-
-        builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
-        {
-            std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("VBlurMain");
-
-            uint32_t groupSize[3]{};
+            kernelIndex = m_SSAOShader->FindKernel("VBlurMain");
             m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
-
-            uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
-            uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
+            countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
+            countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
             context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
         });
 

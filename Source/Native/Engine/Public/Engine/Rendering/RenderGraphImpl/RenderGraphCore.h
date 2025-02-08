@@ -6,7 +6,6 @@
 #include <directx/d3d12.h>
 #include <vector>
 #include <unordered_set>
-#include <unordered_map>
 #include <memory>
 #include <string>
 #include <optional>
@@ -44,12 +43,6 @@ namespace march
         uint8_t ClearStencilValue = 0;
     };
 
-    struct RenderGraphPassVariable
-    {
-        size_t ResourceIndex;
-        RenderGraphResourceVariableDesc Desc;
-    };
-
     struct RenderGraphPass final
     {
         // -----------------------
@@ -64,8 +57,6 @@ namespace march
 
         std::unordered_set<size_t> ResourcesIn{};  // 所有输入的资源，包括 render target
         std::unordered_set<size_t> ResourcesOut{}; // 所有输出的资源，包括 render target
-
-        std::unordered_map<int32, RenderGraphPassVariable> Variables{}; // 用于设置 shader 中的变量
 
         uint32_t NumColorTargets = 0;
         RenderGraphPassColorTarget ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
@@ -109,17 +100,8 @@ namespace march
 
         RenderGraphPass& GetPass() const;
 
-        void InResource(
-            RenderGraphResourceManager* resourceManager,
-            size_t resourceIndex,
-            const std::optional<RenderGraphResourceVariableDesc>& variableDesc);
-
-        void OutResource(
-            RenderGraphResourceManager* resourceManager,
-            size_t resourceIndex,
-            const std::optional<RenderGraphResourceVariableDesc>& variableDesc);
-
-        void SetResourceVariable(size_t resourceIndex, const RenderGraphResourceVariableDesc& variableDesc);
+        void InResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex);
+        void OutResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex);
 
     public:
         RenderGraphBuilder(RenderGraph* graph, size_t passIndex) : m_Graph(graph), m_PassIndex(passIndex) {}
@@ -128,22 +110,22 @@ namespace march
         void EnableAsyncCompute(bool value);
 
         // 表示需要读取前面 pass 写入 buffer 的数据
-        void In(const BufferElementHandle& buffer);
+        void In(const BufferHandle& buffer);
 
         // 表示需要写入 buffer，当前和之后的 pass 可以读取
-        void Out(const BufferElementHandle& buffer);
+        void Out(const BufferHandle& buffer);
 
         // Shortcut for In and Out
-        void InOut(const BufferElementHandle& buffer);
+        void InOut(const BufferHandle& buffer);
 
         // 表示需要读取前面 pass 写入 texture 的数据
-        void In(const TextureElementHandle& texture);
+        void In(const TextureHandle& texture);
 
         // 表示需要写入 texture，当前和之后的 pass 可以读取
-        void Out(const TextureElementHandle& texture);
+        void Out(const TextureHandle& texture);
 
         // Shortcut for In and Out
-        void InOut(const TextureElementHandle& texture);
+        void InOut(const TextureHandle& texture);
 
         void SetColorTarget(const TextureHandle& texture, RenderTargetInitMode initMode, const float color[4] = DirectX::Colors::Black);
         void SetColorTarget(const TextureHandle& texture, uint32_t index = 0, RenderTargetInitMode initMode = RenderTargetInitMode::Load, const float color[4] = DirectX::Colors::Black);
@@ -182,7 +164,6 @@ namespace march
         void RequestPassResources(const RenderGraphPass& pass);
         void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass);
         GfxCommandContext* EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass);
-        void SetPassVariables(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ReleasePassResources(const RenderGraphPass& pass);
         void ExecutePasses();
@@ -239,6 +220,14 @@ namespace march
         void Submit();
 
     public:
+        void SetVariable(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
+        void SetVariable(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
+        void SetVariable(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
+
+        void SetVariable(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void SetVariable(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
+        void SetVariable(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
+
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex)
         {
             m_Cmd->DrawMesh(geometry, material, shaderPassIndex);

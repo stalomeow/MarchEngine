@@ -226,22 +226,6 @@ namespace march
         RenderGraphResourceExternalTexture& operator=(RenderGraphResourceExternalTexture&&) = default;
     };
 
-    struct RenderGraphResourceVariableDesc
-    {
-        int32 Id; // Variable 的 Id，可以和 Resource 的 Id 不同
-
-        union
-        {
-            GfxBufferElement BufferElement;
-
-            struct
-            {
-                GfxTextureElement TextureElement;
-                uint32_t TextureUnorderedAccessMipSlice;
-            };
-        };
-    };
-
     class RenderGraphResourceData final
     {
         int32 m_Id{};
@@ -273,8 +257,6 @@ namespace march
 
         void RequestResource();
         void ReleaseResource();
-
-        void SetAsVariable(GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc);
 
         std::optional<size_t> GetLastProducerBeforePassIndex(size_t passIndex) const;
         void AddProducerPassIndex(size_t passIndex);
@@ -367,8 +349,6 @@ namespace march
         void RequestResource(size_t resourceIndex);
         void ReleaseResource(size_t resourceIndex);
 
-        void SetAsVariable(size_t resourceIndex, GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc);
-
         std::optional<size_t> GetLastProducerBeforePassIndex(size_t resourceIndex, size_t passIndex) const;
         void AddProducerPassIndex(size_t resourceIndex, size_t passIndex);
 
@@ -376,9 +356,6 @@ namespace march
 
         std::optional<std::pair<size_t, size_t>> GetLifetimePassIndexRange(size_t resourceIndex) const;
     };
-
-    struct BufferElementHandle;
-    struct TextureElementHandle;
 
     class BufferHandle
     {
@@ -407,11 +384,6 @@ namespace march
         int32 GetId() const { return m_Manager->GetResourceId(m_ResourceIndex); }
 
         const GfxBufferDesc& GetDesc() const { return m_Manager->GetBufferDesc(m_ResourceIndex); }
-
-        BufferElementHandle GetElementAs(int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData) const;
-        BufferElementHandle GetElementAs(const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData) const;
-        BufferElementHandle GetElement(GfxBufferElement element) const;
-        operator BufferElementHandle() const;
     };
 
     class TextureHandle
@@ -441,25 +413,5 @@ namespace march
         int32 GetId() const { return m_Manager->GetResourceId(m_ResourceIndex); }
 
         const GfxTextureDesc& GetDesc() const { return m_Manager->GetTextureDesc(m_ResourceIndex); }
-
-        TextureElementHandle GetElementAs(int32 aliasId, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0) const;
-        TextureElementHandle GetElementAs(const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0) const;
-        TextureElementHandle GetElement(GfxTextureElement element, uint32_t unorderedAccessMipSlice = 0) const;
-        operator TextureElementHandle() const;
-    };
-
-    struct BufferElementHandle
-    {
-        BufferHandle Buffer;
-        GfxBufferElement Element;
-        int32 AliasId; // 别名，代替 BufferHandle 的 Id
-    };
-
-    struct TextureElementHandle
-    {
-        TextureHandle Texture;
-        GfxTextureElement Element;
-        uint32_t UnorderedAccessMipSlice;
-        int32 AliasId; // 别名，代替 TextureHandle 的 Id
     };
 }

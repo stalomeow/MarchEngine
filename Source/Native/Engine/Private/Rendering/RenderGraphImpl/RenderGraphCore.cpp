@@ -11,10 +11,7 @@ namespace march
         return m_Graph->m_Passes[m_PassIndex];
     }
 
-    void RenderGraphBuilder::InResource(
-        RenderGraphResourceManager* resourceManager,
-        size_t resourceIndex,
-        const std::optional<RenderGraphResourceVariableDesc>& variableDesc)
+    void RenderGraphBuilder::InResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex)
     {
         RenderGraphPass& pass = GetPass();
 
@@ -34,17 +31,9 @@ namespace march
                 LOG_WARNING("Failed to find producer pass for resource '{}' in pass '{}'", ShaderUtils::GetStringFromId(id), pass.Name);
             }
         }
-
-        if (variableDesc)
-        {
-            SetResourceVariable(resourceIndex, variableDesc.value());
-        }
     }
 
-    void RenderGraphBuilder::OutResource(
-        RenderGraphResourceManager* resourceManager,
-        size_t resourceIndex,
-        const std::optional<RenderGraphResourceVariableDesc>& variableDesc)
+    void RenderGraphBuilder::OutResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex)
     {
         RenderGraphPass& pass = GetPass();
 
@@ -60,28 +49,6 @@ namespace march
             pass.HasSideEffects |= resourceManager->IsExternalResource(resourceIndex);
             resourceManager->AddProducerPassIndex(resourceIndex, m_PassIndex);
         }
-
-        if (variableDesc)
-        {
-            SetResourceVariable(resourceIndex, variableDesc.value());
-        }
-    }
-
-    void RenderGraphBuilder::SetResourceVariable(size_t resourceIndex, const RenderGraphResourceVariableDesc& variableDesc)
-    {
-        RenderGraphPass& pass = GetPass();
-        RenderGraphPassVariable newVariable = { resourceIndex, variableDesc };
-        int32 aliasId = newVariable.Desc.Id;
-
-        if (auto result = pass.Variables.emplace(aliasId, newVariable); !result.second)
-        {
-            const RenderGraphPassVariable& oldVariable = result.first->second;
-
-            if (memcmp(&oldVariable, &newVariable, sizeof(newVariable)) != 0)
-            {
-                LOG_ERROR("Variable '{}' is already set with different configuration in pass '{}'", ShaderUtils::GetStringFromId(aliasId), pass.Name);
-            }
-        }
     }
 
     void RenderGraphBuilder::AllowPassCulling(bool value)
@@ -94,63 +61,41 @@ namespace march
         GetPass().EnableAsyncCompute = value;
     }
 
-    void RenderGraphBuilder::In(const BufferElementHandle& buffer)
+    void RenderGraphBuilder::In(const BufferHandle& buffer)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(buffer.Buffer);
-
-        RenderGraphResourceVariableDesc varDesc{};
-        varDesc.Id = buffer.AliasId;
-        varDesc.BufferElement = buffer.Element;
-
-        InResource(resourceManager, resourceIndex, varDesc);
+        size_t resourceIndex = resourceManager->GetResourceIndex(buffer);
+        InResource(resourceManager, resourceIndex);
     }
 
-    void RenderGraphBuilder::Out(const BufferElementHandle& buffer)
+    void RenderGraphBuilder::Out(const BufferHandle& buffer)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(buffer.Buffer);
-
-        RenderGraphResourceVariableDesc varDesc{};
-        varDesc.Id = buffer.AliasId;
-        varDesc.BufferElement = buffer.Element;
-
-        OutResource(resourceManager, resourceIndex, varDesc);
+        size_t resourceIndex = resourceManager->GetResourceIndex(buffer);
+        OutResource(resourceManager, resourceIndex);
     }
 
-    void RenderGraphBuilder::InOut(const BufferElementHandle& buffer)
+    void RenderGraphBuilder::InOut(const BufferHandle& buffer)
     {
         In(buffer);
         Out(buffer);
     }
 
-    void RenderGraphBuilder::In(const TextureElementHandle& texture)
+    void RenderGraphBuilder::In(const TextureHandle& texture)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(texture.Texture);
-
-        RenderGraphResourceVariableDesc varDesc{};
-        varDesc.Id = texture.AliasId;
-        varDesc.TextureElement = texture.Element;
-        varDesc.TextureUnorderedAccessMipSlice = texture.UnorderedAccessMipSlice;
-
-        InResource(resourceManager, resourceIndex, varDesc);
+        size_t resourceIndex = resourceManager->GetResourceIndex(texture);
+        InResource(resourceManager, resourceIndex);
     }
 
-    void RenderGraphBuilder::Out(const TextureElementHandle& texture)
+    void RenderGraphBuilder::Out(const TextureHandle& texture)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        size_t resourceIndex = resourceManager->GetResourceIndex(texture.Texture);
-
-        RenderGraphResourceVariableDesc varDesc{};
-        varDesc.Id = texture.AliasId;
-        varDesc.TextureElement = texture.Element;
-        varDesc.TextureUnorderedAccessMipSlice = texture.UnorderedAccessMipSlice;
-
-        OutResource(resourceManager, resourceIndex, varDesc);
+        size_t resourceIndex = resourceManager->GetResourceIndex(texture);
+        OutResource(resourceManager, resourceIndex);
     }
 
-    void RenderGraphBuilder::InOut(const TextureElementHandle& texture)
+    void RenderGraphBuilder::InOut(const TextureHandle& texture)
     {
         In(texture);
         Out(texture);
@@ -188,12 +133,10 @@ namespace march
 
         if (initMode == RenderTargetInitMode::Load)
         {
-            // RenderTarget 不设置成 Variable
-            InResource(resourceManager, target.ResourceIndex, std::nullopt);
+            InResource(resourceManager, target.ResourceIndex);
         }
 
-        // RenderTarget 不设置成 Variable
-        OutResource(resourceManager, target.ResourceIndex, std::nullopt);
+        OutResource(resourceManager, target.ResourceIndex);
     }
 
     void RenderGraphBuilder::SetDepthStencilTarget(const TextureHandle& texture, RenderTargetInitMode initMode, float depth, uint8_t stencil)
@@ -216,12 +159,10 @@ namespace march
 
         if (initMode == RenderTargetInitMode::Load)
         {
-            // RenderTarget 不设置成 Variable
-            InResource(resourceManager, target.ResourceIndex, std::nullopt);
+            InResource(resourceManager, target.ResourceIndex);
         }
 
-        // RenderTarget 不设置成 Variable
-        OutResource(resourceManager, target.ResourceIndex, std::nullopt);
+        OutResource(resourceManager, target.ResourceIndex);
     }
 
     void RenderGraphBuilder::SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
@@ -565,14 +506,6 @@ namespace march
         return context.GetCommandContext();
     }
 
-    void RenderGraph::SetPassVariables(GfxCommandContext* cmd, const RenderGraphPass& pass)
-    {
-        for (const auto& [_, variable] : pass.Variables)
-        {
-            m_ResourceManager->SetAsVariable(variable.ResourceIndex, cmd, variable.Desc);
-        }
-    }
-
     void RenderGraph::SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass)
     {
         if (!pass.RenderFunc)
@@ -696,7 +629,6 @@ namespace march
 
                 cmd->BeginEvent(pass.Name);
                 {
-                    SetPassVariables(cmd, pass);
                     SetPassRenderStates(cmd, pass);
 
                     if (pass.RenderFunc)
@@ -706,9 +638,10 @@ namespace march
 
                     cmd->UnsetBuffers();
                     cmd->UnsetTextures();
-                    ReleasePassResources(pass);
                 }
                 cmd->EndEvent();
+
+                ReleasePassResources(pass);
 
                 if (pass.IsAsyncCompute)
                 {
@@ -875,5 +808,35 @@ namespace march
             m_Cmd->SubmitAndRelease();
             m_Cmd = nullptr;
         }
+    }
+
+    void RenderGraphContext::SetVariable(const TextureHandle& texture, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
+    {
+        SetVariable(texture, texture.GetId(), element, unorderedAccessMipSlice);
+    }
+
+    void RenderGraphContext::SetVariable(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
+    {
+        SetVariable(texture, ShaderUtils::GetIdFromString(aliasName), element, unorderedAccessMipSlice);
+    }
+
+    void RenderGraphContext::SetVariable(const TextureHandle& texture, int32 aliasId, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
+    {
+        m_Cmd->SetTexture(aliasId, texture, element, unorderedAccessMipSlice);
+    }
+
+    void RenderGraphContext::SetVariable(const BufferHandle& buffer, GfxBufferElement element)
+    {
+        SetVariable(buffer, buffer.GetId(), element);
+    }
+
+    void RenderGraphContext::SetVariable(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element)
+    {
+        SetVariable(buffer, ShaderUtils::GetIdFromString(aliasName), element);
+    }
+
+    void RenderGraphContext::SetVariable(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element)
+    {
+        m_Cmd->SetBuffer(aliasId, buffer, element);
     }
 }

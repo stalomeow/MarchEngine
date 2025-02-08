@@ -148,18 +148,6 @@ namespace march
         }, m_Resource);
     }
 
-    void RenderGraphResourceData::SetAsVariable(GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc)
-    {
-        std::visit(overloaded{
-            [=](RenderGraphResourceTempBuffer& b) { cmd->SetBuffer(desc.Id, &b.Buffer, desc.BufferElement); },
-            [=](RenderGraphResourcePooledBuffer& b) { cmd->SetBuffer(desc.Id, b.Buffer.get(), desc.BufferElement); },
-            [=](RenderGraphResourceExternalBuffer& b) { cmd->SetBuffer(desc.Id, b.Buffer, desc.BufferElement); },
-            [=](RenderGraphResourcePooledTexture& t) { cmd->SetTexture(desc.Id, t.Texture.get(), desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
-            [=](RenderGraphResourceExternalTexture& t) { cmd->SetTexture(desc.Id, t.Texture, desc.TextureElement, desc.TextureUnorderedAccessMipSlice); },
-            [=](auto&&) { throw std::runtime_error("Resource is not a buffer or texture"); },
-        }, m_Resource);
-    }
-
     std::optional<size_t> RenderGraphResourceData::GetLastProducerBeforePassIndex(size_t passIndex) const
     {
         // 如果自己是自己的 producer 就会产生环，所以要从后往前找第一个不等于自己的 producer
@@ -333,11 +321,6 @@ namespace march
         m_Resources[resourceIndex].ReleaseResource();
     }
 
-    void RenderGraphResourceManager::SetAsVariable(size_t resourceIndex, GfxCommandContext* cmd, const RenderGraphResourceVariableDesc& desc)
-    {
-        m_Resources[resourceIndex].SetAsVariable(cmd, desc);
-    }
-
     std::optional<size_t> RenderGraphResourceManager::GetLastProducerBeforePassIndex(size_t resourceIndex, size_t passIndex) const
     {
         return m_Resources[resourceIndex].GetLastProducerBeforePassIndex(passIndex);
@@ -356,45 +339,5 @@ namespace march
     std::optional<std::pair<size_t, size_t>> RenderGraphResourceManager::GetLifetimePassIndexRange(size_t resourceIndex) const
     {
         return m_Resources[resourceIndex].GetLifetimePassIndexRange();
-    }
-
-    BufferElementHandle BufferHandle::GetElementAs(int32 aliasId, GfxBufferElement element) const
-    {
-        return BufferElementHandle{ *this, element, aliasId };
-    }
-
-    BufferElementHandle BufferHandle::GetElementAs(const std::string& aliasName, GfxBufferElement element) const
-    {
-        return GetElementAs(ShaderUtils::GetIdFromString(aliasName), element);
-    }
-
-    BufferElementHandle BufferHandle::GetElement(GfxBufferElement element) const
-    {
-        return GetElementAs(GetId(), element);
-    }
-
-    BufferHandle::operator BufferElementHandle() const
-    {
-        return GetElement(GfxBufferElement::StructuredData);
-    }
-
-    TextureElementHandle TextureHandle::GetElementAs(int32 aliasId, GfxTextureElement element, uint32_t unorderedAccessMipSlice) const
-    {
-        return TextureElementHandle{ *this, element, unorderedAccessMipSlice, aliasId };
-    }
-
-    TextureElementHandle TextureHandle::GetElementAs(const std::string& aliasName, GfxTextureElement element, uint32_t unorderedAccessMipSlice) const
-    {
-        return GetElementAs(ShaderUtils::GetIdFromString(aliasName), element, unorderedAccessMipSlice);
-    }
-
-    TextureElementHandle TextureHandle::GetElement(GfxTextureElement element, uint32_t unorderedAccessMipSlice) const
-    {
-        return GetElementAs(GetId(), element, unorderedAccessMipSlice);
-    }
-
-    TextureHandle::operator TextureElementHandle() const
-    {
-        return GetElement(GfxTextureElement::Default);
     }
 }
