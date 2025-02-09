@@ -48,11 +48,15 @@ namespace march
         std::optional<uint32_t> Allocate(uint32_t sizeInBytes, uint32_t alignment, BuddyAllocation* pOutAllocation);
         void Release(const BuddyAllocation& allocation);
 
+        uint32_t GetMaxSize() const { return m_MaxBlockSize; }
+        uint32_t GetTotalAllocatedSize() const { return m_TotalAllocatedSize; }
+
     private:
         uint32_t m_MinBlockSize;
         uint32_t m_MaxBlockSize;
         uint32_t m_MaxOrder;
         std::vector<std::set<uint32_t>> m_FreeBlocks;
+        uint32_t m_TotalAllocatedSize;
 
         uint32_t SizeToUnitSize(uint32_t size) const;
         uint32_t UnitSizeToOrder(uint32_t size) const;

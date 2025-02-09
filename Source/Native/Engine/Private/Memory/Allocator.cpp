@@ -66,6 +66,7 @@ namespace march
         : m_MinBlockSize(minBlockSize)
         , m_MaxBlockSize(maxBlockSize)
         , m_FreeBlocks{}
+        , m_TotalAllocatedSize(0)
     {
         assert(MathUtils::IsDivisible(maxBlockSize, minBlockSize));
         assert(MathUtils::IsPowerOfTwo(maxBlockSize / minBlockSize));
@@ -99,6 +100,7 @@ namespace march
         m_FreeBlocks.clear();
         m_FreeBlocks.resize(static_cast<size_t>(m_MaxOrder) + 1);
         m_FreeBlocks[m_MaxOrder].insert(0);
+        m_TotalAllocatedSize = 0;
     }
 
     std::optional<uint32_t> BuddyAllocator::AllocateBlock(uint32_t order)
@@ -163,15 +165,14 @@ namespace march
         }
 
         uint32_t byteOffset = *offset * m_MinBlockSize;
+        uint32_t allocatedSize = OrderToUnitSize(order) * m_MinBlockSize;
+        m_TotalAllocatedSize += allocatedSize;
 
         if (alignment != 0 && byteOffset % alignment != 0)
         {
             uint32_t newOffset = MathUtils::AlignUp(byteOffset, alignment);
-
             uint32_t padding = newOffset - byteOffset;
-            uint32_t allocatedSize = OrderToUnitSize(order) * m_MinBlockSize;
             assert(padding + sizeInBytes <= allocatedSize);
-
             byteOffset = newOffset;
         }
 
@@ -185,6 +186,7 @@ namespace march
     {
         assert(allocation.Owner == this);
         ReleaseBlock(allocation.Offset, allocation.Order);
+        m_TotalAllocatedSize -= OrderToUnitSize(allocation.Order) * m_MinBlockSize;
     }
 
     MultiBuddyAllocator::MultiBuddyAllocator(const std::string& name, uint32_t minBlockSize, uint32_t defaultMaxBlockSize, const AppendPageFunc& appendPageFunc)

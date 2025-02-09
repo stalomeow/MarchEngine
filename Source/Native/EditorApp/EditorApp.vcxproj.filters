@@ -3,8 +3,6 @@
   <ItemGroup>
     <ClCompile Include="Private\ConsoleWindow.binding.cpp" />
     <ClCompile Include="Private\ConsoleWindow.cpp" />
-    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.binding.cpp" />
-    <ClCompile Include="Private\DescriptorHeapDebuggerWindow.cpp" />
     <ClCompile Include="Private\DragDrop.binding.cpp" />
     <ClCompile Include="Private\EditorApplication.binding.cpp" />
     <ClCompile Include="Private\EditorApplication.cpp" />
@@ -25,7 +23,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Internal\Editor\ConsoleWindow.h" />
-    <ClInclude Include="Internal\Editor\DescriptorHeapDebuggerWindow.h" />
     <ClInclude Include="Internal\Editor\EditorApplication.h" />
     <ClInclude Include="Internal\Editor\EditorGUI.h" />
     <ClInclude Include="Internal\Editor\EditorWindow.h" />

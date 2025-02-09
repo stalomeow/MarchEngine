@@ -8,9 +8,8 @@ namespace march
     {
         using base = typename EditorWindow;
 
-    public:
-        GraphicsDebuggerWindow() = default;
-        virtual ~GraphicsDebuggerWindow() = default;
+        void DrawOnlineViewDescriptorAllocatorInfo();
+        void DrawOnlineSamplerDescriptorAllocatorInfo();
 
     protected:
         void OnDraw() override;

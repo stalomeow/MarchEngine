@@ -112,6 +112,7 @@ namespace march
         virtual void CleanUpAllocations() = 0;
 
         virtual uint32_t GetNumMaxDescriptors() const = 0;
+        virtual uint32_t GetNumAllocatedDescriptors() const = 0;
         virtual GfxDescriptorHeap* GetHeap() const = 0;
     };
 
@@ -128,6 +129,7 @@ namespace march
         void CleanUpAllocations() override;
 
         uint32_t GetNumMaxDescriptors() const override { return m_Heap->GetCapacity(); }
+        uint32_t GetNumAllocatedDescriptors() const override { return (m_Rear + m_Heap->GetCapacity() - m_Front) % m_Heap->GetCapacity(); }
         GfxDescriptorHeap* GetHeap() const override { return m_Heap.get(); }
 
         uint32_t GetFront() const { return m_Front; }
@@ -154,7 +156,8 @@ namespace march
             D3D12_GPU_DESCRIPTOR_HANDLE* pOutResults) override;
         void CleanUpAllocations() override;
 
-        uint32_t GetNumMaxDescriptors() const override { return m_Heap->GetCapacity(); }
+        uint32_t GetNumMaxDescriptors() const override { return m_Allocator.GetMaxSize(); }
+        uint32_t GetNumAllocatedDescriptors() const override { return m_Allocator.GetTotalAllocatedSize(); }
         GfxDescriptorHeap* GetHeap() const override { return m_Heap.get(); }
 
     private:
