@@ -43,7 +43,7 @@ float OcclusionFunction(float distZ)
 }
 
 [numthreads(8, 8, 1)]
-void SSAOMain(uint3 dtid : SV_DispatchThreadID)
+void SSAOMain(int3 dtid : SV_DispatchThreadID)
 {
     float width, height;
     _SSAOMap.GetDimensions(width, height);
@@ -105,18 +105,16 @@ RWTexture2D<float> _Output;
 groupshared float _ColorCache[N + 2 * RADIUS];
 groupshared float4 _NormalDepthCache[N + 2 * RADIUS];
 
-// TODO uint 溢出
-
 [numthreads(N, 1, 1)]
 void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 {
-    uint width, height;
+    int width, height;
     _Input.GetDimensions(width, height);
 
     if (gtid.x < RADIUS)
     {
-        uint x = max(0, dtid.x - RADIUS);
-        _ColorCache[gtid.x] = _Input[uint2(x, dtid.y)];
+        int x = max(0, dtid.x - RADIUS);
+        _ColorCache[gtid.x] = _Input[int2(x, dtid.y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
         GBufferData g = SampleGBufferData(float2(x, dtid.y) / float2(width, height));
@@ -125,15 +123,15 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 
     if (gtid.x >= N - RADIUS)
     {
-        uint x = min(width - 1, dtid.x + RADIUS);
-        _ColorCache[gtid.x + 2 * RADIUS] = _Input[uint2(x, dtid.y)];
+        int x = min(width - 1, dtid.x + RADIUS);
+        _ColorCache[gtid.x + 2 * RADIUS] = _Input[int2(x, dtid.y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
         GBufferData g = SampleGBufferData(float2(x, dtid.y) / float2(width, height));
         _NormalDepthCache[gtid.x + 2 * RADIUS] = float4(g.normalWS, g.depth);
     }
 
-    uint2 loc = min(dtid.xy, uint2(width - 1, height - 1));
+    int2 loc = min(dtid.xy, int2(width - 1, height - 1));
     _ColorCache[gtid.x + RADIUS] = _Input[loc];
 
     // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
@@ -157,7 +155,7 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
             continue;
         }
 
-        uint cacheIndex = gtid.x + RADIUS + i;
+        int cacheIndex = gtid.x + RADIUS + i;
         float3 normal = _NormalDepthCache[cacheIndex].xyz;
         float depth = _NormalDepthCache[cacheIndex].w;
 
@@ -175,13 +173,13 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 [numthreads(1, N, 1)]
 void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 {
-    uint width, height;
+    int width, height;
     _Input.GetDimensions(width, height);
 
     if (gtid.y < RADIUS)
     {
-        uint y = max(0, dtid.y - RADIUS);
-        _ColorCache[gtid.y] = _Input[uint2(dtid.x, y)];
+        int y = max(0, dtid.y - RADIUS);
+        _ColorCache[gtid.y] = _Input[int2(dtid.x, y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
         GBufferData g = SampleGBufferData(float2(dtid.x, y) / float2(width, height));
@@ -190,15 +188,15 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 
     if (gtid.y >= N - RADIUS)
     {
-        uint y = min(height - 1, dtid.y + RADIUS);
-        _ColorCache[gtid.y + 2 * RADIUS] = _Input[uint2(dtid.x, y)];
+        int y = min(height - 1, dtid.y + RADIUS);
+        _ColorCache[gtid.y + 2 * RADIUS] = _Input[int2(dtid.x, y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
         GBufferData g = SampleGBufferData(float2(dtid.x, y) / float2(width, height));
         _NormalDepthCache[gtid.y + 2 * RADIUS] = float4(g.normalWS, g.depth);
     }
 
-    uint2 loc = min(dtid.xy, uint2(width - 1, height - 1));
+    int2 loc = min(dtid.xy, int2(width - 1, height - 1));
     _ColorCache[gtid.y + RADIUS] = _Input[loc];
 
     // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
@@ -222,7 +220,7 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
             continue;
         }
 
-        uint cacheIndex = gtid.y + RADIUS + i;
+        int cacheIndex = gtid.y + RADIUS + i;
         float3 normal = _NormalDepthCache[cacheIndex].xyz;
         float depth = _NormalDepthCache[cacheIndex].w;
 

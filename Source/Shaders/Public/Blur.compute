@@ -26,22 +26,22 @@ groupshared float4 _ColorCache[N + 2 * RADIUS];
 [numthreads(N, 1, 1)]
 void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 {
-    uint width, height;
+    int width, height;
     _Input.GetDimensions(width, height);
 
     if (gtid.x < RADIUS)
     {
-        uint x = max(0, dtid.x - RADIUS);
-        _ColorCache[gtid.x] = _Input[uint2(x, dtid.y)];
+        int x = max(0, dtid.x - RADIUS);
+        _ColorCache[gtid.x] = _Input[int2(x, dtid.y)];
     }
 
     if (gtid.x >= N - RADIUS)
     {
-        uint x = min(width - 1, dtid.x + RADIUS);
-        _ColorCache[gtid.x + 2 * RADIUS] = _Input[uint2(x, dtid.y)];
+        int x = min(width - 1, dtid.x + RADIUS);
+        _ColorCache[gtid.x + 2 * RADIUS] = _Input[int2(x, dtid.y)];
     }
 
-    _ColorCache[gtid.x + RADIUS] = _Input[min(dtid.xy, uint2(width - 1, height - 1))];
+    _ColorCache[gtid.x + RADIUS] = _Input[min(dtid.xy, int2(width - 1, height - 1))];
 
     GroupMemoryBarrierWithGroupSync();
 
@@ -59,22 +59,22 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 [numthreads(1, N, 1)]
 void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
 {
-    uint width, height;
+    int width, height;
     _Input.GetDimensions(width, height);
 
     if (gtid.y < RADIUS)
     {
-        uint y = max(0, dtid.y - RADIUS);
-        _ColorCache[gtid.y] = _Input[uint2(dtid.x, y)];
+        int y = max(0, dtid.y - RADIUS);
+        _ColorCache[gtid.y] = _Input[int2(dtid.x, y)];
     }
 
     if (gtid.y >= N - RADIUS)
     {
-        uint y = min(height - 1, dtid.y + RADIUS);
-        _ColorCache[gtid.y + 2 * RADIUS] = _Input[uint2(dtid.x, y)];
+        int y = min(height - 1, dtid.y + RADIUS);
+        _ColorCache[gtid.y + 2 * RADIUS] = _Input[int2(dtid.x, y)];
     }
 
-    _ColorCache[gtid.y + RADIUS] = _Input[min(dtid.xy, uint2(width - 1, height - 1))];
+    _ColorCache[gtid.y + RADIUS] = _Input[min(dtid.xy, int2(width - 1, height - 1))];
 
     GroupMemoryBarrierWithGroupSync();
 
