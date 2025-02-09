@@ -42,7 +42,6 @@
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxUtils.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\Material.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\MeshRenderer.h" />
-    <ClInclude Include="Public\Engine\Profiling\RenderDoc.h" />
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Public\Engine\JobManager.h" />
     <ClInclude Include="Public\Engine\Object.h" />
@@ -56,7 +55,7 @@
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxException.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxPipeline.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
-    <ClInclude Include="Public\Engine\Profiling\PIX3.h" />
+    <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />
@@ -106,7 +105,6 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\Material.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\MeshRenderer.binding.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\MeshRenderer.cpp" />
-    <ClCompile Include="Private\Profiling\RenderDoc.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\Shader.binding.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderGraphics.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderKeyword.cpp" />
@@ -118,7 +116,7 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderUtils.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderCompute.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
-    <ClCompile Include="Private\Profiling\PIX3.cpp" />
+    <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

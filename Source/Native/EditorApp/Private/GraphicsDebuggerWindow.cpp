@@ -2,7 +2,7 @@
 #include "Editor/GraphicsDebuggerWindow.h"
 #include "Editor/EditorGUI.h"
 #include "Engine/Rendering/D3D12.h"
-#include "Engine/Profiling/RenderDoc.h"
+#include "Engine/Profiling/FrameDebugger.h"
 #include "Engine/Misc/StringUtils.h"
 #include <imgui.h>
 #include <string>
@@ -11,7 +11,7 @@ namespace march
 {
     void GraphicsDebuggerWindow::OnDraw()
     {
-        if (EditorGUI::CollapsingHeader("Settings"))
+        if (ImGui::CollapsingHeader("Settings"))
         {
             EditorGUI::LabelField("Reversed Z", "", GfxSettings::UseReversedZBuffer ? "Yes" : "No");
 
@@ -33,17 +33,21 @@ namespace march
             EditorGUI::FloatField("Shadow Bias Clamp", "", &GfxSettings::ShadowDepthBiasClamp);
         }
 
-        if (EditorGUI::CollapsingHeader("RenderDoc"))
+        if (ImGui::CollapsingHeader("Frame Debugger"))
         {
-            auto [major, minor, patch] = RenderDoc::GetVersion();
+            std::optional<FrameDebuggerPlugin> plugin = FrameDebugger::GetLoadedPlugin();
 
-            EditorGUI::LabelField("Loaded", "", RenderDoc::IsLoaded() ? "Yes" : "No");
-            EditorGUI::LabelField("Library", "", RenderDoc::GetLibraryPath());
-            EditorGUI::LabelField("API Version", "", std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch));
-            EditorGUI::LabelField("Num Captures", "", std::to_string(RenderDoc::GetNumCaptures()));
+            if (plugin)
+            {
+                ImGui::BulletText(StringUtils::Format("Plugin: {}", *plugin).c_str());
+            }
+            else
+            {
+                ImGui::BulletText("No plugin loaded");
+            }
         }
 
-        if (EditorGUI::CollapsingHeader("Online Descriptor Allocator"))
+        if (ImGui::CollapsingHeader("Online Descriptor Allocator"))
         {
             DrawOnlineViewDescriptorAllocatorInfo();
             DrawOnlineSamplerDescriptorAllocatorInfo();

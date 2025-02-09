@@ -13,7 +13,7 @@
   <ItemGroup>
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Public\Engine\Memory\RefCounting.h" />
-    <ClInclude Include="Public\Engine\Profiling\PIX3.h" />
+    <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxException.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxPipeline.h" />
@@ -37,7 +37,6 @@
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxUtils.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\Material.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\MeshRenderer.h" />
-    <ClInclude Include="Public\Engine\Profiling\RenderDoc.h" />
     <ClInclude Include="Public\Engine\Misc\HashUtils.h" />
     <ClInclude Include="Public\Engine\ImGui\IconsFontAwesome6.h" />
     <ClInclude Include="Public\Engine\ImGui\IconsFontAwesome6Brands.h" />
@@ -78,7 +77,7 @@
     <ClCompile Include="Private\Debug.binding.cpp" />
     <ClCompile Include="Private\Debug.cpp" />
     <ClCompile Include="Private\EngineTimer.cpp" />
-    <ClCompile Include="Private\Profiling\PIX3.cpp" />
+    <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
     <ClCompile Include="Private\Rendering\Gizmos.binding.cpp" />
     <ClCompile Include="Private\Rendering\Gizmos.cpp" />
@@ -103,7 +102,6 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\Material.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\MeshRenderer.binding.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\MeshRenderer.cpp" />
-    <ClCompile Include="Private\Profiling\RenderDoc.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\Shader.binding.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderCompute.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderGraphics.cpp" />

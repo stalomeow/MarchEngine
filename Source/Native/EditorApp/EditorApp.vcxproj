@@ -105,6 +105,8 @@
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/WHOLEARCHIVE:Engine.lib %(AdditionalOptions)</AdditionalOptions>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
     </Link>
     <PostBuildEvent />
     <CustomBuildStep>
@@ -141,6 +143,8 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/WHOLEARCHIVE:Engine.lib %(AdditionalOptions)</AdditionalOptions>
+      <DelayLoadDLLs>
+      </DelayLoadDLLs>
     </Link>
     <PostBuildEvent />
     <CustomBuildStep>

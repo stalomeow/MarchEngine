@@ -23,7 +23,7 @@ namespace march
         m_SkyboxMaterial.reset("Assets/skybox.mat");
         m_ScreenSpaceShadowShader.reset("Engine/Shaders/ScreenSpaceShadow.shader");
         m_ScreenSpaceShadowMaterial = std::make_unique<Material>(m_ScreenSpaceShadowShader.get());
-        m_SSAOShader.reset("Engine/Shaders/SSAO.compute");
+        m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         GenerateSSAORandomVectorMap();
 
         m_RenderGraph = std::make_unique<RenderGraph>();
