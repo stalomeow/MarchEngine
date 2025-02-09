@@ -314,7 +314,7 @@ namespace march
             return;
         }
 
-        size_t overlappedPassCount = AvoidAsyncComputeResourceCompetition(passIndex, deadlineIndexExclusive);
+        size_t overlappedPassCount = AvoidAsyncComputeResourceHazard(passIndex, deadlineIndexExclusive);
 
         // 有重叠的 pass 时 async compute 才有意义
         if (overlappedPassCount == 0)
@@ -346,7 +346,7 @@ namespace march
         }
     }
 
-    size_t RenderGraph::AvoidAsyncComputeResourceCompetition(size_t passIndex, size_t& deadlineIndexExclusive)
+    size_t RenderGraph::AvoidAsyncComputeResourceHazard(size_t passIndex, size_t& deadlineIndexExclusive)
     {
         const RenderGraphPass& pass = m_Passes[passIndex];
         assert(!pass.IsVisited);
@@ -695,7 +695,7 @@ namespace march
 
         for (IRenderGraphCompiledEventListener* listener : g_GraphCompiledEventListeners)
         {
-            listener->OnGraphCompiled(*this, m_Passes);
+            listener->OnGraphCompiled(m_Passes, m_ResourceManager.get());
         }
 
         ExecutePasses();

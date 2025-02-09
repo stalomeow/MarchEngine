@@ -145,7 +145,7 @@ namespace march
     class IRenderGraphCompiledEventListener
     {
     public:
-        virtual void OnGraphCompiled(const RenderGraph& graph, const std::vector<RenderGraphPass>& passes) = 0;
+        virtual void OnGraphCompiled(const std::vector<RenderGraphPass>& passes, const RenderGraphResourceManager* resourceManager) = 0;
     };
 
     class RenderGraph final
@@ -159,7 +159,7 @@ namespace march
         void CompilePasses();
         void CullPass(size_t passIndex, size_t& asyncComputeDeadlineIndexExclusive);
         void CompileAsyncCompute(size_t passIndex, size_t& deadlineIndexExclusive);
-        size_t AvoidAsyncComputeResourceCompetition(size_t passIndex, size_t& deadlineIndexExclusive);
+        size_t AvoidAsyncComputeResourceHazard(size_t passIndex, size_t& deadlineIndexExclusive);
 
         void RequestPassResources(const RenderGraphPass& pass);
         void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass);

@@ -30,8 +30,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\RenderGraphDebuggerWindow.binding.cpp" />
-    <ClCompile Include="Private\RenderGraphDebuggerWindow.cpp" />
+    <ClCompile Include="Private\RenderGraphViewerWindow.binding.cpp" />
+    <ClCompile Include="Private\RenderGraphViewerWindow.cpp" />
     <ClCompile Include="Private\SceneWindow.binding.cpp" />
     <ClCompile Include="Private\SceneWindow.cpp" />
     <ClCompile Include="Private\WinMain.cpp" />
@@ -45,7 +45,7 @@
     <ClInclude Include="Internal\Editor\GraphicsDebuggerWindow.h" />
     <ClInclude Include="Internal\Editor\ImGuiDemoWindow.h" />
     <ClInclude Include="Internal\pch.h" />
-    <ClInclude Include="Internal\Editor\RenderGraphDebuggerWindow.h" />
+    <ClInclude Include="Internal\Editor\RenderGraphViewerWindow.h" />
     <ClInclude Include="Internal\Editor\SceneWindow.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
   </ItemGroup>
