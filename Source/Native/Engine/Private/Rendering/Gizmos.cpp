@@ -370,8 +370,10 @@ namespace march
         builder.In(cbCamera);
         builder.SetColorTarget(colorTarget);
         builder.SetDepthStencilTarget(depthStencilTarget);
-        builder.SetRenderFunc([=](RenderGraphContext& context)
+        builder.SetRenderFunc([cbCamera](RenderGraphContext& context)
         {
+            context.SetVariable(cbCamera);
+
             // Visible part
             for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
             {

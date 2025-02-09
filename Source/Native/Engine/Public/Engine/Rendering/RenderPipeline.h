@@ -41,6 +41,42 @@ namespace march
         DirectX::XMFLOAT4X4 ShadowMatrix;
     };
 
+    struct RenderPipelineResource
+    {
+        TextureHandle ColorTarget;
+        TextureHandle DepthStencilTarget;
+
+        std::vector<TextureHandle> GBuffers;
+
+        BufferHandle CbCamera;
+        BufferHandle CbLight;
+
+        BufferHandle CbSSAO;
+        TextureHandle SSAOMap;
+        TextureHandle SSAOMapTemp;
+        TextureHandle SSAORandomVectorMap;
+
+        BufferHandle CbShadow;
+        TextureHandle ShadowMap;
+        TextureHandle ScreenSpaceShadowMap;
+
+        void Reset()
+        {
+            ColorTarget = {};
+            DepthStencilTarget = {};
+            GBuffers.clear();
+            CbCamera = {};
+            CbLight = {};
+            CbSSAO = {};
+            SSAOMap = {};
+            SSAOMapTemp = {};
+            SSAORandomVectorMap = {};
+            CbShadow = {};
+            ShadowMap = {};
+            ScreenSpaceShadowMap = {};
+        }
+    };
+
     class RenderPipeline
     {
     public:
@@ -73,44 +109,22 @@ namespace march
             }
         }
 
-        BufferHandle CreateCameraConstantBuffer(const std::string& passName, Camera* camera);
-        BufferHandle CreateCameraConstantBuffer(const std::string& passName, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
+        BufferHandle CreateCameraConstantBuffer(const std::string& name, Camera* camera);
+        BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         BufferHandle CreateLightConstantBuffer();
 
-        void DeferredLighting(
-            const BufferHandle& cbCamera,
-            const BufferHandle& cbLight,
-            const TextureHandle& colorTarget,
-            const TextureHandle& depthStencilTarget,
-            const TextureHandle& ssaoMap,
-            const std::vector<TextureHandle>& gBuffers,
-            const TextureHandle& screenSpaceShadowMap);
-        TextureHandle DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
-        void ClearAndDrawObjects(
-            const BufferHandle& cbCamera,
-            const TextureHandle& colorTarget,
-            const TextureHandle& depthStencilTarget,
-            std::vector<TextureHandle>& gBuffers,
-            bool wireframe);
-        void DrawSceneViewGrid(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget, Material* material);
-        void DrawSkybox(const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
-        void ResolveMSAA(const TextureHandle& source, const TextureHandle& destination);
+        void DeferredLighting();
+        void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
+        void ClearAndDrawObjects(bool wireframe);
+        void DrawSceneViewGrid(Material* material);
+        void DrawSkybox();
 
-        TextureHandle ScreenSpaceShadow(
-            const BufferHandle& cbCamera,
-            const DirectX::XMFLOAT4X4& shadowMatrix,
-            const TextureHandle& colorTarget,
-            const std::vector<TextureHandle>& gBuffers,
-            const TextureHandle& shadowMap);
+        void ScreenSpaceShadow(const DirectX::XMFLOAT4X4& shadowMatrix);
 
         void GenerateSSAORandomVectorMap();
-        TextureHandle SSAO(
-            const BufferHandle& cbCamera,
-            const std::vector<TextureHandle>& gBuffers);
+        void SSAO();
 
     public:
-        GfxMesh* m_FullScreenTriangleMesh = nullptr;
-        GfxMesh* m_SphereMesh = nullptr;
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
@@ -118,6 +132,8 @@ namespace march
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
+
+        RenderPipelineResource m_Resource{};
 
     private:
         std::vector<MeshRenderer*> m_Renderers{};
