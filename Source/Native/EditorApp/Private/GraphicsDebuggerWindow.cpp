@@ -11,39 +11,30 @@ namespace march
 {
     void GraphicsDebuggerWindow::OnDraw()
     {
-        if (ImGui::CollapsingHeader("Settings"))
+        if (ImGui::CollapsingHeader("Configuration"))
         {
-            EditorGUI::LabelField("Reversed Z", "", GfxSettings::UseReversedZBuffer ? "Yes" : "No");
+            ImGui::BulletText(StringUtils::Format("Reversed Z: {}", GfxSettings::UseReversedZBuffer).c_str());
 
             if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Linear)
             {
-                EditorGUI::LabelField("Color Space", "", "Linear");
+                ImGui::BulletText("Color Space: Linear");
             }
             else if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Gamma)
             {
-                EditorGUI::LabelField("Color Space", "", "Gamma");
+                ImGui::BulletText("Color Space: Gamma");
             }
             else
             {
-                EditorGUI::LabelField("Color Space", "", "Unknown");
+                ImGui::BulletText("Color Space: Unknown");
             }
 
-            EditorGUI::IntField("Shadow Depth Bias", "", &GfxSettings::ShadowDepthBias);
-            EditorGUI::FloatField("Shadow Slope Bias", "", &GfxSettings::ShadowSlopeScaledDepthBias);
-            EditorGUI::FloatField("Shadow Bias Clamp", "", &GfxSettings::ShadowDepthBiasClamp);
-        }
-
-        if (ImGui::CollapsingHeader("Frame Debugger"))
-        {
-            std::optional<FrameDebuggerPlugin> plugin = FrameDebugger::GetLoadedPlugin();
-
-            if (plugin)
+            if (std::optional<FrameDebuggerPlugin> plugin = FrameDebugger::GetLoadedPlugin())
             {
-                ImGui::BulletText(StringUtils::Format("Plugin: {}", *plugin).c_str());
+                ImGui::BulletText(StringUtils::Format("Frame Debugger Plugin: {}", *plugin).c_str());
             }
             else
             {
-                ImGui::BulletText("No plugin loaded");
+                ImGui::BulletText("Frame Debugger Plugin: None");
             }
         }
 
@@ -51,6 +42,13 @@ namespace march
         {
             DrawOnlineViewDescriptorAllocatorInfo();
             DrawOnlineSamplerDescriptorAllocatorInfo();
+        }
+
+        if (ImGui::CollapsingHeader("Shadow"))
+        {
+            EditorGUI::IntField("Depth Bias", "", &GfxSettings::ShadowDepthBias);
+            EditorGUI::FloatField("Slope Bias", "", &GfxSettings::ShadowSlopeScaledDepthBias);
+            EditorGUI::FloatField("Bias Clamp", "", &GfxSettings::ShadowDepthBiasClamp);
         }
     }
 
