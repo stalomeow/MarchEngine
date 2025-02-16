@@ -65,24 +65,22 @@ namespace march
             throw std::runtime_error("Project path not found in command line arguments.");
         }
 
+        GfxDeviceDesc desc{};
+
         if (std::count(args.begin(), args.end(), "-load-renderdoc") > 0)
         {
             FrameDebugger::LoadPlugin(FrameDebuggerPlugin::RenderDoc); // 越早越好
         }
-
-        if (std::count(args.begin(), args.end(), "-load-pix") > 0)
+        else if (std::count(args.begin(), args.end(), "-load-pix") > 0)
         {
             FrameDebugger::LoadPlugin(FrameDebuggerPlugin::PIX); // 越早越好
         }
-
-        DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
-
-        GfxDeviceDesc desc{};
-
-        if (std::count(args.begin(), args.end(), "-enable-d3d12-debug-layer") > 0)
+        else if (std::count(args.begin(), args.end(), "-load-gfx-debug-layer") > 0)
         {
             desc.EnableDebugLayer = true;
         }
+
+        DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] = 64;
