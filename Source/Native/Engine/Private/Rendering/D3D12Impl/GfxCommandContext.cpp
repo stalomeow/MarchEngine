@@ -55,12 +55,12 @@ namespace march
 
         if (m_CommandList == nullptr)
         {
-            GFX_HR(m_Device->GetD3DDevice4()->CreateCommandList(0, queue->GetType(),
+            CHECK_HR(m_Device->GetD3DDevice4()->CreateCommandList(0, queue->GetType(),
                 m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
         }
         else
         {
-            GFX_HR(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
+            CHECK_HR(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
         }
     }
 
@@ -71,7 +71,7 @@ namespace march
 
         // 准备好所有命令，然后关闭
         FlushResourceBarriers();
-        GFX_HR(m_CommandList->Close());
+        CHECK_HR(m_CommandList->Close());
 
         // 等待其他 queue 上的异步操作，例如 async compute, async copy
         for (const GfxSyncPoint& syncPoint : m_SyncPointsToWait)

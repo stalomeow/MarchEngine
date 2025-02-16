@@ -26,12 +26,12 @@ namespace march
         if (desc.EnableDebugLayer)
         {
             ComPtr<ID3D12Debug> debugController = nullptr;
-            GFX_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+            CHECK_HR(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
             debugController->EnableDebugLayer();
             LOG_WARNING("D3D12 Debug Layer Enabled");
         }
 
-        GFX_HR(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
+        CHECK_HR(CreateDXGIFactory(IID_PPV_ARGS(&m_Factory)));
 
         // 默认设备
         HRESULT hardwareResult = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device));
@@ -40,8 +40,8 @@ namespace march
         if (FAILED(hardwareResult))
         {
             ComPtr<IDXGIAdapter> warpAdapter;
-            GFX_HR(m_Factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
-            GFX_HR(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
+            CHECK_HR(m_Factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
+            CHECK_HR(D3D12CreateDevice(warpAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
         }
 
         // 获取 D3D12 输出的调试信息
@@ -52,7 +52,7 @@ namespace march
                 DWORD callbackCookie = 0;
 
 #pragma warning( disable : 6387 )
-                GFX_HR(m_DebugInfoQueue->RegisterMessageCallback(D3D12DebugMessageCallback,
+                CHECK_HR(m_DebugInfoQueue->RegisterMessageCallback(D3D12DebugMessageCallback,
                     D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &callbackCookie));
 #pragma warning( default : 6387 )
 
@@ -276,7 +276,7 @@ namespace march
         levels.SampleCount = static_cast<UINT>(sampleCount);
         levels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 
-        GFX_HR(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels)));
+        CHECK_HR(m_Device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &levels, sizeof(levels)));
         return static_cast<uint32_t>(levels.NumQualityLevels - 1);
     }
 
@@ -288,7 +288,7 @@ namespace march
         while (m_Factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
         {
             DXGI_ADAPTER_DESC desc;
-            GFX_HR(adapter->GetDesc(&desc));
+            CHECK_HR(adapter->GetDesc(&desc));
 
             LOG_INFO(L"***Adapter: {}", desc.Description);
 
@@ -305,7 +305,7 @@ namespace march
         while (adapter->EnumOutputs(i, &output) != DXGI_ERROR_NOT_FOUND)
         {
             DXGI_OUTPUT_DESC desc;
-            GFX_HR(output->GetDesc(&desc));
+            CHECK_HR(output->GetDesc(&desc));
 
             LOG_INFO(L"***Output: {}", desc.DeviceName);
 
@@ -321,10 +321,10 @@ namespace march
         UINT flags = 0;
 
         // Call with nullptr to get list count.
-        GFX_HR(output->GetDisplayModeList(format, flags, &count, nullptr));
+        CHECK_HR(output->GetDisplayModeList(format, flags, &count, nullptr));
 
         auto modeList = std::make_unique<DXGI_MODE_DESC[]>(count);
-        GFX_HR(output->GetDisplayModeList(format, flags, &count, modeList.get()));
+        CHECK_HR(output->GetDisplayModeList(format, flags, &count, modeList.get()));
 
         for (UINT i = 0; i < count; i++)
         {

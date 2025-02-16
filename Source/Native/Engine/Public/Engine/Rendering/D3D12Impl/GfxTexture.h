@@ -321,7 +321,6 @@ namespace march
         DirectX::ScratchImage m_Image;
     };
 
-    // TODO rename this
     struct GfxTextureResourceDesc
     {
         bool IsCube;

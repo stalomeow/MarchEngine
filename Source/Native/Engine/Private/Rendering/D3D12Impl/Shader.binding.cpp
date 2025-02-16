@@ -267,7 +267,7 @@ namespace march
 
                     try
                     {
-                        GFX_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
+                        CHECK_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
                             reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
                     }
                     catch (const std::exception& e)
@@ -792,7 +792,7 @@ namespace march
 
                     try
                     {
-                        GFX_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
+                        CHECK_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
                             reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
                     }
                     catch (const std::exception& e)

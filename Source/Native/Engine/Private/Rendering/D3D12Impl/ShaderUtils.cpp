@@ -53,7 +53,7 @@ namespace march
     {
         if (g_Utils == nullptr)
         {
-            GFX_HR(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&g_Utils)));
+            CHECK_HR(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&g_Utils)));
         }
 
         return g_Utils.Get();
@@ -63,7 +63,7 @@ namespace march
     {
         if (g_Compiler == nullptr)
         {
-            GFX_HR(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_Compiler)));
+            CHECK_HR(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_Compiler)));
         }
 
         return g_Compiler.Get();

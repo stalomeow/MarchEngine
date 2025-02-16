@@ -66,7 +66,7 @@ namespace march
         auto recordConstantBufferCallback = [this](ID3D12ShaderReflectionConstantBuffer* cbuffer) -> void
         {
             D3D12_SHADER_BUFFER_DESC bufferDesc{};
-            GFX_HR(cbuffer->GetDesc(&bufferDesc));
+            CHECK_HR(cbuffer->GetDesc(&bufferDesc));
 
             // 记录 material 的 shader property location
             if (strcmp(bufferDesc.Name, MaterialConstantBufferName) == 0 && bufferDesc.Size > 0)
@@ -77,7 +77,7 @@ namespace march
                 {
                     ID3D12ShaderReflectionVariable* var = cbuffer->GetVariableByIndex(i);
                     D3D12_SHADER_VARIABLE_DESC varDesc{};
-                    GFX_HR(var->GetDesc(&varDesc));
+                    CHECK_HR(var->GetDesc(&varDesc));
 
                     ShaderPropertyLocation& loc = m_PropertyLocations[ShaderUtils::GetIdFromString(varDesc.Name)];
                     loc.Offset = static_cast<uint32_t>(varDesc.StartOffset);

@@ -26,14 +26,14 @@ namespace march
     void GfxUtils::ReportLiveObjects()
     {
         ComPtr<IDXGIDebug1> debug = nullptr;
-        GFX_HR(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)));
-        GFX_HR(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+        CHECK_HR(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)));
+        CHECK_HR(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
     }
 
     void GfxUtils::SetName(ID3D12Object* obj, const std::string& name)
     {
 #ifdef ENABLE_GFX_DEBUG_NAME
-        GFX_HR(obj->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
+        CHECK_HR(obj->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
 #else
         (name);
 #endif

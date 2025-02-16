@@ -582,14 +582,14 @@ namespace march
         {
         case GfxTextureDimension::Tex2D:
         case GfxTextureDimension::Tex2DArray:
-            GFX_HR(m_Image.Initialize2D(format, width, height, depthOrArraySize, static_cast<size_t>(mipLevels), CP_FLAGS_NONE));
+            CHECK_HR(m_Image.Initialize2D(format, width, height, depthOrArraySize, static_cast<size_t>(mipLevels), CP_FLAGS_NONE));
             break;
         case GfxTextureDimension::Tex3D:
-            GFX_HR(m_Image.Initialize3D(format, width, height, depthOrArraySize, static_cast<size_t>(mipLevels), CP_FLAGS_NONE));
+            CHECK_HR(m_Image.Initialize3D(format, width, height, depthOrArraySize, static_cast<size_t>(mipLevels), CP_FLAGS_NONE));
             break;
         case GfxTextureDimension::Cube:
         case GfxTextureDimension::CubeArray:
-            GFX_HR(m_Image.InitializeCube(format, width, height, depthOrArraySize, static_cast<size_t>(mipLevels), CP_FLAGS_NONE));
+            CHECK_HR(m_Image.InitializeCube(format, width, height, depthOrArraySize, static_cast<size_t>(mipLevels), CP_FLAGS_NONE));
             break;
         default:
             throw GfxException("Invalid texture dimension");
@@ -675,17 +675,17 @@ namespace march
         std::wstring wFilePath = StringUtils::Utf8ToUtf16(filePath);
         if (fs::path(filePath).extension() == ".dds")
         {
-            GFX_HR(LoadFromDDSFile(wFilePath.c_str(), DDS_FLAGS_NONE, nullptr, m_Image));
+            CHECK_HR(LoadFromDDSFile(wFilePath.c_str(), DDS_FLAGS_NONE, nullptr, m_Image));
         }
         else
         {
-            GFX_HR(LoadFromWICFile(wFilePath.c_str(), WIC_FLAGS_NONE, nullptr, m_Image));
+            CHECK_HR(LoadFromWICFile(wFilePath.c_str(), WIC_FLAGS_NONE, nullptr, m_Image));
         }
 
         if (IsCompressed(m_Image.GetMetadata().format))
         {
             ScratchImage decompressed;
-            GFX_HR(Decompress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), DXGI_FORMAT_UNKNOWN, decompressed));
+            CHECK_HR(Decompress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), DXGI_FORMAT_UNKNOWN, decompressed));
             m_Image = std::move(decompressed);
         }
 
@@ -699,13 +699,13 @@ namespace march
                 {
                     // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps3D
                     // This function does not operate directly on block compressed images.
-                    GFX_HR(GenerateMipMaps3D(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+                    CHECK_HR(GenerateMipMaps3D(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
                 }
                 else
                 {
                     // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps
                     // This function does not operate directly on block compressed images.
-                    GFX_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+                    CHECK_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
                 }
 
                 m_Image = std::move(mipChain);
@@ -717,7 +717,7 @@ namespace march
             metadata.mipLevels = 1; // Remove mipmaps
 
             ScratchImage level0;
-            GFX_HR(level0.Initialize(metadata, CP_FLAGS_NONE));
+            CHECK_HR(level0.Initialize(metadata, CP_FLAGS_NONE));
 
             if (metadata.dimension == TEX_DIMENSION_TEXTURE3D)
             {
@@ -757,7 +757,7 @@ namespace march
             }
 
             DXGI_FORMAT targetFormat = GetCompressedFormat(m_Image, args.Compression);
-            GFX_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), targetFormat, flags, TEX_THRESHOLD_DEFAULT, compressed));
+            CHECK_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), targetFormat, flags, TEX_THRESHOLD_DEFAULT, compressed));
             m_Image = std::move(compressed);
         }
 
@@ -819,14 +819,14 @@ namespace march
         ID3D12Device4* d3dDevice = device->GetD3DDevice4();
 
         ComPtr<ID3D12Resource> resource = nullptr;
-        GFX_HR(CreateTextureEx(d3dDevice, m_Image.GetMetadata(), desc.GetResFlags(false), flags, resource.GetAddressOf()));
+        CHECK_HR(CreateTextureEx(d3dDevice, m_Image.GetMetadata(), desc.GetResFlags(false), flags, resource.GetAddressOf()));
         GfxUtils::SetName(resource.Get(), m_Name);
 
         // CreateTextureEx 使用 D3D12_RESOURCE_STATE_COMMON
         Reset(desc, MARCH_MAKE_REF(GfxResource, device, resource, D3D12_RESOURCE_STATE_COMMON));
 
         std::vector<D3D12_SUBRESOURCE_DATA> subresources{};
-        GFX_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
+        CHECK_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));
 
         GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
         context->UpdateSubresources(GetUnderlyingResource(),

@@ -78,7 +78,7 @@ namespace march
             psoDesc.CS.BytecodeLength = static_cast<SIZE_T>(program->GetBinarySize());
 
             ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
-            GFX_HR(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
+            CHECK_HR(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
             GfxUtils::SetName(result.Get(), GetName() + " - " + kernel->GetName());
 
             LOG_TRACE("Create Compute PSO for '{}' Kernel of '{}' Shader", kernel->GetName(), GetName());

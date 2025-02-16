@@ -113,7 +113,7 @@ namespace march
         D3D12_HEAP_PROPERTIES heapProperties = GetHeapProperties();
 
         ComPtr<ID3D12Resource> resource = nullptr;
-        GFX_HR(device->CreateCommittedResource(&heapProperties, GetHeapFlags(), pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
+        CHECK_HR(device->CreateCommittedResource(&heapProperties, GetHeapFlags(), pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
         return MakeResource(name, resource, initialState, GfxResourceAllocation{});
     }
 
@@ -141,7 +141,7 @@ namespace march
             desc.Flags = GetHeapFlags();
 
             ComPtr<ID3D12Heap> heap = nullptr;
-            GFX_HR(GetDevice()->GetD3DDevice4()->CreateHeap(&desc, IID_PPV_ARGS(&heap)));
+            CHECK_HR(GetDevice()->GetD3DDevice4()->CreateHeap(&desc, IID_PPV_ARGS(&heap)));
             m_HeapPages.push_back(heap);
         };
 
@@ -169,7 +169,7 @@ namespace march
             UINT64 heapOffset = static_cast<UINT64>(*offset);
 
             ComPtr<ID3D12Resource> resource = nullptr;
-            GFX_HR(device->CreatePlacedResource(heap, heapOffset, pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
+            CHECK_HR(device->CreatePlacedResource(heap, heapOffset, pDesc, initialState, pOptimizedClearValue, IID_PPV_ARGS(&resource)));
             return MakeResource(name, resource, initialState, allocation);
         }
 

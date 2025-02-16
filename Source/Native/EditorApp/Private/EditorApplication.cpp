@@ -91,6 +91,7 @@ namespace march
         desc.OnlineViewDescriptorHeapSize = 10000;
         desc.OnlineSamplerDescriptorHeapSize = 2048;
         GfxDevice* device = InitGfxDevice(desc);
+        SetWindowTitle(StringUtils::Format("March Engine <DX12> - {}", m_DataPath));
 
         m_SwapChain = std::make_unique<GfxSwapChain>(device, GetWindowHandle(), GetClientWidth(), GetClientHeight());
         Display::CreateMainDisplay(10, 10); // dummy
@@ -265,13 +266,19 @@ namespace march
 
         if (EditorGUI::BeginMainViewportSideBar("##SingleLineToolbar", ImGuiDir_Up, ImGui::GetFrameHeight()))
         {
+            // Frame Stats
+            CalculateFrameStats();
+            ImGui::SameLine();
+
+            // Center Buttons
+
             float width1 = EditorGUI::CalcButtonWidth(ICON_FA_PLAY) * 1.8f;
             float width2 = EditorGUI::CalcButtonWidth(ICON_FA_PAUSE) * 1.8f;
             float width3 = EditorGUI::CalcButtonWidth(ICON_FA_FORWARD_STEP) * 1.8f;
             float width4 = EditorGUI::CalcButtonWidth(ICON_FA_CAMERA) * 1.8f;
             float buttonWidth = width1 + width2 + width3 + width4;
-            float contentTotalWidth = ImGui::GetContentRegionAvail().x;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (contentTotalWidth - buttonWidth) * 0.5f);
+            float contentTotalWidth = ImGui::GetContentRegionMax().x;
+            ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - (contentTotalWidth + buttonWidth) * 0.5f);
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
@@ -305,7 +312,6 @@ namespace march
     void EditorApplication::OnTick()
     {
         m_SwapChain->WaitForFrameLatency();
-        CalculateFrameStats();
 
         // Start the Dear ImGui frame
         ImGui_ImplDX12_NewFrame();
@@ -402,6 +408,7 @@ namespace march
         // average time it takes to render one frame.  These stats 
         // are appended to the window caption bar.
 
+        static float fps = 0;
         static int frameCnt = 0;
         static float timeElapsed = 0.0f;
 
@@ -410,17 +417,40 @@ namespace march
         // Compute averages over one second period.
         if ((GetElapsedTime() - timeElapsed) >= 1.0f)
         {
-            float fps = (float)frameCnt; // fps = frameCnt / 1
-            float mspf = 1000.0f / fps;
-
-            std::string fpsStr = std::to_string(fps);
-            std::string mspfStr = std::to_string(mspf);
-            SetWindowTitle("March Engine <DX12>    fps: " + fpsStr + "   mspf: " + mspfStr);
+            fps = static_cast<float>(frameCnt); // fps = frameCnt / 1
 
             // Reset for next average.
             frameCnt = 0;
             timeElapsed += 1.0f;
         }
+
+        constexpr auto fpsLabel = "FPS:";
+        constexpr auto fpsSlash = "/";
+        std::string fpsText = StringUtils::Format("{:.1f}", fps);
+        std::string mspfText = StringUtils::Format("{:.1f} ms", 1000.0f / fps);
+
+        float width
+            = ImGui::CalcTextSize(fpsLabel).x
+            + ImGui::CalcTextSize(fpsText.c_str()).x
+            + ImGui::CalcTextSize(fpsSlash).x
+            + ImGui::CalcTextSize(mspfText.c_str()).x
+            + ImGui::GetStyle().ItemSpacing.x * 3;
+        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - width);
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextUnformatted(fpsLabel);
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine();
+        ImGui::TextUnformatted(fpsText.c_str());
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextUnformatted(fpsSlash);
+        ImGui::PopStyleColor();
+
+        ImGui::SameLine();
+        ImGui::TextUnformatted(mspfText.c_str());
     }
 
     std::string EditorApplication::SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const

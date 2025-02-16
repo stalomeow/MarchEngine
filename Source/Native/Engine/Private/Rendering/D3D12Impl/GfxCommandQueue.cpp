@@ -25,7 +25,7 @@ namespace march
             queueDesc.Flags |= D3D12_COMMAND_QUEUE_FLAG_DISABLE_GPU_TIMEOUT;
         }
 
-        GFX_HR(device->GetD3DDevice4()->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_Queue)));
+        CHECK_HR(device->GetD3DDevice4()->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_Queue)));
         GfxUtils::SetName(m_Queue.Get(), name);
 
         m_Fence = std::make_unique<GfxFence>(device, name + "PrivateFence");
@@ -53,11 +53,11 @@ namespace march
 
             // Reuse the memory associated with command recording.
             // We can only reset when the associated command lists have finished execution on the GPU.
-            GFX_HR(result->Reset());
+            CHECK_HR(result->Reset());
         }
         else
         {
-            GFX_HR(m_Device->GetD3DDevice4()->CreateCommandAllocator(m_Type, IID_PPV_ARGS(&result)));
+            CHECK_HR(m_Device->GetD3DDevice4()->CreateCommandAllocator(m_Type, IID_PPV_ARGS(&result)));
         }
 
         return result;

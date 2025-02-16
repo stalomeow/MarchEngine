@@ -348,7 +348,7 @@ namespace march
 
             uint8_t* pMappedData = nullptr;
             ID3D12Resource* d3dResource = m_Resource->GetD3DResource();
-            GFX_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(&pMappedData))); // Write-Only
+            CHECK_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(&pMappedData))); // Write-Only
 
             if (pData)
             {

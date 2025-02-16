@@ -106,7 +106,7 @@ namespace march
             LOG_ERROR("{}", reinterpret_cast<char*>(error->GetBufferPointer()));
         }
 
-        GFX_HR(hr);
+        CHECK_HR(hr);
 
         LPVOID bufferPointer = serializedData->GetBufferPointer();
         SIZE_T bufferSize = serializedData->GetBufferSize();
@@ -125,7 +125,7 @@ namespace march
             LOG_TRACE("Create new RootSignature");
 
             ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
-            GFX_HR(device->CreateRootSignature(0, bufferPointer, bufferSize, IID_PPV_ARGS(result.GetAddressOf())));
+            CHECK_HR(device->CreateRootSignature(0, bufferPointer, bufferSize, IID_PPV_ARGS(result.GetAddressOf())));
         }
         else
         {
@@ -187,18 +187,18 @@ namespace march
         const std::function<void(ID3D12ShaderReflectionConstantBuffer*)>& recordConstantBufferCallback)
     {
         // 保存编译结果
-        GFX_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&program->m_Binary), nullptr));
+        CHECK_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&program->m_Binary), nullptr));
 
         // 暂时不输出 PDB 文件
 
         // 保存 Hash
         ComPtr<IDxcBlob> hash = nullptr;
-        GFX_HR(pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&hash), nullptr));
+        CHECK_HR(pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&hash), nullptr));
         program->m_Hash.SetData(*static_cast<DxcShaderHash*>(hash->GetBufferPointer()));
 
         // 反射
         ComPtr<IDxcBlob> pReflectionData = nullptr;
-        GFX_HR(pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&pReflectionData), nullptr));
+        CHECK_HR(pResults->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&pReflectionData), nullptr));
 
         if (pReflectionData != nullptr)
         {
@@ -209,7 +209,7 @@ namespace march
             ReflectionData.Size = pReflectionData->GetBufferSize();
 
             ComPtr<ID3D12ShaderReflection> pReflection = nullptr;
-            GFX_HR(utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection)));
+            CHECK_HR(utils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&pReflection)));
 
             UINT threadGroupSize[3]{};
             pReflection->GetThreadGroupSize(&threadGroupSize[0], &threadGroupSize[1], &threadGroupSize[2]);
@@ -218,7 +218,7 @@ namespace march
             program->m_ThreadGroupSizeZ = static_cast<uint32_t>(threadGroupSize[2]);
 
             D3D12_SHADER_DESC shaderDesc{};
-            GFX_HR(pReflection->GetDesc(&shaderDesc));
+            CHECK_HR(pReflection->GetDesc(&shaderDesc));
 
             std::unordered_map<int32, ShaderProgramStaticSampler> samplers{};
 
@@ -226,7 +226,7 @@ namespace march
             for (UINT i = 0; i < shaderDesc.BoundResources; i++)
             {
                 D3D12_SHADER_INPUT_BIND_DESC bindDesc{};
-                GFX_HR(pReflection->GetResourceBindingDesc(i, &bindDesc));
+                CHECK_HR(pReflection->GetResourceBindingDesc(i, &bindDesc));
 
                 // TODO rt acceleration structure
                 // TODO uav readback texture
@@ -237,7 +237,7 @@ namespace march
                 {
                     ID3D12ShaderReflectionConstantBuffer* cb = pReflection->GetConstantBufferByName(bindDesc.Name);
                     D3D12_SHADER_BUFFER_DESC cbDesc{};
-                    GFX_HR(cb->GetDesc(&cbDesc));
+                    CHECK_HR(cb->GetDesc(&cbDesc));
 
                     ShaderProgramBuffer& buffer = program->m_SrvCbvBuffers.emplace_back();
                     buffer.Id = ShaderUtils::GetIdFromString(bindDesc.Name);

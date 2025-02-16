@@ -340,7 +340,7 @@ namespace march
             // Create default include handler. (You can create your own...)
             //
             Microsoft::WRL::ComPtr<IDxcIncludeHandler> pIncludeHandler;
-            GFX_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
+            CHECK_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
             context.IncludeHandler = pIncludeHandler.Get();
 
             if (!PreprocessAndGetCompilationConfig(source, context.Config, error))
@@ -673,7 +673,7 @@ namespace march
         // Compile it with specified arguments.
         //
         Microsoft::WRL::ComPtr<IDxcResult> pResults = nullptr;
-        GFX_HR(context.Compiler->Compile(
+        CHECK_HR(context.Compiler->Compile(
             &context.Source,                     // Source buffer.
             pszArgs.data(),                      // Array of pointers to arguments.
             static_cast<UINT32>(pszArgs.size()), // Number of arguments.
@@ -685,10 +685,10 @@ namespace march
         // IDxcCompiler3::Compile will always return an error buffer, but its length
         // will be zero if there are no warnings or errors.
         Microsoft::WRL::ComPtr<IDxcBlobUtf8> pErrors = nullptr;
-        GFX_HR(pResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrors), nullptr));
+        CHECK_HR(pResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&pErrors), nullptr));
 
         HRESULT hrStatus;
-        GFX_HR(pResults->GetStatus(&hrStatus));
+        CHECK_HR(pResults->GetStatus(&hrStatus));
 
         if (FAILED(hrStatus))
         {

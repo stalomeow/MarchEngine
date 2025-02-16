@@ -45,12 +45,12 @@ namespace march
         // Starting with Direct3D 11.1, we recommend not to use CreateSwapChain anymore to create a swap chain.
         // Instead, use CreateSwapChainForHwnd, CreateSwapChainForCoreWindow,
         // or CreateSwapChainForComposition depending on how you want to create the swap chain.
-        GFX_HR(factory->CreateSwapChainForHwnd(commandQueue, hWnd, &swapChainDesc, nullptr, nullptr, &m_SwapChain));
+        CHECK_HR(factory->CreateSwapChainForHwnd(commandQueue, hWnd, &swapChainDesc, nullptr, nullptr, &m_SwapChain));
 
         // https://developer.nvidia.com/blog/advanced-api-performance-swap-chains/
         ComPtr<IDXGISwapChain2> swapChain2;
-        GFX_HR(m_SwapChain.As(&swapChain2));
-        GFX_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(MaxFrameLatency)));
+        CHECK_HR(m_SwapChain.As(&swapChain2));
+        CHECK_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(MaxFrameLatency)));
         m_FrameLatencyHandle = swapChain2->GetFrameLatencyWaitableObject();
 
         CreateBackBuffers();
@@ -74,8 +74,8 @@ namespace march
         m_Device->WaitForGpuIdle(/* releaseUnusedObjects */ true);
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-        GFX_HR(m_SwapChain->GetDesc1(&swapChainDesc));
-        GFX_HR(m_SwapChain->ResizeBuffers(swapChainDesc.BufferCount,
+        CHECK_HR(m_SwapChain->GetDesc1(&swapChainDesc));
+        CHECK_HR(m_SwapChain->ResizeBuffers(swapChainDesc.BufferCount,
             static_cast<UINT>(width), static_cast<UINT>(height),
             swapChainDesc.Format, swapChainDesc.Flags));
 
@@ -96,7 +96,7 @@ namespace march
         for (uint32_t i = 0; i < BackBufferCount; i++)
         {
             ComPtr<ID3D12Resource> backBuffer = nullptr;
-            GFX_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
+            CHECK_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
 
             m_BackBuffers[i] = std::make_unique<GfxRenderTexture>(m_Device, backBuffer, desc);
         }
@@ -113,7 +113,7 @@ namespace march
         context->TransitionResource(GetBackBuffer()->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PRESENT);
         context->SubmitAndRelease();
 
-        GFX_HR(m_SwapChain->Present(0, 0)); // No vsync
+        CHECK_HR(m_SwapChain->Present(0, 0)); // No vsync
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }
 }

@@ -37,7 +37,7 @@ namespace march
         heapDesc.Type = desc.Type;
         heapDesc.NumDescriptors = static_cast<UINT>(desc.Capacity);
         heapDesc.Flags = desc.ShaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        GFX_HR(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_Heap)));
+        CHECK_HR(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_Heap)));
         GfxUtils::SetName(m_Heap.Get(), name);
 
         m_IncrementSize = static_cast<uint32_t>(d3dDevice->GetDescriptorHandleIncrementSize(desc.Type));

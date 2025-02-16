@@ -29,7 +29,7 @@ namespace march
     };
 }
 
-#define GFX_HR(x) \
+#define CHECK_HR(x) \
 { \
     HRESULT ___hr___ = (x); \
     if (FAILED(___hr___)) { throw ::march::GfxHResultException(___hr___, #x, __FILE__, __LINE__); } \

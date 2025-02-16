@@ -659,7 +659,7 @@ namespace march
             psoDesc.SampleDesc.Quality = static_cast<UINT>(outputDesc.SampleQuality);
 
             ID3D12Device4* device = GetGfxDevice()->GetD3DDevice4();
-            GFX_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
+            CHECK_HR(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(result.GetAddressOf())));
             GfxUtils::SetName(result.Get(), m_Shader->GetName() + " - " + pass->GetName());
 
             LOG_TRACE("Create Graphics PSO for '{}' Pass of '{}' Shader", pass->GetName(), m_Shader->GetName());
