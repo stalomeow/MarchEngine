@@ -294,7 +294,7 @@ namespace march
 
             ImGui::BeginDisabled(!FrameDebugger::IsCaptureAvailable());
             bool capture = ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
-            ImGui::SetItemTooltip("Capture Frame (Alt+C)");
+            ImGui::SetItemTooltip("Capture Frames (Alt+C)");
             if (capture) FrameDebugger::Capture();
             ImGui::EndDisabled();
 

@@ -38,25 +38,23 @@ namespace march
 
             PassData& data = m_Passes.emplace_back();
             data.Name = pass.Name;
-            data.IsCulled = pass.IsCulled;
-            data.IsAsyncCompute = pass.IsAsyncCompute;
 
             if (pass.IsCulled)
             {
-                data.Tooltip = "Pass is culled and won't be executed";
+                data.Status = PassStatus::Culled;
             }
             else if (pass.IsAsyncCompute)
             {
-                data.Tooltip = "Pass will be asynchronously executed";
+                data.Status = PassStatus::AsyncCompute;
             }
             else if (pass.PassIndexToWait)
             {
-                data.Tooltip = StringUtils::Format("This is the deadline for '{}', by which it must be completed", passes[*pass.PassIndexToWait].Name);
-                m_Passes[*pass.PassIndexToWait].AsyncComputeDeadlinePass = passIndex;
+                data.Status = PassStatus::Deadline;
+                data.DeadlineOwnerPassName = m_Passes[*pass.PassIndexToWait].Name;
             }
             else
             {
-                data.Tooltip = "";
+                data.Status = PassStatus::Normal;
             }
 
             for (size_t resourceIndex : pass.ResourcesIn)
@@ -69,14 +67,6 @@ namespace march
                 m_Resources[resourceIndex].PassAccessFlags[passIndex] |= ResourceAccessFlags::Write;
             }
         }
-    }
-
-    bool RenderGraphViewerWindow::Begin()
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        bool ret = base::Begin();
-        ImGui::PopStyleVar();
-        return ret;
     }
 
     void RenderGraphViewerWindow::OnOpen()
@@ -95,24 +85,17 @@ namespace march
     {
         base::OnDraw();
 
-        DrawSidebar();
-
         if (m_Passes.empty())
         {
             return;
         }
-
-        // Table 和 Sidebar 在同一行
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-        ImGui::SameLine();
-        ImGui::PopStyleVar();
 
         constexpr ImGuiTableFlags tableFlags
             = ImGuiTableFlags_SizingFixedFit
             | ImGuiTableFlags_ScrollX
             | ImGuiTableFlags_ScrollY
             | ImGuiTableFlags_BordersInner
-            | ImGuiTableFlags_BordersOuterV
+            | ImGuiTableFlags_PadOuterX
             | ImGuiTableFlags_HighlightHoveredColumn
             | ImGuiTableFlags_Resizable;
         constexpr ImGuiTableColumnFlags columnFlags
@@ -149,20 +132,54 @@ namespace march
 
                 ImGui::PushID(i);
 
-                // 如果当前 pass 有 tooltip，则在 column 中间显示一个省略号
-                if (int passIndex = i - 1; passIndex >= 0 && !m_Passes[passIndex].Tooltip.empty())
+                if (int passIndex = i - 1; passIndex < 0)
                 {
-                    constexpr const char* ellipsis = ICON_FA_ELLIPSIS;
-
-                    float columnWidth = ImGui::GetColumnWidth();
-                    float textWidth = ImGui::CalcTextSize(ellipsis).x;
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (columnWidth - textWidth) * 0.5f);
-                    ImGui::TableHeader(ellipsis);
-                    ImGui::SetItemTooltip(m_Passes[passIndex].Tooltip.c_str());
+                    // 不是 pass 列
+                    ImGui::TableHeader("");
                 }
                 else
                 {
-                    ImGui::TableHeader("");
+                    const PassData& pass = m_Passes[passIndex];
+                    char* passIcon;
+                    std::string tooltip;
+
+                    switch (pass.Status)
+                    {
+                    case PassStatus::Culled:
+                        passIcon = ICON_FA_XMARK;
+                        tooltip = "Pass is culled and won't be executed";
+                        break;
+                    case PassStatus::AsyncCompute:
+                        passIcon = ICON_FA_ARROWS_TURN_RIGHT;
+                        tooltip = "Pass will be executed asynchronously";
+                        break;
+                    case PassStatus::Deadline:
+                        passIcon = ICON_FA_HOURGLASS_END;
+                        tooltip = StringUtils::Format("This is the deadline for '{}', by which it must be completed", pass.DeadlineOwnerPassName);
+                        break;
+                    default:
+                        passIcon = ICON_FA_ARROW_RIGHT_LONG;
+                        tooltip = "";
+                        break;
+                    }
+
+                    float columnWidth = ImGui::GetColumnWidth();
+                    float textWidth = ImGui::CalcTextSize(passIcon).x;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (columnWidth - textWidth) * 0.5f);
+                    ImGui::TableHeader(passIcon);
+
+                    // 显示 pass 的详细信息
+                    if (ImGui::BeginItemTooltip())
+                    {
+                        ImGui::TextUnformatted(pass.Name.c_str());
+
+                        if (!tooltip.empty())
+                        {
+                            ImGui::BulletText(tooltip.c_str());
+                        }
+
+                        ImGui::EndTooltip();
+                    }
                 }
 
                 ImGui::PopID();
@@ -190,6 +207,14 @@ namespace march
                         // 显示资源名
                         ImGui::AlignTextToFramePadding();
                         ImGui::TextUnformatted(res.Name.c_str());
+
+                        // 显示资源的详细信息
+                        if (ImGui::BeginItemTooltip())
+                        {
+                            ImGui::TextUnformatted(res.Name.c_str());
+                            ImGui::BulletText(StringUtils::Format("External: {}", res.IsExternal).c_str());
+                            ImGui::EndTooltip();
+                        }
                     }
                     else
                     {
@@ -272,63 +297,5 @@ namespace march
 
         ImGui::Dummy(ImVec2(size, size));
         ImGui::SetItemTooltip(tooltip);
-    }
-
-    void RenderGraphViewerWindow::DrawSidebar()
-    {
-        const ImVec2 totalSize = ImGui::GetContentRegionAvail();
-        const ImVec2 minSize = ImVec2(totalSize.x * 0.20f, totalSize.y);
-        const ImVec2 maxSize = ImVec2(totalSize.x * 0.50f, totalSize.y);
-        const ImVec2 defaultSize = ImVec2(totalSize.x * 0.25f, totalSize.y);
-        ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
-
-        if (ImGui::BeginChild("Sidebar", defaultSize, ImGuiChildFlags_ResizeX | ImGuiChildFlags_AlwaysUseWindowPadding))
-        {
-            if (ImGui::CollapsingHeader("Resource List"))
-            {
-                for (int i = 0; i < m_Resources.size(); i++)
-                {
-                    const ResourceData& res = m_Resources[i];
-
-                    ImGui::PushID(i);
-
-                    if (ImGui::TreeNodeEx(res.Name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
-                    {
-                        ImGui::BulletText(StringUtils::Format("External: {}", res.IsExternal).c_str());
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::PopID();
-                }
-            }
-
-            if (ImGui::CollapsingHeader("Pass List"))
-            {
-                for (int i = 0; i < m_Passes.size(); i++)
-                {
-                    const PassData& pass = m_Passes[i];
-
-                    ImGui::PushID(i);
-
-                    if (ImGui::TreeNodeEx(pass.Name.c_str(), ImGuiTreeNodeFlags_SpanAvailWidth))
-                    {
-                        ImGui::BulletText(StringUtils::Format("Culled: {}", pass.IsCulled).c_str());
-                        ImGui::BulletText(StringUtils::Format("Async Compute: {}", pass.IsAsyncCompute).c_str());
-
-                        if (pass.IsAsyncCompute && pass.AsyncComputeDeadlinePass)
-                        {
-                            size_t deadline = *pass.AsyncComputeDeadlinePass;
-                            ImGui::BulletText(StringUtils::Format("Deadline: '{}'", m_Passes[deadline].Name).c_str());
-                        }
-
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::PopID();
-                }
-            }
-        }
-
-        ImGui::EndChild();
     }
 }

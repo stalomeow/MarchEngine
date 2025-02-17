@@ -14,13 +14,19 @@ namespace march
     {
         using base = typename EditorWindow;
 
+        enum class PassStatus
+        {
+            Normal,
+            Culled,
+            AsyncCompute,
+            Deadline,
+        };
+
         struct PassData
         {
             std::string Name{};
-            bool IsCulled = false;
-            bool IsAsyncCompute = false;
-            std::optional<size_t> AsyncComputeDeadlinePass = std::nullopt;
-            std::string Tooltip{};
+            PassStatus Status = PassStatus::Normal;
+            std::string DeadlineOwnerPassName{};
         };
 
         enum class ResourceAccessFlags
@@ -52,13 +58,11 @@ namespace march
         std::vector<ResourceData> m_Resources{};
 
         void DrawAccessSquare(ResourceAccessFlags accessFlags);
-        void DrawSidebar();
 
     public:
         void OnGraphCompiled(const std::vector<RenderGraphPass>& passes, const RenderGraphResourceManager* resourceManager) override;
 
     protected:
-        bool Begin() override;
         void OnOpen() override;
         void OnClose() override;
         void OnDraw() override;
