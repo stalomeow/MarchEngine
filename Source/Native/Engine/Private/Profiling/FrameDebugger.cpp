@@ -17,6 +17,8 @@ namespace march
     {
         static constexpr FrameDebuggerPlugin Type = FrameDebuggerPlugin::RenderDoc;
 
+        // Ref: https://renderdoc.org/docs/in_application_api.html
+
         static inline RENDERDOC_API_1_5_0* pApi = nullptr;
 
         static bool Load()
@@ -62,6 +64,10 @@ namespace march
     struct PIXPlugin
     {
         static constexpr FrameDebuggerPlugin Type = FrameDebuggerPlugin::PIX;
+
+        // Ref: https://devblogs.microsoft.com/pix/winpixeventruntime/
+        // Ref: https://devblogs.microsoft.com/pix/programmatic-capture/
+        // Ref: https://devblogs.microsoft.com/pix/gpu-captures/
 
         static bool Load()
         {
