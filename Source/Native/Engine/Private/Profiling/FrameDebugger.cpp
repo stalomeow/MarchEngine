@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 
 namespace march
 {
-    struct RenderDocAPI
+    struct RenderDocPlugin
     {
         static constexpr FrameDebuggerPlugin Type = FrameDebuggerPlugin::RenderDoc;
 
@@ -59,7 +59,7 @@ namespace march
         }
     };
 
-    struct PIXAPI
+    struct PIXPlugin
     {
         static constexpr FrameDebuggerPlugin Type = FrameDebuggerPlugin::PIX;
 
@@ -168,7 +168,7 @@ namespace march
         }
     };
 
-    using FrameDebuggerPluginManager = FrameDebuggerPluginManagerImpl<RenderDocAPI, PIXAPI>;
+    using FrameDebuggerPluginManager = FrameDebuggerPluginManagerImpl<RenderDocPlugin, PIXPlugin>;
 
     uint32_t FrameDebugger::NumFramesToCapture = 1;
 
