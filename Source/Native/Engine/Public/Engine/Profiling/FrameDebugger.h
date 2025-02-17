@@ -14,9 +14,15 @@ namespace march
 
     struct FrameDebugger final
     {
+        static uint32_t NumFramesToCapture;
+
         static std::optional<FrameDebuggerPlugin> GetLoadedPlugin();
 
+        static bool IsPluginLoaded(FrameDebuggerPlugin plugin);
+
         static void LoadPlugin(FrameDebuggerPlugin plugin);
+
+        static bool IsCaptureAvailable();
 
         static void Capture();
     };

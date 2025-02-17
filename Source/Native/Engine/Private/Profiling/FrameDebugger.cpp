@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fmt/chrono.h>
 #include <pix3.h>
+#include <array>
 
 namespace fs = std::filesystem;
 
@@ -14,6 +15,8 @@ namespace march
 {
     struct RenderDocAPI
     {
+        static constexpr FrameDebuggerPlugin Type = FrameDebuggerPlugin::RenderDoc;
+
         static inline RENDERDOC_API_1_5_0* pApi = nullptr;
 
         static bool Load()
@@ -37,18 +40,13 @@ namespace march
             }
 
             pApi->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None); // 不显示 overlay
-
-            //// 开启 API 验证和调试输出
-            //pApi->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
-            //pApi->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
-
             pApi->SetCaptureKeys(nullptr, 0);
             return true;
         }
 
-        static void Capture()
+        static void Capture(uint32_t numFrames)
         {
-            pApi->TriggerCapture();
+            pApi->TriggerMultiFrameCapture(numFrames);
 
             if (pApi->IsTargetControlConnected())
             {
@@ -63,6 +61,8 @@ namespace march
 
     struct PIXAPI
     {
+        static constexpr FrameDebuggerPlugin Type = FrameDebuggerPlugin::PIX;
+
         static bool Load()
         {
             HMODULE hModule = PIXLoadLatestWinPixGpuCapturerLibrary();
@@ -81,7 +81,7 @@ namespace march
             return true;
         }
 
-        static void Capture()
+        static void Capture(uint32_t numFrames)
         {
             fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Captures");
 
@@ -92,7 +92,7 @@ namespace march
 
             path /= StringUtils::Format(L"{:%Y-%m-%d-%H-%M-%S}.wpix", fmt::localtime(std::time(nullptr)));
 
-            if (SUCCEEDED(PIXGpuCaptureNextFrames(path.c_str(), 1)))
+            if (SUCCEEDED(PIXGpuCaptureNextFrames(path.c_str(), static_cast<UINT32>(numFrames))))
             {
                 PIXOpenCaptureInUI(path.c_str());
             }
@@ -103,62 +103,97 @@ namespace march
         }
     };
 
-    static std::optional<FrameDebuggerPlugin> g_LoadedPlugin = std::nullopt;
+    template <typename... _Plugin>
+    class FrameDebuggerPluginManagerImpl
+    {
+        static constexpr size_t NumMaxPlugin = 3;
+        static_assert(sizeof...(_Plugin) <= NumMaxPlugin, "Too many frame debugger plugin");
+
+        static constexpr auto s_LoadFuncs = []()
+        {
+            std::array<bool(*)(), NumMaxPlugin> results{};
+            ((results[static_cast<size_t>(_Plugin::Type)] = &_Plugin::Load), ...);
+            return results;
+        }();
+
+        static constexpr auto s_CaptureFuncs = []()
+        {
+            std::array<void(*)(uint32_t), NumMaxPlugin> results{};
+            ((results[static_cast<size_t>(_Plugin::Type)] = &_Plugin::Capture), ...);
+            return results;
+        }();
+
+        static inline std::optional<FrameDebuggerPlugin> s_LoadedPlugin = std::nullopt;
+
+    public:
+        static auto GetLoadedPlugin() { return s_LoadedPlugin; }
+
+        static void Load(FrameDebuggerPlugin plugin)
+        {
+            if (s_LoadedPlugin)
+            {
+                LOG_ERROR("Frame debugger has already loaded one plugin: '{}'", *s_LoadedPlugin);
+                return;
+            }
+
+            if (auto fn = s_LoadFuncs[static_cast<size_t>(plugin)])
+            {
+                if (fn())
+                {
+                    s_LoadedPlugin = plugin;
+                }
+            }
+            else
+            {
+                LOG_ERROR("Unsupported frame debugger plugin: '{}'", plugin);
+            }
+        }
+
+        static void Capture(uint32_t numFrames)
+        {
+            if (!s_LoadedPlugin)
+            {
+                LOG_WARNING("No frame debugger plugin is loaded");
+                return;
+            }
+
+            if (auto fn = s_CaptureFuncs[static_cast<size_t>(*s_LoadedPlugin)])
+            {
+                fn(numFrames);
+            }
+            else
+            {
+                LOG_ERROR("Unsupported frame debugger plugin: '{}'", *s_LoadedPlugin);
+            }
+        }
+    };
+
+    using FrameDebuggerPluginManager = FrameDebuggerPluginManagerImpl<RenderDocAPI, PIXAPI>;
+
+    uint32_t FrameDebugger::NumFramesToCapture = 1;
 
     std::optional<FrameDebuggerPlugin> FrameDebugger::GetLoadedPlugin()
     {
-        return g_LoadedPlugin;
+        return FrameDebuggerPluginManager::GetLoadedPlugin();
+    }
+
+    bool FrameDebugger::IsPluginLoaded(FrameDebuggerPlugin plugin)
+    {
+        return FrameDebuggerPluginManager::GetLoadedPlugin() == plugin;
     }
 
     void FrameDebugger::LoadPlugin(FrameDebuggerPlugin plugin)
     {
-        if (g_LoadedPlugin)
-        {
-            LOG_ERROR("Frame debugger has already loaded one plugin: '{}'", *g_LoadedPlugin);
-            return;
-        }
+        FrameDebuggerPluginManager::Load(plugin);
+    }
 
-        bool success;
-
-        switch (plugin)
-        {
-        case FrameDebuggerPlugin::RenderDoc:
-            success = RenderDocAPI::Load();
-            break;
-        case FrameDebuggerPlugin::PIX:
-            success = PIXAPI::Load();
-            break;
-        default:
-            LOG_ERROR("Unsupported frame debugger plugin: '{}'", plugin);
-            success = false;
-            break;
-        }
-
-        if (success)
-        {
-            g_LoadedPlugin = plugin;
-        }
+    bool FrameDebugger::IsCaptureAvailable()
+    {
+        return FrameDebuggerPluginManager::GetLoadedPlugin().has_value();
     }
 
     void FrameDebugger::Capture()
     {
-        if (!g_LoadedPlugin)
-        {
-            LOG_WARNING("No frame debugger plugin loaded");
-            return;
-        }
-
-        switch (*g_LoadedPlugin)
-        {
-        case FrameDebuggerPlugin::RenderDoc:
-            RenderDocAPI::Capture();
-            break;
-        case FrameDebuggerPlugin::PIX:
-            PIXAPI::Capture();
-            break;
-        default:
-            LOG_ERROR("Unsupported frame debugger plugin: '{}'", *g_LoadedPlugin);
-            break;
-        }
+        FrameDebuggerPluginManager::Capture(NumFramesToCapture);
     }
 }

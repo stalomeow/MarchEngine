@@ -287,12 +287,12 @@ namespace march
             ImGui::Button(ICON_FA_FORWARD_STEP, ImVec2(width3, ImGui::GetFrameHeight()));
             ImGui::SameLine();
 
-            if (FrameDebugger::GetLoadedPlugin() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
+            if (FrameDebugger::IsCaptureAvailable() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
             {
                 FrameDebugger::Capture();
             }
 
-            ImGui::BeginDisabled(!FrameDebugger::GetLoadedPlugin());
+            ImGui::BeginDisabled(!FrameDebugger::IsCaptureAvailable());
             bool capture = ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
             ImGui::SetItemTooltip("Capture Frame (Alt+C)");
             if (capture) FrameDebugger::Capture();

@@ -27,21 +27,33 @@ namespace march
             {
                 ImGui::BulletText("Color Space: Unknown");
             }
-
-            if (std::optional<FrameDebuggerPlugin> plugin = FrameDebugger::GetLoadedPlugin())
-            {
-                ImGui::BulletText(StringUtils::Format("Frame Debugger Plugin: {}", *plugin).c_str());
-            }
-            else
-            {
-                ImGui::BulletText("Frame Debugger Plugin: None");
-            }
         }
 
         if (ImGui::CollapsingHeader("Online Descriptor Allocator"))
         {
             DrawOnlineViewDescriptorAllocatorInfo();
             DrawOnlineSamplerDescriptorAllocatorInfo();
+        }
+
+        if (ImGui::CollapsingHeader("Frame Debugger"))
+        {
+            if (std::optional<FrameDebuggerPlugin> plugin = FrameDebugger::GetLoadedPlugin())
+            {
+                EditorGUI::LabelField("Plugin", "", StringUtils::Format("{}", *plugin));
+            }
+            else
+            {
+                EditorGUI::LabelField("Plugin", "", "None");
+            }
+
+            ImGui::BeginDisabled(!FrameDebugger::IsCaptureAvailable());
+
+            if (int v = FrameDebugger::NumFramesToCapture; EditorGUI::IntField("Num Frames To Capture", "", &v, 1, 1, 10))
+            {
+                FrameDebugger::NumFramesToCapture = v;
+            }
+
+            ImGui::EndDisabled();
         }
 
         if (ImGui::CollapsingHeader("Shadow"))
