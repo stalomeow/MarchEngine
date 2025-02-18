@@ -49,10 +49,30 @@ namespace march
         return std::nullopt;
     }
 
+    uint32_t ComputeShader::GetThreadGroupSizeX(size_t kernelIndex) const
+    {
+        ShaderProgram* program = m_Kernels[kernelIndex]->GetProgram(0, m_KeywordSet.GetKeywords());
+        return program->GetThreadGroupSizeX();
+    }
+
+    uint32_t ComputeShader::GetThreadGroupSizeY(size_t kernelIndex) const
+    {
+        ShaderProgram* program = m_Kernels[kernelIndex]->GetProgram(0, m_KeywordSet.GetKeywords());
+        return program->GetThreadGroupSizeY();
+    }
+
+    uint32_t ComputeShader::GetThreadGroupSizeZ(size_t kernelIndex) const
+    {
+        ShaderProgram* program = m_Kernels[kernelIndex]->GetProgram(0, m_KeywordSet.GetKeywords());
+        return program->GetThreadGroupSizeZ();
+    }
+
     void ComputeShader::GetThreadGroupSize(size_t kernelIndex, uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ) const
     {
         ShaderProgram* program = m_Kernels[kernelIndex]->GetProgram(0, m_KeywordSet.GetKeywords());
-        program->GetThreadGroupSize(pOutX, pOutY, pOutZ);
+        *pOutX = program->GetThreadGroupSizeX();
+        *pOutY = program->GetThreadGroupSizeY();
+        *pOutZ = program->GetThreadGroupSizeZ();
     }
 
     ComputeShader::RootSignatureType* ComputeShader::GetRootSignature(size_t kernelIndex) const

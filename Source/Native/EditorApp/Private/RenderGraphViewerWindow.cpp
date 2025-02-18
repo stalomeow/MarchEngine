@@ -37,7 +37,17 @@ namespace march
             const RenderGraphPass& pass = passes[passIndex];
 
             PassData& data = m_Passes.emplace_back();
-            data.Name = pass.Name;
+            data.FullName = pass.Name;
+
+            constexpr size_t maxShortNameLength = 18;
+            if (pass.Name.size() > maxShortNameLength)
+            {
+                data.ShortName = pass.Name.substr(0, maxShortNameLength) + "...";
+            }
+            else
+            {
+                data.ShortName = pass.Name;
+            }
 
             if (pass.IsCulled)
             {
@@ -50,7 +60,7 @@ namespace march
             else if (pass.PassIndexToWait)
             {
                 data.Status = PassStatus::Deadline;
-                data.DeadlineOwnerPassName = m_Passes[*pass.PassIndexToWait].Name;
+                data.DeadlineOwnerPassName = m_Passes[*pass.PassIndexToWait].FullName;
             }
             else
             {
@@ -67,6 +77,14 @@ namespace march
                 m_Resources[resourceIndex].PassAccessFlags[passIndex] |= ResourceAccessFlags::Write;
             }
         }
+    }
+
+    bool RenderGraphViewerWindow::Begin()
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        bool ret = base::Begin();
+        ImGui::PopStyleVar();
+        return ret;
     }
 
     void RenderGraphViewerWindow::OnOpen()
@@ -111,7 +129,7 @@ namespace march
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_None, 200); // 额外的一列显示资源名
             for (int i = 0; i < m_Passes.size(); i++)
             {
-                ImGui::TableSetupColumn(m_Passes[i].Name.c_str(), columnFlags);
+                ImGui::TableSetupColumn(m_Passes[i].ShortName.c_str(), columnFlags);
             }
 
             ImGui::TableSetupScrollFreeze(numFrozenColumns, numFrozenRows);
@@ -171,7 +189,7 @@ namespace march
                     // 显示 pass 的详细信息
                     if (ImGui::BeginItemTooltip())
                     {
-                        ImGui::TextUnformatted(pass.Name.c_str());
+                        ImGui::TextUnformatted(pass.FullName.c_str());
 
                         if (!tooltip.empty())
                         {

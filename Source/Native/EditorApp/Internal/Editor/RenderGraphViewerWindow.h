@@ -24,7 +24,8 @@ namespace march
 
         struct PassData
         {
-            std::string Name{};
+            std::string FullName{};
+            std::string ShortName{};
             PassStatus Status = PassStatus::Normal;
             std::string DeadlineOwnerPassName{};
         };
@@ -63,6 +64,7 @@ namespace march
         void OnGraphCompiled(const std::vector<RenderGraphPass>& passes, const RenderGraphResourceManager* resourceManager) override;
 
     protected:
+        bool Begin() override;
         void OnOpen() override;
         void OnClose() override;
         void OnDraw() override;

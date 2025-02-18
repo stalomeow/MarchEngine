@@ -406,7 +406,7 @@ namespace march
         // average time it takes to render one frame.  These stats 
         // are appended to the window caption bar.
 
-        static float fps = 0;
+        static int fps = 0;
         static int frameCnt = 0;
         static float timeElapsed = 0.0f;
 
@@ -415,7 +415,7 @@ namespace march
         // Compute averages over one second period.
         if ((GetElapsedTime() - timeElapsed) >= 1.0f)
         {
-            fps = static_cast<float>(frameCnt); // fps = frameCnt / 1
+            fps = frameCnt; // fps = frameCnt / 1
 
             // Reset for next average.
             frameCnt = 0;
@@ -424,7 +424,7 @@ namespace march
 
         constexpr auto fpsLabel = "FPS:";
         constexpr auto fpsSlash = "/";
-        std::string fpsText = StringUtils::Format("{:.1f}", fps);
+        std::string fpsText = std::to_string(fps);
         std::string mspfText = StringUtils::Format("{:.1f} ms", 1000.0f / fps);
 
         float width

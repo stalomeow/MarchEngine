@@ -94,12 +94,9 @@ namespace march
         const std::vector<ShaderProgramTexture>& GetUavTextures() const { return m_UavTextures; }
         const std::vector<ShaderProgramStaticSampler>& GetStaticSamplers() const { return m_StaticSamplers; }
 
-        void GetThreadGroupSize(uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ) const
-        {
-            *pOutX = m_ThreadGroupSizeX;
-            *pOutY = m_ThreadGroupSizeY;
-            *pOutZ = m_ThreadGroupSizeZ;
-        }
+        uint32_t GetThreadGroupSizeX() const { return m_ThreadGroupSizeX; }
+        uint32_t GetThreadGroupSizeY() const { return m_ThreadGroupSizeY; }
+        uint32_t GetThreadGroupSizeZ() const { return m_ThreadGroupSizeZ; }
     };
 
     // srv/cbv buffer 都使用 root srv/cbv

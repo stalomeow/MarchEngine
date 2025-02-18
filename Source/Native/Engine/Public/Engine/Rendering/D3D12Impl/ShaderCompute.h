@@ -63,6 +63,9 @@ namespace march
 
         std::optional<size_t> FindKernel(const std::string& name) const;
 
+        uint32_t GetThreadGroupSizeX(size_t kernelIndex) const;
+        uint32_t GetThreadGroupSizeY(size_t kernelIndex) const;
+        uint32_t GetThreadGroupSizeZ(size_t kernelIndex) const;
         void GetThreadGroupSize(size_t kernelIndex, uint32_t* pOutX, uint32_t* pOutY, uint32_t* pOutZ) const;
 
         RootSignatureType* GetRootSignature(size_t kernelIndex) const;
