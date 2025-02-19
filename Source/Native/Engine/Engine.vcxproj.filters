@@ -118,7 +118,4 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
     <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
 </Project>

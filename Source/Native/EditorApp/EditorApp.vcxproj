@@ -46,9 +46,6 @@
     <ClInclude Include="Internal\Editor\SceneWindow.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -111,7 +108,7 @@
     <PostBuildEvent />
     <CustomBuildStep>
       <Message>Copy Files</Message>
-      <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
+      <Command>xcopy /y /d "$(VcpkgInstalledDir)\$(VcpkgTriplet)\bin\dxil.dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\March.Core.pdb" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
@@ -149,7 +146,7 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     <PostBuildEvent />
     <CustomBuildStep>
       <Message>Copy Files</Message>
-      <Command>xcopy /y /d "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)"
+      <Command>xcopy /y /d "$(VcpkgInstalledDir)\$(VcpkgTriplet)\bin\dxil.dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\March.Core.pdb" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
@@ -165,13 +162,5 @@ xcopy /y /d /e "$(SolutionDir)Runtime\Win64\" "$(TargetDir)Runtime\"</Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\..\..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('..\..\..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\..\..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets'))" />
-  </Target>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

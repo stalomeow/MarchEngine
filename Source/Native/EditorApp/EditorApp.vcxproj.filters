@@ -33,7 +33,4 @@
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
 </Project>
