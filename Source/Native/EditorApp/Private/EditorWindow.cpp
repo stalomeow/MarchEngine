@@ -92,9 +92,14 @@ namespace march
         return g_MainViewportDockSpaceId;
     }
 
-    void EditorWindow::SplitDockNode(ImGuiID node, ImGuiDir splitDir, float sizeRatioForNodeAtDir, ImGuiID* pOutNodeAtDir, ImGuiID* pOutNodeAtOppositeDir)
+    void EditorWindow::SplitDockNodeHorizontal(ImGuiID node, float sizeRatioForLeftNode, ImGuiID* pOutLeftNode, ImGuiID* pOutRightNode)
     {
-        ImGui::DockBuilderSplitNode(node, splitDir, sizeRatioForNodeAtDir, pOutNodeAtDir, pOutNodeAtOppositeDir);
+        ImGui::DockBuilderSplitNode(node, ImGuiDir_Left, sizeRatioForLeftNode, pOutLeftNode, pOutRightNode);
+    }
+
+    void EditorWindow::SplitDockNodeVertical(ImGuiID node, float sizeRatioForTopNode, ImGuiID* pOutTopNode, ImGuiID* pOutBottomNode)
+    {
+        ImGui::DockBuilderSplitNode(node, ImGuiDir_Up, sizeRatioForTopNode, pOutTopNode, pOutBottomNode);
     }
 
     void EditorWindow::ApplyModificationsInChildDockNodes(ImGuiID rootNode)

@@ -221,12 +221,9 @@ namespace March.Editor
                 var hierarchy = new HierarchyWindow();
                 var project = new ProjectWindow();
 
-                EditorWindow.SplitDockNode(EditorWindow.MainViewportDockSpaceNode,
-                    DockNodeSplitDir.Left, 0.65f, out uint sceneNode, out uint rightNode);
-                EditorWindow.SplitDockNode(rightNode,
-                    DockNodeSplitDir.Left, 0.5f, out uint leftNode, out uint inspectorNode);
-                EditorWindow.SplitDockNode(leftNode,
-                    DockNodeSplitDir.Up, 0.5f, out uint hierarchyNode, out uint projectNode);
+                EditorWindow.SplitDockNodeHorizontal(EditorWindow.MainViewportDockSpaceNode, 0.65f, out uint sceneNode, out uint rightNode);
+                EditorWindow.SplitDockNodeHorizontal(rightNode, 0.5f, out uint leftNode, out uint inspectorNode);
+                EditorWindow.SplitDockNodeVertical(leftNode, 0.5f, out uint hierarchyNode, out uint projectNode);
 
                 scene.DockIntoNode(sceneNode);
                 inspector.DockIntoNode(inspectorNode);

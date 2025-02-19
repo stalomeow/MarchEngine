@@ -80,29 +80,34 @@ NATIVE_EXPORT_AUTO EditorWindow_GetMainViewportDockSpaceNode()
     retcs static_cast<uint32_t>(EditorWindow::GetMainViewportDockSpaceNode());
 }
 
-enum class DockNodeSplitDir
+NATIVE_EXPORT_AUTO EditorWindow_SplitDockNodeHorizontal(cs_uint node, cs_float sizeRatioForLeftNode, cs_ptr<cs_uint> pOutLeftNode, cs_ptr<cs_uint> pOutRightNode)
 {
-    None = -1,
-    Left = 0,
-    Right = 1,
-    Up = 2,
-    Down = 3,
-};
+    ImGuiID leftNode{};
+    ImGuiID rightNode{};
 
-NATIVE_EXPORT_AUTO EditorWindow_SplitDockNode(cs_uint node, DockNodeSplitDir splitDir, cs_float sizeRatioForNodeAtDir, cs_ptr<cs_uint> pOutNodeAtDir, cs_ptr<cs_uint> pOutNodeAtOppositeDir)
-{
-    ImGuiID nodeAtDir{};
-    ImGuiID nodeAtOppositeDir{};
-
-    EditorWindow::SplitDockNode(
+    EditorWindow::SplitDockNodeHorizontal(
         static_cast<ImGuiID>(node),
-        static_cast<ImGuiDir>(splitDir),
-        sizeRatioForNodeAtDir,
-        &nodeAtDir,
-        &nodeAtOppositeDir);
+        sizeRatioForLeftNode,
+        &leftNode,
+        &rightNode);
 
-    pOutNodeAtDir->assign(static_cast<uint32_t>(nodeAtDir));
-    pOutNodeAtOppositeDir->assign(static_cast<uint32_t>(nodeAtOppositeDir));
+    pOutLeftNode->assign(static_cast<uint32_t>(leftNode));
+    pOutRightNode->assign(static_cast<uint32_t>(rightNode));
+}
+
+NATIVE_EXPORT_AUTO EditorWindow_SplitDockNodeVertical(cs_uint node, cs_float sizeRatioForTopNode, cs_ptr<cs_uint> pOutTopNode, cs_ptr<cs_uint> pOutBottomNode)
+{
+    ImGuiID topNode{};
+    ImGuiID bottomNode{};
+
+    EditorWindow::SplitDockNodeVertical(
+        static_cast<ImGuiID>(node),
+        sizeRatioForTopNode,
+        &topNode,
+        &bottomNode);
+
+    pOutTopNode->assign(static_cast<uint32_t>(topNode));
+    pOutBottomNode->assign(static_cast<uint32_t>(bottomNode));
 }
 
 NATIVE_EXPORT_AUTO EditorWindow_ApplyModificationsInChildDockNodes(cs_uint rootNode)

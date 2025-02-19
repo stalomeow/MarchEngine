@@ -34,7 +34,8 @@ namespace march
 
         static void DockSpaceOverMainViewport();
         static ImGuiID GetMainViewportDockSpaceNode();
-        static void SplitDockNode(ImGuiID node, ImGuiDir splitDir, float sizeRatioForNodeAtDir, ImGuiID* pOutNodeAtDir, ImGuiID* pOutNodeAtOppositeDir);
+        static void SplitDockNodeHorizontal(ImGuiID node, float sizeRatioForLeftNode, ImGuiID* pOutLeftNode, ImGuiID* pOutRightNode);
+        static void SplitDockNodeVertical(ImGuiID node, float sizeRatioForTopNode, ImGuiID* pOutTopNode, ImGuiID* pOutBottomNode);
         static void ApplyModificationsInChildDockNodes(ImGuiID rootNode);
         void DockIntoNode(ImGuiID node);
 
