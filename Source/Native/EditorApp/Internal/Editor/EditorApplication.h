@@ -9,6 +9,7 @@ namespace march
 {
     class GfxSwapChain;
     class RenderPipeline;
+    enum class ManagedMethod;
 
     class EditorApplication : public Application
     {
@@ -32,6 +33,7 @@ namespace march
     private:
         void InitImGui();
         void DrawBaseImGui();
+        void TickImpl(size_t numMethods, ManagedMethod* pMethods);
         void CalculateFrameStats();
         void ReloadFonts();
 

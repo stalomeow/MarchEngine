@@ -6,6 +6,15 @@ using System.Numerics;
 
 namespace March.Editor.Windows
 {
+    public enum DockNodeSplitDir
+    {
+        None = -1,
+        Left = 0,
+        Right = 1,
+        Up = 2,
+        Down = 3,
+    }
+
     public abstract partial class EditorWindow : NativeMarchObject
     {
         private bool m_IsOnOpenInvoked = false;
@@ -126,5 +135,17 @@ namespace March.Editor.Windows
 
         [NativeMethod]
         private partial void End();
+
+        [NativeProperty]
+        public static partial uint MainViewportDockSpaceNode { get; }
+
+        [NativeMethod]
+        public static partial void SplitDockNode(uint node, DockNodeSplitDir splitDir, float sizeRatioForNodeAtDir, out uint nodeAtDir, out uint nodeAtOppositeDir);
+
+        [NativeMethod]
+        public static partial void ApplyModificationsInChildDockNodes(uint rootNode);
+
+        [NativeMethod]
+        public partial void DockIntoNode(uint node);
     }
 }

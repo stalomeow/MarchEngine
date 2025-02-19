@@ -29,6 +29,15 @@ namespace march
 
         ImGuiID GetImGuiID() const;
 
+        // Docking API
+        // Usage Ref: https://github.com/ocornut/imgui/issues/4430
+
+        static void DockSpaceOverMainViewport();
+        static ImGuiID GetMainViewportDockSpaceNode();
+        static void SplitDockNode(ImGuiID node, ImGuiDir splitDir, float sizeRatioForNodeAtDir, ImGuiID* pOutNodeAtDir, ImGuiID* pOutNodeAtOppositeDir);
+        static void ApplyModificationsInChildDockNodes(ImGuiID rootNode);
+        void DockIntoNode(ImGuiID node);
+
     protected:
         void SetTitle(const std::string& title);
         void SetId(const std::string& id);

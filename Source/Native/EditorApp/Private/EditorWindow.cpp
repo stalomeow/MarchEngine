@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Editor/EditorWindow.h"
+#include <imgui_internal.h>
 
 namespace march
 {
@@ -77,6 +78,33 @@ namespace march
     void EditorWindow::SetDefaultSize(const ImVec2& size)
     {
         m_DefaultSize = size;
+    }
+
+    static ImGuiID g_MainViewportDockSpaceId = 0;
+
+    void EditorWindow::DockSpaceOverMainViewport()
+    {
+        g_MainViewportDockSpaceId = ImGui::DockSpaceOverViewport();
+    }
+
+    ImGuiID EditorWindow::GetMainViewportDockSpaceNode()
+    {
+        return g_MainViewportDockSpaceId;
+    }
+
+    void EditorWindow::SplitDockNode(ImGuiID node, ImGuiDir splitDir, float sizeRatioForNodeAtDir, ImGuiID* pOutNodeAtDir, ImGuiID* pOutNodeAtOppositeDir)
+    {
+        ImGui::DockBuilderSplitNode(node, splitDir, sizeRatioForNodeAtDir, pOutNodeAtDir, pOutNodeAtOppositeDir);
+    }
+
+    void EditorWindow::ApplyModificationsInChildDockNodes(ImGuiID rootNode)
+    {
+        ImGui::DockBuilderFinish(rootNode);
+    }
+
+    void EditorWindow::DockIntoNode(ImGuiID node)
+    {
+        ImGui::DockBuilderDockWindow(GetFullName().c_str(), node);
     }
 
     bool EditorWindowInternalUtility::InvokeBegin(EditorWindow* window)

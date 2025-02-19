@@ -216,10 +216,29 @@ namespace March.Editor
             else
             {
                 // 默认窗口
-                s_WindowData.Windows.Add(new SceneWindow());
-                s_WindowData.Windows.Add(new InspectorWindow());
-                s_WindowData.Windows.Add(new HierarchyWindow());
-                s_WindowData.Windows.Add(new ProjectWindow());
+                var scene = new SceneWindow();
+                var inspector = new InspectorWindow();
+                var hierarchy = new HierarchyWindow();
+                var project = new ProjectWindow();
+
+                EditorWindow.SplitDockNode(EditorWindow.MainViewportDockSpaceNode,
+                    DockNodeSplitDir.Left, 0.65f, out uint sceneNode, out uint rightNode);
+                EditorWindow.SplitDockNode(rightNode,
+                    DockNodeSplitDir.Left, 0.5f, out uint leftNode, out uint inspectorNode);
+                EditorWindow.SplitDockNode(leftNode,
+                    DockNodeSplitDir.Up, 0.5f, out uint hierarchyNode, out uint projectNode);
+
+                scene.DockIntoNode(sceneNode);
+                inspector.DockIntoNode(inspectorNode);
+                hierarchy.DockIntoNode(hierarchyNode);
+                project.DockIntoNode(projectNode);
+
+                EditorWindow.ApplyModificationsInChildDockNodes(EditorWindow.MainViewportDockSpaceNode);
+
+                s_WindowData.Windows.Add(scene);
+                s_WindowData.Windows.Add(inspector);
+                s_WindowData.Windows.Add(hierarchy);
+                s_WindowData.Windows.Add(project);
             }
         }
 

@@ -72,3 +72,45 @@ NATIVE_EXPORT_AUTO EditorWindow_OnDraw(cs<EditorWindow*> w)
 {
     EditorWindowInternalUtility::InvokeOnDraw(w);
 }
+
+static_assert(std::is_same_v<ImGuiID, unsigned int>, "ImGuiID is not unsigned int");
+
+NATIVE_EXPORT_AUTO EditorWindow_GetMainViewportDockSpaceNode()
+{
+    retcs static_cast<uint32_t>(EditorWindow::GetMainViewportDockSpaceNode());
+}
+
+enum class DockNodeSplitDir
+{
+    None = -1,
+    Left = 0,
+    Right = 1,
+    Up = 2,
+    Down = 3,
+};
+
+NATIVE_EXPORT_AUTO EditorWindow_SplitDockNode(cs_uint node, DockNodeSplitDir splitDir, cs_float sizeRatioForNodeAtDir, cs_ptr<cs_uint> pOutNodeAtDir, cs_ptr<cs_uint> pOutNodeAtOppositeDir)
+{
+    ImGuiID nodeAtDir{};
+    ImGuiID nodeAtOppositeDir{};
+
+    EditorWindow::SplitDockNode(
+        static_cast<ImGuiID>(node),
+        static_cast<ImGuiDir>(splitDir),
+        sizeRatioForNodeAtDir,
+        &nodeAtDir,
+        &nodeAtOppositeDir);
+
+    pOutNodeAtDir->assign(static_cast<uint32_t>(nodeAtDir));
+    pOutNodeAtOppositeDir->assign(static_cast<uint32_t>(nodeAtOppositeDir));
+}
+
+NATIVE_EXPORT_AUTO EditorWindow_ApplyModificationsInChildDockNodes(cs_uint rootNode)
+{
+    EditorWindow::ApplyModificationsInChildDockNodes(static_cast<ImGuiID>(rootNode));
+}
+
+NATIVE_EXPORT_AUTO EditorWindow_DockIntoNode(cs<EditorWindow*> w, cs_uint node)
+{
+    w->DockIntoNode(static_cast<ImGuiID>(node));
+}

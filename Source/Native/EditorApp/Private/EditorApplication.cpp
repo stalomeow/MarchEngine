@@ -96,9 +96,8 @@ namespace march
 
         InitImGui();
 
-        // 初始化代码可能也会用到 GfxDevice
-        DotNet::RuntimeInvoke(ManagedMethod::Application_Initialize);
-        DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_Initialize);
+        ManagedMethod callbacks[] = { ManagedMethod::Application_Initialize, ManagedMethod::EditorApplication_Initialize };
+        TickImpl(std::size(callbacks), callbacks);
 
         // 需要用到 managed method
         m_RenderPipeline = std::make_unique<RenderPipeline>();
@@ -232,8 +231,8 @@ namespace march
 
     void EditorApplication::OnQuit()
     {
-        // 退出代码可能也会用到 GfxDevice
-        DotNet::RuntimeInvoke(ManagedMethod::Application_Quit);
+        ManagedMethod callbacks[] = { ManagedMethod::Application_Quit };
+        TickImpl(std::size(callbacks), callbacks);
 
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
@@ -303,11 +302,16 @@ namespace march
         EditorGUI::EndMainViewportSideBar();
 
         ConsoleWindow::DrawMainViewportSideBarConsole();
-
-        ImGui::DockSpaceOverViewport();
+        EditorWindow::DockSpaceOverMainViewport();
     }
 
     void EditorApplication::OnTick()
+    {
+        ManagedMethod callbacks[] = { ManagedMethod::Application_Tick };
+        TickImpl(std::size(callbacks), callbacks);
+    }
+
+    void EditorApplication::TickImpl(size_t numMethods, ManagedMethod* pMethods)
     {
         m_SwapChain->WaitForFrameLatency();
 
@@ -318,7 +322,11 @@ namespace march
 
         {
             DrawBaseImGui();
-            DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
+
+            for (size_t i = 0; i < numMethods; i++)
+            {
+                DotNet::RuntimeInvoke(pMethods[i]);
+            }
 
             ImGui::Render();
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_SwapChain->GetBackBuffer());
