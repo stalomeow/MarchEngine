@@ -8,7 +8,7 @@ using System.Text;
 namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 14)]
-    internal class TextureImporter : AssetImporter
+    public class TextureImporter : AssetImporter
     {
         [JsonProperty]
         [InspectorName("sRGB")]

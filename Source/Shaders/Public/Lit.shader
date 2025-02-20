@@ -1,12 +1,17 @@
-Shader "BlinnPhong"
+Shader "Lit"
 {
     Properties
     {
-        [Tooltip(The diffuse albedo.)] _DiffuseAlbedo("Diffuse Albedo", Color) = (1, 1, 1, 1)
-        [Tooltip(The fresnel R0.)] _FresnelR0("Fresnel R0", Vector) = (0.01, 0.01, 0.01, 0)
-        [Tooltip(The roughness.)] [Range(0, 1)] _Roughness("Roughness", Float) = 0.25
-        [Tooltip(The diffuse map.)] _DiffuseMap("Diffuse Map", 2D) = "white" {}
-        [Tooltip(The normal map.)] _BumpMap("Bump Map", 2D) = "bump" {}
+        _BaseMap("Albedo", 2D) = "white" {}
+        _BaseColor("Color", Color) = (1, 1, 1, 1)
+
+        [Range(0, 1)] _Metallic("Metallic", Float) = 1.0
+        [Range(0, 1)] _Roughness("Roughness", Float) = 1.0
+        _MetallicRoughnessMap("Metallic Roughness Map", 2D) = "white" {} // G: Roughness, B: Metallic
+
+        _BumpMap("Bump Map", 2D) = "bump" {}
+        _BumpScale("Bump Scale", Float) = 1.0
+
         [Range(0, 1)] _Cutoff("Alpha Cutoff", Float) = 0.5
         _CullMode("Cull Mode", Int) = 2
     }
@@ -27,10 +32,6 @@ Shader "BlinnPhong"
         {
             "LightMode" = "GBuffer"
         }
-
-        // Blend 0 SrcAlpha OneMinusSrcAlpha, One Zero
-        // BlendOp 0 Add, Add
-        // ColorMask 0 RGBA
 
         Stencil
         {
@@ -83,24 +84,30 @@ Shader "BlinnPhong"
 
         PixelGBufferOutput frag(Varyings input)
         {
-            float4 diffuse = _DiffuseMap.Sample(sampler_DiffuseMap, input.uv);
+            float4 albedo = _BaseMap.Sample(sampler_BaseMap, input.uv) * _BaseColor;
 
             #ifdef _ALPHATEST_ON
-                clip(diffuse.a - _Cutoff);
+                clip(albedo.a - _Cutoff);
             #endif
 
-            float3 normalTS = normalize(_BumpMap.Sample(sampler_BumpMap, input.uv).xyz * 2.0 - 1.0);
+            float3 normalTS = _BumpMap.Sample(sampler_BumpMap, input.uv).xyz * 2.0 - 1.0;
+            normalTS.xy *= _BumpScale;
+            normalTS = normalize(normalTS);
             float3 N = normalize(input.normalWS);
             float3 T = normalize(input.tangentWS.xyz - dot(input.tangentWS.xyz, N) * N);
             float3 B = cross(N, T) * input.tangentWS.w;
             float3 bumpedNomalWS = normalize(mul(normalTS, float3x3(T, B, N))); // float3x3() 是行主序矩阵
 
+            float4 metallicRoughness = _MetallicRoughnessMap.Sample(sampler_MetallicRoughnessMap, input.uv);
+            float metallic = metallicRoughness.b * _Metallic;
+            float roughness = metallicRoughness.g * _Roughness;
+
             GBufferData data;
-            data.albedo = (diffuse * _DiffuseAlbedo).rgb;
-            data.shininess = 1 - _Roughness;
+            data.albedo = albedo.rgb;
+            data.metallic = metallic;
+            data.roughness = roughness;
             data.normalWS = bumpedNomalWS;
             data.depth = input.positionCS.z;
-            data.fresnelR0 = _FresnelR0.rgb;
             return PackGBufferData(data);
         }
         ENDHLSL
@@ -152,10 +159,10 @@ Shader "BlinnPhong"
 
         void frag(Varyings input)
         {
-            float4 diffuse = _DiffuseMap.Sample(sampler_DiffuseMap, input.uv);
+            float4 albedo = _BaseMap.Sample(sampler_BaseMap, input.uv) * _BaseColor;
 
             #ifdef _ALPHATEST_ON
-                clip(diffuse.a - _Cutoff);
+                clip(albedo.a - _Cutoff);
             #endif
         }
         ENDHLSL

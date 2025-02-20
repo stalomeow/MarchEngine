@@ -1,5 +1,6 @@
 using March.Core;
 using March.Core.Pool;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace March.Editor.AssetPipeline
@@ -125,7 +126,20 @@ namespace March.Editor.AssetPipeline
 
         public readonly T RequireOtherAsset<T>(string path, bool dependsOn) where T : MarchObject
         {
-            T asset = AssetDatabase.Load<T>(path) ?? throw new FileNotFoundException($"Asset not found at path: {path}");
+            return RequireOtherAssetImpl(path, dependsOn, AssetDatabase.Load<T>(path));
+        }
+
+        public readonly T RequireOtherAsset<T>(string path, bool dependsOn, Action<AssetImporter> settings) where T : MarchObject
+        {
+            return RequireOtherAssetImpl(path, dependsOn, AssetDatabase.Reload<T>(path, settings));
+        }
+
+        private readonly T RequireOtherAssetImpl<T>(string path, bool dependsOn, T? asset) where T : MarchObject
+        {
+            if (asset == null)
+            {
+                throw new FileNotFoundException($"Asset not found at path: {path}");
+            }
 
             if (dependsOn && !m_Dependencies.Value.Contains(path))
             {

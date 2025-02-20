@@ -4,7 +4,7 @@ using March.Core.IconFont;
 namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter("Scene Asset", ".scene", Version = 1)]
-    internal class SceneImporter : DirectAssetImporter
+    public class SceneImporter : DirectAssetImporter
     {
         public const string SceneIcon = FontAwesome6.CubesStacked;
 

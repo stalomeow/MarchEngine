@@ -1,6 +1,8 @@
 #ifndef _LIGHTING_INCLUDED
 #define _LIGHTING_INCLUDED
 
+#include "BRDF.hlsl"
+
 #define MAX_LIGHT_COUNT 16
 
 struct LightData
@@ -42,40 +44,27 @@ Light GetLight(float3 positionWS, int i)
     return light;
 }
 
-// Schlick gives an approximation to Fresnel reflectance (see pg. 233 "Real-Time Rendering 3rd Ed.").
-// R0 = ( (n-1)/(n+1) )^2, where n is the index of refraction.
-float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
+float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 viewDirWS, float ao)
 {
-    float cosIncidentAngle = saturate(dot(normal, lightVec));
+    float3 result = ao * 0.4 * data.albedo;
 
-    float f0 = 1.0f - cosIncidentAngle;
-    float3 reflectPercent = R0 + (1.0f - R0) * (f0 * f0 * f0 * f0 * f0);
-
-    return reflectPercent;
-}
-
-float3 BlinnPhong(float3 positionWS, float3 normalWS, float3 viewDirWS, float3 diffuseAlbedo, float3 fresnelR0, float shininess, float ao)
-{
-    float3 result = ao * 0.4 * diffuseAlbedo;
-    float m = shininess * 256.0;
+    float3 N = normalWS;
+    float3 V = viewDirWS;
+    float NoV = saturate(dot(N, V));
 
     for (int i = 0; i < _LightCount; i++)
     {
         Light light = GetLight(positionWS, i);
 
-        float3 H = normalize(light.direction + viewDirWS);
-        float NdotL = max(0.01, dot(normalWS, light.direction));
-        float NdotH = max(0.01, dot(normalWS, H));
+        float3 L = light.direction;
+        float3 H = normalize(L + V);
+        float NoL = saturate(dot(N, L));
+        float NoH = saturate(dot(N, H));
+        float LoH = saturate(dot(L, H));
 
-        float roughnessFactor = pow(NdotH, m) * (m + 8.0) / 8.0;
-        float3 fresnelFactor = SchlickFresnel(fresnelR0, H, light.direction);
-        float3 specularAlbedo = roughnessFactor * fresnelFactor;
-
-        // Our spec formula goes outside [0,1] range, but we are
-        // doing LDR rendering.  So scale it down a bit.
-        specularAlbedo /= (specularAlbedo + 1.0);
-
-        result += (diffuseAlbedo + specularAlbedo) * light.color * light.attenuation * NdotL;
+        float3 brdf = DiffuseSpecularBRDF(data, NoV, NoL, NoH, LoH);
+        float3 irradiance = light.color * (light.attenuation * NoL);
+        result += brdf * irradiance;
     }
 
     return result;

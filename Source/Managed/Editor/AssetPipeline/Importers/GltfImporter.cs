@@ -1,6 +1,7 @@
 using glTFLoader;
 using glTFLoader.Schema;
 using March.Core;
+using March.Core.Diagnostics;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
@@ -25,8 +26,8 @@ namespace March.Editor.AssetPipeline.Importers
         Calculate,
     }
 
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 39)]
-    internal class GltfImporter : AssetImporter
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 50)]
+    public class GltfImporter : AssetImporter
     {
         [JsonProperty]
         [InspectorName("Normals")]
@@ -103,8 +104,13 @@ namespace March.Editor.AssetPipeline.Importers
                         }
                     }
 
-                    // 现在还没设置 parent，所以可以直接赋值给 LocalToWorldMatrix
-                    go.transform.LocalToWorldMatrix = matrix;
+                    matrix = Matrix4x4.Transpose(matrix);
+                    Matrix4x4.Decompose(matrix, out Vector3 scale, out Quaternion rotation, out Vector3 translation);
+                    translation.X = -translation.X; // glTF 是右手坐标系
+                    rotation = ReverseX(rotation);
+                    go.transform.LocalPosition = translation;
+                    go.transform.LocalRotation = rotation;
+                    go.transform.LocalScale = scale;
                 }
                 else
                 {
@@ -117,6 +123,7 @@ namespace March.Editor.AssetPipeline.Importers
                             translation[i] = node.Translation[i];
                         }
 
+                        translation.X = -translation.X; // glTF 是右手坐标系
                         go.transform.LocalPosition = translation;
                     }
 
@@ -129,6 +136,7 @@ namespace March.Editor.AssetPipeline.Importers
                             rotation[i] = node.Rotation[i];
                         }
 
+                        rotation = ReverseX(rotation); // glTF 是右手坐标系
                         go.transform.LocalRotation = rotation;
                     }
 
@@ -259,7 +267,7 @@ namespace March.Editor.AssetPipeline.Importers
                     mat.Reset();
                     materials.Add(mat);
 
-                    mat.Shader = context.RequireOtherAsset<Shader>("Engine/Shaders/BlinnPhong.shader", dependsOn: false);
+                    mat.Shader = context.RequireOtherAsset<Shader>("Engine/Shaders/Lit.shader", dependsOn: false);
 
                     var matData = gltf.Materials[primitive.Material.Value];
 
@@ -274,27 +282,82 @@ namespace March.Editor.AssetPipeline.Importers
                         mat.SetInt("_CullMode", (int)CullMode.Off);
                     }
 
-                    if (matData.PbrMetallicRoughness.BaseColorTexture != null)
+                    if (matData.ShouldSerializePbrMetallicRoughness())
                     {
-                        int? sourceIndex = gltf.Textures[matData.PbrMetallicRoughness.BaseColorTexture.Index].Source;
-
-                        if (sourceIndex != null)
+                        if (matData.PbrMetallicRoughness.ShouldSerializeBaseColorTexture())
                         {
-                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
-                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false);
-                            mat.SetTexture("_DiffuseMap", tex);
+                            int? sourceIndex = gltf.Textures[matData.PbrMetallicRoughness.BaseColorTexture.Index].Source;
+
+                            if (sourceIndex != null)
+                            {
+                                string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
+                                var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+                                {
+                                    TextureImporter texImporter = (TextureImporter)importer;
+                                    texImporter.IsSRGB = true;
+                                });
+                                mat.SetTexture("_BaseMap", tex);
+                            }
+                        }
+
+                        if (matData.PbrMetallicRoughness.ShouldSerializeBaseColorFactor())
+                        {
+                            Color baseColorFactor = new()
+                            {
+                                R = matData.PbrMetallicRoughness.BaseColorFactor[0],
+                                G = matData.PbrMetallicRoughness.BaseColorFactor[1],
+                                B = matData.PbrMetallicRoughness.BaseColorFactor[2],
+                                A = matData.PbrMetallicRoughness.BaseColorFactor[3]
+                            };
+
+                            mat.SetColor("_BaseColor", baseColorFactor);
+                        }
+
+                        if (matData.PbrMetallicRoughness.ShouldSerializeMetallicFactor())
+                        {
+                            mat.SetFloat("_Metallic", matData.PbrMetallicRoughness.MetallicFactor);
+                        }
+
+                        if (matData.PbrMetallicRoughness.ShouldSerializeRoughnessFactor())
+                        {
+                            mat.SetFloat("_Roughness", matData.PbrMetallicRoughness.RoughnessFactor);
+                        }
+
+                        if (matData.PbrMetallicRoughness.ShouldSerializeMetallicRoughnessTexture())
+                        {
+                            int? sourceIndex = gltf.Textures[matData.PbrMetallicRoughness.MetallicRoughnessTexture.Index].Source;
+
+                            if (sourceIndex != null)
+                            {
+                                string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
+                                var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+                                {
+                                    TextureImporter texImporter = (TextureImporter)importer;
+                                    texImporter.IsSRGB = false;
+                                });
+                                mat.SetTexture("_MetallicRoughnessMap", tex);
+                            }
                         }
                     }
 
-                    if (matData.NormalTexture != null)
+                    if (matData.ShouldSerializeNormalTexture())
                     {
                         int? sourceIndex = gltf.Textures[matData.NormalTexture.Index].Source;
 
                         if (sourceIndex != null)
                         {
                             string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
-                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false);
+                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+                            {
+                                TextureImporter texImporter = (TextureImporter)importer;
+                                texImporter.IsSRGB = false;
+                            });
                             mat.SetTexture("_BumpMap", tex);
+                        }
+
+                        if (matData.NormalTexture.ShouldSerializeScale())
+                        {
+                            mat.SetFloat("_BumpScale", matData.NormalTexture.Scale);
                         }
                     }
                 }
@@ -480,5 +543,12 @@ namespace March.Editor.AssetPipeline.Importers
             Accessor.ComponentTypeEnum.FLOAT => reader.ReadSingle(),
             _ => throw new NotSupportedException(),
         };
+
+        private static Quaternion ReverseX(Quaternion q)
+        {
+            q.ToAngleAxis(out float angle, out Vector3 axis);
+            axis.X = -axis.X;
+            return Quaternion.CreateFromAxisAngle(axis, -angle);
+        }
     }
 }

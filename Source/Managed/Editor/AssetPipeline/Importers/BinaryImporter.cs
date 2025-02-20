@@ -4,7 +4,7 @@ using March.Core.IconFont;
 namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter("Binary Asset", ".bin", Version = 1)]
-    internal class BinaryImporter : AssetImporter
+    public class BinaryImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
         {

@@ -5,7 +5,7 @@ using System.Text;
 namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter("C# Script Asset", ".cs", Version = 3)]
-    internal class ScriptImporter : AssetImporter
+    public class ScriptImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
         {

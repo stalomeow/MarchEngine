@@ -10,13 +10,14 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)public\Blur.compute" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\BRDF.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Common.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\GBuffer.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Packing.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Sampler.hlsl" />
-    <None Include="$(MSBuildThisFileDirectory)Public\BlinnPhong.shader" />
+    <None Include="$(MSBuildThisFileDirectory)Public\Lit.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\DearImGui.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\DeferredLight.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Gizmos.shader" />

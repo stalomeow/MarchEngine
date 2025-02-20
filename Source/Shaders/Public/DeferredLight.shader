@@ -49,12 +49,17 @@ Shader "DeferredLight"
         {
             GBufferData gbuffer = LoadGBufferData(input.positionCS.xy);
 
+            BRDFData brdfData;
+            brdfData.albedo = gbuffer.albedo;
+            brdfData.metallic = gbuffer.metallic;
+            brdfData.a2 = RoughnessToAlpha2(gbuffer.roughness);
+
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
             float3 viewDirWS = normalize(_CameraPositionWS.xyz - positionWS);
 
-            float shadow = SampleScreenSpaceShadowMap(input.uv);
+            float shadow = 1;//SampleScreenSpaceShadowMap(input.uv);
             float ao = _AOMap.Sample(sampler_AOMap, input.uv).r;
-            float3 color = BlinnPhong(positionWS, gbuffer.normalWS, viewDirWS, gbuffer.albedo, gbuffer.fresnelR0, gbuffer.shininess, ao);
+            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, viewDirWS, ao);
             return float4(color * lerp(0.05, 1, shadow), 1.0);
         }
         ENDHLSL

@@ -7,7 +7,7 @@ namespace March.Editor.AssetPipeline.Importers
     /// 特殊的 <see cref="AssetImporter"/>，用于导入文件夹
     /// </summary>
     [CustomAssetImporter("Folder Asset", Version = 1)]
-    internal sealed class FolderImporter : AssetImporter
+    public sealed class FolderImporter : AssetImporter
     {
         public const string FolderIconNormal = FontAwesome6.Folder;
         public const string FolderIconExpanded = FontAwesome6.FolderOpen;

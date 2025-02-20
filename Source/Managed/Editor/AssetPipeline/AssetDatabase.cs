@@ -157,6 +157,25 @@ namespace March.Editor.AssetPipeline
             return importer?.MainAsset as T;
         }
 
+        internal static T? Reload<T>(string path, Action<AssetImporter> settings) where T : MarchObject?
+        {
+            if (AssetLocation.IsImporterFilePath(path))
+            {
+                throw new InvalidOperationException("Can not load asset importer");
+            }
+
+            AssetImporter? importer = GetAssetImporter(path);
+
+            if (importer == null)
+            {
+                return null;
+            }
+
+            settings(importer); // 修改 importer 的设置
+            importer.ReimportAndSave(AssetReimportMode.Force); // 保证拿到新的资产
+            return importer.MainAsset as T;
+        }
+
         public static MarchObject? LoadByGuid(string guid)
         {
             return LoadByGuid<MarchObject>(guid);

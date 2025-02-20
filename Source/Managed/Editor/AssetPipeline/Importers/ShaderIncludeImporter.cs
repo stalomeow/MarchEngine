@@ -7,7 +7,7 @@ using System.Text;
 namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter("Shader Include Asset", ".hlsl", Version = 2)]
-    internal class ShaderIncludeImporter : AssetImporter
+    public class ShaderIncludeImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)
         {

@@ -13,7 +13,7 @@ using System.Text;
 namespace March.Editor.AssetPipeline.Importers
 {
     [CustomAssetImporter("Shader Asset", ".shader", Version = 74)]
-    internal class ShaderImporter : AssetImporter
+    public class ShaderImporter : AssetImporter
     {
         [JsonProperty]
         [HideInInspector]
