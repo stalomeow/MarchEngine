@@ -1,7 +1,8 @@
 #ifndef _BRDF_INCLUDED
 #define _BRDF_INCLUDED
 
-#define PI 3.14159265
+#define PI      3.14159265
+#define FLT_EPS 5.960464478e-8 // 2^-24, machine epsilon: 1 + EPS = 1 (half of the ULP for 1.0f)
 
 struct BRDFData
 {
@@ -34,7 +35,7 @@ float V_SmithJointGGX(float a2, float NoV, float NoL)
 {
     float smithV = NoL * sqrt(NoV * (NoV - NoV * a2) + a2);
     float smithL = NoV * sqrt(NoL * (NoL - NoL * a2) + a2);
-    return 0.5 * rcp(smithV + smithL);
+    return 0.5 * rcp(smithV + smithL + FLT_EPS); // 必须加 epsilon，避免除以 0
 }
 
 float3 DiffuseSpecularBRDF(BRDFData data, float NoV, float NoL, float NoH, float LoH)

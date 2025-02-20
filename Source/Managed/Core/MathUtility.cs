@@ -15,11 +15,11 @@ namespace March.Core
             angle = MathF.Acos(q.W) * 2.0f;
 
             axis = new Vector3(q.X, q.Y, q.Z);
-            float len2 = axis.LengthSquared();
+            float lengthSquared = 1 - q.W * q.W;
 
-            if (len2 > 0)
+            if (lengthSquared > 0)
             {
-                axis /= MathF.Sqrt(len2);
+                axis /= MathF.Sqrt(lengthSquared); // normalize
             }
             else
             {

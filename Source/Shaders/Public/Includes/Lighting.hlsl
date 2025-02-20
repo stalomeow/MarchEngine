@@ -40,13 +40,13 @@ Light GetLight(float3 positionWS, int i)
     Light light;
     light.color = data.color.rgb;
     light.direction = direction;
-    light.attenuation = lerp(1.0, distAtten, data.position.w) * spotAngleAtten;
+    light.attenuation = lerp(1.0, distAtten, data.position.w) * spotAngleAtten * 5;
     return light;
 }
 
 float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 viewDirWS, float ao)
 {
-    float3 result = ao * 0.4 * data.albedo;
+    float3 result = 0;//ao * 0.4 * data.albedo;
 
     float3 N = normalWS;
     float3 V = viewDirWS;
@@ -67,7 +67,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 vie
         result += brdf * irradiance;
     }
 
-    return result;
+    return result * ao;
 }
 
 #endif
