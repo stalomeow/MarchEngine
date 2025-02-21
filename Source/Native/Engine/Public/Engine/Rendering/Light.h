@@ -49,6 +49,9 @@ namespace march
         float m_SpotInnerConeAngle = 0.0f;  // in degrees
         float m_SpotOuterConeAngle = 45.0f; // in degrees
 
+        bool m_UseColorTemperature = false;
+        float m_ColorTemperature = 6500.0f; // in Kelvin, Default to D65
+
     public:
         LightType GetType() const;
         void SetType(LightType value);
@@ -70,6 +73,12 @@ namespace march
 
         float GetSpotOuterConeAngle() const;
         void SetSpotOuterConeAngle(float value);
+
+        bool GetUseColorTemperature() const;
+        void SetUseColorTemperature(bool value);
+
+        float GetColorTemperature() const;
+        void SetColorTemperature(float value);
 
         void FillLightData(LightData& data) const;
     };

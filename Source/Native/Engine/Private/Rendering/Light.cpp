@@ -44,6 +44,12 @@ namespace march
 
     void Light::SetColor(const XMFLOAT4& value)
     {
+        if (m_UseColorTemperature)
+        {
+            LOG_ERROR("Cannot set color when using color temperature.");
+            return;
+        }
+
         m_Color = value;
     }
 
@@ -127,6 +133,74 @@ namespace march
         m_SpotOuterConeAngle = value;
     }
 
+    // Ref: https://github.com/Unity-Technologies/Graphics/blob/ffdd1e73164d4090f51b37e7634776c87eb7f6cc/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightUtils.cs#L293
+    static XMFLOAT4 CorrelatedColorTemperatureToRGB(float temperature)
+    {
+        float r, g, b;
+
+        // Temperature must fall between 1000 and 40000 degrees
+        // The fitting require to divide kelvin by 1000 (allow more precision)
+        float kelvin = std::clamp(temperature, 1000.0f, 40000.0f) / 1000.0f;
+        float kelvin2 = kelvin * kelvin;
+
+        // Using 6570 as a pivot is an approximation, pivot point for red is around 6580 and for blue and green around 6560.
+        // Calculate each color in turn (Note, clamp is not really necessary as all value belongs to [0..1] but can help for extremum).
+        // Red
+        r = kelvin < 6.570f ? 1.0f : std::clamp((1.35651f + 0.216422f * kelvin + 0.000633715f * kelvin2) / (-3.24223f + 0.918711f * kelvin), 0.0f, 1.0f);
+        // Green
+        g = kelvin < 6.570f ?
+            std::clamp((-399.809f + 414.271f * kelvin + 111.543f * kelvin2) / (2779.24f + 164.143f * kelvin + 84.7356f * kelvin2), 0.0f, 1.0f) :
+            std::clamp((1370.38f + 734.616f * kelvin + 0.689955f * kelvin2) / (-4625.69f + 1699.87f * kelvin), 0.0f, 1.0f);
+        //Blue
+        b = kelvin > 6.570f ? 1.0f : std::clamp((348.963f - 523.53f * kelvin + 183.62f * kelvin2) / (2848.82f - 214.52f * kelvin + 78.8614f * kelvin2), 0.0f, 1.0f);
+
+        return XMFLOAT4{ r, g, b, 1.0f };
+    }
+
+    bool Light::GetUseColorTemperature() const
+    {
+        return m_UseColorTemperature;
+    }
+
+    void Light::SetUseColorTemperature(bool value)
+    {
+        if (m_UseColorTemperature != value)
+        {
+            if (m_UseColorTemperature = value)
+            {
+                m_Color = CorrelatedColorTemperatureToRGB(m_ColorTemperature);
+            }
+            else
+            {
+                m_Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+            }
+        }
+    }
+
+    float Light::GetColorTemperature() const
+    {
+        return m_ColorTemperature;
+    }
+
+    void Light::SetColorTemperature(float value)
+    {
+        if (value < 1000 || value > 40000)
+        {
+            LOG_ERROR("Color temperature must be in the range [1000, 40000].");
+            return;
+        }
+
+        if (m_ColorTemperature != value)
+        {
+            m_ColorTemperature = value;
+
+            if (m_UseColorTemperature)
+            {
+                m_Color = CorrelatedColorTemperatureToRGB(m_ColorTemperature);
+            }
+        }
+    }
+
     void Light::FillLightData(LightData& data) const
     {
         if (m_Type == LightType::Directional)
@@ -188,7 +262,7 @@ namespace march
 
     static constexpr float LumenToCandela(float lumen, float solidAngle)
     {
-        return lumen / solidAngle;
+        return lumen / std::max(solidAngle, FLT_EPSILON);
     }
 
     static constexpr float CandelaToLumen(float candela, float solidAngle)

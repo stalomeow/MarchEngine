@@ -24,6 +24,8 @@ namespace March.Core.Rendering
     {
         public Light() : base(New()) { }
 
+        // TODO 检查属性反序列化的顺序。属性在赋值时可能影响其他属性的值，所以要检查赋值的顺序
+
         [JsonProperty]
         [NativeProperty]
         public partial LightType Type { get; set; }
@@ -33,12 +35,23 @@ namespace March.Core.Rendering
         public partial Color Color { get; set; }
 
         [JsonProperty]
+        [InspectorName("Use Temperature")]
         [NativeProperty]
-        public partial float Intensity { get; set; }
+        public partial bool UseColorTemperature { get; set; }
+
+        [JsonProperty]
+        [InspectorName("Temperature")]
+        [FloatDrawer(Min = 1000.0f, Max = 40000.0f, Slider = true)]
+        [NativeProperty]
+        public partial float ColorTemperature { get; set; }
 
         [JsonProperty]
         [NativeProperty]
         public partial LightUnit Unit { get; set; }
+
+        [JsonProperty]
+        [NativeProperty]
+        public partial float Intensity { get; set; }
 
         [JsonProperty]
         [InspectorName("Attenuation Radius")]

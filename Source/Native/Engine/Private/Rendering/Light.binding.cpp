@@ -76,3 +76,23 @@ NATIVE_EXPORT_AUTO Light_SetSpotOuterConeAngle(cs<Light*> pLight, cs_float angle
 {
     pLight->SetSpotOuterConeAngle(angle);
 }
+
+NATIVE_EXPORT_AUTO Light_GetUseColorTemperature(cs<Light*> pLight)
+{
+    retcs pLight->GetUseColorTemperature();
+}
+
+NATIVE_EXPORT_AUTO Light_SetUseColorTemperature(cs<Light*> pLight, cs_bool value)
+{
+    pLight->SetUseColorTemperature(value);
+}
+
+NATIVE_EXPORT_AUTO Light_GetColorTemperature(cs<Light*> pLight)
+{
+    retcs pLight->GetColorTemperature();
+}
+
+NATIVE_EXPORT_AUTO Light_SetColorTemperature(cs<Light*> pLight, cs_float temperature)
+{
+    pLight->SetColorTemperature(temperature);
+}

@@ -21,7 +21,17 @@ namespace March.Editor.Drawers
             bool changed = false;
 
             changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "Type"));
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "Color"));
+            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "UseColorTemperature"));
+
+            if (light.UseColorTemperature)
+            {
+                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ColorTemperature"));
+            }
+            else
+            {
+                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "Color"));
+            }
+
             changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "Intensity"));
 
             if (light.Type == LightType.Directional)
