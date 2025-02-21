@@ -28,7 +28,7 @@ namespace march
             m_Intensity = DefaultPunctualIntensity;
             m_Unit = DefaultPunctualUnit;
         }
-        else
+        else if (value == LightType::Directional)
         {
             m_Intensity = DefaultDirectionalIntensity;
             m_Unit = DefaultDirectionalUnit;

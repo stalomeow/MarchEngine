@@ -46,6 +46,8 @@ namespace March.Core.Rendering
         [NativeProperty]
         public partial float AttenuationRadius { get; set; }
 
+        // Note: 代码中的 Cone Angle 是圆锥顶角的一半，使用角度制
+
         [JsonProperty]
         [InspectorName("Inner Cone Angle")]
         [FloatDrawer(Min = 0.0f, Max = 90.0f, Slider = true)]
@@ -144,25 +146,44 @@ namespace March.Core.Rendering
 
         private void DrawSpotLightGizmos()
         {
+            static void drawCone(float attenuationRadius, float coneAngleInRadians, bool drawArcs)
+            {
+                float radius = MathF.Sin(coneAngleInRadians) * attenuationRadius;
+
+                if (radius <= 0.001f)
+                {
+                    return;
+                }
+
+                Vector3 center = Vector3.UnitZ * (MathF.Cos(coneAngleInRadians) * attenuationRadius);
+                Gizmos.DrawWireDisc(center, Vector3.UnitZ, radius);
+
+                // 类似 UE 的一堆射线
+                const int numRays = 16;
+                for (int i = 0; i < numRays; i++)
+                {
+                    float theta = MathF.PI * 2 / numRays * i;
+                    float x = MathF.Cos(theta) * radius;
+                    float y = MathF.Sin(theta) * radius;
+
+                    Vector3 pos = center + new Vector3(x, y, 0);
+                    Gizmos.DrawLine(Vector3.Zero, pos);
+                }
+
+                if (drawArcs)
+                {
+                    Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, coneAngleInRadians, attenuationRadius);
+                    Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, -coneAngleInRadians, attenuationRadius);
+                    Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, coneAngleInRadians, attenuationRadius);
+                    Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, -coneAngleInRadians, attenuationRadius);
+                }
+            }
+
             using (new Gizmos.ColorScope(Color))
             using (new Gizmos.MatrixScope(GizmosUtility.GetLocalToWorldMatrixWithoutScale(transform)))
             {
-                // 当强度为 0.01 时的边界
-                float halfAngle = float.DegreesToRadians(SpotOuterConeAngle);
-                float sinHalfAngle = MathF.Sin(halfAngle) * AttenuationRadius;
-                float cosHalfAngle = MathF.Cos(halfAngle) * AttenuationRadius;
-
-                Gizmos.DrawLine(Vector3.Zero, new Vector3(0, sinHalfAngle, cosHalfAngle));
-                Gizmos.DrawLine(Vector3.Zero, new Vector3(0, -sinHalfAngle, cosHalfAngle));
-                Gizmos.DrawLine(Vector3.Zero, new Vector3(sinHalfAngle, 0, cosHalfAngle));
-                Gizmos.DrawLine(Vector3.Zero, new Vector3(-sinHalfAngle, 0, cosHalfAngle));
-
-                Gizmos.DrawWireDisc(new Vector3(0, 0, cosHalfAngle), Vector3.UnitZ, sinHalfAngle);
-
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, halfAngle, AttenuationRadius);
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, -halfAngle, AttenuationRadius);
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, halfAngle, AttenuationRadius);
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, -halfAngle, AttenuationRadius);
+                drawCone(AttenuationRadius, float.DegreesToRadians(SpotInnerConeAngle), false);
+                drawCone(AttenuationRadius, float.DegreesToRadians(SpotOuterConeAngle), true);
             }
         }
 

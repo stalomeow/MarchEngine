@@ -52,8 +52,15 @@ namespace March.Editor.Drawers
 
             if (light.Type == LightType.Spot)
             {
-                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "SpotInnerConeAngle"));
-                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "SpotOuterConeAngle"));
+                float innerConeAngle = light.SpotInnerConeAngle;
+                float outerConeAngle = light.SpotOuterConeAngle;
+
+                if (EditorGUI.FloatRangeField("Cone Angle", "", ref innerConeAngle, ref outerConeAngle, minValue: 0.0f, maxValue: 90.0f))
+                {
+                    light.SpotInnerConeAngle = innerConeAngle;
+                    light.SpotOuterConeAngle = outerConeAngle;
+                    changed = true;
+                }
             }
 
             return changed;
