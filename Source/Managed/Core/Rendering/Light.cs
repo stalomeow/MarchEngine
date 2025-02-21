@@ -6,19 +6,25 @@ using System.Numerics;
 
 namespace March.Core.Rendering
 {
-    public enum LightType : int
+    public enum LightType
     {
-        Directional = 0, // 平行光
-        Point = 1,       // 点光源
-        Spot = 2,        // 聚光灯
+        Directional,
+        Point,
+        Spot,
     };
+
+    public enum LightUnit
+    {
+        Lux,
+        Lumen,
+        Candela,
+    }
 
     public partial class Light : Component
     {
         public Light() : base(New()) { }
 
         [JsonProperty]
-        [Tooltip("The type of light.")]
         [NativeProperty]
         public partial LightType Type { get; set; }
 
@@ -27,15 +33,30 @@ namespace March.Core.Rendering
         public partial Color Color { get; set; }
 
         [JsonProperty]
-        [Tooltip("The range of the light's falloff.")]
-        [Vector2Drawer(XNotGreaterThanY = true, Min = 0.1f)]
         [NativeProperty]
-        public partial Vector2 FalloffRange { get; set; }
+        public partial float Intensity { get; set; }
 
         [JsonProperty]
-        [FloatDrawer(Min = 0.1f)]
         [NativeProperty]
-        public partial float SpotPower { get; set; }
+        public partial LightUnit Unit { get; set; }
+
+        [JsonProperty]
+        [InspectorName("Attenuation Radius")]
+        [FloatDrawer(Min = 0.0f)]
+        [NativeProperty]
+        public partial float AttenuationRadius { get; set; }
+
+        [JsonProperty]
+        [InspectorName("Inner Cone Angle")]
+        [FloatDrawer(Min = 0.0f, Max = 90.0f, Slider = true)]
+        [NativeProperty]
+        public partial float SpotInnerConeAngle { get; set; } // in degrees
+
+        [JsonProperty]
+        [InspectorName("Outer Cone Angle")]
+        [FloatDrawer(Min = 0.0f, Max = 90.0f, Slider = true)]
+        [NativeProperty]
+        public partial float SpotOuterConeAngle { get; set; } // in degrees
 
         protected override void OnEnable()
         {
@@ -117,7 +138,7 @@ namespace March.Core.Rendering
         {
             using (new Gizmos.ColorScope(Color))
             {
-                Gizmos.DrawWireSphere(transform.Position, FalloffRange.Y);
+                Gizmos.DrawWireSphere(transform.Position, AttenuationRadius);
             }
         }
 
@@ -127,9 +148,9 @@ namespace March.Core.Rendering
             using (new Gizmos.MatrixScope(GizmosUtility.GetLocalToWorldMatrixWithoutScale(transform)))
             {
                 // 当强度为 0.01 时的边界
-                float halfAngle = MathF.Acos(MathF.Pow(10, -2.0f / SpotPower));
-                float sinHalfAngle = MathF.Sin(halfAngle) * FalloffRange.Y;
-                float cosHalfAngle = MathF.Cos(halfAngle) * FalloffRange.Y;
+                float halfAngle = float.DegreesToRadians(SpotOuterConeAngle);
+                float sinHalfAngle = MathF.Sin(halfAngle) * AttenuationRadius;
+                float cosHalfAngle = MathF.Cos(halfAngle) * AttenuationRadius;
 
                 Gizmos.DrawLine(Vector3.Zero, new Vector3(0, sinHalfAngle, cosHalfAngle));
                 Gizmos.DrawLine(Vector3.Zero, new Vector3(0, -sinHalfAngle, cosHalfAngle));
@@ -138,10 +159,10 @@ namespace March.Core.Rendering
 
                 Gizmos.DrawWireDisc(new Vector3(0, 0, cosHalfAngle), Vector3.UnitZ, sinHalfAngle);
 
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, halfAngle, FalloffRange.Y);
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, -halfAngle, FalloffRange.Y);
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, halfAngle, FalloffRange.Y);
-                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, -halfAngle, FalloffRange.Y);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, halfAngle, AttenuationRadius);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitX, Vector3.UnitZ, -halfAngle, AttenuationRadius);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, halfAngle, AttenuationRadius);
+                Gizmos.DrawWireArc(Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, -halfAngle, AttenuationRadius);
             }
         }
 

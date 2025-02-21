@@ -9,40 +9,70 @@ NATIVE_EXPORT_AUTO Light_New()
 
 NATIVE_EXPORT_AUTO Light_GetType(cs<Light*> pLight)
 {
-    retcs pLight->Type;
+    retcs pLight->GetType();
 }
 
 NATIVE_EXPORT_AUTO Light_SetType(cs<Light*> pLight, cs<LightType> type)
 {
-    pLight->Type = type;
+    pLight->SetType(type);
 }
 
 NATIVE_EXPORT_AUTO Light_GetColor(cs<Light*> pLight)
 {
-    retcs pLight->Color;
+    retcs pLight->GetColor();
 }
 
 NATIVE_EXPORT_AUTO Light_SetColor(cs<Light*> pLight, cs_color color)
 {
-    pLight->Color = color;
+    pLight->SetColor(color);
 }
 
-NATIVE_EXPORT_AUTO Light_GetFalloffRange(cs<Light*> pLight)
+NATIVE_EXPORT_AUTO Light_GetIntensity(cs<Light*> pLight)
 {
-    retcs pLight->FalloffRange;
+    retcs pLight->GetIntensity();
 }
 
-NATIVE_EXPORT_AUTO Light_SetFalloffRange(cs<Light*> pLight, cs_vec2 range)
+NATIVE_EXPORT_AUTO Light_SetIntensity(cs<Light*> pLight, cs_float intensity)
 {
-    pLight->FalloffRange = range;
+    pLight->SetIntensity(intensity);
 }
 
-NATIVE_EXPORT_AUTO Light_GetSpotPower(cs<Light*> pLight)
+NATIVE_EXPORT_AUTO Light_GetUnit(cs<Light*> pLight)
 {
-    retcs pLight->SpotPower;
+    retcs pLight->GetUnit();
 }
 
-NATIVE_EXPORT_AUTO Light_SetSpotPower(cs<Light*> pLight, cs_float power)
+NATIVE_EXPORT_AUTO Light_SetUnit(cs<Light*> pLight, cs<LightUnit> unit)
 {
-    pLight->SpotPower = power;
+    pLight->SetUnit(unit);
+}
+
+NATIVE_EXPORT_AUTO Light_GetAttenuationRadius(cs<Light*> pLight)
+{
+    retcs pLight->GetAttenuationRadius();
+}
+
+NATIVE_EXPORT_AUTO Light_SetAttenuationRadius(cs<Light*> pLight, cs_float radius)
+{
+    pLight->SetAttenuationRadius(radius);
+}
+
+NATIVE_EXPORT_AUTO Light_GetSpotInnerConeAngle(cs<Light*> pLight)
+{
+    retcs pLight->GetSpotInnerConeAngle();
+}
+
+NATIVE_EXPORT_AUTO Light_SetSpotInnerConeAngle(cs<Light*> pLight, cs_float angle)
+{
+    pLight->SetSpotInnerConeAngle(angle);
+}
+
+NATIVE_EXPORT_AUTO Light_GetSpotOuterConeAngle(cs<Light*> pLight)
+{
+    retcs pLight->GetSpotOuterConeAngle();
+}
+
+NATIVE_EXPORT_AUTO Light_SetSpotOuterConeAngle(cs<Light*> pLight, cs_float angle)
+{
+    pLight->SetSpotOuterConeAngle(angle);
 }

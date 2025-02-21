@@ -7,10 +7,10 @@
 
 struct LightData
 {
-    float4 position;
-    float4 spotDirection;
-    float4 color;
-    float4 falloff;
+    float4 position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
+    float4 spotDirection; // 聚光灯方向，w 未使用
+    float4 color;         // 颜色，w 未使用
+    float4 params;        // AttenuationRadius, cos(SpotOuterConeAngle), rcp(cos(SpotInnerConeAngle)-cos(SpotOuterConeAngle)), IsSpotLight (w==1)
 };
 
 struct Light
@@ -26,27 +26,37 @@ cbuffer cbLight
     int _LightCount;
 };
 
+float Square(float x)
+{
+    return x * x;
+}
+
 Light GetLight(float3 positionWS, int i)
 {
     LightData data = _LightData[i];
 
     float3 direction = data.position.xyz - positionWS * data.position.w;
-    float dist = length(direction);
-    direction /= dist; // normalize
+    float distSq = dot(direction, direction);
+    direction *= rsqrt(distSq); // normalize
 
-    float distAtten = saturate((data.falloff.y - dist) / (data.falloff.y - data.falloff.x));
-    float spotAngleAtten = pow(max(dot(data.spotDirection.xyz, direction), 0.01), data.spotDirection.w);
+    float attenRadiusSq = Square(data.params.x);
+    float distAtten = Square(saturate(1 - Square(distSq / attenRadiusSq))) / (distSq + 1.0);
+    distAtten = lerp(1.0, distAtten, data.position.w);
+
+    float spotAngleMask = saturate((dot(data.spotDirection.xyz, direction) - data.params.y) * data.params.z);
+    float spotAngleAtten = Square(spotAngleMask);
+    spotAngleAtten = lerp(1.0, spotAngleAtten, data.params.w);
 
     Light light;
     light.color = data.color.rgb;
     light.direction = direction;
-    light.attenuation = lerp(1.0, distAtten, data.position.w) * spotAngleAtten * 5;
+    light.attenuation = distAtten * spotAngleAtten;
     return light;
 }
 
 float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 viewDirWS, float ao)
 {
-    float3 result = 0;//ao * 0.4 * data.albedo;
+    float3 result = ao * (0.03 * data.albedo);
 
     float3 N = normalWS;
     float3 V = viewDirWS;
@@ -67,7 +77,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 vie
         result += brdf * irradiance;
     }
 
-    return result * ao;
+    return result;
 }
 
 #endif
