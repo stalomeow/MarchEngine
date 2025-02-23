@@ -13,52 +13,44 @@ using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    internal enum ModelImporterNormals
+    public enum ModelNormalImportMode
     {
+        Auto,
         Import,
         Calculate,
     }
 
-    internal enum ModelImporterTangents
+    public enum ModelTangentImportMode
     {
+        Auto,
         Import,
         Calculate,
     }
 
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 50)]
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 53)]
     public class GltfImporter : AssetImporter
     {
         [JsonProperty]
         [InspectorName("Normals")]
-        private ModelImporterNormals m_ImportNormals = ModelImporterNormals.Import;
+        public ModelNormalImportMode NormalImportMode { get; set; } = ModelNormalImportMode.Auto;
 
         [JsonProperty]
         [InspectorName("Tangents")]
-        private ModelImporterTangents m_ImportTangents = ModelImporterTangents.Import;
+        public ModelTangentImportMode TangentImportMode { get; set; } = ModelTangentImportMode.Auto;
 
         protected override void OnImportAssets(ref AssetImportContext context)
         {
-            Gltf gltf;
-
-            using (FileStream fs = File.OpenRead(Location.AssetFullPath))
-            {
-                gltf = Interface.LoadModel(fs);
-            }
-
-            BinaryReader[] buffers = new BinaryReader[gltf.Buffers.Length];
-            string directory = Path.GetDirectoryName(Location.AssetPath)!;
-
-            for (int i = 0; i < buffers.Length; i++)
-            {
-                string path = AssetLocationUtility.CombinePath(directory, gltf.Buffers[i].Uri);
-                BinaryAsset bin = context.RequireOtherAsset<BinaryAsset>(path, dependsOn: true);
-                buffers[i] = new BinaryReader(new MemoryStream(bin.Data));
-            }
-
-            var scene = gltf.Scenes[gltf.Scene ?? 0]; // 只加载一个 Scene
+            using var reader = new GltfReader(ref context, in Location);
+            var scene = reader.GetFirstScene();
 
             GameObject root = context.AddMainAsset("Root", () => new GameObject(), FontAwesome6.DiceD6);
             root.Name = scene.Name ?? Path.GetFileNameWithoutExtension(Location.AssetFullPath);
+
+            using var materials = ListPool<Material>.Get();
+            CreateMaterials(ref context, reader, materials);
+
+            using var meshes = ListPool<Mesh>.Get();
+            CreateMeshes(ref context, reader, meshes);
 
             // Reset children
             for (int i = 0; i < root.transform.ChildCount; i++)
@@ -66,15 +58,213 @@ namespace March.Editor.AssetPipeline.Importers
                 root.transform.GetChild(i).Detach();
             }
 
-            CreateChildren(ref context, gltf, buffers, root, scene.Nodes);
+            CreateChildren(reader, root, scene.Nodes, materials.Value, meshes.Value);
+        }
 
-            for (int i = 0; i < buffers.Length; i++)
+        private void CreateMaterials(ref AssetImportContext context, GltfReader reader, List<Material> materials)
+        {
+            if (!reader.Data.ShouldSerializeMaterials())
             {
-                buffers[i].Dispose();
+                return;
+            }
+
+            foreach (var m in reader.Data.Materials)
+            {
+                var asset = context.AddSubAsset<Material>($"Material{materials.Count}");
+                asset.Reset();
+                asset.Shader = context.RequireOtherAsset<Shader>("Engine/Shaders/Lit.shader", dependsOn: false);
+                materials.Add(asset);
+
+                if (m.AlphaMode == glTFLoader.Schema.Material.AlphaModeEnum.MASK)
+                {
+                    asset.EnableKeyword("_ALPHATEST_ON");
+                    asset.SetFloat("_Cutoff", m.AlphaCutoff);
+                }
+
+                if (m.DoubleSided)
+                {
+                    asset.SetInt("_CullMode", (int)CullMode.Off);
+                }
+
+                if (m.ShouldSerializePbrMetallicRoughness())
+                {
+                    if (m.PbrMetallicRoughness.ShouldSerializeBaseColorTexture())
+                    {
+                        int? sourceIndex = reader.Data.Textures[m.PbrMetallicRoughness.BaseColorTexture.Index].Source;
+
+                        if (sourceIndex != null)
+                        {
+                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[sourceIndex.Value].Uri);
+                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+                            {
+                                TextureImporter texImporter = (TextureImporter)importer;
+                                texImporter.IsSRGB = true;
+                            });
+                            asset.SetTexture("_BaseMap", tex);
+                        }
+                    }
+
+                    if (m.PbrMetallicRoughness.ShouldSerializeBaseColorFactor())
+                    {
+                        Color baseColorFactor = new()
+                        {
+                            R = m.PbrMetallicRoughness.BaseColorFactor[0],
+                            G = m.PbrMetallicRoughness.BaseColorFactor[1],
+                            B = m.PbrMetallicRoughness.BaseColorFactor[2],
+                            A = m.PbrMetallicRoughness.BaseColorFactor[3]
+                        };
+
+                        asset.SetColor("_BaseColor", baseColorFactor);
+                    }
+
+                    if (m.PbrMetallicRoughness.ShouldSerializeMetallicFactor())
+                    {
+                        asset.SetFloat("_Metallic", m.PbrMetallicRoughness.MetallicFactor);
+                    }
+
+                    if (m.PbrMetallicRoughness.ShouldSerializeRoughnessFactor())
+                    {
+                        asset.SetFloat("_Roughness", m.PbrMetallicRoughness.RoughnessFactor);
+                    }
+
+                    if (m.PbrMetallicRoughness.ShouldSerializeMetallicRoughnessTexture())
+                    {
+                        int? sourceIndex = reader.Data.Textures[m.PbrMetallicRoughness.MetallicRoughnessTexture.Index].Source;
+
+                        if (sourceIndex != null)
+                        {
+                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[sourceIndex.Value].Uri);
+                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+                            {
+                                TextureImporter texImporter = (TextureImporter)importer;
+                                texImporter.IsSRGB = false;
+                            });
+                            asset.SetTexture("_MetallicRoughnessMap", tex);
+                        }
+                    }
+                }
+
+                if (m.ShouldSerializeNormalTexture())
+                {
+                    int? sourceIndex = reader.Data.Textures[m.NormalTexture.Index].Source;
+
+                    if (sourceIndex != null)
+                    {
+                        string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[sourceIndex.Value].Uri);
+                        var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+                        {
+                            TextureImporter texImporter = (TextureImporter)importer;
+                            texImporter.IsSRGB = false;
+                        });
+                        asset.SetTexture("_BumpMap", tex);
+                    }
+
+                    if (m.NormalTexture.ShouldSerializeScale())
+                    {
+                        asset.SetFloat("_BumpScale", m.NormalTexture.Scale);
+                    }
+                }
             }
         }
 
-        private void CreateChildren(ref AssetImportContext context, Gltf gltf, BinaryReader[] buffers, GameObject parent, int[]? nodeIndices)
+        private void CreateMeshes(ref AssetImportContext context, GltfReader reader, List<Mesh> meshes)
+        {
+            if (!reader.Data.ShouldSerializeMeshes())
+            {
+                return;
+            }
+
+            foreach (var m in reader.Data.Meshes)
+            {
+                var asset = context.AddSubAsset<Mesh>($"Mesh{meshes.Count}");
+                asset.ClearSubMeshes();
+                meshes.Add(asset);
+
+                int normalCounter = 0;
+                int tangentCounter = 0;
+
+                foreach (var primitive in m.Primitives)
+                {
+                    using var positions = ListPool<Vector3>.Get();
+                    using var normals = ListPool<Vector3>.Get();
+                    using var tangents = ListPool<Vector4>.Get();
+                    using var uvs = ListPool<Vector2>.Get();
+
+                    foreach (KeyValuePair<string, int> kv in primitive.Attributes)
+                    {
+                        Accessor accessor = reader.Data.Accessors[kv.Value];
+
+                        switch (kv.Key)
+                        {
+                            case "POSITION":
+                                reader.ReadVector3List(accessor, positions, GltfReader.FixPosition);
+                                break;
+
+                            case "NORMAL":
+                                reader.ReadVector3List(accessor, normals, GltfReader.FixNormal);
+                                normalCounter++;
+                                break;
+
+                            case "TANGENT":
+                                reader.ReadVector4List(accessor, tangents, GltfReader.FixTangent);
+                                tangentCounter++;
+                                break;
+
+                            case "TEXCOORD_0":
+                                reader.ReadVector2List(accessor, uvs, GltfReader.FixUV);
+                                break;
+                        }
+                    }
+
+                    using var vertices = ListPool<MeshVertex>.Get();
+
+                    for (int i = 0; i < positions.Value.Count; i++)
+                    {
+                        vertices.Value.Add(new MeshVertex
+                        {
+                            Position = positions.Value.ElementAtOrDefault(i),
+                            Normal = normals.Value.ElementAtOrDefault(i),
+                            Tangent = tangents.Value.ElementAtOrDefault(i),
+                            UV = uvs.Value.ElementAtOrDefault(i)
+                        });
+                    }
+
+                    using var indices = ListPool<ushort>.Get();
+
+                    if (primitive.Indices != null)
+                    {
+                        reader.ReadUInt16List(reader.Data.Accessors[primitive.Indices.Value], indices);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < positions.Value.Count; i++)
+                        {
+                            indices.Value.Add((ushort)i);
+                        }
+                    }
+
+                    GltfReader.FixIndices(indices);
+
+                    asset.AddSubMesh(vertices.Value, indices.Value);
+                }
+
+                if ((normalCounter < m.Primitives.Length && NormalImportMode == ModelNormalImportMode.Auto) ||
+                    NormalImportMode == ModelNormalImportMode.Calculate)
+                {
+                    asset.RecalculateNormals();
+                }
+
+                if ((tangentCounter < m.Primitives.Length && TangentImportMode == ModelTangentImportMode.Auto) ||
+                    TangentImportMode == ModelTangentImportMode.Calculate)
+                {
+                    asset.RecalculateTangents();
+                }
+
+                asset.RecalculateBounds();
+            }
+        }
+
+        private static void CreateChildren(GltfReader reader, GameObject parent, int[]? nodeIndices, IReadOnlyList<Material> materials, IReadOnlyList<Mesh> meshes)
         {
             if (nodeIndices == null || nodeIndices.Length == 0)
             {
@@ -83,303 +273,151 @@ namespace March.Editor.AssetPipeline.Importers
 
             foreach (int nodeIdx in nodeIndices)
             {
-                var node = gltf.Nodes[nodeIdx];
+                var node = reader.Data.Nodes[nodeIdx];
                 var go = new GameObject();
 
-                if (node.ShouldSerializeName())
+                if (!string.IsNullOrWhiteSpace(node.Name))
                 {
                     go.Name = node.Name;
                 }
 
-                if (node.ShouldSerializeMatrix())
-                {
-                    var matrix = new Matrix4x4();
+                GltfReader.ReadNodeTransform(node, out Vector3 position, out Quaternion rotation, out Vector3 scale);
+                go.transform.LocalPosition = position;
+                go.transform.LocalRotation = rotation;
+                go.transform.LocalScale = scale;
 
-                    for (int i = 0; i < 4; i++)
-                    {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            matrix[j, i] = node.Matrix[i * 4 + j];
-                        }
-                    }
-
-                    matrix = Matrix4x4.Transpose(matrix);
-                    Matrix4x4.Decompose(matrix, out Vector3 scale, out Quaternion rotation, out Vector3 translation);
-                    translation.X = -translation.X; // glTF 是右手坐标系
-                    rotation = ReverseX(rotation);
-                    go.transform.LocalPosition = translation;
-                    go.transform.LocalRotation = rotation;
-                    go.transform.LocalScale = scale;
-                }
-                else
-                {
-                    if (node.ShouldSerializeTranslation())
-                    {
-                        var translation = new Vector3();
-
-                        for (int i = 0; i < 3; i++)
-                        {
-                            translation[i] = node.Translation[i];
-                        }
-
-                        translation.X = -translation.X; // glTF 是右手坐标系
-                        go.transform.LocalPosition = translation;
-                    }
-
-                    if (node.ShouldSerializeRotation())
-                    {
-                        var rotation = new Quaternion();
-
-                        for (int i = 0; i < 4; i++)
-                        {
-                            rotation[i] = node.Rotation[i];
-                        }
-
-                        rotation = ReverseX(rotation); // glTF 是右手坐标系
-                        go.transform.LocalRotation = rotation;
-                    }
-
-                    if (node.ShouldSerializeScale())
-                    {
-                        var scale = new Vector3();
-
-                        for (int i = 0; i < 3; i++)
-                        {
-                            scale[i] = node.Scale[i];
-                        }
-
-                        go.transform.LocalScale = scale;
-                    }
-                }
-
-                if (node.ShouldSerializeMesh())
+                if (node.Mesh != null)
                 {
                     MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+                    renderer.Mesh = meshes[node.Mesh.Value];
+
                     renderer.Materials.Clear();
-                    renderer.Mesh = CreateMesh(ref context, gltf, buffers, gltf.Meshes[node.Mesh!.Value], renderer.Materials, nodeIdx);
+                    foreach (var primitive in reader.Data.Meshes[node.Mesh.Value].Primitives)
+                    {
+                        if (primitive.Material != null)
+                        {
+                            renderer.Materials.Add(materials[primitive.Material.Value]);
+                        }
+                        else
+                        {
+                            renderer.Materials.Add(null);
+                        }
+                    }
                     renderer.SyncNativeMaterials();
                 }
 
                 parent.transform.AddChild(go.transform);
-                CreateChildren(ref context, gltf, buffers, go, node.Children);
+                CreateChildren(reader, go, node.Children, materials, meshes);
+            }
+        }
+    }
+
+    internal sealed class GltfReader : IDisposable
+    {
+        public Gltf Data { get; }
+
+        private readonly BinaryReader[] m_BufferReaders;
+
+        public GltfReader(ref AssetImportContext context, in AssetLocation location)
+        {
+            using (FileStream fs = File.OpenRead(location.AssetFullPath))
+            {
+                Data = Interface.LoadModel(fs);
+            }
+
+            m_BufferReaders = new BinaryReader[Data.Buffers.Length];
+            string directory = Path.GetDirectoryName(location.AssetPath)!;
+
+            for (int i = 0; i < m_BufferReaders.Length; i++)
+            {
+                string path = AssetLocationUtility.CombinePath(directory, Data.Buffers[i].Uri);
+                BinaryAsset bin = context.RequireOtherAsset<BinaryAsset>(path, dependsOn: true);
+                m_BufferReaders[i] = new BinaryReader(new MemoryStream(bin.Data));
             }
         }
 
-        private Mesh CreateMesh(ref AssetImportContext context, Gltf gltf, BinaryReader[] buffers, glTFLoader.Schema.Mesh m, List<Material?> materials, int nodeIndex)
+        public void Dispose()
         {
-            var mesh = context.AddSubAsset<Mesh>($"Node{nodeIndex}_Mesh");
-            mesh.ClearSubMeshes();
-
-            foreach (var primitive in m.Primitives)
+            foreach (BinaryReader reader in m_BufferReaders)
             {
-                using var positions = ListPool<Vector3>.Get();
-                using var normals = ListPool<Vector3>.Get();
-                using var tangents = ListPool<Vector4>.Get();
-                using var uvs = ListPool<Vector2>.Get();
-
-                foreach (KeyValuePair<string, int> kv in primitive.Attributes)
-                {
-                    switch (kv.Key)
-                    {
-                        case "POSITION":
-                            ReadVector3List(gltf, buffers, gltf.Accessors[kv.Value], positions);
-                            break;
-
-                        case "NORMAL":
-                            ReadVector3List(gltf, buffers, gltf.Accessors[kv.Value], normals);
-                            break;
-
-                        case "TANGENT":
-                            ReadVector4List(gltf, buffers, gltf.Accessors[kv.Value], tangents);
-                            break;
-
-                        case "TEXCOORD_0":
-                            ReadVector2List(gltf, buffers, gltf.Accessors[kv.Value], uvs);
-                            break;
-                    }
-                }
-
-                using var indices = ListPool<ushort>.Get();
-
-                if (primitive.Indices != null)
-                {
-                    ReadUInt16List(gltf, buffers, gltf.Accessors[primitive.Indices.Value], indices);
-                }
-                else
-                {
-                    for (int i = 0; i < positions.Value.Count; i++)
-                    {
-                        indices.Value.Add((ushort)i);
-                    }
-                }
-
-                using var vertices = ListPool<MeshVertex>.Get();
-
-                for (int i = 0; i < positions.Value.Count; i++)
-                {
-                    MeshVertex v = new();
-
-                    if (i < positions.Value.Count)
-                    {
-                        v.Position = positions.Value[i];
-                        v.Position.X = -v.Position.X; // glTF 是右手坐标系
-                    }
-
-                    if (i < normals.Value.Count)
-                    {
-                        v.Normal = normals.Value[i];
-                        v.Normal.X = -v.Normal.X; // glTF 是右手坐标系
-                    }
-
-                    if (i < tangents.Value.Count)
-                    {
-                        v.Tangent = tangents.Value[i];
-                        v.Tangent.X = -v.Tangent.X; // glTF 是右手坐标系
-                        v.Tangent.W = -v.Tangent.W;
-                    }
-
-                    if (i < uvs.Value.Count)
-                    {
-                        v.UV = uvs.Value[i]; // glTF 的 UV 坐标系是左上角为原点，不用变
-                    }
-
-                    vertices.Value.Add(v);
-                }
-
-                // glTF 逆时针为正面，我们顺时针为正面
-                for (int i = 0; i < indices.Value.Count / 3; i++)
-                {
-                    int a = i * 3 + 0;
-                    int b = i * 3 + 1;
-                    (indices.Value[a], indices.Value[b]) = (indices.Value[b], indices.Value[a]);
-                }
-
-                mesh.AddSubMesh(vertices.Value, indices.Value);
-
-                if (primitive.Material == null)
-                {
-                    materials.Add(null);
-                }
-                else
-                {
-                    var mat = context.AddSubAsset<Material>($"Node{nodeIndex}_SubMesh{mesh.SubMeshCount}_Material");
-                    mat.Reset();
-                    materials.Add(mat);
-
-                    mat.Shader = context.RequireOtherAsset<Shader>("Engine/Shaders/Lit.shader", dependsOn: false);
-
-                    var matData = gltf.Materials[primitive.Material.Value];
-
-                    if (matData.AlphaMode == glTFLoader.Schema.Material.AlphaModeEnum.MASK)
-                    {
-                        mat.EnableKeyword("_ALPHATEST_ON");
-                        mat.SetFloat("_Cutoff", matData.AlphaCutoff);
-                    }
-
-                    if (matData.DoubleSided)
-                    {
-                        mat.SetInt("_CullMode", (int)CullMode.Off);
-                    }
-
-                    if (matData.ShouldSerializePbrMetallicRoughness())
-                    {
-                        if (matData.PbrMetallicRoughness.ShouldSerializeBaseColorTexture())
-                        {
-                            int? sourceIndex = gltf.Textures[matData.PbrMetallicRoughness.BaseColorTexture.Index].Source;
-
-                            if (sourceIndex != null)
-                            {
-                                string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
-                                var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
-                                {
-                                    TextureImporter texImporter = (TextureImporter)importer;
-                                    texImporter.IsSRGB = true;
-                                });
-                                mat.SetTexture("_BaseMap", tex);
-                            }
-                        }
-
-                        if (matData.PbrMetallicRoughness.ShouldSerializeBaseColorFactor())
-                        {
-                            Color baseColorFactor = new()
-                            {
-                                R = matData.PbrMetallicRoughness.BaseColorFactor[0],
-                                G = matData.PbrMetallicRoughness.BaseColorFactor[1],
-                                B = matData.PbrMetallicRoughness.BaseColorFactor[2],
-                                A = matData.PbrMetallicRoughness.BaseColorFactor[3]
-                            };
-
-                            mat.SetColor("_BaseColor", baseColorFactor);
-                        }
-
-                        if (matData.PbrMetallicRoughness.ShouldSerializeMetallicFactor())
-                        {
-                            mat.SetFloat("_Metallic", matData.PbrMetallicRoughness.MetallicFactor);
-                        }
-
-                        if (matData.PbrMetallicRoughness.ShouldSerializeRoughnessFactor())
-                        {
-                            mat.SetFloat("_Roughness", matData.PbrMetallicRoughness.RoughnessFactor);
-                        }
-
-                        if (matData.PbrMetallicRoughness.ShouldSerializeMetallicRoughnessTexture())
-                        {
-                            int? sourceIndex = gltf.Textures[matData.PbrMetallicRoughness.MetallicRoughnessTexture.Index].Source;
-
-                            if (sourceIndex != null)
-                            {
-                                string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
-                                var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
-                                {
-                                    TextureImporter texImporter = (TextureImporter)importer;
-                                    texImporter.IsSRGB = false;
-                                });
-                                mat.SetTexture("_MetallicRoughnessMap", tex);
-                            }
-                        }
-                    }
-
-                    if (matData.ShouldSerializeNormalTexture())
-                    {
-                        int? sourceIndex = gltf.Textures[matData.NormalTexture.Index].Source;
-
-                        if (sourceIndex != null)
-                        {
-                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, gltf.Images[sourceIndex.Value].Uri);
-                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
-                            {
-                                TextureImporter texImporter = (TextureImporter)importer;
-                                texImporter.IsSRGB = false;
-                            });
-                            mat.SetTexture("_BumpMap", tex);
-                        }
-
-                        if (matData.NormalTexture.ShouldSerializeScale())
-                        {
-                            mat.SetFloat("_BumpScale", matData.NormalTexture.Scale);
-                        }
-                    }
-                }
+                reader.Dispose();
             }
-
-            if (m_ImportNormals == ModelImporterNormals.Calculate)
-            {
-                mesh.RecalculateNormals();
-            }
-
-            if (m_ImportTangents == ModelImporterTangents.Calculate)
-            {
-                mesh.RecalculateTangents();
-            }
-
-            mesh.RecalculateBounds();
-            return mesh;
         }
 
-        private static void ReadUInt16List(Gltf gltf, BinaryReader[] buffers, Accessor accessor, List<ushort> results)
+        public glTFLoader.Schema.Scene GetFirstScene()
         {
-            var bufferView = gltf.BufferViews[accessor.BufferView!.Value];
-            var buffer = buffers[bufferView.Buffer];
+            return Data.Scenes[Data.Scene ?? 0];
+        }
+
+        public void ReadUInt16List(Accessor accessor, List<ushort> list)
+        {
+            ReadBuffer(accessor, reader => list.Add(ReadAsUInt16(reader, accessor.ComponentType)));
+        }
+
+        public void ReadVector2List(Accessor accessor, List<Vector2> list, Func<Vector2, Vector2>? fixFunc = null)
+        {
+            ReadBuffer(accessor, reader =>
+            {
+                var item = new Vector2
+                {
+                    X = ReadAsFloat(reader, accessor.ComponentType),
+                    Y = ReadAsFloat(reader, accessor.ComponentType)
+                };
+
+                if (fixFunc != null)
+                {
+                    item = fixFunc(item);
+                }
+
+                list.Add(item);
+            });
+        }
+
+        public void ReadVector3List(Accessor accessor, List<Vector3> list, Func<Vector3, Vector3>? fixFunc = null)
+        {
+            ReadBuffer(accessor, reader =>
+            {
+                var item = new Vector3
+                {
+                    X = ReadAsFloat(reader, accessor.ComponentType),
+                    Y = ReadAsFloat(reader, accessor.ComponentType),
+                    Z = ReadAsFloat(reader, accessor.ComponentType)
+                };
+
+                if (fixFunc != null)
+                {
+                    item = fixFunc(item);
+                }
+
+                list.Add(item);
+            });
+        }
+
+        public void ReadVector4List(Accessor accessor, List<Vector4> list, Func<Vector4, Vector4>? fixFunc = null)
+        {
+            ReadBuffer(accessor, reader =>
+            {
+                var item = new Vector4
+                {
+                    X = ReadAsFloat(reader, accessor.ComponentType),
+                    Y = ReadAsFloat(reader, accessor.ComponentType),
+                    Z = ReadAsFloat(reader, accessor.ComponentType),
+                    W = ReadAsFloat(reader, accessor.ComponentType)
+                };
+
+                if (fixFunc != null)
+                {
+                    item = fixFunc(item);
+                }
+
+                list.Add(item);
+            });
+        }
+
+        private void ReadBuffer(Accessor accessor, Action<BinaryReader> readAction)
+        {
+            var bufferView = Data.BufferViews[accessor.BufferView!.Value];
+            var bufferReader = m_BufferReaders[bufferView.Buffer];
 
             int offset = accessor.ByteOffset + bufferView.ByteOffset;
 
@@ -389,134 +427,17 @@ namespace March.Editor.AssetPipeline.Importers
 
                 for (int i = 0; i < accessor.Count; i++)
                 {
-                    buffer.BaseStream.Seek(offset + stride * i, SeekOrigin.Begin);
-                    results.Add(ReadAsUInt16(buffer, accessor.ComponentType));
+                    bufferReader.BaseStream.Seek(offset + stride * i, SeekOrigin.Begin);
+                    readAction(bufferReader);
                 }
             }
             else
             {
-                buffer.BaseStream.Seek(offset, SeekOrigin.Begin);
+                bufferReader.BaseStream.Seek(offset, SeekOrigin.Begin);
 
                 for (int i = 0; i < accessor.Count; i++)
                 {
-                    results.Add(ReadAsUInt16(buffer, accessor.ComponentType));
-                }
-            }
-        }
-
-        private static void ReadVector2List(Gltf gltf, BinaryReader[] buffers, Accessor accessor, List<Vector2> results)
-        {
-            var bufferView = gltf.BufferViews[accessor.BufferView!.Value];
-            var buffer = buffers[bufferView.Buffer];
-
-            int offset = accessor.ByteOffset + bufferView.ByteOffset;
-
-            if (bufferView.ByteStride != null)
-            {
-                int stride = bufferView.ByteStride.Value;
-
-                for (int i = 0; i < accessor.Count; i++)
-                {
-                    buffer.BaseStream.Seek(offset + stride * i, SeekOrigin.Begin);
-
-                    results.Add(new Vector2
-                    {
-                        X = ReadAsFloat(buffer, accessor.ComponentType),
-                        Y = ReadAsFloat(buffer, accessor.ComponentType)
-                    });
-                }
-            }
-            else
-            {
-                buffer.BaseStream.Seek(offset, SeekOrigin.Begin);
-
-                for (int i = 0; i < accessor.Count; i++)
-                {
-                    results.Add(new Vector2
-                    {
-                        X = ReadAsFloat(buffer, accessor.ComponentType),
-                        Y = ReadAsFloat(buffer, accessor.ComponentType)
-                    });
-                }
-            }
-        }
-
-        private static void ReadVector3List(Gltf gltf, BinaryReader[] buffers, Accessor accessor, List<Vector3> results)
-        {
-            var bufferView = gltf.BufferViews[accessor.BufferView!.Value];
-            var buffer = buffers[bufferView.Buffer];
-
-            int offset = accessor.ByteOffset + bufferView.ByteOffset;
-
-            if (bufferView.ByteStride != null)
-            {
-                int stride = bufferView.ByteStride.Value;
-
-                for (int i = 0; i < accessor.Count; i++)
-                {
-                    buffer.BaseStream.Seek(offset + stride * i, SeekOrigin.Begin);
-
-                    results.Add(new Vector3
-                    {
-                        X = ReadAsFloat(buffer, accessor.ComponentType),
-                        Y = ReadAsFloat(buffer, accessor.ComponentType),
-                        Z = ReadAsFloat(buffer, accessor.ComponentType)
-                    });
-                }
-            }
-            else
-            {
-                buffer.BaseStream.Seek(offset, SeekOrigin.Begin);
-
-                for (int i = 0; i < accessor.Count; i++)
-                {
-                    results.Add(new Vector3
-                    {
-                        X = ReadAsFloat(buffer, accessor.ComponentType),
-                        Y = ReadAsFloat(buffer, accessor.ComponentType),
-                        Z = ReadAsFloat(buffer, accessor.ComponentType)
-                    });
-                }
-            }
-        }
-
-        private static void ReadVector4List(Gltf gltf, BinaryReader[] buffers, Accessor accessor, List<Vector4> results)
-        {
-            var bufferView = gltf.BufferViews[accessor.BufferView!.Value];
-            var buffer = buffers[bufferView.Buffer];
-
-            int offset = accessor.ByteOffset + bufferView.ByteOffset;
-
-            if (bufferView.ByteStride != null)
-            {
-                int stride = bufferView.ByteStride.Value;
-
-                for (int i = 0; i < accessor.Count; i++)
-                {
-                    buffer.BaseStream.Seek(offset + stride * i, SeekOrigin.Begin);
-
-                    results.Add(new Vector4
-                    {
-                        X = ReadAsFloat(buffer, accessor.ComponentType),
-                        Y = ReadAsFloat(buffer, accessor.ComponentType),
-                        Z = ReadAsFloat(buffer, accessor.ComponentType),
-                        W = ReadAsFloat(buffer, accessor.ComponentType)
-                    });
-                }
-            }
-            else
-            {
-                buffer.BaseStream.Seek(offset, SeekOrigin.Begin);
-
-                for (int i = 0; i < accessor.Count; i++)
-                {
-                    results.Add(new Vector4
-                    {
-                        X = ReadAsFloat(buffer, accessor.ComponentType),
-                        Y = ReadAsFloat(buffer, accessor.ComponentType),
-                        Z = ReadAsFloat(buffer, accessor.ComponentType),
-                        W = ReadAsFloat(buffer, accessor.ComponentType)
-                    });
+                    readAction(bufferReader);
                 }
             }
         }
@@ -543,11 +464,105 @@ namespace March.Editor.AssetPipeline.Importers
             _ => throw new NotSupportedException(),
         };
 
-        private static Quaternion ReverseX(Quaternion q)
+        public static void ReadNodeTransform(Node node, out Vector3 position, out Quaternion rotation, out Vector3 scale)
         {
-            q.ToAngleAxis(out float angle, out Vector3 axis);
+            if (node.ShouldSerializeMatrix())
+            {
+                var matrix = new Matrix4x4();
+
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        matrix[j, i] = node.Matrix[i * 4 + j];
+                    }
+                }
+
+                matrix = Matrix4x4.Transpose(matrix); // glTF 是列主序，但我们是行主序
+                Matrix4x4.Decompose(matrix, out scale, out rotation, out position);
+            }
+            else
+            {
+                position = Vector3.Zero;
+                rotation = Quaternion.Identity;
+                scale = Vector3.One;
+
+                if (node.ShouldSerializeTranslation())
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        position[i] = node.Translation[i];
+                    }
+                }
+
+                if (node.ShouldSerializeRotation())
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        rotation[i] = node.Rotation[i];
+                    }
+                }
+
+                if (node.ShouldSerializeScale())
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        scale[i] = node.Scale[i];
+                    }
+                }
+            }
+
+            position = FixPosition(position);
+            rotation = FixRotation(rotation);
+            scale = FixScale(scale);
+        }
+
+        public static Vector3 FixPosition(Vector3 position)
+        {
+            // glTF 是右手坐标系
+            return new Vector3(-position.X, position.Y, position.Z);
+        }
+
+        public static Quaternion FixRotation(Quaternion rotation)
+        {
+            // glTF 是右手坐标系
+            rotation.ToAngleAxis(out float angle, out Vector3 axis);
             axis.X = -axis.X;
             return Quaternion.CreateFromAxisAngle(axis, -angle);
+        }
+
+        public static Vector3 FixScale(Vector3 scale)
+        {
+            return scale;
+        }
+
+        public static Vector3 FixNormal(Vector3 normal)
+        {
+            // glTF 是右手坐标系
+            return new Vector3(-normal.X, normal.Y, normal.Z);
+        }
+
+        public static Vector4 FixTangent(Vector4 tangent)
+        {
+            // glTF 是右手坐标系
+            return new Vector4(-tangent.X, tangent.Y, tangent.Z, -tangent.W);
+        }
+
+        public static Vector2 FixUV(Vector2 uv)
+        {
+            // glTF 的 UV 坐标系是左上角为原点，不用变
+            return uv;
+        }
+
+        public static void FixIndices(List<ushort> indices)
+        {
+            // glTF 逆时针为正面，我们顺时针为正面
+            for (int i = 0; i < indices.Count / 3; i++)
+            {
+                int a = i * 3 + 0;
+                int b = i * 3 + 1;
+                (indices[a], indices[b]) = (indices[b], indices[a]);
+            }
         }
     }
 }

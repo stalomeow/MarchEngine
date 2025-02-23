@@ -148,31 +148,35 @@ namespace March.Editor.Windows
 
         private static void DrawGameObjectsRecursive(GameObject go, List<GameObject> selections, ref bool isAnyItemClicked)
         {
-            using var label = EditorGUIUtility.BuildIconText(FontAwesome6.DiceD6, go.Name, "GameObject");
-            bool isSelected = Selection.Active == go;
-            bool isLeaf = go.transform.ChildCount == 0;
-            bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
-
-            EditorGUI.ItemClickResult clickResult = EditorGUI.IsTreeNodeClicked(isOpen, isLeaf);
-            isAnyItemClicked |= clickResult != EditorGUI.ItemClickResult.False;
-
-            // 点箭头不修改 selection
-            if (clickResult == EditorGUI.ItemClickResult.True)
+            // 因为是从上往下递归绘制的，所以只要判断当前节点是否激活即可
+            using (new EditorGUI.DisabledScope(!go.IsActiveSelf, allowInteraction: true))
             {
-                selections.Add(go);
-            }
+                using var label = EditorGUIUtility.BuildIconText(FontAwesome6.DiceD6, go.Name, "GameObject");
+                bool isSelected = Selection.Active == go;
+                bool isLeaf = go.transform.ChildCount == 0;
+                bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
 
-            if (isOpen)
-            {
-                for (int i = 0; i < go.transform.ChildCount; i++)
+                EditorGUI.ItemClickResult clickResult = EditorGUI.IsTreeNodeClicked(isOpen, isLeaf);
+                isAnyItemClicked |= clickResult != EditorGUI.ItemClickResult.False;
+
+                // 点箭头不修改 selection
+                if (clickResult == EditorGUI.ItemClickResult.True)
                 {
-                    using (new EditorGUI.IDScope(i))
-                    {
-                        DrawGameObjectsRecursive(go.transform.GetChild(i).gameObject, selections, ref isAnyItemClicked);
-                    }
+                    selections.Add(go);
                 }
 
-                EditorGUI.EndTreeNode();
+                if (isOpen)
+                {
+                    for (int i = 0; i < go.transform.ChildCount; i++)
+                    {
+                        using (new EditorGUI.IDScope(i))
+                        {
+                            DrawGameObjectsRecursive(go.transform.GetChild(i).gameObject, selections, ref isAnyItemClicked);
+                        }
+                    }
+
+                    EditorGUI.EndTreeNode();
+                }
             }
         }
     }

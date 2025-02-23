@@ -216,14 +216,29 @@ namespace march
         return ImGui::Checkbox(("##" + label).c_str(), &value);
     }
 
-    void EditorGUI::BeginDisabled(bool disabled)
+    void EditorGUI::BeginDisabled(bool disabled, bool allowInteraction)
     {
-        ImGui::BeginDisabled(disabled);
+        if (allowInteraction)
+        {
+            ImGuiCol col = disabled ? ImGuiCol_TextDisabled : ImGuiCol_Text;
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(col));
+        }
+        else
+        {
+            ImGui::BeginDisabled(disabled);
+        }
     }
 
-    void EditorGUI::EndDisabled()
+    void EditorGUI::EndDisabled(bool allowInteraction)
     {
-        ImGui::EndDisabled();
+        if (allowInteraction)
+        {
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::EndDisabled();
+        }
     }
 
     void EditorGUI::LabelField(const std::string& label1, const std::string& tooltip, const std::string& label2)
@@ -457,6 +472,11 @@ namespace march
         if (HasItemClickOptions(options, ItemClickOptions::IgnorePopup))
         {
             hoveredFlags |= ImGuiHoveredFlags_AllowWhenBlockedByPopup;
+        }
+
+        if (HasItemClickOptions(options, ItemClickOptions::AllowWhenDisabled))
+        {
+            hoveredFlags |= ImGuiHoveredFlags_AllowWhenDisabled;
         }
 
         // https://github.com/ocornut/imgui/issues/7879

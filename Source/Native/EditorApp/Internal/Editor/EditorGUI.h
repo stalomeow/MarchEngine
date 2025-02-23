@@ -30,8 +30,8 @@ namespace march
         static void SeparatorText(const std::string& label);
         static bool TextField(const std::string& label, const std::string& tooltip, std::string& text, const std::string& charBlacklist);
         static bool Checkbox(const std::string& label, const std::string& tooltip, bool& value);
-        static void BeginDisabled(bool disabled = true);
-        static void EndDisabled();
+        static void BeginDisabled(bool disabled = true, bool allowInteraction = false);
+        static void EndDisabled(bool allowInteraction = false);
         static void LabelField(const std::string& label1, const std::string& tooltip, const std::string& label2);
         static void PushID(const std::string& id);
         static void PushID(int id);
@@ -68,6 +68,7 @@ namespace march
             TreeNodeItem = 1 << 1,
             TreeNodeIsOpen = 1 << 2,
             TreeNodeIsLeaf = 1 << 3,
+            AllowWhenDisabled = 1 << 4,
         };
 
         enum class ItemClickResult

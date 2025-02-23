@@ -26,6 +26,7 @@ namespace March.Editor
             TreeNodeItem = 1 << 1,
             TreeNodeIsOpen = 1 << 2,
             TreeNodeIsLeaf = 1 << 3,
+            AllowWhenDisabled = 1 << 4,
         }
 
         public enum ItemClickResult : int
@@ -238,11 +239,12 @@ namespace March.Editor
         [NativeMethod]
         public static partial ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options);
 
-        public static ItemClickResult IsTreeNodeClicked(bool isOpen, bool isLeaf)
+        public static ItemClickResult IsTreeNodeClicked(bool isOpen, bool isLeaf, bool allowWhenDisabled = false)
         {
             ItemClickOptions options = ItemClickOptions.TreeNodeItem;
             if (isOpen) options |= ItemClickOptions.TreeNodeIsOpen;
             if (isLeaf) options |= ItemClickOptions.TreeNodeIsLeaf;
+            if (allowWhenDisabled) options |= ItemClickOptions.AllowWhenDisabled;
 
             ItemClickResult result1 = IsItemClicked(MouseButton.Left, options);
             ItemClickResult result2 = IsItemClicked(MouseButton.Right, options | ItemClickOptions.IgnorePopup); // 在 item 上打开 context menu 也算 click
@@ -518,18 +520,24 @@ namespace March.Editor
 
         public readonly ref struct DisabledScope
         {
+            private readonly bool m_AllowInteraction;
+
             public DisabledScope() : this(true) { }
 
-            public DisabledScope(bool disabled) => BeginDisabled(disabled);
+            public DisabledScope(bool disabled, bool allowInteraction = false)
+            {
+                m_AllowInteraction = allowInteraction;
+                BeginDisabled(disabled, m_AllowInteraction);
+            }
 
-            public void Dispose() => EndDisabled();
+            public void Dispose() => EndDisabled(m_AllowInteraction);
         }
 
         [NativeMethod]
-        private static partial void BeginDisabled(bool disabled);
+        private static partial void BeginDisabled(bool disabled, bool allowInteraction);
 
         [NativeMethod]
-        private static partial void EndDisabled();
+        private static partial void EndDisabled(bool allowInteraction);
 
         public readonly ref struct IDScope
         {

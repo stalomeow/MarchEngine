@@ -98,14 +98,14 @@ NATIVE_EXPORT_AUTO EditorGUI_Checkbox(cs_string label, cs_string tooltip, cs<cs_
     retcs false;
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_BeginDisabled(cs_bool disabled)
+NATIVE_EXPORT_AUTO EditorGUI_BeginDisabled(cs_bool disabled, cs_bool allowInteraction)
 {
-    EditorGUI::BeginDisabled(disabled);
+    EditorGUI::BeginDisabled(disabled, allowInteraction);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_EndDisabled()
+NATIVE_EXPORT_AUTO EditorGUI_EndDisabled(cs_bool allowInteraction)
 {
-    EditorGUI::EndDisabled();
+    EditorGUI::EndDisabled(allowInteraction);
 }
 
 NATIVE_EXPORT_AUTO EditorGUI_LabelField(cs_string label1, cs_string tooltip, cs_string label2)
