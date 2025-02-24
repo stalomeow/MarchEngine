@@ -27,7 +27,9 @@ namespace March.Editor.AssetPipeline.Importers
         Calculate,
     }
 
-    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 53)]
+    // TODO 按照 spec 实现更完整的 glTF 支持
+
+    [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 55)]
     public class GltfImporter : AssetImporter
     {
         [JsonProperty]
@@ -90,16 +92,10 @@ namespace March.Editor.AssetPipeline.Importers
                 {
                     if (m.PbrMetallicRoughness.ShouldSerializeBaseColorTexture())
                     {
-                        int? sourceIndex = reader.Data.Textures[m.PbrMetallicRoughness.BaseColorTexture.Index].Source;
+                        Texture? tex = RequireTexture(ref context, reader, m.PbrMetallicRoughness.BaseColorTexture.Index, true);
 
-                        if (sourceIndex != null)
+                        if (tex != null)
                         {
-                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[sourceIndex.Value].Uri);
-                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
-                            {
-                                TextureImporter texImporter = (TextureImporter)importer;
-                                texImporter.IsSRGB = true;
-                            });
                             asset.SetTexture("_BaseMap", tex);
                         }
                     }
@@ -129,16 +125,10 @@ namespace March.Editor.AssetPipeline.Importers
 
                     if (m.PbrMetallicRoughness.ShouldSerializeMetallicRoughnessTexture())
                     {
-                        int? sourceIndex = reader.Data.Textures[m.PbrMetallicRoughness.MetallicRoughnessTexture.Index].Source;
+                        Texture? tex = RequireTexture(ref context, reader, m.PbrMetallicRoughness.MetallicRoughnessTexture.Index, false);
 
-                        if (sourceIndex != null)
+                        if (tex != null)
                         {
-                            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[sourceIndex.Value].Uri);
-                            var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
-                            {
-                                TextureImporter texImporter = (TextureImporter)importer;
-                                texImporter.IsSRGB = false;
-                            });
                             asset.SetTexture("_MetallicRoughnessMap", tex);
                         }
                     }
@@ -146,16 +136,10 @@ namespace March.Editor.AssetPipeline.Importers
 
                 if (m.ShouldSerializeNormalTexture())
                 {
-                    int? sourceIndex = reader.Data.Textures[m.NormalTexture.Index].Source;
+                    Texture? tex = RequireTexture(ref context, reader, m.NormalTexture.Index, false);
 
-                    if (sourceIndex != null)
+                    if (tex != null)
                     {
-                        string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[sourceIndex.Value].Uri);
-                        var tex = context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
-                        {
-                            TextureImporter texImporter = (TextureImporter)importer;
-                            texImporter.IsSRGB = false;
-                        });
                         asset.SetTexture("_BumpMap", tex);
                     }
 
@@ -164,7 +148,101 @@ namespace March.Editor.AssetPipeline.Importers
                         asset.SetFloat("_BumpScale", m.NormalTexture.Scale);
                     }
                 }
+
+                if (m.ShouldSerializeOcclusionTexture())
+                {
+                    Texture? tex = RequireTexture(ref context, reader, m.OcclusionTexture.Index, false);
+
+                    if (tex != null)
+                    {
+                        asset.SetTexture("_OcclusionMap", tex);
+                    }
+
+                    if (m.OcclusionTexture.ShouldSerializeStrength())
+                    {
+                        asset.SetFloat("_OcclusionStrength", m.OcclusionTexture.Strength);
+                    }
+                }
+
+                if (m.ShouldSerializeEmissiveTexture())
+                {
+                    Texture? tex = RequireTexture(ref context, reader, m.EmissiveTexture.Index, true);
+
+                    if (tex != null)
+                    {
+                        asset.SetTexture("_EmissionMap", tex);
+                    }
+                }
+
+                if (m.ShouldSerializeEmissiveFactor())
+                {
+                    asset.SetColor("_EmissionColor", new Color
+                    {
+                        R = m.EmissiveFactor[0],
+                        G = m.EmissiveFactor[1],
+                        B = m.EmissiveFactor[2],
+                        A = 1
+                    });
+                }
             }
+        }
+
+        private Texture? RequireTexture(ref AssetImportContext context, GltfReader reader, int textureIndex, bool isSRGB)
+        {
+            var t = reader.Data.Textures[textureIndex];
+
+            if (t.Source == null)
+            {
+                return null;
+            }
+
+            string uri = AssetLocationUtility.CombinePath(Path.GetDirectoryName(Location.AssetPath)!, reader.Data.Images[t.Source.Value].Uri);
+            return context.RequireOtherAsset<Texture>(uri, dependsOn: false, settings: importer =>
+            {
+                TextureImporter texImporter = (TextureImporter)importer;
+                texImporter.IsSRGB = isSRGB;
+
+                if (t.Sampler != null)
+                {
+                    var sampler = reader.Data.Samplers[t.Sampler.Value];
+
+                    // 暂时不支持 U 和 V 独立设置
+                    if (sampler.ShouldSerializeWrapS())
+                    {
+                        texImporter.Wrap = sampler.WrapS switch
+                        {
+                            Sampler.WrapSEnum.CLAMP_TO_EDGE => TextureWrapMode.Clamp,
+                            Sampler.WrapSEnum.REPEAT => TextureWrapMode.Repeat,
+                            Sampler.WrapSEnum.MIRRORED_REPEAT => TextureWrapMode.Mirror,
+                            _ => TextureWrapMode.Repeat,
+                        };
+                    }
+
+                    // 暂时随便设置一下
+                    if (sampler.ShouldSerializeMagFilter())
+                    {
+                        if (sampler.MagFilter == Sampler.MagFilterEnum.NEAREST)
+                        {
+                            texImporter.Filter = TextureFilterMode.Point;
+                        }
+                        else if (sampler.ShouldSerializeMinFilter())
+                        {
+                            if (sampler.MinFilter == Sampler.MinFilterEnum.LINEAR_MIPMAP_NEAREST)
+                            {
+                                texImporter.Filter = TextureFilterMode.Bilinear;
+                            }
+                            else if (sampler.MinFilter == Sampler.MinFilterEnum.LINEAR)
+                            {
+                                texImporter.Filter = TextureFilterMode.Trilinear;
+                            }
+                            else if (sampler.MinFilter == Sampler.MinFilterEnum.LINEAR_MIPMAP_LINEAR)
+                            {
+                                texImporter.Filter = TextureFilterMode.Trilinear;
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         private void CreateMeshes(ref AssetImportContext context, GltfReader reader, List<Mesh> meshes)

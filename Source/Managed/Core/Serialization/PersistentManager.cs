@@ -11,7 +11,7 @@ namespace March.Core.Serialization
     public static class PersistentManager
     {
         private static readonly MarchPropertyJsonConverter s_PropertyJsonConverter = new();
-        private static readonly ObjectPool<MarchReferenceResolver> s_ReferenceResolverPool = new();
+        private static readonly ThreadSafeObjectPool<MarchReferenceResolver> s_ReferenceResolverPool = new();
         private static readonly JsonSerializer s_JsonSerializer = JsonSerializer.CreateDefault(new JsonSerializerSettings
         {
             ContractResolver = new ContractResolver(),

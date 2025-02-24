@@ -1,35 +1,40 @@
 namespace March.Core.Pool
 {
-    public readonly ref struct PooledObject<T>(BaseObjectPool<T> pool) where T : class
+    public readonly ref struct PooledObject<T>(BaseThreadSafeObjectPool<T> pool) where T : class
     {
         public T Value { get; } = pool.Rent();
 
-        public void Dispose()
-        {
-            pool.Return(Value);
-        }
+        public void Dispose() => pool.Return(Value);
 
         public static implicit operator T(PooledObject<T> pooled) => pooled.Value;
     }
 
-    public abstract class BaseObjectPool<T> where T : class
+    public abstract class BaseThreadSafeObjectPool<T> where T : class
     {
         private readonly Stack<T> m_Values = [];
+        private readonly Lock m_Lock = new();
 
         public T Rent()
         {
-            if (!m_Values.TryPop(out T? value))
+            using (m_Lock.EnterScope())
             {
-                value = Create();
+                if (m_Values.TryPop(out T? value))
+                {
+                    return value;
+                }
             }
 
-            return value;
+            return Create();
         }
 
         public void Return(T value)
         {
             Reset(value);
-            m_Values.Push(value);
+
+            using (m_Lock.EnterScope())
+            {
+                m_Values.Push(value);
+            }
         }
 
         public PooledObject<T> Use() => new(this);
@@ -44,7 +49,7 @@ namespace March.Core.Pool
         void Reset();
     }
 
-    public sealed class ObjectPool<T> : BaseObjectPool<T> where T : class, IPoolableObject, new()
+    public sealed class ThreadSafeObjectPool<T> : BaseThreadSafeObjectPool<T> where T : class, IPoolableObject, new()
     {
         protected override T Create() => new();
 

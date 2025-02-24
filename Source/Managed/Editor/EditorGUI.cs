@@ -142,6 +142,12 @@ namespace March.Editor
         [NativeMethod]
         public static partial bool CenterButton(StringLike label, float width);
 
+        public static bool CenterButton(StringLike label)
+        {
+            float width = CalcButtonWidth(label);
+            return CenterButton(label, width);
+        }
+
         [NativeMethod]
         public static partial void CenterText(StringLike text);
 

@@ -54,9 +54,9 @@ Light GetLight(float3 positionWS, int i)
     return light;
 }
 
-float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 viewDirWS, float ao)
+float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 viewDirWS, float3 emission, float occlusion)
 {
-    float3 result = ao * (0.03 * data.albedo);
+    float3 result = emission + (occlusion * (0.03 * data.albedo));
 
     float3 N = normalWS;
     float3 V = viewDirWS;

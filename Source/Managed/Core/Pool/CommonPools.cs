@@ -2,7 +2,7 @@ using System.Text;
 
 namespace March.Core.Pool
 {
-    public sealed class ListPool<T> : BaseObjectPool<List<T>>
+    public sealed class ListPool<T> : BaseThreadSafeObjectPool<List<T>>
     {
         public static ListPool<T> Shared { get; } = new ListPool<T>();
 
@@ -13,7 +13,7 @@ namespace March.Core.Pool
         protected override void Reset(List<T> value) => value.Clear();
     }
 
-    public sealed class HashSetPool<T> : BaseObjectPool<HashSet<T>>
+    public sealed class HashSetPool<T> : BaseThreadSafeObjectPool<HashSet<T>>
     {
         public static HashSetPool<T> Shared { get; } = new HashSetPool<T>();
 
@@ -24,7 +24,7 @@ namespace March.Core.Pool
         protected override void Reset(HashSet<T> value) => value.Clear();
     }
 
-    public sealed class DictionaryPool<TKey, TValue> : BaseObjectPool<Dictionary<TKey, TValue>> where TKey : notnull
+    public sealed class DictionaryPool<TKey, TValue> : BaseThreadSafeObjectPool<Dictionary<TKey, TValue>> where TKey : notnull
     {
         public static DictionaryPool<TKey, TValue> Shared { get; } = new DictionaryPool<TKey, TValue>();
 
@@ -35,7 +35,7 @@ namespace March.Core.Pool
         protected override void Reset(Dictionary<TKey, TValue> value) => value.Clear();
     }
 
-    public sealed class StringBuilderPool : BaseObjectPool<StringBuilder>
+    public sealed class StringBuilderPool : BaseThreadSafeObjectPool<StringBuilder>
     {
         public static StringBuilderPool Shared { get; } = new StringBuilderPool();
 

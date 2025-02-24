@@ -12,6 +12,12 @@ Shader "Lit"
         _BumpMap("Bump Map", 2D) = "bump" {}
         _BumpScale("Bump Scale", Float) = 1.0
 
+        [Range(0, 1)] _OcclusionStrength("Occlusion Strength", Float) = 1.0
+        _OcclusionMap("Occlusion Map", 2D) = "white" {}
+
+        [HDR] _EmissionColor("Emission Color", Color) = (0, 0, 0, 1)
+        _EmissionMap("Emission Map", 2D) = "white" {}
+
         [Range(0, 1)] _Cutoff("Alpha Cutoff", Float) = 0.5
         _CullMode("Cull Mode", Int) = 2
     }
@@ -102,11 +108,18 @@ Shader "Lit"
             float metallic = metallicRoughness.b * _Metallic;
             float roughness = metallicRoughness.g * _Roughness;
 
+            float occlusion = _OcclusionMap.Sample(sampler_OcclusionMap, input.uv).r;
+            occlusion = lerp(1.0, occlusion, _OcclusionStrength);
+
+            float4 emission = _EmissionMap.Sample(sampler_EmissionMap, input.uv) * _EmissionColor;
+
             GBufferData data;
             data.albedo = albedo.rgb;
             data.metallic = metallic;
             data.roughness = roughness;
             data.normalWS = bumpedNomalWS;
+            data.emission = emission.rgb;
+            data.occlusion = occlusion;
             data.depth = input.positionCS.z;
             return PackGBufferData(data);
         }

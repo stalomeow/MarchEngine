@@ -11,7 +11,7 @@ namespace March.Core.Serialization
         private readonly IReferenceResolver? m_PrevResolver;
         private readonly PooledObject<MarchReferenceResolver> m_TempResolver;
 
-        public MarchReferenceScope(JsonSerializer serializer, ObjectPool<MarchReferenceResolver> resolverPool)
+        public MarchReferenceScope(JsonSerializer serializer, ThreadSafeObjectPool<MarchReferenceResolver> resolverPool)
         {
             m_Serializer = serializer;
             m_PrevResolver = serializer.ReferenceResolver;

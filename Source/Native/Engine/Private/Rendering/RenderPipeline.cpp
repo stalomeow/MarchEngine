@@ -142,8 +142,14 @@ namespace march
         gBufferDesc.Flags = GfxTextureFlags::None;
         m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer1", gBufferDesc));
 
-        gBufferDesc.Format = GfxTextureFormat::R32_Float;
+        gBufferDesc.Format = GfxTextureFormat::R8_UNorm;
         m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer2", gBufferDesc));
+
+        gBufferDesc.Format = GfxTextureFormat::R11G11B10_Float; // HDR
+        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer3", gBufferDesc));
+
+        gBufferDesc.Format = GfxTextureFormat::R32_Float;
+        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer4", gBufferDesc));
 
         auto builder = m_RenderGraph->AddPass("DrawObjects");
 

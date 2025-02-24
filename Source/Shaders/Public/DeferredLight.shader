@@ -57,9 +57,9 @@ Shader "DeferredLight"
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
             float3 viewDirWS = normalize(_CameraPositionWS.xyz - positionWS);
 
-            float shadow = 1;//SampleScreenSpaceShadowMap(input.uv);
-            float ao = _AOMap.Sample(sampler_AOMap, input.uv).r;
-            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, viewDirWS, ao);
+            float shadow = SampleScreenSpaceShadowMap(input.uv);
+            float occlusion = min(_AOMap.Sample(sampler_AOMap, input.uv).r, gbuffer.occlusion);
+            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, viewDirWS, gbuffer.emission, occlusion);
             return float4(color * lerp(0.05, 1, shadow), 1.0);
         }
         ENDHLSL
