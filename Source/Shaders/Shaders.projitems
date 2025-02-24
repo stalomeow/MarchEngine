@@ -25,7 +25,6 @@
     <None Include="$(MSBuildThisFileDirectory)public\ScreenSpaceAmbientOcclusion.compute" />
     <None Include="$(MSBuildThisFileDirectory)README.md" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
-    <None Include="$(MSBuildThisFileDirectory)public\ScreenSpaceShadow.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Skybox.shader" />
   </ItemGroup>
   <ItemGroup>

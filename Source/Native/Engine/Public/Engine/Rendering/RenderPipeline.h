@@ -58,7 +58,6 @@ namespace march
 
         BufferHandle CbShadow;
         TextureHandle ShadowMap;
-        TextureHandle ScreenSpaceShadowMap;
 
         void Reset()
         {
@@ -73,7 +72,6 @@ namespace march
             SSAORandomVectorMap = {};
             CbShadow = {};
             ShadowMap = {};
-            ScreenSpaceShadowMap = {};
         }
     };
 
@@ -113,13 +111,11 @@ namespace march
         BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
         BufferHandle CreateLightConstantBuffer();
 
-        void DeferredLighting();
+        void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix);
         void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
         void ClearAndDrawObjects(bool wireframe);
         void DrawSceneViewGrid(Material* material);
         void DrawSkybox();
-
-        void ScreenSpaceShadow(const DirectX::XMFLOAT4X4& shadowMatrix);
 
         void GenerateSSAORandomVectorMap();
         void SSAO();
@@ -128,9 +124,7 @@ namespace march
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
-        asset_ptr<Shader> m_ScreenSpaceShadowShader = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
-        std::unique_ptr<Material> m_ScreenSpaceShadowMaterial = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         RenderPipelineResource m_Resource{};

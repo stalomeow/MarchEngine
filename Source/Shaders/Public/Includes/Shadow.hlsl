@@ -22,12 +22,4 @@ float SampleShadowMap(float4 shadowCoord)
     return _ShadowMap.SampleCmpLevelZero(sampler_ShadowMap, shadowCoord.xy, shadowCoord.z).r;
 }
 
-Texture2D _ScreenSpaceShadowMap;
-SamplerState sampler_ScreenSpaceShadowMap;
-
-float SampleScreenSpaceShadowMap(float2 uv)
-{
-    return _ScreenSpaceShadowMap.Sample(sampler_ScreenSpaceShadowMap, uv).r;
-}
-
 #endif

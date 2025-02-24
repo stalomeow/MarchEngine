@@ -21,8 +21,6 @@ namespace march
         m_DeferredLitMaterial = std::make_unique<Material>();
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
         m_SkyboxMaterial.reset("Assets/skybox.mat");
-        m_ScreenSpaceShadowShader.reset("Engine/Shaders/ScreenSpaceShadow.shader");
-        m_ScreenSpaceShadowMaterial = std::make_unique<Material>(m_ScreenSpaceShadowShader.get());
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         GenerateSSAORandomVectorMap();
 
@@ -58,9 +56,8 @@ namespace march
 
             XMFLOAT4X4 shadowMatrix{};
             DrawShadowCasters(shadowMatrix);
-            ScreenSpaceShadow(shadowMatrix);
 
-            DeferredLighting();
+            DeferredLighting(shadowMatrix);
             DrawSkybox();
 
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
@@ -118,7 +115,7 @@ namespace march
                 continue;
             }
 
-            m_Lights[i]->FillLightData(consts.Lights[i]);
+            m_Lights[i]->FillLightData(consts.Lights[i], i == 0);
         }
 
         GfxBufferDesc desc{};
@@ -170,8 +167,19 @@ namespace march
         });
     }
 
-    void RenderPipeline::DeferredLighting()
+    void RenderPipeline::DeferredLighting(const XMFLOAT4X4& shadowMatrix)
     {
+        GfxBufferDesc bufDesc{};
+        bufDesc.Stride = sizeof(ShadowConstants);
+        bufDesc.Count = 1;
+        bufDesc.Usages = GfxBufferUsages::Constant;
+        bufDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        ShadowConstants consts{ shadowMatrix };
+
+        static int32_t bufferId = ShaderUtils::GetIdFromString("cbShadow");
+        m_Resource.CbShadow = m_RenderGraph->RequestBufferWithContent(bufferId, bufDesc, &consts);
+
         auto builder = m_RenderGraph->AddPass("DeferredLighting");
 
         for (const TextureHandle& tex : m_Resource.GBuffers)
@@ -182,7 +190,8 @@ namespace march
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
         builder.In(m_Resource.SSAOMap);
-        builder.In(m_Resource.ScreenSpaceShadowMap);
+        builder.In(m_Resource.CbShadow);
+        builder.In(m_Resource.ShadowMap);
 
         builder.SetColorTarget(m_Resource.ColorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
@@ -196,7 +205,8 @@ namespace march
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbLight);
             context.SetVariable(m_Resource.SSAOMap, "_AOMap");
-            context.SetVariable(m_Resource.ScreenSpaceShadowMap);
+            context.SetVariable(m_Resource.CbShadow);
+            context.SetVariable(m_Resource.ShadowMap);
 
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_DeferredLitMaterial.get(), 0);
         });
@@ -309,60 +319,6 @@ namespace march
         {
             context.SetVariable(m_Resource.CbCamera);
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, material, 0);
-        });
-    }
-
-    void RenderPipeline::ScreenSpaceShadow(const DirectX::XMFLOAT4X4& shadowMatrix)
-    {
-        GfxBufferDesc bufDesc{};
-        bufDesc.Stride = sizeof(ShadowConstants);
-        bufDesc.Count = 1;
-        bufDesc.Usages = GfxBufferUsages::Constant;
-        bufDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
-
-        ShadowConstants consts{ shadowMatrix };
-
-        static int32_t bufferId = ShaderUtils::GetIdFromString("cbShadow");
-        m_Resource.CbShadow = m_RenderGraph->RequestBufferWithContent(bufferId, bufDesc, &consts);
-
-        GfxTextureDesc destDesc{};
-        destDesc.Format = GfxTextureFormat::R8_UNorm;
-        destDesc.Flags = GfxTextureFlags::None;
-        destDesc.Dimension = GfxTextureDimension::Tex2D;
-        destDesc.Width = m_Resource.ColorTarget.GetDesc().Width;
-        destDesc.Height = m_Resource.ColorTarget.GetDesc().Height;
-        destDesc.DepthOrArraySize = 1;
-        destDesc.MSAASamples = 1;
-        destDesc.Filter = GfxTextureFilterMode::Point;
-        destDesc.Wrap = GfxTextureWrapMode::Clamp;
-        destDesc.MipmapBias = 0.0f;
-
-        m_Resource.ScreenSpaceShadowMap = m_RenderGraph->RequestTexture("_ScreenSpaceShadowMap", destDesc);
-
-        auto builder = m_RenderGraph->AddPass("ScreenSpaceShadow");
-
-        for (const TextureHandle& tex : m_Resource.GBuffers)
-        {
-            builder.In(tex);
-        }
-
-        builder.In(m_Resource.CbCamera);
-        builder.In(m_Resource.CbShadow);
-        builder.In(m_Resource.ShadowMap);
-
-        builder.SetColorTarget(m_Resource.ScreenSpaceShadowMap, RenderTargetInitMode::Discard);
-        builder.SetRenderFunc([this](RenderGraphContext& context)
-        {
-            context.SetVariable(m_Resource.CbCamera);
-            context.SetVariable(m_Resource.CbShadow);
-            context.SetVariable(m_Resource.ShadowMap);
-
-            for (const TextureHandle& tex : m_Resource.GBuffers)
-            {
-                context.SetVariable(tex);
-            }
-
-            context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_ScreenSpaceShadowMaterial.get(), 0);
         });
     }
 

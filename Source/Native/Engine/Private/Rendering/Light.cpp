@@ -201,7 +201,7 @@ namespace march
         }
     }
 
-    void Light::FillLightData(LightData& data) const
+    void Light::FillLightData(LightData& data, bool receiveShadow) const
     {
         if (m_Type == LightType::Directional)
         {
@@ -240,6 +240,7 @@ namespace march
         data.Color.x *= intensity;
         data.Color.y *= intensity;
         data.Color.z *= intensity;
+        data.Color.w = receiveShadow ? 1.0f : 0.0f;
 
         float cosSpotInnerConeAngle = cosf(XMConvertToRadians(m_SpotInnerConeAngle));
         float cosSpotOuterConeAngle = cosf(XMConvertToRadians(m_SpotOuterConeAngle));
@@ -254,10 +255,10 @@ namespace march
         return 4.0f * XM_PI;
     }
 
-    static float GetSpotLightSolidAngle(float spotAngle)
+    static float GetSpotLightSolidAngle(float spotConeAngleHalf)
     {
-        float rad = XMConvertToRadians(spotAngle);
-        return 2.0f * XM_PI * (1.0f - cosf(rad * 0.5f));
+        float rad = XMConvertToRadians(spotConeAngleHalf);
+        return 2.0f * XM_PI * (1.0f - cosf(rad));
     }
 
     static constexpr float LumenToCandela(float lumen, float solidAngle)
@@ -270,7 +271,7 @@ namespace march
         return candela * solidAngle;
     }
 
-    bool LightUnitUtils::ConvertIntensity(LightType lightType, LightUnit from, LightUnit to, float& intensity, float spotAngle)
+    bool LightUnitUtils::ConvertIntensity(LightType lightType, LightUnit from, LightUnit to, float& intensity, float spotConeAngleHalf)
     {
         if (lightType == LightType::Directional)
         {
@@ -292,7 +293,7 @@ namespace march
             solidAngle = GetPointLightSolidAngle();
             break;
         case LightType::Spot:
-            solidAngle = GetSpotLightSolidAngle(spotAngle);
+            solidAngle = GetSpotLightSolidAngle(spotConeAngleHalf);
             break;
         default:
             LOG_ERROR("Unsupported light type.");
@@ -314,7 +315,7 @@ namespace march
         return false;
     }
 
-    float LightUnitUtils::GetIntensityForShader(LightType lightType, LightUnit unit, float intensity, float spotAngle)
+    float LightUnitUtils::GetIntensityForShader(LightType lightType, LightUnit unit, float intensity, float spotConeAngleHalf)
     {
         if (lightType == LightType::Directional)
         {
@@ -337,7 +338,7 @@ namespace march
                 solidAngle = GetPointLightSolidAngle();
                 break;
             case LightType::Spot:
-                solidAngle = GetSpotLightSolidAngle(spotAngle);
+                solidAngle = GetSpotLightSolidAngle(spotConeAngleHalf);
                 break;
             default:
                 throw std::runtime_error("Unsupported light type.");

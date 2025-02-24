@@ -1,7 +1,9 @@
 #ifndef _LIGHTING_INCLUDED
 #define _LIGHTING_INCLUDED
 
+#include "Common.hlsl"
 #include "BRDF.hlsl"
+#include "Shadow.hlsl"
 
 #define MAX_LIGHT_COUNT 16
 
@@ -9,7 +11,7 @@ struct LightData
 {
     float4 position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
     float4 spotDirection; // 聚光灯方向，w 未使用
-    float4 color;         // 颜色，w 未使用
+    float4 color;         // 颜色，接收阴影（w==1）
     float4 params;        // AttenuationRadius, cos(SpotOuterConeAngle), rcp(cos(SpotInnerConeAngle)-cos(SpotOuterConeAngle)), IsSpotLight (w==1)
 };
 
@@ -31,7 +33,7 @@ float Square(float x)
     return x * x;
 }
 
-Light GetLight(float3 positionWS, int i)
+Light GetLight(float3 positionWS, int i, float shadow)
 {
     LightData data = _LightData[i];
 
@@ -47,24 +49,28 @@ Light GetLight(float3 positionWS, int i)
     float spotAngleAtten = Square(spotAngleMask);
     spotAngleAtten = lerp(1.0, spotAngleAtten, data.params.w);
 
+    float shadowAtten = lerp(1.0, shadow, data.color.w);
+
     Light light;
     light.color = data.color.rgb;
     light.direction = direction;
-    light.attenuation = distAtten * spotAngleAtten;
+    light.attenuation = distAtten * spotAngleAtten * shadowAtten;
     return light;
 }
 
-float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 viewDirWS, float3 emission, float occlusion)
+float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 emission, float occlusion)
 {
     float3 result = emission + (occlusion * (0.03 * data.albedo));
 
     float3 N = normalWS;
-    float3 V = viewDirWS;
+    float3 V = normalize(_CameraPositionWS.xyz - positionWS);
     float NoV = saturate(dot(N, V));
+
+    float shadow = SampleShadowMap(TransformWorldToShadowCoord(positionWS));
 
     for (int i = 0; i < _LightCount; i++)
     {
-        Light light = GetLight(positionWS, i);
+        Light light = GetLight(positionWS, i, shadow);
 
         float3 L = light.direction;
         float3 H = normalize(L + V);

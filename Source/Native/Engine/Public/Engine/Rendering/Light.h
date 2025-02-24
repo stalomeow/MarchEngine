@@ -11,7 +11,7 @@ namespace march
 
         DirectX::XMFLOAT4 Position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
         DirectX::XMFLOAT4 SpotDirection; // 聚光灯方向，w 未使用
-        DirectX::XMFLOAT4 Color;         // 颜色，w 未使用
+        DirectX::XMFLOAT4 Color;         // 颜色，接收阴影（w==1）
         DirectX::XMFLOAT4 Params;        // AttenuationRadius, cos(SpotOuterConeAngle), rcp(cos(SpotInnerConeAngle)-cos(SpotOuterConeAngle)), IsSpotLight (w==1)
     };
 
@@ -45,6 +45,8 @@ namespace march
         LightUnit m_Unit = DefaultDirectionalUnit;
 
         float m_AttenuationRadius = 10.0f;
+
+        // Note: 代码中的 Cone Angle 是圆锥顶角的一半，使用角度制
 
         float m_SpotInnerConeAngle = 0.0f;  // in degrees
         float m_SpotOuterConeAngle = 45.0f; // in degrees
@@ -80,7 +82,7 @@ namespace march
         float GetColorTemperature() const;
         void SetColorTemperature(float value);
 
-        void FillLightData(LightData& data) const;
+        void FillLightData(LightData& data, bool receiveShadow) const;
     };
 
     struct LightUnitUtils
