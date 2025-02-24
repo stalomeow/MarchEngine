@@ -107,16 +107,116 @@ namespace march
         return ImGui::DragFloat4(("##" + label).c_str(), v, speed, min, max);
     }
 
-    bool EditorGUI::ColorField(const std::string& label, const std::string& tooltip, float v[4])
+    bool EditorGUI::ColorField(const std::string& label, const std::string& tooltip, float v[4], bool alpha, bool hdr)
     {
+        ImGuiColorEditFlags buttonFlags
+            = ImGuiColorEditFlags_Float;
+        ImGuiColorEditFlags pickerFlags
+            = ImGuiColorEditFlags_Float
+            | ImGuiColorEditFlags_InputRGB
+            | ImGuiColorEditFlags_DisplayRGB
+            | ImGuiColorEditFlags_DisplayHSV
+            | ImGuiColorEditFlags_DisplayHex
+            | ImGuiColorEditFlags_PickerHueWheel
+            | ImGuiColorEditFlags_NoSidePreview
+            | ImGuiColorEditFlags_NoSmallPreview;
+        ImGuiColorEditFlags historyColorFlags
+            = ImGuiColorEditFlags_Float
+            | ImGuiColorEditFlags_NoTooltip
+            | ImGuiColorEditFlags_NoDragDrop
+            | ImGuiColorEditFlags_NoBorder;
+
+        if (!alpha)
+        {
+            buttonFlags |= ImGuiColorEditFlags_NoAlpha;
+            pickerFlags |= ImGuiColorEditFlags_NoAlpha;
+            historyColorFlags |= ImGuiColorEditFlags_NoAlpha;
+        }
+
+        if (hdr)
+        {
+            buttonFlags |= ImGuiColorEditFlags_HDR;
+            pickerFlags |= ImGuiColorEditFlags_HDR;
+            historyColorFlags |= ImGuiColorEditFlags_HDR;
+        }
+
+        bool isButtonClicked;
+        ImVec4 buttonColor = ImVec4(v[0], v[1], v[2], v[3]);
+
         if (IsHiddenLabel(label))
         {
             SetNextItemWidthIfNot(-1);
-            return ImGui::ColorEdit4(label.c_str(), v, ImGuiColorEditFlags_Float);
+            isButtonClicked = ImGui::ColorButton(label.c_str(), buttonColor, buttonFlags);
+        }
+        else
+        {
+            PrefixLabel(label, tooltip);
+            float width = ImGui::GetContentRegionAvail().x;
+            float height = ImGui::GetFrameHeight();
+            isButtonClicked = ImGui::ColorButton(("##" + label).c_str(), buttonColor, buttonFlags, ImVec2(width, height));
         }
 
-        PrefixLabel(label, tooltip);
-        return ImGui::ColorEdit4(("##" + label).c_str(), v, ImGuiColorEditFlags_Float);
+        // 打开 color picker 时，记录最初的颜色
+        static ImVec4 originalColor{};
+
+        if (isButtonClicked)
+        {
+            ImGui::OpenPopup("##ColorPopup");
+            originalColor = buttonColor;
+        }
+
+        bool isChanged = false;
+
+        if (ImGui::BeginPopup("##ColorPopup"))
+        {
+            ImGui::SeparatorText("Color");
+
+            // 显示左右两个颜色按钮，左边是最初的颜色，右边是当前颜色
+            constexpr ImVec2 historyColorButtonSize{ 45, 25 };
+            ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x - historyColorButtonSize.x * 2);
+            if (ImGui::ColorButton("##Previous", originalColor, historyColorFlags, historyColorButtonSize))
+            {
+                // 恢复最初的颜色
+                for (size_t i = 0; i < 4; i++)
+                {
+                    if (float c = (&originalColor.x)[i]; c != v[i])
+                    {
+                        v[i] = c;
+                        isChanged = true;
+                    }
+                }
+            }
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+            ImGui::SameLine();
+            ImGui::PopStyleVar();
+            ImGui::ColorButton("##Current", ImVec4(v[0], v[1], v[2], v[3]), historyColorFlags, historyColorButtonSize);
+
+            ImGui::Spacing();
+
+            isChanged |= ImGui::ColorPicker4("##ColorPicker", v, pickerFlags);
+
+            if (hdr)
+            {
+                ImGui::SeparatorText("HDR");
+
+                /*float exposure = 1.0f;
+                PrefixLabel("Exposure", "");
+                ImGui::DragFloat("##Exposure", &exposure);*/
+
+                // 实现时可以参考
+                // https://github.com/Unity-Technologies/UnityCsReference/blob/b42ec0031fc505c35aff00b6a36c25e67d81e59e/Editor/Mono/GUI/ColorMutator.cs#L23
+                // https://github.com/Unity-Technologies/UnityCsReference/blob/master/Editor/Mono/GUI/ColorPicker.cs
+                // 注：Unity 的 Color Picker 中 Intensity 就是 Exposure
+                // 注：ImGui 的 ImGuiColorEditFlags_HDR 目前只是去掉了 [0, 1] 的限制，没有实现 HDR 的具体功能
+
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted("TODO");
+            }
+
+            ImGui::EndPopup();
+        }
+
+        return isChanged;
     }
 
     bool EditorGUI::FloatSliderField(const std::string& label, const std::string& tooltip, float v[1], float min, float max)

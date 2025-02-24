@@ -18,7 +18,7 @@ namespace march
         static bool Vector2Field(const std::string& label, const std::string& tooltip, float v[2], float speed = 0.1f, float min = 0.0f, float max = 0.0f);
         static bool Vector3Field(const std::string& label, const std::string& tooltip, float v[3], float speed = 0.1f, float min = 0.0f, float max = 0.0f);
         static bool Vector4Field(const std::string& label, const std::string& tooltip, float v[4], float speed = 0.1f, float min = 0.0f, float max = 0.0f);
-        static bool ColorField(const std::string& label, const std::string& tooltip, float v[4]);
+        static bool ColorField(const std::string& label, const std::string& tooltip, float v[4], bool alpha = true, bool hdr = false);
 
         static bool FloatSliderField(const std::string& label, const std::string& tooltip, float v[1], float min, float max);
 

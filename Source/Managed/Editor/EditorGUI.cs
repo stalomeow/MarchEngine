@@ -55,7 +55,7 @@ namespace March.Editor
         public static partial bool Vector4Field(StringLike label, StringLike tooltip, ref Vector4 value, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
         [NativeMethod]
-        public static partial bool ColorField(StringLike label, StringLike tooltip, ref Color value);
+        public static partial bool ColorField(StringLike label, StringLike tooltip, ref Color value, bool alpha = true, bool hdr = false);
 
         [NativeMethod]
         public static partial bool FloatSliderField(StringLike label, StringLike tooltip, ref float value, float minValue, float maxValue);

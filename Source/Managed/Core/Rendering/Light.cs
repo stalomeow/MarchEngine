@@ -32,6 +32,7 @@ namespace March.Core.Rendering
 
         [JsonProperty]
         [NativeProperty]
+        [ColorDrawer(Alpha = false, HDR = true)]
         public partial Color Color { get; set; }
 
         [JsonProperty]

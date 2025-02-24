@@ -32,9 +32,9 @@ NATIVE_EXPORT_AUTO EditorGUI_Vector4Field(cs_string label, cs_string tooltip, cs
     retcs EditorGUI::Vector4Field(label, tooltip, reinterpret_cast<float*>(v.data), speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_ColorField(cs_string label, cs_string tooltip, cs<cs_color_t*> v)
+NATIVE_EXPORT_AUTO EditorGUI_ColorField(cs_string label, cs_string tooltip, cs<cs_color_t*> v, cs_bool alpha, cs_bool hdr)
 {
-    retcs EditorGUI::ColorField(label, tooltip, reinterpret_cast<float*>(v.data));
+    retcs EditorGUI::ColorField(label, tooltip, reinterpret_cast<float*>(v.data), alpha, hdr);
 }
 
 NATIVE_EXPORT_AUTO EditorGUI_FloatSliderField(cs_string label, cs_string tooltip, cs<cs_float_t*> v, cs_float minValue, cs_float maxValue)

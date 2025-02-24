@@ -52,9 +52,7 @@ namespace March.Editor.AssetPipeline.Importers
 
                         case ShaderPropertyType.Color:
                             {
-                                Color value = material.MustGetColor(shaderProp.Name);
-                                isChanged |= EditorGUI.ColorField(shaderProp.Label, shaderProp.Tooltip, ref value);
-                                material.SetColor(shaderProp.Name, value);
+                                isChanged |= DrawColor(material, shaderProp);
                                 break;
                             }
 
@@ -104,6 +102,15 @@ namespace March.Editor.AssetPipeline.Importers
             }
 
             material.SetFloat(prop.Name, value);
+            return isChanged;
+        }
+
+        private static bool DrawColor(Material material, ShaderProperty prop)
+        {
+            Color value = material.MustGetColor(prop.Name);
+            bool hdr = prop.Attributes.Exists(a => a.Name == "HDR");
+            bool isChanged = EditorGUI.ColorField(prop.Label, prop.Tooltip, ref value, hdr: hdr);
+            material.SetColor(prop.Name, value);
             return isChanged;
         }
     }
