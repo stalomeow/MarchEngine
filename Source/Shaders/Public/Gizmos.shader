@@ -58,7 +58,7 @@ Shader "Gizmos"
         HLSLPROGRAM
         float4 frag(Varyings input) : SV_Target
         {
-            return float4(input.color.rgb, input.color.a * 0.5);
+            return float4(input.color.rgb, input.color.a * 0.25);
         }
         ENDHLSL
     }
