@@ -134,6 +134,8 @@ namespace march
     }
 
     // Ref: https://github.com/Unity-Technologies/Graphics/blob/ffdd1e73164d4090f51b37e7634776c87eb7f6cc/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightUtils.cs#L293
+    // Given a correlated color temperature (in Kelvin), estimate the RGB equivalent. Curve fit error is max 0.008.
+    // return color in linear RGB space
     static XMFLOAT4 CorrelatedColorTemperatureToRGB(float temperature)
     {
         float r, g, b;
@@ -236,7 +238,8 @@ namespace march
         }
 
         float intensity = LightUnitUtils::GetIntensityForShader(m_Type, m_Unit, m_Intensity, m_SpotOuterConeAngle);
-        data.Color = GfxUtils::GetShaderColor(m_Color);
+        bool isSRGBColor = !m_UseColorTemperature; // CorrelatedColorTemperatureToRGB 返回的是线性颜色
+        data.Color = GfxUtils::GetShaderColor(m_Color, isSRGBColor);
         data.Color.x *= intensity;
         data.Color.y *= intensity;
         data.Color.z *= intensity;
