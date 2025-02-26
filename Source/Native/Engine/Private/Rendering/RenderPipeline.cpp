@@ -13,6 +13,11 @@
 
 using namespace DirectX;
 
+#define NUM_MAX_LIGHT_IN_CLUSTER 16
+#define NUM_CLUSTER_X 16
+#define NUM_CLUSTER_Y 9
+#define NUM_CLUSTER_Z 24
+
 namespace march
 {
     RenderPipeline::RenderPipeline()
@@ -22,7 +27,22 @@ namespace march
         m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
         m_SkyboxMaterial.reset("Assets/skybox.mat");
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
+        m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
         GenerateSSAORandomVectorMap();
+
+        GfxBufferDesc desc1{};
+        desc1.Stride = sizeof(int32);
+        desc1.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z;
+        desc1.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
+        desc1.Flags = GfxBufferFlags::None;
+        m_NumVisibleLightsBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_NumVisibleLights", desc1);
+
+        GfxBufferDesc desc2{};
+        desc2.Stride = sizeof(int32);
+        desc2.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z * NUM_MAX_LIGHT_IN_CLUSTER;
+        desc2.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
+        desc2.Flags = GfxBufferFlags::None;
+        m_VisibleLightIndicesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_VisibleLightIndices", desc2);
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -49,10 +69,10 @@ namespace march
             m_Resource.ColorTarget = m_RenderGraph->ImportTexture("_CameraColorTarget", display->GetColorBuffer());
             m_Resource.DepthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
             m_Resource.CbCamera = CreateCameraConstantBuffer("cbCamera", camera);
-            m_Resource.CbLight = CreateLightConstantBuffer();
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
             SSAO();
+            CullLights();
 
             XMFLOAT4X4 shadowMatrix{};
             DrawShadowCasters(shadowMatrix);
@@ -103,31 +123,6 @@ namespace march
         return m_RenderGraph->RequestBufferWithContent(name, desc, &consts);
     }
 
-    BufferHandle RenderPipeline::CreateLightConstantBuffer()
-    {
-        LightConstants consts{};
-        consts.LightCount = static_cast<int32_t>(m_Lights.size());
-
-        for (int i = 0; i < m_Lights.size(); i++)
-        {
-            if (!m_Lights[i]->GetIsActiveAndEnabled())
-            {
-                continue;
-            }
-
-            m_Lights[i]->FillLightData(consts.Lights[i], i == 0);
-        }
-
-        GfxBufferDesc desc{};
-        desc.Stride = sizeof(LightConstants);
-        desc.Count = 1;
-        desc.Usages = GfxBufferUsages::Constant;
-        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
-
-        static int32 bufferId = ShaderUtils::GetIdFromString("cbLight");
-        return m_RenderGraph->RequestBufferWithContent(bufferId, desc, &consts);
-    }
-
     void RenderPipeline::ClearAndDrawObjects(bool wireframe)
     {
         GfxTextureDesc gBufferDesc = m_Resource.ColorTarget.GetDesc();
@@ -167,6 +162,80 @@ namespace march
         });
     }
 
+    void RenderPipeline::CullLights()
+    {
+        LightConstants consts{};
+        consts.Nums.x = NUM_CLUSTER_X;
+        consts.Nums.y = NUM_CLUSTER_Y;
+        consts.Nums.z = NUM_CLUSTER_Z;
+        consts.Nums.w = static_cast<int32_t>(m_Lights.size());
+
+        GfxBufferDesc desc1{};
+        desc1.Stride = sizeof(LightConstants);
+        desc1.Count = 1;
+        desc1.Usages = GfxBufferUsages::Constant;
+        desc1.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        static int32 cbufferId = ShaderUtils::GetIdFromString("cbLight");
+        m_Resource.CbLight = m_RenderGraph->RequestBufferWithContent(cbufferId, desc1, &consts);
+
+        std::vector<LightData> lights{};
+        lights.reserve(m_Lights.size());
+
+        for (int i = 0; i < m_Lights.size(); i++)
+        {
+            if (!m_Lights[i]->GetIsActiveAndEnabled())
+            {
+                continue;
+            }
+
+            m_Lights[i]->FillLightData(lights.emplace_back(), i == 0);
+        }
+
+        GfxBufferDesc desc2{};
+        desc2.Stride = sizeof(LightData);
+        desc2.Count = static_cast<uint32_t>(lights.size());
+        desc2.Usages = GfxBufferUsages::Structured;
+        desc2.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        static int32 lightBufferId = ShaderUtils::GetIdFromString("_Lights");
+        m_Resource.Lights = m_RenderGraph->RequestBufferWithContent(lightBufferId, desc2, lights.data());
+
+        static int32 numVisibleLightsBufferId = ShaderUtils::GetIdFromString("_NumVisibleLights");
+        m_Resource.NumVisibleLights = m_RenderGraph->ImportBuffer(numVisibleLightsBufferId, m_NumVisibleLightsBuffer.get());
+
+        static int32 visibleLightIndicesBufferId = ShaderUtils::GetIdFromString("_VisibleLightIndices");
+        m_Resource.VisibleLightIndices = m_RenderGraph->ImportBuffer(visibleLightIndicesBufferId, m_VisibleLightIndicesBuffer.get());
+
+        auto builder = m_RenderGraph->AddPass("CullLights");
+
+        builder.EnableAsyncCompute(true);
+
+        builder.In(m_Resource.CbCamera);
+        builder.In(m_Resource.CbLight);
+        builder.In(m_Resource.Lights);
+        builder.Out(m_Resource.NumVisibleLights);
+        builder.Out(m_Resource.VisibleLightIndices);
+
+        builder.SetRenderFunc([this](RenderGraphContext& context)
+        {
+            context.SetVariable(m_Resource.CbCamera);
+            context.SetVariable(m_Resource.CbLight);
+            context.SetVariable(m_Resource.Lights);
+            context.SetVariable(m_Resource.NumVisibleLights);
+            context.SetVariable(m_Resource.VisibleLightIndices);
+
+            std::optional<size_t> kernelIndex = m_CullLightShader->FindKernel("CullMain");
+            uint32_t groupSizeX{}, groupSizeY{}, groupSizeZ{};
+            m_CullLightShader->GetThreadGroupSize(*kernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
+
+            uint32_t countX = static_cast<uint32_t>(ceil(NUM_CLUSTER_X / static_cast<float>(groupSizeX)));
+            uint32_t countY = static_cast<uint32_t>(ceil(NUM_CLUSTER_Y / static_cast<float>(groupSizeY)));
+            uint32_t countZ = static_cast<uint32_t>(ceil(NUM_CLUSTER_Z / static_cast<float>(groupSizeZ)));
+            context.DispatchCompute(m_CullLightShader.get(), *kernelIndex, countX, countY, countZ);
+        });
+    }
+
     void RenderPipeline::DeferredLighting(const XMFLOAT4X4& shadowMatrix)
     {
         GfxBufferDesc bufDesc{};
@@ -189,6 +258,9 @@ namespace march
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
+        builder.In(m_Resource.Lights);
+        builder.In(m_Resource.NumVisibleLights);
+        builder.In(m_Resource.VisibleLightIndices);
         builder.In(m_Resource.SSAOMap);
         builder.In(m_Resource.CbShadow);
         builder.In(m_Resource.ShadowMap);
@@ -204,6 +276,9 @@ namespace march
 
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbLight);
+            context.SetVariable(m_Resource.Lights);
+            context.SetVariable(m_Resource.NumVisibleLights);
+            context.SetVariable(m_Resource.VisibleLightIndices);
             context.SetVariable(m_Resource.SSAOMap, "_AOMap");
             context.SetVariable(m_Resource.CbShadow);
             context.SetVariable(m_Resource.ShadowMap);

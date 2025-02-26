@@ -7,8 +7,6 @@ namespace march
 {
     struct LightData
     {
-        static const int MaxCount = 16;
-
         DirectX::XMFLOAT4 Position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
         DirectX::XMFLOAT4 SpotDirection; // 聚光灯方向，w 未使用
         DirectX::XMFLOAT4 Color;         // 颜色，接收阴影（w==1）

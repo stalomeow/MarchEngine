@@ -54,9 +54,10 @@ Shader "DeferredLight"
             brdfData.a2 = RoughnessToAlpha2(gbuffer.roughness);
 
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
+            float3 positionVS = TransformWorldToView(positionWS);
             float occlusion = min(_AOMap.Sample(sampler_AOMap, input.uv).r, gbuffer.occlusion);
 
-            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, gbuffer.emission, occlusion);
+            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, positionVS, input.uv, gbuffer.emission, occlusion);
             return float4(color, 1.0);
         }
         ENDHLSL

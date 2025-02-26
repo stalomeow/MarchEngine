@@ -32,8 +32,7 @@ namespace march
 
     struct LightConstants
     {
-        LightData Lights[LightData::MaxCount];
-        int32_t LightCount;
+        DirectX::XMINT4 Nums; // xyz: numClusters, w: numLights
     };
 
     struct ShadowConstants
@@ -50,6 +49,9 @@ namespace march
 
         BufferHandle CbCamera;
         BufferHandle CbLight;
+        BufferHandle Lights;
+        BufferHandle NumVisibleLights;
+        BufferHandle VisibleLightIndices;
 
         BufferHandle CbSSAO;
         TextureHandle SSAOMap;
@@ -66,6 +68,9 @@ namespace march
             GBuffers.clear();
             CbCamera = {};
             CbLight = {};
+            Lights = {};
+            NumVisibleLights = {};
+            VisibleLightIndices = {};
             CbSSAO = {};
             SSAOMap = {};
             SSAOMapTemp = {};
@@ -109,8 +114,8 @@ namespace march
 
         BufferHandle CreateCameraConstantBuffer(const std::string& name, Camera* camera);
         BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
-        BufferHandle CreateLightConstantBuffer();
 
+        void CullLights();
         void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix);
         void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
         void ClearAndDrawObjects(bool wireframe);
@@ -125,7 +130,11 @@ namespace march
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
+        asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
+
+        std::unique_ptr<GfxBuffer> m_NumVisibleLightsBuffer = nullptr;
+        std::unique_ptr<GfxBuffer> m_VisibleLightIndicesBuffer = nullptr;
 
         RenderPipelineResource m_Resource{};
 

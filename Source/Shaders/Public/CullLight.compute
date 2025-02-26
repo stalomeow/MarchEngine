@@ -1,0 +1,53 @@
+#pragma kernel CullMain
+
+#define LIGHT_CULLING
+#include "Includes/Lighting.hlsl"
+
+[numthreads(8, 8, 1)]
+void CullMain(int3 dtid : SV_DispatchThreadID)
+{
+    if (dtid.x >= _Nums.x || dtid.y >= _Nums.y || dtid.z >= _Nums.z)
+    {
+        return;
+    }
+
+    float4 planes[6];
+    GetClusterPlanes(dtid, planes);
+
+    int clusterIndex = GetClusterIndex(dtid);
+    int visibleLightIndex = GetClusterVisibleLightIndicesIndex(clusterIndex, 0);
+    _NumVisibleLights[clusterIndex] = 0;
+
+    for (int i = 0; i < _Nums.w; i++)
+    {
+        LightData light = _Lights[i];
+
+        bool visible = true;
+
+        [branch]
+        if (light.position.w != 0)
+        {
+            [unroll]
+            for (int j = 0; j < 6; j++)
+            {
+                float3 position = TransformWorldToView(light.position.xyz);
+                float d = dot(planes[j], float4(position, 1.0));
+
+                [branch]
+                if (d < -light.params.x)
+                {
+                    visible = false;
+                    break;
+                }
+            }
+        }
+
+        [branch]
+        if (visible)
+        {
+            _NumVisibleLights[clusterIndex]++;
+            _VisibleLightIndices[visibleLightIndex] = i;
+            visibleLightIndex++;
+        }
+    }
+}
