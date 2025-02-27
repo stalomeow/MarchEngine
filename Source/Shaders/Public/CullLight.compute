@@ -18,23 +18,20 @@ void CullMain(int3 dtid : SV_DispatchThreadID)
     int visibleLightIndex = GetClusterVisibleLightIndicesIndex(clusterIndex, 0);
     _NumVisibleLights[clusterIndex] = 0;
 
-    for (int i = 0; i < _Nums.w; i++)
+    for (int i = 0; i < _Nums.w && _NumVisibleLights[clusterIndex] < NUM_MAX_LIGHT_IN_CLUSTER; i++)
     {
         LightData light = _Lights[i];
-
         bool visible = true;
 
         [branch]
         if (light.position.w != 0)
         {
+            float4 position = float4(TransformWorldToView(light.position.xyz), 1.0);
+
             [unroll]
             for (int j = 0; j < 6; j++)
             {
-                float3 position = TransformWorldToView(light.position.xyz);
-                float d = dot(planes[j], float4(position, 1.0));
-
-                [branch]
-                if (d < -light.params.x)
+                if (dot(planes[j], position) < -light.params.x)
                 {
                     visible = false;
                     break;
@@ -42,7 +39,6 @@ void CullMain(int3 dtid : SV_DispatchThreadID)
             }
         }
 
-        [branch]
         if (visible)
         {
             _NumVisibleLights[clusterIndex]++;

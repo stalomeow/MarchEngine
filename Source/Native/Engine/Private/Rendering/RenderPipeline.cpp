@@ -15,7 +15,7 @@ using namespace DirectX;
 
 #define NUM_MAX_LIGHT_IN_CLUSTER 16
 #define NUM_CLUSTER_X 16
-#define NUM_CLUSTER_Y 9
+#define NUM_CLUSTER_Y 8
 #define NUM_CLUSTER_Z 24
 
 namespace march

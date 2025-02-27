@@ -1,7 +1,7 @@
 {
   "root": true,
   "hlsl.preprocessorDefinitions": {
-    "MARCH_REVERSE_Z": 1,
+    "MARCH_REVERSED_Z": 1,
     "MARCH_NEAR_CLIP_VALUE": 1,
     "MARCH_FAR_CLIP_VALUE": 0
   }

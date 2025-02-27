@@ -51,8 +51,14 @@ int GetClusterVisibleLightIndicesIndex(int clusterIndex, int lightIndex)
 
 void GetClusterZRange(int3 id, out float zMin, out float zMax)
 {
-    float near = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
-    float far = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+    #if MARCH_REVERSED_Z
+        float near = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+        float far = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
+    #else
+        float near = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
+        float far = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+    #endif
+
     float fn = far / near;
 
     float numRcp = rcp((float) _Nums.z);
@@ -64,8 +70,7 @@ void GetClusterZRange(int3 id, out float zMin, out float zMax)
 
 float3 LineIntersectionWithZPlane(float3 direction, float z)
 {
-    float t = z / direction.z;
-    return t * direction;
+    return direction * (z / direction.z);
 }
 
 float4 GetPlane(float3 normal, float3 a)
@@ -84,32 +89,22 @@ void GetClusterPlanes(int3 id, out float4 planes[6])
     float zMin, zMax;
     GetClusterZRange(id, zMin, zMax);
 
-    float2 numRcp = rcp((float) _Nums.xy);
+    float2 numRcp = rcp((float2) _Nums.xy);
     float4 uv = float4(id.xy * numRcp, 0, 0); // xy: uvMin
     uv.zw = uv.xy + numRcp; // zw: uvMax
 
-    float3 dir1 = ComputeViewSpacePosition(uv.xy, MARCH_NEAR_CLIP_VALUE); // minX, minY
-    float3 dir2 = ComputeViewSpacePosition(uv.xw, MARCH_NEAR_CLIP_VALUE); // minX, maxY
-    float3 dir3 = ComputeViewSpacePosition(uv.zy, MARCH_NEAR_CLIP_VALUE); // maxX, minY
-    float3 dir4 = ComputeViewSpacePosition(uv.zw, MARCH_NEAR_CLIP_VALUE); // maxX, maxY
+    float3 dir1 = ComputeViewSpacePosition(uv.xw, MARCH_NEAR_CLIP_VALUE); // minX, maxY
+    float3 dir2 = ComputeViewSpacePosition(uv.xy, MARCH_NEAR_CLIP_VALUE); // minX, minY
+    float3 dir3 = ComputeViewSpacePosition(uv.zw, MARCH_NEAR_CLIP_VALUE); // maxX, maxY
+    float3 dir4 = ComputeViewSpacePosition(uv.zy, MARCH_NEAR_CLIP_VALUE); // maxX, minY
 
-    #ifdef MARCH_REVERSE_Z
-        float3 p0 = LineIntersectionWithZPlane(dir1, zMax);
-        float3 p1 = LineIntersectionWithZPlane(dir1, zMin);
-        float3 p2 = LineIntersectionWithZPlane(dir2, zMax);
-        float3 p4 = LineIntersectionWithZPlane(dir3, zMax);
-        float3 p5 = LineIntersectionWithZPlane(dir3, zMin);
-        float3 p6 = LineIntersectionWithZPlane(dir4, zMax);
-        float3 p7 = LineIntersectionWithZPlane(dir4, zMin);
-    #else
-        float3 p0 = LineIntersectionWithZPlane(dir1, zMin);
-        float3 p1 = LineIntersectionWithZPlane(dir1, zMax);
-        float3 p2 = LineIntersectionWithZPlane(dir2, zMin);
-        float3 p4 = LineIntersectionWithZPlane(dir3, zMin);
-        float3 p5 = LineIntersectionWithZPlane(dir3, zMax);
-        float3 p6 = LineIntersectionWithZPlane(dir4, zMin);
-        float3 p7 = LineIntersectionWithZPlane(dir4, zMax);
-    #endif
+    float3 p0 = LineIntersectionWithZPlane(dir1, zMin);
+    float3 p1 = LineIntersectionWithZPlane(dir1, zMax);
+    float3 p2 = LineIntersectionWithZPlane(dir2, zMin);
+    float3 p4 = LineIntersectionWithZPlane(dir3, zMin);
+    float3 p5 = LineIntersectionWithZPlane(dir3, zMax);
+    float3 p6 = LineIntersectionWithZPlane(dir4, zMin);
+    float3 p7 = LineIntersectionWithZPlane(dir4, zMax);
 
     planes[0] = GetPlane(p0, p4, p6); // near plane
     planes[1] = GetPlane(p1, p7, p5); // far plane
@@ -121,10 +116,16 @@ void GetClusterPlanes(int3 id, out float4 planes[6])
 
 int3 GetClusterId(float2 uv, float3 positionVS)
 {
-    float near = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
-    float far = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+    #if MARCH_REVERSED_Z
+        float near = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+        float far = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
+    #else
+        float near = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
+        float far = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+    #endif
+
     int z = int(log(positionVS.z / near) / log(far / near) * _Nums.z);
-    return int3(uv * _Nums.xy, z);
+    return int3(uv.xy * _Nums.xy, z);
 }
 
 float Square(float x)
@@ -170,8 +171,17 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     int3 clusterId = GetClusterId(uv, positionVS);
     int clusterIndex = GetClusterIndex(clusterId);
     //return clusterIndex / (float) (_Nums.x * _Nums.y * _Nums.z - 1);
-    //return clusterId.xyz / float3(_Nums.xyz);
+    //return clusterId.xyz / float3(_Nums.xyz - 1);
+    //return clusterId.zzz / float3(_Nums.zzz - 1);
+    //float zMin, zMax;
+    //GetClusterZRange(clusterId, zMin, zMax);
+    //return (zMax - zMin) / 500;
     //return _NumVisibleLights[clusterIndex] / (float) NUM_MAX_LIGHT_IN_CLUSTER;
+
+    //float4 planes[6];
+    //GetClusterPlanes(clusterId, planes);
+    ////return planes[4].xyz;
+    //return abs(dot(planes[5].xyz, positionVS));
 
     for (int i = 0; i < _NumVisibleLights[clusterIndex]; i++)
     {
