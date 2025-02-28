@@ -99,7 +99,7 @@ Shader "SceneViewGrid"
             // 划分等级
             // level:      0       1        2         3         ...
             // cameraY: 0 --- 100 --- 1000 --- 10000 --- 100000 --- ...
-            float cameraY = abs(_CameraPositionWS.y);
+            float cameraY = abs(GetCameraWorldSpacePosition().y);
             float level = max(0, floor(log10(cameraY) - 1));
             float pow10Level = pow(10, level);
             float nextHeight = pow10Level * 100;

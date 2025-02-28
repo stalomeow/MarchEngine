@@ -27,7 +27,6 @@ namespace march
         DirectX::XMFLOAT4X4 InvViewMatrix;
         DirectX::XMFLOAT4X4 InvProjectionMatrix;
         DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
-        DirectX::XMFLOAT4 CameraPositionWS;
     };
 
     struct LightConstants

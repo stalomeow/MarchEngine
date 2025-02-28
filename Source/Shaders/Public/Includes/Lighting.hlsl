@@ -7,7 +7,7 @@
 
 #define NUM_MAX_LIGHT_IN_CLUSTER 16
 
-struct LightData
+struct LightRawData
 {
     float4 position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
     float4 spotDirection; // 聚光灯方向，w 未使用
@@ -24,10 +24,10 @@ struct Light
 
 cbuffer cbLight
 {
-    int4 _Nums; // xyz: numClusters, w: numLights
+    int4 _NumLights; // xyz: numClusters, w: numLights
 };
 
-StructuredBuffer<LightData> _Lights;
+StructuredBuffer<LightRawData> _Lights;
 
 #ifdef LIGHT_CULLING
     RWStructuredBuffer<int> _NumVisibleLights;
@@ -39,33 +39,35 @@ StructuredBuffer<LightData> _Lights;
 
 int GetClusterIndex(int3 id)
 {
-    // return id.x + id.y * _Nums.x + id.z * _Nums.x * _Nums.y;
+    // return id.x + id.y * _NumLights.x + id.z * _NumLights.x * _NumLights.y;
     // 优化为 2 mad
-    return id.x + (id.y + id.z * _Nums.y) * _Nums.x;
+    return id.x + (id.y + id.z * _NumLights.y) * _NumLights.x;
 }
 
-int GetClusterVisibleLightIndicesIndex(int clusterIndex, int lightIndex)
+int GetClusterVisibleLightIndexOffset(int clusterIndex)
 {
-    return clusterIndex * NUM_MAX_LIGHT_IN_CLUSTER + lightIndex;
+    return clusterIndex * NUM_MAX_LIGHT_IN_CLUSTER;
 }
 
-void GetClusterZRange(int3 id, out float zMin, out float zMax)
+int3 GetClusterId(float2 uv, float3 positionVS)
 {
-    #if MARCH_REVERSED_Z
-        float near = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
-        float far = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
-    #else
-        float near = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
-        float far = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
-    #endif
+    float near = GetCameraNearZ();
+    float far = GetCameraFarZ();
+    float zSlice = log(positionVS.z / near) / log(far / near);
+    return int3(uv.xy * _NumLights.xy, zSlice * _NumLights.z);
+}
 
-    float fn = far / near;
-
-    float numRcp = rcp((float) _Nums.z);
+void GetClusterViewSpaceZRange(int3 id, out float zMin, out float zMax)
+{
+    float numRcp = rcp((float) _NumLights.z);
     float begin = id.z * numRcp;
 
+    float near = GetCameraNearZ();
+    float far = GetCameraFarZ();
+    float fn = far / near;
+
     zMin = near * pow(fn, begin);
-    zMax = near * pow(fn, begin + numRcp);
+    zMax = zMin * pow(fn, numRcp);
 }
 
 float3 LineIntersectionWithZPlane(float3 direction, float z)
@@ -73,23 +75,18 @@ float3 LineIntersectionWithZPlane(float3 direction, float z)
     return direction * (z / direction.z);
 }
 
-float4 GetPlane(float3 normal, float3 a)
+struct ClusterFrustum
 {
-    return float4(normal, -dot(normal, a));
-}
+    float4 planes[6];
+    float4 sphere; // xyz: center, w: radius
+};
 
-float4 GetPlane(float3 a, float3 b, float3 c)
-{
-    float3 normal = normalize(cross(b - a, c - a));
-    return GetPlane(normal, a);
-}
-
-void GetClusterPlanes(int3 id, out float4 planes[6])
+ClusterFrustum GetClusterViewSpaceFrustum(int3 id)
 {
     float zMin, zMax;
-    GetClusterZRange(id, zMin, zMax);
+    GetClusterViewSpaceZRange(id, zMin, zMax);
 
-    float2 numRcp = rcp((float2) _Nums.xy);
+    float2 numRcp = rcp((float2) _NumLights.xy);
     float4 uv = float4(id.xy * numRcp, 0, 0); // xy: uvMin
     uv.zw = uv.xy + numRcp; // zw: uvMax
 
@@ -102,40 +99,29 @@ void GetClusterPlanes(int3 id, out float4 planes[6])
     float3 p1 = LineIntersectionWithZPlane(dir1, zMax);
     float3 p2 = LineIntersectionWithZPlane(dir2, zMin);
     float3 p4 = LineIntersectionWithZPlane(dir3, zMin);
-    float3 p5 = LineIntersectionWithZPlane(dir3, zMax);
     float3 p6 = LineIntersectionWithZPlane(dir4, zMin);
     float3 p7 = LineIntersectionWithZPlane(dir4, zMax);
 
-    planes[0] = GetPlane(p0, p4, p6); // near plane
-    planes[1] = GetPlane(p1, p7, p5); // far plane
-    planes[2] = GetPlane(p0, p2, p1); // left plane
-    planes[3] = GetPlane(p4, p7, p6); // right plane
-    planes[4] = GetPlane(p2, p6, p7); // top plane
-    planes[5] = GetPlane(p0, p1, p4); // bottom plane
+    ClusterFrustum result;
+
+    result.planes[0] = GetPlane(float3(0, 0, 1), p0); // near plane
+    result.planes[1] = GetPlane(float3(0, 0, -1), p7); // far plane
+    result.planes[2] = GetPlane(p0, p2, p1); // left plane
+    result.planes[3] = GetPlane(p4, p7, p6); // right plane
+    result.planes[4] = GetPlane(p2, p6, p7); // top plane
+    result.planes[5] = GetPlane(p0, p1, p4); // bottom plane
+
+    float3 aabbMin = min(p0, p1);
+    float3 aabbMax = max(p6, p7);
+    result.sphere.xyz = (aabbMin + aabbMax) * 0.5;
+    result.sphere.w = length(aabbMax - result.sphere.xyz);
+
+    return result;
 }
 
-int3 GetClusterId(float2 uv, float3 positionVS)
+Light GetLight(float3 positionWS, int i, float shadow)
 {
-    #if MARCH_REVERSED_Z
-        float near = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
-        float far = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
-    #else
-        float near = _MatrixProjection[2][3] / -_MatrixProjection[2][2];
-        float far = _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
-    #endif
-
-    int z = int(log(positionVS.z / near) / log(far / near) * _Nums.z);
-    return int3(uv.xy * _Nums.xy, z);
-}
-
-float Square(float x)
-{
-    return x * x;
-}
-
-Light GetLight(float3 positionWS, int clusterIndex, int lightIndex, float shadow)
-{
-    LightData data = _Lights[_VisibleLightIndices[GetClusterVisibleLightIndicesIndex(clusterIndex, lightIndex)]];
+    LightRawData data = _Lights[i];
 
     float3 direction = data.position.xyz - positionWS * data.position.w;
     float distSq = dot(direction, direction);
@@ -158,34 +144,50 @@ Light GetLight(float3 positionWS, int clusterIndex, int lightIndex, float shadow
     return light;
 }
 
+float3 GetDebugClusterIdView(int3 clusterId)
+{
+    return clusterId / float3(_NumLights.xyz - 1);
+}
+
+float GetDebugClusterIndexView(int clusterIndex)
+{
+    return clusterIndex / (float) (_NumLights.x * _NumLights.y * _NumLights.z - 1);
+}
+
+float GetDebugClusterViewSpaceFrustumView(int3 clusterId, int frustumPlaneIndex, float3 positionVS)
+{
+    ClusterFrustum f = GetClusterViewSpaceFrustum(clusterId);
+    return abs(dot(f.planes[frustumPlaneIndex], float4(positionVS, 1.0)));
+}
+
+float GetDebugNumVisibleLightsView(int numVisibleLights)
+{
+    return numVisibleLights / (float) NUM_MAX_LIGHT_IN_CLUSTER;
+}
+
 float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 positionVS, float2 uv, float3 emission, float occlusion)
 {
+    int3 clusterId = GetClusterId(uv, positionVS);
+    int clusterIndex = GetClusterIndex(clusterId);
+    int numVisibleLights = _NumVisibleLights[clusterIndex];
+    int visibleLightIndexOffset = GetClusterVisibleLightIndexOffset(clusterIndex);
+
+    //return GetDebugClusterIdView(clusterId);
+    //return GetDebugClusterIndexView(clusterIndex);
+    //return GetDebugClusterViewSpaceFrustumView(clusterId, 4, positionVS);
+    //return GetDebugNumVisibleLightsView(numVisibleLights);
+
     float3 result = emission + (occlusion * (0.03 * data.albedo));
 
     float3 N = normalWS;
-    float3 V = normalize(_CameraPositionWS.xyz - positionWS);
+    float3 V = normalize(GetCameraWorldSpacePosition() - positionWS);
     float NoV = saturate(dot(N, V));
 
     float shadow = SampleShadowMap(TransformWorldToShadowCoord(positionWS));
 
-    int3 clusterId = GetClusterId(uv, positionVS);
-    int clusterIndex = GetClusterIndex(clusterId);
-    //return clusterIndex / (float) (_Nums.x * _Nums.y * _Nums.z - 1);
-    //return clusterId.xyz / float3(_Nums.xyz - 1);
-    //return clusterId.zzz / float3(_Nums.zzz - 1);
-    //float zMin, zMax;
-    //GetClusterZRange(clusterId, zMin, zMax);
-    //return (zMax - zMin) / 500;
-    //return _NumVisibleLights[clusterIndex] / (float) NUM_MAX_LIGHT_IN_CLUSTER;
-
-    //float4 planes[6];
-    //GetClusterPlanes(clusterId, planes);
-    ////return planes[4].xyz;
-    //return abs(dot(planes[5].xyz, positionVS));
-
-    for (int i = 0; i < _NumVisibleLights[clusterIndex]; i++)
+    for (int i = 0; i < numVisibleLights; i++)
     {
-        Light light = GetLight(positionWS, clusterIndex, i, shadow);
+        Light light = GetLight(positionWS, _VisibleLightIndices[visibleLightIndexOffset + i], shadow);
 
         float3 L = light.direction;
         float3 H = normalize(L + V);

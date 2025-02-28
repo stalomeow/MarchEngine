@@ -3,47 +3,91 @@
 #define LIGHT_CULLING
 #include "Includes/Lighting.hlsl"
 
+bool IsPointLightVisible(float3 lightPositionVS, LightRawData light, ClusterFrustum f)
+{
+    float4 p = float4(lightPositionVS, 1.0);
+
+    [unroll]
+    for (int j = 0; j < 6; j++)
+    {
+        if (dot(f.planes[j], p) < -light.params.x)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool IsSpotLightVisible(float3 lightPositionVS, LightRawData light, ClusterFrustum f)
+{
+    // 先检查距离，再检查角度
+
+    if (!IsPointLightVisible(lightPositionVS, light, f))
+    {
+        return false;
+    }
+
+    // Ref: https://bartwronski.com/2017/04/13/cull-that-cone/
+
+    float3 spotDirVS = normalize(TransformWorldToViewDir(-light.spotDirection.xyz));
+    float3 lightToFrustumVS = f.sphere.xyz - lightPositionVS.xyz;
+    float distSq = dot(lightToFrustumVS, lightToFrustumVS);
+    float distProj = dot(spotDirVS, lightToFrustumVS);
+    float cosAngle = light.params.y;
+    float sinAngle = sqrt(1 - cosAngle * cosAngle);
+    float distClosestPoint = cosAngle * sqrt(distSq - distProj * distProj) - distProj * sinAngle;
+
+    bool angleCull = distClosestPoint > f.sphere.w;
+    bool backCull = distProj < -f.sphere.w;
+    return !(angleCull || backCull);
+}
+
 [numthreads(8, 8, 1)]
 void CullMain(int3 dtid : SV_DispatchThreadID)
 {
-    if (dtid.x >= _Nums.x || dtid.y >= _Nums.y || dtid.z >= _Nums.z)
+    if (any(dtid >= _NumLights.xyz))
     {
         return;
     }
 
-    float4 planes[6];
-    GetClusterPlanes(dtid, planes);
-
+    ClusterFrustum f = GetClusterViewSpaceFrustum(dtid);
     int clusterIndex = GetClusterIndex(dtid);
-    int visibleLightIndex = GetClusterVisibleLightIndicesIndex(clusterIndex, 0);
-    _NumVisibleLights[clusterIndex] = 0;
+    int visibleLightIndex = GetClusterVisibleLightIndexOffset(clusterIndex);
+    int numVisibleLights = 0;
 
-    for (int i = 0; i < _Nums.w && _NumVisibleLights[clusterIndex] < NUM_MAX_LIGHT_IN_CLUSTER; i++)
+    for (int i = 0; i < _NumLights.w && numVisibleLights < NUM_MAX_LIGHT_IN_CLUSTER; i++)
     {
-        LightData light = _Lights[i];
-        bool visible = true;
+        bool visible;
+        LightRawData light = _Lights[i];
 
         [branch]
-        if (light.position.w != 0)
+        if (light.position.w == 0)
         {
-            float4 position = float4(TransformWorldToView(light.position.xyz), 1.0);
+            visible = true;
+        }
+        else
+        {
+            float3 positionVS = TransformWorldToView(light.position.xyz);
 
-            [unroll]
-            for (int j = 0; j < 6; j++)
+            [branch]
+            if (light.params.w == 1)
             {
-                if (dot(planes[j], position) < -light.params.x)
-                {
-                    visible = false;
-                    break;
-                }
+                visible = IsSpotLightVisible(positionVS, light, f);
+            }
+            else
+            {
+                visible = IsPointLightVisible(positionVS, light, f);
             }
         }
 
         if (visible)
         {
-            _NumVisibleLights[clusterIndex]++;
             _VisibleLightIndices[visibleLightIndex] = i;
             visibleLightIndex++;
+            numVisibleLights++;
         }
     }
+
+    _NumVisibleLights[clusterIndex] = numVisibleLights;
 }

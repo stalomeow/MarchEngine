@@ -32,7 +32,7 @@ Shader "Skybox"
         Varyings vert(Attributes input)
         {
             Varyings output;
-            float3 positionWS = _CameraPositionWS.xyz + input.positionOS; // 相机为天空盒的中心
+            float3 positionWS = GetCameraWorldSpacePosition() + input.positionOS; // 相机为天空盒的中心
             output.positionCS = TransformWorldToHClip(positionWS);
             output.positionCS.z = MARCH_FAR_CLIP_VALUE * output.positionCS.w; // 放在远平面
             output.uv = normalize(input.positionOS);

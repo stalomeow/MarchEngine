@@ -19,8 +19,12 @@ cbuffer cbCamera
     float4x4 _MatrixInvView;
     float4x4 _MatrixInvProjection;
     float4x4 _MatrixInvViewProjection;
-    float4 _CameraPositionWS;
 };
+
+float Square(float x)
+{
+    return x * x;
+}
 
 float4x4 GetObjectToWorldMatrix(uint instanceID)
 {
@@ -116,12 +120,53 @@ float3 ComputeViewSpacePosition(float2 screenUV, float ndcDepth)
     return positionVS.xyz / positionVS.w;
 }
 
+float GetCameraNearZ()
+{
+#if MARCH_REVERSED_Z
+    return _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+#else
+    return _MatrixProjection[2][3] / -_MatrixProjection[2][2];
+#endif
+}
+
+float GetCameraFarZ()
+{
+#if MARCH_REVERSED_Z
+    return _MatrixProjection[2][3] / -_MatrixProjection[2][2];
+#else
+    return _MatrixProjection[2][3] / (1 - _MatrixProjection[2][2]);
+#endif
+}
+
+float3 GetCameraWorldSpacePosition()
+{
+    return _MatrixInvView._m03_m13_m23;
+}
+
 // TODO not tested
 float GetLinearEyeDepth(float ndcDepth)
 {
     // ndcDepth = A + B / viewZ
     // A = Proj[2][2]; B = Proj[2][3]
     return _MatrixProjection[2][3] / (ndcDepth - _MatrixProjection[2][2]);
+}
+
+// 三个点必须是顺时针排列，左手定则
+float3 GetPlaneNormal(float3 a, float3 b, float3 c)
+{
+    return normalize(cross(b - a, c - a));
+}
+
+// 法线必须是归一化的，a 是平面上任意一点
+float4 GetPlane(float3 normal, float3 a)
+{
+    return float4(normal, -dot(normal, a));
+}
+
+// 三个点必须是顺时针排列，左手定则
+float4 GetPlane(float3 a, float3 b, float3 c)
+{
+    return GetPlane(GetPlaneNormal(a, b, c), a);
 }
 
 #endif

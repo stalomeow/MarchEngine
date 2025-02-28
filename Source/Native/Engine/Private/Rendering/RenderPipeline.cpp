@@ -15,7 +15,7 @@ using namespace DirectX;
 
 #define NUM_MAX_LIGHT_IN_CLUSTER 16
 #define NUM_CLUSTER_X 16
-#define NUM_CLUSTER_Y 8
+#define NUM_CLUSTER_Y 9
 #define NUM_CLUSTER_Z 24
 
 namespace march
@@ -112,7 +112,6 @@ namespace march
         XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
         XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
         XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
-        consts.CameraPositionWS = XMFLOAT4(position.x, position.y, position.z, 1.0f);
 
         GfxBufferDesc desc{};
         desc.Stride = sizeof(CameraConstants);
