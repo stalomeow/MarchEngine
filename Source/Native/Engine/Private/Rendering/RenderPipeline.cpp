@@ -278,7 +278,7 @@ namespace march
             context.SetVariable(m_Resource.Lights);
             context.SetVariable(m_Resource.NumVisibleLights);
             context.SetVariable(m_Resource.VisibleLightIndices);
-            context.SetVariable(m_Resource.SSAOMap, "_AOMap");
+            context.SetVariable(m_Resource.SSAOMap);
             context.SetVariable(m_Resource.CbShadow);
             context.SetVariable(m_Resource.ShadowMap);
 

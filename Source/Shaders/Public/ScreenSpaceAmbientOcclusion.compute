@@ -1,7 +1,9 @@
 #pragma kernel SSAOMain
 
+#define AMBIENT_OCCLUSION_CALCULATING
 #include "Includes/Common.hlsl"
 #include "Includes/GBuffer.hlsl"
+#include "Includes/AmbientOcclusion.hlsl"
 
 #define SAMPLE_COUNT 14
 
@@ -34,7 +36,6 @@ cbuffer cbSSAO
 };
 
 Texture2D _RandomVecMap;
-RWTexture2D<float> _SSAOMap;
 
 float OcclusionFunction(float distZ)
 {

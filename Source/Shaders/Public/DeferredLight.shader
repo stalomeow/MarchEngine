@@ -26,15 +26,13 @@ Shader "DeferredLight"
         #include "Includes/Common.hlsl"
         #include "Includes/GBuffer.hlsl"
         #include "Includes/Lighting.hlsl"
+        #include "Includes/AmbientOcclusion.hlsl"
 
         struct Varyings
         {
             float4 positionCS : SV_Position;
             float2 uv : TEXCOORD0;
         };
-
-        Texture2D _AOMap;
-        SamplerState sampler_AOMap;
 
         Varyings vert(uint vertexID : SV_VertexID)
         {
@@ -55,7 +53,7 @@ Shader "DeferredLight"
 
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
             float3 positionVS = TransformWorldToView(positionWS);
-            float occlusion = min(_AOMap.Sample(sampler_AOMap, input.uv).r, gbuffer.occlusion);
+            float occlusion = min(SampleScreenSpaceAmbientOcclusion(input.uv), gbuffer.occlusion);
 
             float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, positionVS, input.uv, gbuffer.emission, occlusion);
             return float4(color, 1.0);
