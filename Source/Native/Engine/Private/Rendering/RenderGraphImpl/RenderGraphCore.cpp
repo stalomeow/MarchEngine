@@ -352,15 +352,21 @@ namespace march
         assert(!pass.IsVisited);
 
         size_t overlappedPassCount = 0;
+        size_t lastNonAsyncComputePassIndex = deadlineIndexExclusive;
 
         for (size_t i = passIndex + 1; i < deadlineIndexExclusive; i++)
         {
             const RenderGraphPass& overlappedPass = m_Passes[i];
             assert(overlappedPass.IsVisited);
 
-            if (overlappedPass.IsCulled || overlappedPass.IsAsyncCompute)
+            if (overlappedPass.IsCulled)
             {
                 continue;
+            }
+
+            if (!overlappedPass.IsAsyncCompute)
+            {
+                lastNonAsyncComputePassIndex = i;
             }
 
             for (size_t resourceIndex : pass.ResourcesIn)
@@ -372,7 +378,7 @@ namespace march
                     // 当两个 pass 在 GPU 上并行时，两个 barrier 的顺序不确定，可能导致状态损坏
                     if (!m_ResourceManager->IsGenericallyReadableResource(resourceIndex))
                     {
-                        deadlineIndexExclusive = i;
+                        deadlineIndexExclusive = lastNonAsyncComputePassIndex;
                         goto End;
                     }
                 }
@@ -380,7 +386,7 @@ namespace march
                 // 禁止一个读一个写
                 if (overlappedPass.ResourcesOut.count(resourceIndex) > 0)
                 {
-                    deadlineIndexExclusive = i;
+                    deadlineIndexExclusive = lastNonAsyncComputePassIndex;
                     goto End;
                 }
             }
@@ -390,19 +396,26 @@ namespace march
                 // 禁止一个读一个写
                 if (overlappedPass.ResourcesIn.count(resourceIndex) > 0)
                 {
-                    deadlineIndexExclusive = i;
+                    deadlineIndexExclusive = lastNonAsyncComputePassIndex;
                     goto End;
                 }
 
                 // 禁止两个同时写
                 if (overlappedPass.ResourcesOut.count(resourceIndex) > 0)
                 {
-                    deadlineIndexExclusive = i;
+                    deadlineIndexExclusive = lastNonAsyncComputePassIndex;
                     goto End;
                 }
             }
 
-            overlappedPassCount++;
+            // 每个 async compute pass 在开始前，会在 direct command queue 中插入 resource barrier
+            // 如果出现两个 async compute pass 先后执行（中间没有 deadline），那么后一个 pass 的 resource barrier 可能和前一个 pass 并行
+            // 所以，遇到 async compute pass 时，也要做上面的 read write 检查，避免状态损坏
+            // 但是 async compute pass 是在 async compute command queue 上先后执行的，所以不算 overlap
+            if (!overlappedPass.IsAsyncCompute)
+            {
+                overlappedPassCount++;
+            }
         }
 
     End:
