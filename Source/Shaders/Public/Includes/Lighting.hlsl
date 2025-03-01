@@ -5,8 +5,6 @@
 #include "BRDF.hlsl"
 #include "Shadow.hlsl"
 
-#define NUM_MAX_LIGHT_IN_CLUSTER 16
-
 struct LightRawData
 {
     float4 position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
@@ -15,38 +13,38 @@ struct LightRawData
     float4 params;        // AttenuationRadius, cos(SpotOuterConeAngle), rcp(cos(SpotInnerConeAngle)-cos(SpotOuterConeAngle)), IsSpotLight (w==1)
 };
 
-struct Light
-{
-    float3 color;
-    float3 direction;
-    float attenuation;
-};
-
 cbuffer cbLight
 {
-    int4 _NumLights; // xyz: numClusters, w: numLights
+    int4 _NumLights;   // x: numDirectionalLights, y: numPunctualLights
+    int4 _NumClusters; // xyz: numClusters
 };
 
-StructuredBuffer<LightRawData> _Lights;
+StructuredBuffer<LightRawData> _DirectionalLights;
+StructuredBuffer<LightRawData> _PunctualLights;
 
 #ifdef LIGHT_CULLING
-    RWStructuredBuffer<int> _NumVisibleLights;
-    RWStructuredBuffer<int> _VisibleLightIndices;
+    RWStructuredBuffer<int2> _ClusterPunctualLightRanges;
+    RWStructuredBuffer<int> _ClusterPunctualLightIndices;
 #else
-    StructuredBuffer<int> _NumVisibleLights;
-    StructuredBuffer<int> _VisibleLightIndices;
+    StructuredBuffer<int2> _ClusterPunctualLightRanges;
+    StructuredBuffer<int> _ClusterPunctualLightIndices;
 #endif
+
+int GetNumDirectionalLights()
+{
+    return _NumLights.x;
+}
+
+int GetNumPunctualLights()
+{
+    return _NumLights.y;
+}
 
 int GetClusterIndex(int3 id)
 {
-    // return id.x + id.y * _NumLights.x + id.z * _NumLights.x * _NumLights.y;
+    // return id.x + id.y * _NumClusters.x + id.z * _NumClusters.x * _NumClusters.y;
     // 优化为 2 mad
-    return id.x + (id.y + id.z * _NumLights.y) * _NumLights.x;
-}
-
-int GetClusterVisibleLightIndexOffset(int clusterIndex)
-{
-    return clusterIndex * NUM_MAX_LIGHT_IN_CLUSTER;
+    return id.x + (id.y + id.z * _NumClusters.y) * _NumClusters.x;
 }
 
 int3 GetClusterId(float2 uv, float3 positionVS)
@@ -54,12 +52,12 @@ int3 GetClusterId(float2 uv, float3 positionVS)
     float near = GetCameraNearZ();
     float far = GetCameraFarZ();
     float zSlice = log(positionVS.z / near) / log(far / near);
-    return int3(uv.xy * _NumLights.xy, zSlice * _NumLights.z);
+    return int3(uv.xy * _NumClusters.xy, zSlice * _NumClusters.z);
 }
 
 void GetClusterViewSpaceZRange(int3 id, out float zMin, out float zMax)
 {
-    float numRcp = rcp((float) _NumLights.z);
+    float numRcp = rcp((float) _NumClusters.z);
     float begin = id.z * numRcp;
 
     float near = GetCameraNearZ();
@@ -86,7 +84,7 @@ ClusterFrustum GetClusterViewSpaceFrustum(int3 id)
     float zMin, zMax;
     GetClusterViewSpaceZRange(id, zMin, zMax);
 
-    float2 numRcp = rcp((float2) _NumLights.xy);
+    float2 numRcp = rcp((float2) _NumClusters.xy);
     float4 uv = float4(id.xy * numRcp, 0, 0); // xy: uvMin
     uv.zw = uv.xy + numRcp; // zw: uvMax
 
@@ -119,10 +117,15 @@ ClusterFrustum GetClusterViewSpaceFrustum(int3 id)
     return result;
 }
 
-Light GetLight(float3 positionWS, int i, float shadow)
+struct Light
 {
-    LightRawData data = _Lights[i];
+    float3 color;
+    float3 direction;
+    float attenuation;
+};
 
+Light GetLight(float3 positionWS, LightRawData data, float shadow)
+{
     float3 direction = data.position.xyz - positionWS * data.position.w;
     float distSq = dot(direction, direction);
     direction *= rsqrt(distSq); // normalize
@@ -146,12 +149,12 @@ Light GetLight(float3 positionWS, int i, float shadow)
 
 float3 GetDebugClusterIdView(int3 clusterId)
 {
-    return clusterId / float3(_NumLights.xyz - 1);
+    return clusterId / float3(_NumClusters.xyz - 1);
 }
 
 float GetDebugClusterIndexView(int clusterIndex)
 {
-    return clusterIndex / (float) (_NumLights.x * _NumLights.y * _NumLights.z - 1);
+    return clusterIndex / (float) (_NumClusters.x * _NumClusters.y * _NumClusters.z - 1);
 }
 
 float GetDebugClusterViewSpaceFrustumView(int3 clusterId, int frustumPlaneIndex, float3 positionVS)
@@ -160,44 +163,55 @@ float GetDebugClusterViewSpaceFrustumView(int3 clusterId, int frustumPlaneIndex,
     return abs(dot(f.planes[frustumPlaneIndex], float4(positionVS, 1.0)));
 }
 
-float GetDebugNumVisibleLightsView(int numVisibleLights)
+float GetDebugClusterNumLightsView(int numLights)
 {
-    return numVisibleLights / (float) NUM_MAX_LIGHT_IN_CLUSTER;
+    return numLights / 16.0;
+}
+
+float3 FragmentPBRImpl(Light light, BRDFData data, float3 N, float3 V, float NoV)
+{
+    float3 L = light.direction;
+    float3 H = normalize(L + V);
+    float NoL = saturate(dot(N, L));
+    float NoH = saturate(dot(N, H));
+    float LoH = saturate(dot(L, H));
+
+    float3 brdf = DiffuseSpecularBRDF(data, NoV, NoL, NoH, LoH);
+    float3 irradiance = light.color * (light.attenuation * NoL);
+    return brdf * irradiance;
 }
 
 float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 positionVS, float2 uv, float3 emission, float occlusion)
 {
     int3 clusterId = GetClusterId(uv, positionVS);
     int clusterIndex = GetClusterIndex(clusterId);
-    int numVisibleLights = _NumVisibleLights[clusterIndex];
-    int visibleLightIndexOffset = GetClusterVisibleLightIndexOffset(clusterIndex);
+    int2 punctualLightRange = _ClusterPunctualLightRanges[clusterIndex];
 
     //return GetDebugClusterIdView(clusterId);
     //return GetDebugClusterIndexView(clusterIndex);
     //return GetDebugClusterViewSpaceFrustumView(clusterId, 4, positionVS);
-    //return GetDebugNumVisibleLightsView(numVisibleLights);
+    //return GetDebugClusterNumLightsView(punctualLightRange.y);
 
     float3 result = emission + (occlusion * (0.03 * data.albedo));
 
     float3 N = normalWS;
     float3 V = normalize(GetCameraWorldSpacePosition() - positionWS);
     float NoV = saturate(dot(N, V));
-
     float shadow = SampleShadowMap(TransformWorldToShadowCoord(positionWS));
 
-    for (int i = 0; i < numVisibleLights; i++)
+    // Directional lights
+    for (int i = 0; i < GetNumDirectionalLights(); i++)
     {
-        Light light = GetLight(positionWS, _VisibleLightIndices[visibleLightIndexOffset + i], shadow);
+        Light light = GetLight(positionWS, _DirectionalLights[i], shadow);
+        result += FragmentPBRImpl(light, data, N, V, NoV);
+    }
 
-        float3 L = light.direction;
-        float3 H = normalize(L + V);
-        float NoL = saturate(dot(N, L));
-        float NoH = saturate(dot(N, H));
-        float LoH = saturate(dot(L, H));
-
-        float3 brdf = DiffuseSpecularBRDF(data, NoV, NoL, NoH, LoH);
-        float3 irradiance = light.color * (light.attenuation * NoL);
-        result += brdf * irradiance;
+    // Punctual lights
+    for (int i = 0; i < punctualLightRange.y; i++)
+    {
+        int punctualLightIndex = _ClusterPunctualLightIndices[punctualLightRange.x + i];
+        Light light = GetLight(positionWS, _PunctualLights[punctualLightIndex], shadow);
+        result += FragmentPBRImpl(light, data, N, V, NoV);
     }
 
     return result;

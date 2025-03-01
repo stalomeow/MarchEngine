@@ -13,10 +13,10 @@
 
 using namespace DirectX;
 
-#define NUM_MAX_LIGHT_IN_CLUSTER 16
 #define NUM_CLUSTER_X 16
-#define NUM_CLUSTER_Y 9
+#define NUM_CLUSTER_Y 8
 #define NUM_CLUSTER_Z 24
+#define NUM_MAX_LIGHT_ON_SCREEN (NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z * 16)
 
 namespace march
 {
@@ -31,18 +31,32 @@ namespace march
         GenerateSSAORandomVectorMap();
 
         GfxBufferDesc desc1{};
-        desc1.Stride = sizeof(int32);
+        desc1.Stride = sizeof(XMINT2);
         desc1.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z;
         desc1.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
         desc1.Flags = GfxBufferFlags::None;
-        m_NumVisibleLightsBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_NumVisibleLights", desc1);
+        m_ClusterPunctualLightRangesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightRanges", desc1);
 
         GfxBufferDesc desc2{};
         desc2.Stride = sizeof(int32);
-        desc2.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z * NUM_MAX_LIGHT_IN_CLUSTER;
+        desc2.Count = NUM_MAX_LIGHT_ON_SCREEN;
         desc2.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
         desc2.Flags = GfxBufferFlags::None;
-        m_VisibleLightIndicesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_VisibleLightIndices", desc2);
+        m_ClusterPunctualLightIndicesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightIndices", desc2);
+
+        GfxBufferDesc desc3{};
+        desc3.Stride = sizeof(int32);
+        desc3.Count = 1;
+        desc3.Usages = GfxBufferUsages::RWStructured;
+        desc3.Flags = GfxBufferFlags::None;
+        m_VisibleLightCounterBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_VisibleLightCounter", desc3);
+
+        GfxBufferDesc desc4{};
+        desc4.Stride = sizeof(int32);
+        desc4.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y;
+        desc4.Usages = GfxBufferUsages::RWStructured;
+        desc4.Flags = GfxBufferFlags::None;
+        m_MaxClusterZIdsBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_MaxClusterZIds", desc4);
 
         m_RenderGraph = std::make_unique<RenderGraph>();
     }
@@ -71,8 +85,8 @@ namespace march
             m_Resource.CbCamera = CreateCameraConstantBuffer("cbCamera", camera);
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
-            SSAO();
             CullLights();
+            SSAO();
 
             XMFLOAT4X4 shadowMatrix{};
             DrawShadowCasters(shadowMatrix);
@@ -163,48 +177,72 @@ namespace march
 
     void RenderPipeline::CullLights()
     {
+        static std::vector<LightData> directionalLights{};
+        static std::vector<LightData> punctualLights{};
+
+        directionalLights.clear();
+        punctualLights.clear();
+
+        for (const Light* light : m_Lights)
+        {
+            if (!light->GetIsActiveAndEnabled())
+            {
+                continue;
+            }
+
+            if (light->GetType() == LightType::Directional)
+            {
+                bool isFirst = directionalLights.empty();
+                light->FillLightData(directionalLights.emplace_back(), isFirst);
+            }
+            else
+            {
+                light->FillLightData(punctualLights.emplace_back(), false);
+            }
+        }
+
         LightConstants consts{};
-        consts.Nums.x = NUM_CLUSTER_X;
-        consts.Nums.y = NUM_CLUSTER_Y;
-        consts.Nums.z = NUM_CLUSTER_Z;
-        consts.Nums.w = static_cast<int32_t>(m_Lights.size());
+        consts.NumLights.x = static_cast<int32_t>(directionalLights.size());
+        consts.NumLights.y = static_cast<int32_t>(punctualLights.size());
+        consts.NumClusters.x = NUM_CLUSTER_X;
+        consts.NumClusters.y = NUM_CLUSTER_Y;
+        consts.NumClusters.z = NUM_CLUSTER_Z;
 
         GfxBufferDesc desc1{};
         desc1.Stride = sizeof(LightConstants);
         desc1.Count = 1;
         desc1.Usages = GfxBufferUsages::Constant;
         desc1.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
-
         static int32 cbufferId = ShaderUtils::GetIdFromString("cbLight");
         m_Resource.CbLight = m_RenderGraph->RequestBufferWithContent(cbufferId, desc1, &consts);
 
-        std::vector<LightData> lights{};
-        lights.reserve(m_Lights.size());
-
-        for (int i = 0; i < m_Lights.size(); i++)
-        {
-            if (!m_Lights[i]->GetIsActiveAndEnabled())
-            {
-                continue;
-            }
-
-            m_Lights[i]->FillLightData(lights.emplace_back(), i == 0);
-        }
-
         GfxBufferDesc desc2{};
         desc2.Stride = sizeof(LightData);
-        desc2.Count = static_cast<uint32_t>(lights.size());
+        desc2.Count = static_cast<uint32_t>(directionalLights.size());
         desc2.Usages = GfxBufferUsages::Structured;
         desc2.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+        static int32 directionalLightsBufferId = ShaderUtils::GetIdFromString("_DirectionalLights");
+        m_Resource.DirectionalLights = m_RenderGraph->RequestBufferWithContent(directionalLightsBufferId, desc2, directionalLights.data());
 
-        static int32 lightBufferId = ShaderUtils::GetIdFromString("_Lights");
-        m_Resource.Lights = m_RenderGraph->RequestBufferWithContent(lightBufferId, desc2, lights.data());
+        GfxBufferDesc desc3{};
+        desc3.Stride = sizeof(LightData);
+        desc3.Count = static_cast<uint32_t>(punctualLights.size());
+        desc3.Usages = GfxBufferUsages::Structured;
+        desc3.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+        static int32 punctualLightsBufferId = ShaderUtils::GetIdFromString("_PunctualLights");
+        m_Resource.PunctualLights = m_RenderGraph->RequestBufferWithContent(punctualLightsBufferId, desc3, punctualLights.data());
 
-        static int32 numVisibleLightsBufferId = ShaderUtils::GetIdFromString("_NumVisibleLights");
-        m_Resource.NumVisibleLights = m_RenderGraph->ImportBuffer(numVisibleLightsBufferId, m_NumVisibleLightsBuffer.get());
+        static int32 clusterPunctualLightRangesBufferId = ShaderUtils::GetIdFromString("_ClusterPunctualLightRanges");
+        m_Resource.ClusterPunctualLightRanges = m_RenderGraph->ImportBuffer(clusterPunctualLightRangesBufferId, m_ClusterPunctualLightRangesBuffer.get());
 
-        static int32 visibleLightIndicesBufferId = ShaderUtils::GetIdFromString("_VisibleLightIndices");
-        m_Resource.VisibleLightIndices = m_RenderGraph->ImportBuffer(visibleLightIndicesBufferId, m_VisibleLightIndicesBuffer.get());
+        static int32 clusterPunctualLightIndicesBufferId = ShaderUtils::GetIdFromString("_ClusterPunctualLightIndices");
+        m_Resource.ClusterPunctualLightIndices = m_RenderGraph->ImportBuffer(clusterPunctualLightIndicesBufferId, m_ClusterPunctualLightIndicesBuffer.get());
+
+        static int32 visibleLightCounterBufferId = ShaderUtils::GetIdFromString("_VisibleLightCounter");
+        m_Resource.VisibleLightCounter = m_RenderGraph->ImportBuffer(visibleLightCounterBufferId, m_VisibleLightCounterBuffer.get());
+
+        static int32 maxClusterZIdsBufferId = ShaderUtils::GetIdFromString("_MaxClusterZIds");
+        m_Resource.MaxClusterZIds = m_RenderGraph->ImportBuffer(maxClusterZIdsBufferId, m_MaxClusterZIdsBuffer.get());
 
         auto builder = m_RenderGraph->AddPass("CullLights");
 
@@ -212,26 +250,60 @@ namespace march
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
-        builder.In(m_Resource.Lights);
-        builder.Out(m_Resource.NumVisibleLights);
-        builder.Out(m_Resource.VisibleLightIndices);
+        builder.In(m_Resource.DirectionalLights);
+        builder.In(m_Resource.PunctualLights);
+        builder.Out(m_Resource.ClusterPunctualLightRanges);
+        builder.Out(m_Resource.ClusterPunctualLightIndices);
+        builder.Out(m_Resource.VisibleLightCounter);
+        builder.Out(m_Resource.MaxClusterZIds);
+
+        for (const TextureHandle& tex : m_Resource.GBuffers)
+        {
+            builder.In(tex);
+        }
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbLight);
-            context.SetVariable(m_Resource.Lights);
-            context.SetVariable(m_Resource.NumVisibleLights);
-            context.SetVariable(m_Resource.VisibleLightIndices);
+            context.SetVariable(m_Resource.DirectionalLights);
+            context.SetVariable(m_Resource.PunctualLights);
+            context.SetVariable(m_Resource.ClusterPunctualLightRanges);
+            context.SetVariable(m_Resource.ClusterPunctualLightIndices);
+            context.SetVariable(m_Resource.VisibleLightCounter);
+            context.SetVariable(m_Resource.MaxClusterZIds);
 
-            std::optional<size_t> kernelIndex = m_CullLightShader->FindKernel("CullMain");
+            for (const TextureHandle& tex : m_Resource.GBuffers)
+            {
+                context.SetVariable(tex);
+            }
+
             uint32_t groupSizeX{}, groupSizeY{}, groupSizeZ{};
-            m_CullLightShader->GetThreadGroupSize(*kernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
+            uint32_t countX{}, countY{}, countZ{};
 
-            uint32_t countX = static_cast<uint32_t>(ceil(NUM_CLUSTER_X / static_cast<float>(groupSizeX)));
-            uint32_t countY = static_cast<uint32_t>(ceil(NUM_CLUSTER_Y / static_cast<float>(groupSizeY)));
-            uint32_t countZ = static_cast<uint32_t>(ceil(NUM_CLUSTER_Z / static_cast<float>(groupSizeZ)));
-            context.DispatchCompute(m_CullLightShader.get(), *kernelIndex, countX, countY, countZ);
+            // 每个 Buffer 元素对应一个线程
+            std::optional<size_t> resetKernelIndex = m_CullLightShader->FindKernel("ResetMain");
+            m_CullLightShader->GetThreadGroupSize(*resetKernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
+            uint32_t resetCount = std::max(m_Resource.MaxClusterZIds.GetDesc().Count, 1u);
+            countX = static_cast<uint32_t>(ceil(resetCount / static_cast<float>(groupSizeX)));
+            context.DispatchCompute(m_CullLightShader.get(), *resetKernelIndex, countX, 1, 1);
+
+            // 每个 GBuffer 像素对应一个线程
+            std::optional<size_t> cullClusterKernelIndex = m_CullLightShader->FindKernel("CullClusterMain");
+            m_CullLightShader->GetThreadGroupSize(*cullClusterKernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
+            uint32_t width = m_Resource.GBuffers[0].GetDesc().Width;
+            uint32_t height = m_Resource.GBuffers[0].GetDesc().Height;
+            countX = static_cast<uint32_t>(ceil(width / static_cast<float>(groupSizeX)));
+            countY = static_cast<uint32_t>(ceil(height / static_cast<float>(groupSizeY)));
+            context.DispatchCompute(m_CullLightShader.get(), *cullClusterKernelIndex, countX, countY, 1);
+
+            // 每个 Cluster 对应一个线程
+            std::optional<size_t> cullLightKernelIndex = m_CullLightShader->FindKernel("CullLightMain");
+            m_CullLightShader->GetThreadGroupSize(*cullLightKernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
+            countX = static_cast<uint32_t>(ceil(NUM_CLUSTER_X / static_cast<float>(groupSizeX)));
+            countY = static_cast<uint32_t>(ceil(NUM_CLUSTER_Y / static_cast<float>(groupSizeY)));
+            countZ = static_cast<uint32_t>(ceil(NUM_CLUSTER_Z / static_cast<float>(groupSizeZ)));
+            context.DispatchCompute(m_CullLightShader.get(), *cullLightKernelIndex, countX, countY, countZ);
         });
     }
 
@@ -257,9 +329,10 @@ namespace march
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
-        builder.In(m_Resource.Lights);
-        builder.In(m_Resource.NumVisibleLights);
-        builder.In(m_Resource.VisibleLightIndices);
+        builder.In(m_Resource.DirectionalLights);
+        builder.In(m_Resource.PunctualLights);
+        builder.In(m_Resource.ClusterPunctualLightRanges);
+        builder.In(m_Resource.ClusterPunctualLightIndices);
         builder.In(m_Resource.SSAOMap);
         builder.In(m_Resource.CbShadow);
         builder.In(m_Resource.ShadowMap);
@@ -275,9 +348,10 @@ namespace march
 
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbLight);
-            context.SetVariable(m_Resource.Lights);
-            context.SetVariable(m_Resource.NumVisibleLights);
-            context.SetVariable(m_Resource.VisibleLightIndices);
+            context.SetVariable(m_Resource.DirectionalLights);
+            context.SetVariable(m_Resource.PunctualLights);
+            context.SetVariable(m_Resource.ClusterPunctualLightRanges);
+            context.SetVariable(m_Resource.ClusterPunctualLightIndices);
             context.SetVariable(m_Resource.SSAOMap);
             context.SetVariable(m_Resource.CbShadow);
             context.SetVariable(m_Resource.ShadowMap);
@@ -477,8 +551,6 @@ namespace march
         m_Resource.SSAORandomVectorMap = m_RenderGraph->ImportTexture(randVecMapId, m_SSAORandomVectorMap.get());
 
         auto builder = m_RenderGraph->AddPass("ScreenSpaceAmbientOcclusion");
-
-        builder.EnableAsyncCompute(true);
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbSSAO);

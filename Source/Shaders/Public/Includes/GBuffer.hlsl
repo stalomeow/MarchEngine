@@ -59,6 +59,16 @@ GBufferData UnpackGBufferData(float4 gbuffer0, float4 gbuffer1, float4 gbuffer2,
     return data;
 }
 
+void GetDepthGBufferDimensions(out uint width, out uint height)
+{
+    _GBuffer4.GetDimensions(width, height);
+}
+
+void GetDepthGBufferDimensions(out float width, out float height)
+{
+    _GBuffer4.GetDimensions(width, height);
+}
+
 GBufferData LoadGBufferData(int2 location)
 {
     float4 gbuffer0 = _GBuffer0.Load(int3(location, 0));

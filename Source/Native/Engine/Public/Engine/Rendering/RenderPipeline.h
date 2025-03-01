@@ -31,7 +31,8 @@ namespace march
 
     struct LightConstants
     {
-        DirectX::XMINT4 Nums; // xyz: numClusters, w: numLights
+        DirectX::XMINT4 NumLights;   // x: numDirectionalLights, y: numPunctualLights
+        DirectX::XMINT4 NumClusters; // xyz: numClusters
     };
 
     struct ShadowConstants
@@ -48,9 +49,12 @@ namespace march
 
         BufferHandle CbCamera;
         BufferHandle CbLight;
-        BufferHandle Lights;
-        BufferHandle NumVisibleLights;
-        BufferHandle VisibleLightIndices;
+        BufferHandle DirectionalLights;
+        BufferHandle PunctualLights;
+        BufferHandle ClusterPunctualLightRanges;
+        BufferHandle ClusterPunctualLightIndices;
+        BufferHandle VisibleLightCounter;
+        BufferHandle MaxClusterZIds;
 
         BufferHandle CbSSAO;
         TextureHandle SSAOMap;
@@ -67,9 +71,12 @@ namespace march
             GBuffers.clear();
             CbCamera = {};
             CbLight = {};
-            Lights = {};
-            NumVisibleLights = {};
-            VisibleLightIndices = {};
+            DirectionalLights = {};
+            PunctualLights = {};
+            ClusterPunctualLightRanges = {};
+            ClusterPunctualLightIndices = {};
+            VisibleLightCounter = {};
+            MaxClusterZIds = {};
             CbSSAO = {};
             SSAOMap = {};
             SSAOMapTemp = {};
@@ -132,8 +139,10 @@ namespace march
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
-        std::unique_ptr<GfxBuffer> m_NumVisibleLightsBuffer = nullptr;
-        std::unique_ptr<GfxBuffer> m_VisibleLightIndicesBuffer = nullptr;
+        std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;
+        std::unique_ptr<GfxBuffer> m_ClusterPunctualLightIndicesBuffer = nullptr;
+        std::unique_ptr<GfxBuffer> m_VisibleLightCounterBuffer = nullptr;
+        std::unique_ptr<GfxBuffer> m_MaxClusterZIdsBuffer = nullptr;
 
         RenderPipelineResource m_Resource{};
 

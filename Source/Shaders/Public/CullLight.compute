@@ -1,7 +1,49 @@
-#pragma kernel CullMain
+#pragma kernel ResetMain
+#pragma kernel CullClusterMain
+#pragma kernel CullLightMain
 
 #define LIGHT_CULLING
 #include "Includes/Lighting.hlsl"
+#include "Includes/GBuffer.hlsl"
+
+RWStructuredBuffer<int> _VisibleLightCounter;
+RWStructuredBuffer<int> _MaxClusterZIds;
+
+[numthreads(256, 1, 1)]
+void ResetMain(int3 dtid : SV_DispatchThreadID)
+{
+    if (dtid.x == 0)
+    {
+        _VisibleLightCounter[0] = 0;
+    }
+
+    if (dtid.x < _NumClusters.x * _NumClusters.y)
+    {
+        _MaxClusterZIds[dtid.x] = -1;
+    }
+}
+
+[numthreads(16, 16, 1)]
+void CullClusterMain(int3 dtid : SV_DispatchThreadID)
+{
+    float width, height;
+    GetDepthGBufferDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    // TODO 速度太慢，之后从 Hi-Z buffer 里读取深度
+
+    GBufferData gbuffer = LoadGBufferData(dtid.xy);
+    float2 uv = float2(dtid.x / width, dtid.y / height);
+    float3 positionVS = ComputeViewSpacePosition(uv, gbuffer.depth);
+    int3 clusterId = GetClusterId(uv, positionVS);
+
+    // 记录每个 clusterId.xy 对应的最大 clusterId.z，记录最远的 cluster
+    InterlockedMax(_MaxClusterZIds[GetClusterIndex(int3(clusterId.xy, 0))], clusterId.z);
+}
 
 bool IsPointLightVisible(float3 lightPositionVS, LightRawData light, ClusterFrustum f)
 {
@@ -43,34 +85,50 @@ bool IsSpotLightVisible(float3 lightPositionVS, LightRawData light, ClusterFrust
     return !(angleCull || backCull);
 }
 
-[numthreads(8, 8, 1)]
-void CullMain(int3 dtid : SV_DispatchThreadID)
+int AllocateClusterLightIndicesRange(inout int numLights)
 {
-    if (any(dtid >= _NumLights.xyz))
+    int startIndex;
+    InterlockedAdd(_VisibleLightCounter[0], numLights, startIndex);
+
+    uint numMaxIndices, _;
+    _ClusterPunctualLightIndices.GetDimensions(numMaxIndices, _);
+
+    numLights = min(numLights, (int) numMaxIndices - startIndex);
+
+    if (numLights <= 0)
+    {
+        numLights = 0;
+        return 0;
+    }
+
+    return startIndex;
+}
+
+#define NUM_MAX_LIGHT_IN_CLUSTER 100
+
+[numthreads(8, 8, 4)]
+void CullLightMain(int3 dtid : SV_DispatchThreadID)
+{
+    if (any(dtid >= _NumClusters.xyz))
     {
         return;
     }
 
-    ClusterFrustum f = GetClusterViewSpaceFrustum(dtid);
+    int numLights = 0;
+    int lights[NUM_MAX_LIGHT_IN_CLUSTER];
     int clusterIndex = GetClusterIndex(dtid);
-    int visibleLightIndex = GetClusterVisibleLightIndexOffset(clusterIndex);
-    int numVisibleLights = 0;
 
-    for (int i = 0; i < _NumLights.w && numVisibleLights < NUM_MAX_LIGHT_IN_CLUSTER; i++)
+    // cluster 不被遮挡时，才进行光源剔除
+    if (dtid.z <= _MaxClusterZIds[GetClusterIndex(int3(dtid.xy, 0))])
     {
-        bool visible;
-        LightRawData light = _Lights[i];
+        ClusterFrustum f = GetClusterViewSpaceFrustum(dtid);
 
-        [branch]
-        if (light.position.w == 0)
+        for (int i = 0; i < GetNumPunctualLights() && numLights < NUM_MAX_LIGHT_IN_CLUSTER; i++)
         {
-            visible = true;
-        }
-        else
-        {
+            bool visible;
+            LightRawData light = _PunctualLights[i];
             float3 positionVS = TransformWorldToView(light.position.xyz);
 
-            [branch]
             if (light.params.w == 1)
             {
                 visible = IsSpotLightVisible(positionVS, light, f);
@@ -79,15 +137,19 @@ void CullMain(int3 dtid : SV_DispatchThreadID)
             {
                 visible = IsPointLightVisible(positionVS, light, f);
             }
-        }
 
-        if (visible)
-        {
-            _VisibleLightIndices[visibleLightIndex] = i;
-            visibleLightIndex++;
-            numVisibleLights++;
+            if (visible)
+            {
+                lights[numLights++] = i;
+            }
         }
     }
 
-    _NumVisibleLights[clusterIndex] = numVisibleLights;
+    int startIndex = AllocateClusterLightIndicesRange(numLights);
+    _ClusterPunctualLightRanges[clusterIndex] = int2(startIndex, numLights);
+
+    for (int i = 0; i < numLights; i++)
+    {
+        _ClusterPunctualLightIndices[startIndex + i] = lights[i];
+    }
 }
