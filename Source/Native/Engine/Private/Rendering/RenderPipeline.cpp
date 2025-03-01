@@ -86,11 +86,11 @@ namespace march
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
             CullLights();
-            SSAO();
 
             XMFLOAT4X4 shadowMatrix{};
             DrawShadowCasters(shadowMatrix);
 
+            SSAO();
             DeferredLighting(shadowMatrix);
             DrawSkybox();
 
