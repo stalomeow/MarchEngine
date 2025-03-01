@@ -268,6 +268,11 @@ namespace march
             m_Cmd->DispatchCompute(shader, kernelIndex, threadGroupCountX, threadGroupCountY, threadGroupCountZ);
         }
 
+        void DispatchComputeByThreadCount(ComputeShader* shader, size_t kernelIndex, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)
+        {
+            m_Cmd->DispatchComputeByThreadCount(shader, kernelIndex, threadCountX, threadCountY, threadCountZ);
+        }
+
         void ResolveTexture(GfxTexture* source, GfxTexture* destination)
         {
             m_Cmd->ResolveTexture(source, destination);

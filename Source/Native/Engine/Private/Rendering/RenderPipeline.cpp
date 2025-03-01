@@ -16,7 +16,7 @@ using namespace DirectX;
 #define NUM_CLUSTER_X 16
 #define NUM_CLUSTER_Y 8
 #define NUM_CLUSTER_Z 24
-#define NUM_MAX_LIGHT_ON_SCREEN (NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z * 16)
+#define NUM_MAX_VISIBLE_LIGHT (NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z * 16)
 
 namespace march
 {
@@ -39,7 +39,7 @@ namespace march
 
         GfxBufferDesc desc2{};
         desc2.Stride = sizeof(int32);
-        desc2.Count = NUM_MAX_LIGHT_ON_SCREEN;
+        desc2.Count = NUM_MAX_VISIBLE_LIGHT;
         desc2.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
         desc2.Flags = GfxBufferFlags::None;
         m_ClusterPunctualLightIndicesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightIndices", desc2);
@@ -278,32 +278,20 @@ namespace march
                 context.SetVariable(tex);
             }
 
-            uint32_t groupSizeX{}, groupSizeY{}, groupSizeZ{};
-            uint32_t countX{}, countY{}, countZ{};
-
             // 每个 Buffer 元素对应一个线程
             std::optional<size_t> resetKernelIndex = m_CullLightShader->FindKernel("ResetMain");
-            m_CullLightShader->GetThreadGroupSize(*resetKernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
             uint32_t resetCount = std::max(m_Resource.MaxClusterZIds.GetDesc().Count, 1u);
-            countX = static_cast<uint32_t>(ceil(resetCount / static_cast<float>(groupSizeX)));
-            context.DispatchCompute(m_CullLightShader.get(), *resetKernelIndex, countX, 1, 1);
+            context.DispatchComputeByThreadCount(m_CullLightShader.get(), *resetKernelIndex, resetCount, 1, 1);
 
             // 每个 GBuffer 像素对应一个线程
             std::optional<size_t> cullClusterKernelIndex = m_CullLightShader->FindKernel("CullClusterMain");
-            m_CullLightShader->GetThreadGroupSize(*cullClusterKernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
             uint32_t width = m_Resource.GBuffers[0].GetDesc().Width;
             uint32_t height = m_Resource.GBuffers[0].GetDesc().Height;
-            countX = static_cast<uint32_t>(ceil(width / static_cast<float>(groupSizeX)));
-            countY = static_cast<uint32_t>(ceil(height / static_cast<float>(groupSizeY)));
-            context.DispatchCompute(m_CullLightShader.get(), *cullClusterKernelIndex, countX, countY, 1);
+            context.DispatchComputeByThreadCount(m_CullLightShader.get(), *cullClusterKernelIndex, width, height, 1);
 
             // 每个 Cluster 对应一个线程
             std::optional<size_t> cullLightKernelIndex = m_CullLightShader->FindKernel("CullLightMain");
-            m_CullLightShader->GetThreadGroupSize(*cullLightKernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
-            countX = static_cast<uint32_t>(ceil(NUM_CLUSTER_X / static_cast<float>(groupSizeX)));
-            countY = static_cast<uint32_t>(ceil(NUM_CLUSTER_Y / static_cast<float>(groupSizeY)));
-            countZ = static_cast<uint32_t>(ceil(NUM_CLUSTER_Z / static_cast<float>(groupSizeZ)));
-            context.DispatchCompute(m_CullLightShader.get(), *cullLightKernelIndex, countX, countY, countZ);
+            context.DispatchComputeByThreadCount(m_CullLightShader.get(), *cullLightKernelIndex, NUM_CLUSTER_X, NUM_CLUSTER_Y, NUM_CLUSTER_Z);
         });
     }
 
@@ -576,31 +564,19 @@ namespace march
             }
 
             std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("SSAOMain");
-
-            uint32_t groupSize[3]{};
-            m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
-
-            uint32_t countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
-            uint32_t countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
-            context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
+            context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
 
             context.SetVariable(m_Resource.SSAOMap, "_Input");
             context.SetVariable(m_Resource.SSAOMapTemp, "_Output");
 
             kernelIndex = m_SSAOShader->FindKernel("HBlurMain");
-            m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
-            countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
-            countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
-            context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
+            context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
 
             context.SetVariable(m_Resource.SSAOMapTemp, "_Input");
             context.SetVariable(m_Resource.SSAOMap, "_Output");
 
             kernelIndex = m_SSAOShader->FindKernel("VBlurMain");
-            m_SSAOShader->GetThreadGroupSize(*kernelIndex, &groupSize[0], &groupSize[1], &groupSize[2]);
-            countX = static_cast<uint32_t>(ceil(w / static_cast<float>(groupSize[0])));
-            countY = static_cast<uint32_t>(ceil(h / static_cast<float>(groupSize[1])));
-            context.DispatchCompute(m_SSAOShader.get(), *kernelIndex, countX, countY, 1);
+            context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
         });
     }
 }

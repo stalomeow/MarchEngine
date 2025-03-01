@@ -799,6 +799,18 @@ namespace march
             static_cast<UINT>(threadGroupCountZ));
     }
 
+    void GfxCommandContext::DispatchComputeByThreadCount(ComputeShader* shader, size_t kernelIndex, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)
+    {
+        uint32_t groupSizeX{}, groupSizeY{}, groupSizeZ{};
+        shader->GetThreadGroupSize(kernelIndex, &groupSizeX, &groupSizeY, &groupSizeZ);
+
+        uint32_t groupCountX = static_cast<uint32_t>(std::ceil(threadCountX / static_cast<float>(groupSizeX)));
+        uint32_t groupCountY = static_cast<uint32_t>(std::ceil(threadCountY / static_cast<float>(groupSizeY)));
+        uint32_t groupCountZ = static_cast<uint32_t>(std::ceil(threadCountZ / static_cast<float>(groupSizeZ)));
+
+        DispatchCompute(shader, kernelIndex, groupCountX, groupCountY, groupCountZ);
+    }
+
     GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& matrix)
     {
         XMFLOAT4X4 matrixIT{};

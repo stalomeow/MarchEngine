@@ -168,7 +168,7 @@ float GetDebugClusterNumLightsView(int numLights)
     return numLights / 16.0;
 }
 
-float3 FragmentPBRImpl(Light light, BRDFData data, float3 N, float3 V, float NoV)
+float3 FragmentPBRLighting(Light light, BRDFData data, float3 N, float3 V, float NoV)
 {
     float3 L = light.direction;
     float3 H = normalize(L + V);
@@ -203,7 +203,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     for (int i = 0; i < GetNumDirectionalLights(); i++)
     {
         Light light = GetLight(positionWS, _DirectionalLights[i], shadow);
-        result += FragmentPBRImpl(light, data, N, V, NoV);
+        result += FragmentPBRLighting(light, data, N, V, NoV);
     }
 
     // Punctual lights
@@ -211,7 +211,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     {
         int punctualLightIndex = _ClusterPunctualLightIndices[punctualLightRange.x + i];
         Light light = GetLight(positionWS, _PunctualLights[punctualLightIndex], shadow);
-        result += FragmentPBRImpl(light, data, N, V, NoV);
+        result += FragmentPBRLighting(light, data, N, V, NoV);
     }
 
     return result;
