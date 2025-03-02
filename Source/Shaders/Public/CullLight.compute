@@ -27,10 +27,16 @@ void ResetMain(int3 dtid : SV_DispatchThreadID)
 #define NUM_THREADS_CULL_CLUSTER_Y 16
 
 groupshared int gs_GroupMaxClusterZIds[NUM_THREADS_CULL_CLUSTER_X * NUM_THREADS_CULL_CLUSTER_Y];
-groupshared int gs_GroupClusterMinIndex;
+groupshared int2 gs_GroupClusterMinId;
+
+int GetGroupClusterIndex(int2 clusterId)
+{
+    int2 localId = clusterId - gs_GroupClusterMinId;
+    return localId.x + localId.y * NUM_THREADS_CULL_CLUSTER_X;
+}
 
 [numthreads(NUM_THREADS_CULL_CLUSTER_X, NUM_THREADS_CULL_CLUSTER_Y, 1)]
-void CullClusterMain(int gidx : SV_GroupIndex, int3 dtid : SV_DispatchThreadID)
+void CullClusterMain(int3 gtid : SV_GroupThreadID, int gidx : SV_GroupIndex, int3 dtid : SV_DispatchThreadID)
 {
     float width, height;
     GetDepthGBufferDimensions(width, height);
@@ -44,25 +50,25 @@ void CullClusterMain(int gidx : SV_GroupIndex, int3 dtid : SV_DispatchThreadID)
     float2 uv = float2(dtid.x / width, dtid.y / height);
     float3 positionVS = ComputeViewSpacePosition(uv, gbuffer.depth);
     int3 clusterId = GetClusterId(uv, positionVS);
-    int clusterIndex = GetClusterIndex(int3(clusterId.xy, 0));
 
     gs_GroupMaxClusterZIds[gidx] = -1;
 
     if (gidx == 0)
     {
-        gs_GroupClusterMinIndex = clusterIndex;
+        gs_GroupClusterMinId = clusterId.xy;
     }
 
     GroupMemoryBarrierWithGroupSync();
 
     // 记录每个 clusterId.xy 对应的最大 clusterId.z，记录最远的 cluster
-    InterlockedMax(gs_GroupMaxClusterZIds[clusterIndex - gs_GroupClusterMinIndex], clusterId.z);
+    InterlockedMax(gs_GroupMaxClusterZIds[GetGroupClusterIndex(clusterId.xy)], clusterId.z);
 
     GroupMemoryBarrierWithGroupSync();
 
     if (gs_GroupMaxClusterZIds[gidx] > -1)
     {
-        InterlockedMax(_MaxClusterZIds[gidx + gs_GroupClusterMinIndex], gs_GroupMaxClusterZIds[gidx]);
+        int clusterIndex = GetClusterIndex(int3(gtid.xy + gs_GroupClusterMinId, 0));
+        InterlockedMax(_MaxClusterZIds[clusterIndex], gs_GroupMaxClusterZIds[gidx]);
     }
 }
 
