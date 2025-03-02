@@ -23,8 +23,14 @@ void ResetMain(int3 dtid : SV_DispatchThreadID)
     }
 }
 
-[numthreads(16, 16, 1)]
-void CullClusterMain(int3 dtid : SV_DispatchThreadID)
+#define NUM_THREADS_CULL_CLUSTER_X 16
+#define NUM_THREADS_CULL_CLUSTER_Y 16
+
+groupshared int gs_GroupMaxClusterZIds[NUM_THREADS_CULL_CLUSTER_X * NUM_THREADS_CULL_CLUSTER_Y];
+groupshared int gs_GroupClusterMinIndex;
+
+[numthreads(NUM_THREADS_CULL_CLUSTER_X, NUM_THREADS_CULL_CLUSTER_Y, 1)]
+void CullClusterMain(int gidx : SV_GroupIndex, int3 dtid : SV_DispatchThreadID)
 {
     float width, height;
     GetDepthGBufferDimensions(width, height);
@@ -34,15 +40,30 @@ void CullClusterMain(int3 dtid : SV_DispatchThreadID)
         return;
     }
 
-    // TODO 速度太慢，之后从 Hi-Z buffer 里读取深度
-
     GBufferData gbuffer = LoadGBufferData(dtid.xy);
     float2 uv = float2(dtid.x / width, dtid.y / height);
     float3 positionVS = ComputeViewSpacePosition(uv, gbuffer.depth);
     int3 clusterId = GetClusterId(uv, positionVS);
+    int clusterIndex = GetClusterIndex(int3(clusterId.xy, 0));
+
+    gs_GroupMaxClusterZIds[gidx] = -1;
+
+    if (gidx == 0)
+    {
+        gs_GroupClusterMinIndex = clusterIndex;
+    }
+
+    GroupMemoryBarrierWithGroupSync();
 
     // 记录每个 clusterId.xy 对应的最大 clusterId.z，记录最远的 cluster
-    InterlockedMax(_MaxClusterZIds[GetClusterIndex(int3(clusterId.xy, 0))], clusterId.z);
+    InterlockedMax(gs_GroupMaxClusterZIds[clusterIndex - gs_GroupClusterMinIndex], clusterId.z);
+
+    GroupMemoryBarrierWithGroupSync();
+
+    if (gs_GroupMaxClusterZIds[gidx] > -1)
+    {
+        InterlockedMax(_MaxClusterZIds[gidx + gs_GroupClusterMinIndex], gs_GroupMaxClusterZIds[gidx]);
+    }
 }
 
 bool IsPointLightVisible(float3 lightPositionVS, LightRawData light, ClusterFrustum f)
