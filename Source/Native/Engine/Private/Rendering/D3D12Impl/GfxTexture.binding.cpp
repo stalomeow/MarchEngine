@@ -51,9 +51,9 @@ NATIVE_EXPORT_AUTO GfxTexture_GetDesc(cs<GfxTexture*> t)
     retcs result;
 }
 
-NATIVE_EXPORT_AUTO GfxTexture_GetAllowRendering(cs<GfxTexture*> t)
+NATIVE_EXPORT_AUTO GfxTexture_GetIsReadOnly(cs<GfxTexture*> t)
 {
-    retcs t->AllowRendering();
+    retcs t->IsReadOnly();
 }
 
 NATIVE_EXPORT_AUTO GfxExternalTexture_New()

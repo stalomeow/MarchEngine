@@ -101,12 +101,12 @@ namespace march
         Out(texture);
     }
 
-    void RenderGraphBuilder::SetColorTarget(const TextureHandle& texture, RenderTargetInitMode initMode, const float color[4])
+    void RenderGraphBuilder::SetColorTarget(const TextureSliceHandle& texture, RenderTargetInitMode initMode, const float color[4])
     {
         SetColorTarget(texture, 0, initMode, color);
     }
 
-    void RenderGraphBuilder::SetColorTarget(const TextureHandle& texture, uint32_t index, RenderTargetInitMode initMode, const float color[4])
+    void RenderGraphBuilder::SetColorTarget(const TextureSliceHandle& texture, uint32_t index, RenderTargetInitMode initMode, const float color[4])
     {
         RenderGraphPass& pass = GetPass();
 
@@ -126,8 +126,11 @@ namespace march
         }
 
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        target.ResourceIndex = resourceManager->GetResourceIndex(texture);
+        target.ResourceIndex = resourceManager->GetResourceIndex(texture.Handle);
         target.IsSet = true;
+        target.Face = texture.Face;
+        target.WOrArraySlice = texture.WOrArraySlice;
+        target.MipSlice = texture.MipSlice;
         target.InitMode = initMode;
         std::copy_n(color, std::size(target.ClearColor), target.ClearColor);
 
@@ -139,7 +142,7 @@ namespace march
         OutResource(resourceManager, target.ResourceIndex);
     }
 
-    void RenderGraphBuilder::SetDepthStencilTarget(const TextureHandle& texture, RenderTargetInitMode initMode, float depth, uint8_t stencil)
+    void RenderGraphBuilder::SetDepthStencilTarget(const TextureSliceHandle& texture, RenderTargetInitMode initMode, float depth, uint8_t stencil)
     {
         RenderGraphPass& pass = GetPass();
         RenderGraphPassDepthStencilTarget& target = pass.DepthStencilTarget;
@@ -151,8 +154,11 @@ namespace march
         }
 
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
-        target.ResourceIndex = resourceManager->GetResourceIndex(texture);
+        target.ResourceIndex = resourceManager->GetResourceIndex(texture.Handle);
         target.IsSet = true;
+        target.Face = texture.Face;
+        target.WOrArraySlice = texture.WOrArraySlice;
+        target.MipSlice = texture.MipSlice;
         target.InitMode = initMode;
         target.ClearDepthValue = depth;
         target.ClearStencilValue = stencil;
@@ -521,6 +527,16 @@ namespace march
         return context.GetCommandContext();
     }
 
+    GfxRenderTargetDesc RenderGraph::ResolveRenderTarget(const RenderGraphPassRenderTarget& target)
+    {
+        GfxRenderTargetDesc desc{};
+        desc.Texture = m_ResourceManager->GetTexture(target.ResourceIndex);
+        desc.Face = target.Face;
+        desc.WOrArraySlice = target.WOrArraySlice;
+        desc.MipSlice = target.MipSlice;
+        return desc;
+    }
+
     void RenderGraph::SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass)
     {
         if (!pass.RenderFunc)
@@ -542,8 +558,7 @@ namespace march
             return;
         }
 
-        GfxTexture* colorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
-        GfxTexture* depthStencilTarget = nullptr;
+        GfxRenderTargetDesc colorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
 
         for (uint32_t i = 0; i < pass.NumColorTargets; i++)
         {
@@ -555,15 +570,18 @@ namespace march
                 continue;
             }
 
-            colorTargets[i] = m_ResourceManager->GetTexture(target.ResourceIndex);
+            colorTargets[i] = ResolveRenderTarget(target);
         }
 
         if (pass.DepthStencilTarget.IsSet)
         {
-            depthStencilTarget = m_ResourceManager->GetTexture(pass.DepthStencilTarget.ResourceIndex);
+            GfxRenderTargetDesc depthStencilTarget = ResolveRenderTarget(pass.DepthStencilTarget);
+            cmd->SetRenderTargets(pass.NumColorTargets, colorTargets, depthStencilTarget);
         }
-
-        cmd->SetRenderTargets(pass.NumColorTargets, colorTargets, depthStencilTarget);
+        else
+        {
+            cmd->SetRenderTargets(pass.NumColorTargets, colorTargets);
+        }
 
         if (pass.HasCustomViewport)
         {

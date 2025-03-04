@@ -168,7 +168,7 @@ namespace March.Core.Rendering
         public partial TextureDesc Desc { get; }
 
         [NativeProperty]
-        public partial bool AllowRendering { get; }
+        public partial bool IsReadOnly { get; }
     }
 
     internal sealed class ExternalTextureData

@@ -296,7 +296,7 @@ namespace march
                 vp.MinDepth = 0.0f;
                 vp.MaxDepth = 1.0f;
 
-                context->SetRenderTarget(intermediate);
+                context->SetColorTarget(intermediate);
                 context->SetViewport(vp);
                 context->SetDefaultScissorRect();
                 context->ClearRenderTargets(GfxClearFlags::Color);
@@ -348,7 +348,7 @@ namespace march
 
         context->BeginEvent("BlitImGui");
         {
-            context->SetRenderTarget(target);
+            context->SetColorTarget(target);
             context->SetDefaultViewport();
             context->SetDefaultScissorRect();
             context->SetTexture(textureId, intermediate);

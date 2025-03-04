@@ -17,6 +17,54 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
+    GfxRenderTargetDesc::GfxRenderTargetDesc(GfxTexture* texture)
+        : Texture(texture)
+        , Face(GfxCubemapFace::PositiveX)
+        , WOrArraySlice(0)
+        , MipSlice(0)
+    {
+    }
+
+    GfxRenderTargetDesc GfxRenderTargetDesc::Tex2D(GfxTexture* texture, uint32_t mipSlice)
+    {
+        GfxRenderTargetDesc desc{ texture };
+        desc.MipSlice = mipSlice;
+        return desc;
+    }
+
+    GfxRenderTargetDesc GfxRenderTargetDesc::Tex3D(GfxTexture* texture, uint32_t wSlice, uint32_t mipSlice)
+    {
+        GfxRenderTargetDesc desc{ texture };
+        desc.WOrArraySlice = wSlice;
+        desc.MipSlice = mipSlice;
+        return desc;
+    }
+
+    GfxRenderTargetDesc GfxRenderTargetDesc::Cube(GfxTexture* texture, GfxCubemapFace face, uint32_t mipSlice)
+    {
+        GfxRenderTargetDesc desc{ texture };
+        desc.Face = face;
+        desc.MipSlice = mipSlice;
+        return desc;
+    }
+
+    GfxRenderTargetDesc GfxRenderTargetDesc::Tex2DArray(GfxTexture* texture, uint32_t arraySlice, uint32_t mipSlice)
+    {
+        GfxRenderTargetDesc desc{ texture };
+        desc.WOrArraySlice = arraySlice;
+        desc.MipSlice = mipSlice;
+        return desc;
+    }
+
+    GfxRenderTargetDesc GfxRenderTargetDesc::CubeArray(GfxTexture* texture, GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice)
+    {
+        GfxRenderTargetDesc desc{ texture };
+        desc.Face = face;
+        desc.WOrArraySlice = arraySlice;
+        desc.MipSlice = mipSlice;
+        return desc;
+    }
+
     GfxCommandContext::GfxCommandContext(GfxDevice* device, GfxCommandType type)
         : m_Device(device)
         , m_Type(type)
@@ -93,7 +141,7 @@ namespace march
         m_ViewHeap = nullptr;
         m_SamplerHeap = nullptr;
         memset(m_ColorTargets, 0, sizeof(m_ColorTargets));
-        m_DepthStencilTarget = nullptr;
+        m_DepthStencilTarget = RenderTargetData{};
         m_NumViewports = 0;
         m_NumScissorRects = 0;
         m_OutputDesc = {};
@@ -192,87 +240,113 @@ namespace march
         m_GlobalBuffers.clear();
     }
 
-    void GfxCommandContext::SetRenderTarget(GfxTexture* colorTarget, GfxTexture* depthStencilTarget)
+    void GfxCommandContext::SetColorTarget(const GfxRenderTargetDesc& colorTarget)
     {
-        if (colorTarget == nullptr)
-        {
-            SetRenderTargets(0, nullptr, depthStencilTarget);
-        }
-        else
-        {
-            SetRenderTargets(1, &colorTarget, depthStencilTarget);
-        }
+        SetRenderTargets(1, &colorTarget, nullptr);
     }
 
-    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, GfxTexture* const* colorTargets, GfxTexture* depthStencilTarget)
+    void GfxCommandContext::SetDepthStencilTarget(const GfxRenderTargetDesc& depthStencilTarget)
     {
-        assert(numColorTargets <= std::size(m_ColorTargets));
+        SetRenderTargets(0, nullptr, &depthStencilTarget);
+    }
+
+    void GfxCommandContext::SetRenderTarget(const GfxRenderTargetDesc& colorTarget, const GfxRenderTargetDesc& depthStencilTarget)
+    {
+        SetRenderTargets(1, &colorTarget, &depthStencilTarget);
+    }
+
+    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets)
+    {
+        SetRenderTargets(numColorTargets, colorTargets, nullptr);
+    }
+
+    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets, const GfxRenderTargetDesc& depthStencilTarget)
+    {
+        SetRenderTargets(numColorTargets, colorTargets, &depthStencilTarget);
+    }
+
+    void GfxCommandContext::SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets, const GfxRenderTargetDesc* depthStencilTarget)
+    {
+        assert(numColorTargets <= D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
         if (numColorTargets == 0 && depthStencilTarget == nullptr)
         {
-            LOG_WARNING("SetRenderTargets called with no render targets");
+            LOG_WARNING("SetRenderTargets called with zero render target");
             return;
         }
 
-        // Check if the render targets are dirty
-        if (numColorTargets == m_OutputDesc.NumRTV && depthStencilTarget == m_DepthStencilTarget)
+        bool isDirty = false;
+
+        if (m_OutputDesc.NumRTV != numColorTargets)
         {
-            bool isDirty = false;
-
-            for (uint32_t i = 0; i < numColorTargets; i++)
-            {
-                if (colorTargets[i] != m_ColorTargets[i])
-                {
-                    isDirty = true;
-                    break;
-                }
-            }
-
-            if (!isDirty)
-            {
-                return;
-            }
+            isDirty = true;
+            m_OutputDesc.NumRTV = numColorTargets;
         }
 
-        m_OutputDesc.MarkDirty();
-        m_OutputDesc.NumRTV = numColorTargets;
         D3D12_CPU_DESCRIPTOR_HANDLE rtv[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
 
-        for (uint32_t i = 0; i < std::size(m_ColorTargets); i++)
+        for (uint32_t i = 0; i < numColorTargets; i++)
         {
-            if (i < numColorTargets)
-            {
-                GfxTexture* target = colorTargets[i];
-                TransitionResource(target->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+            const GfxRenderTargetDesc& desc = colorTargets[i];
+            TransitionResource(desc.Texture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-                rtv[i] = target->GetRtvDsv();
-                m_ColorTargets[i] = target;
-                m_OutputDesc.RTVFormats[i] = target->GetDesc().GetRtvDsvDXGIFormat();
-                m_OutputDesc.SampleCount = target->GetSampleCount();
-                m_OutputDesc.SampleQuality = target->GetSampleQuality();
-            }
-            else
+            rtv[i] = GetRtvDsvFromRenderTargetDesc(desc);
+            RenderTargetData rtData{ desc.Texture, rtv[i] };
+
+            if (memcmp(&m_ColorTargets[i], &rtData, sizeof(RenderTargetData)) != 0)
             {
-                m_ColorTargets[i] = nullptr;
-                m_OutputDesc.RTVFormats[i] = DXGI_FORMAT_UNKNOWN;
+                isDirty = true;
+                m_ColorTargets[i] = rtData;
+                m_OutputDesc.RTVFormats[i] = desc.Texture->GetDesc().GetRtvDsvDXGIFormat();
+                m_OutputDesc.SampleCount = desc.Texture->GetSampleCount();
+                m_OutputDesc.SampleQuality = desc.Texture->GetSampleQuality();
             }
         }
 
-        if (m_DepthStencilTarget = depthStencilTarget)
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv{};
+
+        if (depthStencilTarget != nullptr)
         {
-            TransitionResource(depthStencilTarget->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            const GfxRenderTargetDesc& desc = depthStencilTarget[0];
+            TransitionResource(desc.Texture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-            m_OutputDesc.DSVFormat = depthStencilTarget->GetDesc().GetRtvDsvDXGIFormat();
-            m_OutputDesc.SampleCount = depthStencilTarget->GetSampleCount();
-            m_OutputDesc.SampleQuality = depthStencilTarget->GetSampleQuality();
+            dsv = GetRtvDsvFromRenderTargetDesc(desc);
+            RenderTargetData rtData{ desc.Texture, dsv };
 
-            D3D12_CPU_DESCRIPTOR_HANDLE dsv = depthStencilTarget->GetRtvDsv();
-            m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, &dsv);
+            if (memcmp(&m_DepthStencilTarget, &rtData, sizeof(RenderTargetData)) != 0)
+            {
+                isDirty = true;
+                m_DepthStencilTarget = rtData;
+                m_OutputDesc.DSVFormat = desc.Texture->GetDesc().GetRtvDsvDXGIFormat();
+                m_OutputDesc.SampleCount = desc.Texture->GetSampleCount();
+                m_OutputDesc.SampleQuality = desc.Texture->GetSampleQuality();
+            }
         }
-        else
+        else if (m_DepthStencilTarget.Texture != nullptr)
         {
+            isDirty = true;
+            m_DepthStencilTarget = RenderTargetData{};
             m_OutputDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-            m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, nullptr);
+        }
+
+        if (isDirty)
+        {
+            m_OutputDesc.MarkDirty();
+
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pDsv = (depthStencilTarget != nullptr) ? &dsv : nullptr;
+            m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, pDsv);
+        }
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxCommandContext::GetRtvDsvFromRenderTargetDesc(const GfxRenderTargetDesc& desc)
+    {
+        switch (desc.Texture->GetDesc().Dimension)
+        {
+        case GfxTextureDimension::Cube:
+        case GfxTextureDimension::CubeArray:
+            return desc.Texture->GetRtvDsv(desc.Face, 1, desc.WOrArraySlice, desc.MipSlice);
+        default:
+            return desc.Texture->GetRtvDsv(desc.WOrArraySlice, 1, desc.MipSlice);
         }
     }
 
@@ -281,7 +355,7 @@ namespace march
         bool clearColor = (m_OutputDesc.NumRTV > 0 && (flags & GfxClearFlags::Color) == GfxClearFlags::Color);
         D3D12_CLEAR_FLAGS clearDepthStencil = static_cast<D3D12_CLEAR_FLAGS>(0);
 
-        if (m_DepthStencilTarget != nullptr)
+        if (m_DepthStencilTarget.Texture != nullptr)
         {
             if ((flags & GfxClearFlags::Depth) == GfxClearFlags::Depth)
             {
@@ -302,14 +376,13 @@ namespace march
             {
                 for (uint32_t i = 0; i < m_OutputDesc.NumRTV; i++)
                 {
-                    m_CommandList->ClearRenderTargetView(m_ColorTargets[i]->GetRtvDsv(), color, 0, nullptr);
+                    m_CommandList->ClearRenderTargetView(m_ColorTargets[i].RtvDsv, color, 0, nullptr);
                 }
             }
 
             if (clearDepthStencil != 0)
             {
-                D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsv();
-                m_CommandList->ClearDepthStencilView(dsv, clearDepthStencil, depth, static_cast<UINT8>(stencil), 0, nullptr);
+                m_CommandList->ClearDepthStencilView(m_DepthStencilTarget.RtvDsv, clearDepthStencil, depth, static_cast<UINT8>(stencil), 0, nullptr);
             }
         }
     }
@@ -324,12 +397,12 @@ namespace march
 
         FlushResourceBarriers();
 
-        m_CommandList->ClearRenderTargetView(m_ColorTargets[index]->GetRtvDsv(), color, 0, nullptr);
+        m_CommandList->ClearRenderTargetView(m_ColorTargets[index].RtvDsv, color, 0, nullptr);
     }
 
     void GfxCommandContext::ClearDepthStencilTarget(float depth, uint8_t stencil)
     {
-        if (m_DepthStencilTarget == nullptr)
+        if (m_DepthStencilTarget.Texture == nullptr)
         {
             LOG_WARNING("Failed to clear depth-stencil target: no depth-stencil target is set");
             return;
@@ -337,9 +410,8 @@ namespace march
 
         FlushResourceBarriers();
 
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_DepthStencilTarget->GetRtvDsv();
         constexpr D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL;
-        m_CommandList->ClearDepthStencilView(dsv, flags, depth, static_cast<UINT8>(stencil), 0, nullptr);
+        m_CommandList->ClearDepthStencilView(m_DepthStencilTarget.RtvDsv, flags, depth, static_cast<UINT8>(stencil), 0, nullptr);
     }
 
     void GfxCommandContext::SetViewport(const D3D12_VIEWPORT& viewport)
@@ -447,7 +519,7 @@ namespace march
 
     GfxTexture* GfxCommandContext::GetFirstRenderTarget() const
     {
-        return m_OutputDesc.NumRTV > 0 ? m_ColorTargets[0] : m_DepthStencilTarget;
+        return m_OutputDesc.NumRTV > 0 ? m_ColorTargets[0].Texture : m_DepthStencilTarget.Texture;
     }
 
     GfxTexture* GfxCommandContext::FindTexture(int32_t id, GfxTextureElement* pOutElement, uint32_t* pOutUnorderedAccessMipSlice)

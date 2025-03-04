@@ -229,6 +229,11 @@ namespace march
             throw GfxException("Texture is not created with UnorderedAccess flag");
         }
 
+        if (IsReadOnly())
+        {
+            throw GfxException("Can not get UAV for read-only texture");
+        }
+
         bool useMSAA = m_Desc.MSAASamples > 1;
 
         // 如果有 MSAA 的话，就没有 mip slice
@@ -321,9 +326,9 @@ namespace march
 
     D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetRtvDsv(uint32_t wOrArraySlice, uint32_t wOrArraySize, uint32_t mipSlice)
     {
-        if (!AllowRendering())
+        if (IsReadOnly())
         {
-            throw GfxException("Texture is not allowed for rendering");
+            throw GfxException("Can not get RTV/DSV for read-only texture");
         }
 
         RtvDsvQuery query = { wOrArraySlice, wOrArraySize, mipSlice };
@@ -819,7 +824,7 @@ namespace march
         ID3D12Device4* d3dDevice = device->GetD3DDevice4();
 
         ComPtr<ID3D12Resource> resource = nullptr;
-        CHECK_HR(CreateTextureEx(d3dDevice, m_Image.GetMetadata(), desc.GetResFlags(false), flags, resource.GetAddressOf()));
+        CHECK_HR(CreateTextureEx(d3dDevice, m_Image.GetMetadata(), desc.GetResFlags(true), flags, resource.GetAddressOf()));
         GfxUtils::SetName(resource.Get(), m_Name);
 
         // CreateTextureEx 使用 D3D12_RESOURCE_STATE_COMMON
@@ -846,12 +851,22 @@ namespace march
         resDesc.Width = static_cast<UINT64>(std::max(1u, desc.Width));
         resDesc.Height = static_cast<UINT>(std::max(1u, desc.Height));
         resDesc.DepthOrArraySize = static_cast<UINT16>(desc.DepthOrArraySize);
-        resDesc.MipLevels = 1;
         resDesc.Format = desc.GetResDXGIFormat();
         resDesc.SampleDesc.Count = static_cast<UINT>(desc.MSAASamples);
         resDesc.SampleDesc.Quality = static_cast<UINT>(device->GetMSAAQuality(resDesc.Format, resDesc.SampleDesc.Count));
         resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        resDesc.Flags = desc.GetResFlags(true);
+        resDesc.Flags = desc.GetResFlags(false);
+
+        if (desc.HasFlag(GfxTextureFlags::Mipmaps))
+        {
+            // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_resource_desc
+            // When 0 is used, the API will automatically calculate the maximum mip levels supported and use that.
+            resDesc.MipLevels = 0;
+        }
+        else
+        {
+            resDesc.MipLevels = 1;
+        }
 
         switch (desc.Dimension)
         {

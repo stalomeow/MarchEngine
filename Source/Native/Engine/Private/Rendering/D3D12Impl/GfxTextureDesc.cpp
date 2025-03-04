@@ -282,11 +282,11 @@ namespace march
         return DXGI_FORMAT_UNKNOWN;
     }
 
-    D3D12_RESOURCE_FLAGS GfxTextureDesc::GetResFlags(bool allowRendering) const noexcept
+    D3D12_RESOURCE_FLAGS GfxTextureDesc::GetResFlags(bool isReadOnly) const noexcept
     {
         D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
 
-        if (allowRendering)
+        if (!isReadOnly)
         {
             if (IsDepthStencil())
             {
@@ -296,11 +296,11 @@ namespace march
             {
                 flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
             }
-        }
 
-        if (HasFlag(GfxTextureFlags::UnorderedAccess))
-        {
-            flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            if (HasFlag(GfxTextureFlags::UnorderedAccess))
+            {
+                flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            }
         }
 
         return flags;

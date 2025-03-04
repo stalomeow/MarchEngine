@@ -386,6 +386,8 @@ namespace march
         const GfxBufferDesc& GetDesc() const { return m_Manager->GetBufferDesc(m_ResourceIndex); }
     };
 
+    struct TextureSliceHandle;
+
     class TextureHandle
     {
         friend RenderGraphResourceManager;
@@ -413,5 +415,20 @@ namespace march
         int32 GetId() const { return m_Manager->GetResourceId(m_ResourceIndex); }
 
         const GfxTextureDesc& GetDesc() const { return m_Manager->GetTextureDesc(m_ResourceIndex); }
+
+        operator TextureSliceHandle() const;
+        TextureSliceHandle Slice2D(uint32_t mipSlice = 0) const;
+        TextureSliceHandle Slice3D(uint32_t wSlice = 0, uint32_t mipSlice = 0) const;
+        TextureSliceHandle SliceCube(GfxCubemapFace face, uint32_t mipSlice = 0) const;
+        TextureSliceHandle Slice2DArray(uint32_t arraySlice = 0, uint32_t mipSlice = 0) const;
+        TextureSliceHandle SliceCubeArray(GfxCubemapFace face, uint32_t arraySlice = 0, uint32_t mipSlice = 0) const;
+    };
+
+    struct TextureSliceHandle
+    {
+        TextureHandle Handle;
+        GfxCubemapFace Face;
+        uint32_t WOrArraySlice;
+        uint32_t MipSlice;
     };
 }

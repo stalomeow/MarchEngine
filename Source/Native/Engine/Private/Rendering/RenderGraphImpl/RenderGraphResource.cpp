@@ -75,7 +75,7 @@ namespace march
             [](const RenderGraphResourcePooledBuffer& b) -> bool { return true; },
             [](const RenderGraphResourceExternalBuffer& b) -> bool { return !IsSubAllocatedBuffer(b.Buffer); },
             [](const RenderGraphResourcePooledTexture& t) -> bool { return true; },
-            [](const RenderGraphResourceExternalTexture& t) -> bool { return t.Texture->AllowRendering(); },
+            [](const RenderGraphResourceExternalTexture& t) -> bool { return !t.Texture->IsReadOnly(); },
             [](auto&&) -> bool { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }
@@ -339,5 +339,35 @@ namespace march
     std::optional<std::pair<size_t, size_t>> RenderGraphResourceManager::GetLifetimePassIndexRange(size_t resourceIndex) const
     {
         return m_Resources[resourceIndex].GetLifetimePassIndexRange();
+    }
+
+    TextureHandle::operator TextureSliceHandle() const
+    {
+        return TextureSliceHandle{ *this, GfxCubemapFace::PositiveX, 0, 0 };
+    }
+
+    TextureSliceHandle TextureHandle::Slice2D(uint32_t mipSlice) const
+    {
+        return TextureSliceHandle{ *this, GfxCubemapFace::PositiveX, 0, mipSlice };
+    }
+
+    TextureSliceHandle TextureHandle::Slice3D(uint32_t wSlice, uint32_t mipSlice) const
+    {
+        return TextureSliceHandle{ *this, GfxCubemapFace::PositiveX, wSlice, mipSlice };
+    }
+
+    TextureSliceHandle TextureHandle::SliceCube(GfxCubemapFace face, uint32_t mipSlice) const
+    {
+        return TextureSliceHandle{ *this, face, 0, mipSlice };
+    }
+
+    TextureSliceHandle TextureHandle::Slice2DArray(uint32_t arraySlice, uint32_t mipSlice) const
+    {
+        return TextureSliceHandle{ *this, GfxCubemapFace::PositiveX, arraySlice, mipSlice };
+    }
+
+    TextureSliceHandle TextureHandle::SliceCubeArray(GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice) const
+    {
+        return TextureSliceHandle{ *this, face, arraySlice, mipSlice };
     }
 }

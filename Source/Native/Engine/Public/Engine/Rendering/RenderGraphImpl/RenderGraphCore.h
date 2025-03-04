@@ -24,21 +24,25 @@ namespace march
         Clear,
     };
 
-    struct RenderGraphPassColorTarget
+    struct RenderGraphPassRenderTarget
     {
         size_t ResourceIndex = 0;
         bool IsSet = false;
 
+        GfxCubemapFace Face = GfxCubemapFace::PositiveX;
+        uint32_t WOrArraySlice = 0;
+        uint32_t MipSlice = 0;
+
         RenderTargetInitMode InitMode = RenderTargetInitMode::Load;
+    };
+
+    struct RenderGraphPassColorTarget : public RenderGraphPassRenderTarget
+    {
         float ClearColor[4]{};
     };
 
-    struct RenderGraphPassDepthStencilTarget
+    struct RenderGraphPassDepthStencilTarget : public RenderGraphPassRenderTarget
     {
-        size_t ResourceIndex = 0;
-        bool IsSet = false;
-
-        RenderTargetInitMode InitMode = RenderTargetInitMode::Load;
         float ClearDepthValue = GfxUtils::FarClipPlaneDepth;
         uint8_t ClearStencilValue = 0;
     };
@@ -127,9 +131,9 @@ namespace march
         // Shortcut for In and Out
         void InOut(const TextureHandle& texture);
 
-        void SetColorTarget(const TextureHandle& texture, RenderTargetInitMode initMode, const float color[4] = DirectX::Colors::Black);
-        void SetColorTarget(const TextureHandle& texture, uint32_t index = 0, RenderTargetInitMode initMode = RenderTargetInitMode::Load, const float color[4] = DirectX::Colors::Black);
-        void SetDepthStencilTarget(const TextureHandle& texture, RenderTargetInitMode initMode = RenderTargetInitMode::Load, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
+        void SetColorTarget(const TextureSliceHandle& texture, RenderTargetInitMode initMode, const float color[4] = DirectX::Colors::Black);
+        void SetColorTarget(const TextureSliceHandle& texture, uint32_t index = 0, RenderTargetInitMode initMode = RenderTargetInitMode::Load, const float color[4] = DirectX::Colors::Black);
+        void SetDepthStencilTarget(const TextureSliceHandle& texture, RenderTargetInitMode initMode = RenderTargetInitMode::Load, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
 
         void SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
 
@@ -164,6 +168,7 @@ namespace march
         void RequestPassResources(const RenderGraphPass& pass);
         void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass);
         GfxCommandContext* EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass);
+        GfxRenderTargetDesc ResolveRenderTarget(const RenderGraphPassRenderTarget& target);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ReleasePassResources(const RenderGraphPass& pass);
         void ExecutePasses();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Object.h"
 #include "Engine/Memory/RefCounting.h"
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
@@ -187,7 +188,7 @@ namespace march
         DXGI_FORMAT GetResDXGIFormat() const noexcept;
         DXGI_FORMAT GetRtvDsvDXGIFormat() const noexcept;
         DXGI_FORMAT GetSrvUavDXGIFormat(GfxTextureElement element = GfxTextureElement::Default) const noexcept;
-        D3D12_RESOURCE_FLAGS GetResFlags(bool allowRendering) const noexcept;
+        D3D12_RESOURCE_FLAGS GetResFlags(bool isReadOnly) const noexcept;
 
         // 如果 updateFlags 为 true，会根据 format 更新 Flags，例如 sRGB
         void SetResDXGIFormat(DXGI_FORMAT format, bool updateFlags = false);
@@ -216,7 +217,7 @@ namespace march
     public:
         virtual ~GfxTexture();
 
-        virtual bool AllowRendering() const = 0;
+        virtual bool IsReadOnly() const = 0;
 
         D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxTextureElement element = GfxTextureElement::Default, uint32_t mipSlice = 0);
@@ -310,7 +311,7 @@ namespace march
         void LoadFromFile(const std::string& name, const std::string& filePath, const LoadTextureFileArgs& args);
 
         const std::string& GetName() const { return m_Name; }
-        bool AllowRendering() const override { return false; }
+        bool IsReadOnly() const override { return true; }
         uint8_t* GetPixelsData() const { return m_Image.GetPixels(); }
         size_t GetPixelsSize() const { return m_Image.GetPixelsSize(); }
 
@@ -337,6 +338,6 @@ namespace march
         GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTexureAllocStrategy allocationStrategy);
         GfxRenderTexture(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc);
 
-        bool AllowRendering() const override { return true; }
+        bool IsReadOnly() const override { return false; }
     };
 }

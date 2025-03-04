@@ -169,6 +169,23 @@ namespace march
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxClearFlags);
 
+    struct GfxRenderTargetDesc
+    {
+        GfxTexture* Texture;
+        GfxCubemapFace Face;
+        uint32_t WOrArraySlice;
+        uint32_t MipSlice;
+
+        GfxRenderTargetDesc() = default;
+        GfxRenderTargetDesc(GfxTexture* texture);
+
+        static GfxRenderTargetDesc Tex2D(GfxTexture* texture, uint32_t mipSlice = 0);
+        static GfxRenderTargetDesc Tex3D(GfxTexture* texture, uint32_t wSlice = 0, uint32_t mipSlice = 0);
+        static GfxRenderTargetDesc Cube(GfxTexture* texture, GfxCubemapFace face, uint32_t mipSlice = 0);
+        static GfxRenderTargetDesc Tex2DArray(GfxTexture* texture, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
+        static GfxRenderTargetDesc CubeArray(GfxTexture* texture, GfxCubemapFace face, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
+    };
+
     // 不要跨帧使用
     class GfxCommandContext final
     {
@@ -193,8 +210,11 @@ namespace march
         void SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
         void UnsetBuffers();
 
-        void SetRenderTarget(GfxTexture* colorTarget, GfxTexture* depthStencilTarget = nullptr);
-        void SetRenderTargets(uint32_t numColorTargets, GfxTexture* const* colorTargets, GfxTexture* depthStencilTarget);
+        void SetColorTarget(const GfxRenderTargetDesc& colorTarget);
+        void SetDepthStencilTarget(const GfxRenderTargetDesc& depthStencilTarget);
+        void SetRenderTarget(const GfxRenderTargetDesc& colorTarget, const GfxRenderTargetDesc& depthStencilTarget);
+        void SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets);
+        void SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets, const GfxRenderTargetDesc& depthStencilTarget);
         void ClearRenderTargets(GfxClearFlags flags = GfxClearFlags::All, const float color[4] = DirectX::Colors::Black, float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
         void ClearColorTarget(uint32_t index, const float color[4] = DirectX::Colors::Black);
         void ClearDepthStencilTarget(float depth = GfxUtils::FarClipPlaneDepth, uint8_t stencil = 0);
@@ -244,8 +264,14 @@ namespace march
         GfxDescriptorHeap* m_ViewHeap;
         GfxDescriptorHeap* m_SamplerHeap;
 
-        GfxTexture* m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
-        GfxTexture* m_DepthStencilTarget;
+        struct RenderTargetData
+        {
+            GfxTexture* Texture;
+            D3D12_CPU_DESCRIPTOR_HANDLE RtvDsv;
+        };
+
+        RenderTargetData m_ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
+        RenderTargetData m_DepthStencilTarget;
 
         uint32_t m_NumViewports;
         D3D12_VIEWPORT m_Viewports[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
@@ -284,6 +310,9 @@ namespace march
         };
 
         GfxBuffer m_InstanceBuffer;
+
+        void SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets, const GfxRenderTargetDesc* depthStencilTarget);
+        static D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsvFromRenderTargetDesc(const GfxRenderTargetDesc& desc);
 
         GfxTexture* GetFirstRenderTarget() const;
         GfxTexture* FindTexture(int32_t id, GfxTextureElement* pOutElement, uint32_t* pOutUnorderedAccessMipSlice);
