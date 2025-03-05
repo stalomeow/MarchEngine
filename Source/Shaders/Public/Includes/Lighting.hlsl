@@ -4,6 +4,7 @@
 #include "Common.hlsl"
 #include "BRDF.hlsl"
 #include "Shadow.hlsl"
+#include "SH9.hlsl"
 
 struct LightRawData
 {
@@ -168,7 +169,7 @@ float GetDebugClusterNumLightsView(int numLights)
     return numLights / 16.0;
 }
 
-float3 FragmentPBRLighting(Light light, BRDFData data, float3 N, float3 V, float NoV)
+float3 DirectLighting(Light light, BRDFData data, float3 N, float3 V, float NoV)
 {
     float3 L = light.direction;
     float3 H = normalize(L + V);
@@ -176,7 +177,7 @@ float3 FragmentPBRLighting(Light light, BRDFData data, float3 N, float3 V, float
     float NoH = saturate(dot(N, H));
     float LoH = saturate(dot(L, H));
 
-    float3 brdf = DiffuseSpecularBRDF(data, NoV, NoL, NoH, LoH);
+    float3 brdf = DirectBRDF(data, NoV, NoL, NoH, LoH);
     float3 irradiance = light.color * (light.attenuation * NoL);
     return brdf * irradiance;
 }
@@ -192,7 +193,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     //return GetDebugClusterViewSpaceFrustumView(clusterId, 4, positionVS);
     //return GetDebugClusterNumLightsView(punctualLightRange.y);
 
-    float3 result = emission + (occlusion * (0.03 * data.albedo));
+    float3 result = emission;
 
     float3 N = normalWS;
     float3 V = normalize(GetCameraWorldSpacePosition() - positionWS);
@@ -203,7 +204,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     for (int i = 0; i < GetNumDirectionalLights(); i++)
     {
         Light light = GetLight(positionWS, _DirectionalLights[i], shadow);
-        result += FragmentPBRLighting(light, data, N, V, NoV);
+        result += DirectLighting(light, data, N, V, NoV);
     }
 
     // Punctual lights
@@ -211,8 +212,11 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     {
         int punctualLightIndex = _ClusterPunctualLightIndices[punctualLightRange.x + i];
         Light light = GetLight(positionWS, _PunctualLights[punctualLightIndex], shadow);
-        result += FragmentPBRLighting(light, data, N, V, NoV);
+        result += DirectLighting(light, data, N, V, NoV);
     }
+
+    // Environment
+    result += EnvironmentDiffuseBRDF(data, NoV) * SampleSH9(N) * occlusion;
 
     return result;
 }

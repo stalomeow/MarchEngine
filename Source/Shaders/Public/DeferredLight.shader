@@ -45,11 +45,7 @@ Shader "DeferredLight"
         float4 frag(Varyings input) : SV_Target
         {
             GBufferData gbuffer = LoadGBufferData(input.positionCS.xy);
-
-            BRDFData brdfData;
-            brdfData.albedo = gbuffer.albedo;
-            brdfData.metallic = gbuffer.metallic;
-            brdfData.a2 = RoughnessToAlpha2(gbuffer.roughness);
+            BRDFData brdfData = GetBRDFData(gbuffer.albedo, gbuffer.metallic, gbuffer.roughness);
 
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
             float3 positionVS = TransformWorldToView(positionWS);

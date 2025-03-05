@@ -11,14 +11,17 @@
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)public\Blur.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\CullLight.compute" />
+    <None Include="$(MSBuildThisFileDirectory)public\DiffuseIrradiance.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\AmbientOcclusion.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\BRDF.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Common.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\Constants.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\GBuffer.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Packing.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Sampler.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\SH9.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Lit.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\DearImGui.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\DeferredLight.shader" />
@@ -28,9 +31,6 @@
     <None Include="$(MSBuildThisFileDirectory)README.md" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
     <None Include="$(MSBuildThisFileDirectory)Public\Skybox.shader" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Public\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)shadertoolsconfig.json" />

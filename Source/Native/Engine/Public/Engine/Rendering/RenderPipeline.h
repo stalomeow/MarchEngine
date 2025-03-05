@@ -56,6 +56,8 @@ namespace march
         BufferHandle VisibleLightCounter;
         BufferHandle MaxClusterZIds;
 
+        BufferHandle SH9Coefs;
+
         BufferHandle CbSSAO;
         TextureHandle SSAOMap;
         TextureHandle SSAOMapTemp;
@@ -77,6 +79,7 @@ namespace march
             ClusterPunctualLightIndices = {};
             VisibleLightCounter = {};
             MaxClusterZIds = {};
+            SH9Coefs = {};
             CbSSAO = {};
             SSAOMap = {};
             SSAOMapTemp = {};
@@ -131,18 +134,23 @@ namespace march
         void GenerateSSAORandomVectorMap();
         void SSAO();
 
-    public:
+        void GenerateDiffuseIrradianceMap();
+
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Material> m_SkyboxMaterial = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
+        asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightIndicesBuffer = nullptr;
         std::unique_ptr<GfxBuffer> m_VisibleLightCounterBuffer = nullptr;
         std::unique_ptr<GfxBuffer> m_MaxClusterZIdsBuffer = nullptr;
+
+        std::unique_ptr<GfxTexture> m_DiffuseIrradianceMap = nullptr;
+        std::unique_ptr<GfxBuffer> m_SH9Coefs = nullptr;
 
         RenderPipelineResource m_Resource{};
 

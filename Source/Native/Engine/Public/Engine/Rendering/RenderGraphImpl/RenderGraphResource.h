@@ -46,7 +46,7 @@ namespace march
         {
             GfxDevice* device = GetGfxDevice();
             std::string name = "RenderGraphTexture" + std::to_string(allocCounter);
-            return std::make_unique<GfxRenderTexture>(device, name, desc, GfxTexureAllocStrategy::DefaultHeapPlaced);
+            return std::make_unique<GfxRenderTexture>(device, name, desc, GfxTextureAllocStrategy::DefaultHeapPlaced);
         }
     };
 

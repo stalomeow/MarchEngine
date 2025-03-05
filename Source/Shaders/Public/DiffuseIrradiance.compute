@@ -1,0 +1,160 @@
+#pragma kernel CalcIrradianceMain
+
+#include "Includes/Constants.hlsl"
+
+#define SQRT3                  1.73205080757
+#define NUM_SAMPLES_IRRADIANCE 4096
+
+static const float3x3 _UVToDirMatrices[6] =
+{
+    // +X
+    {
+        0, 0, SQRT3 / 4.0,
+        0, -SQRT3 / 2.0, SQRT3 / 4.0,
+        -SQRT3 / 2.0, 0, SQRT3 / 4.0,
+    },
+    // -X
+    {
+        0, 0, -SQRT3 / 4.0,
+        0, -SQRT3 / 2.0, SQRT3 / 4.0,
+        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
+    },
+    // +Y
+    {
+        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
+        0, 0, SQRT3 / 4.0,
+        0, SQRT3 / 2.0, -SQRT3 / 4.0,
+    },
+    // -Y
+    {
+        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
+        0, 0, -SQRT3 / 4.0,
+        0, -SQRT3 / 2.0, SQRT3 / 4.0,
+    },
+    // +Z
+    {
+        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
+        0, -SQRT3 / 2.0, SQRT3 / 4.0,
+        0, 0, SQRT3 / 4.0,
+    },
+    // -Z
+    {
+        -SQRT3 / 2.0, 0, SQRT3 / 4.0,
+        0, -SQRT3 / 2.0, SQRT3 / 4.0,
+        0, 0, -SQRT3 / 4.0,
+    },
+};
+
+TextureCube _RadianceMap;
+SamplerState sampler_RadianceMap;
+RWTexture2DArray<float3> _IrradianceMap;
+
+float RadicalInverse_VdC(uint bits)
+{
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+
+float2 Hammersley(uint i, uint N)
+{
+    return float2(float(i) / float(N), RadicalInverse_VdC(i));
+}
+
+float3 ImportanceSampleCosineHemisphere(float2 xi, float3x3 tbn)
+{
+    // Malley's Method
+    float r = sqrt(xi.x);
+    float phi = 2.0 * PI * xi.y;
+
+    float x = r * cos(phi);
+    float y = r * sin(phi);
+    float z = sqrt(1.0 - x * x - y * y);
+    return normalize(mul(tbn, float3(x, y, z)));
+}
+
+float3 SampleIrradiance(float3 N)
+{
+    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
+    float3 tangent = normalize(cross(up, N));
+    float3 bitangent = cross(N, tangent);
+    float3x3 tbn = transpose(float3x3(tangent, bitangent, N)); // float3x3() 是行主序矩阵
+
+    float3 irradiance = 0;
+
+    for (int i = 0; i < NUM_SAMPLES_IRRADIANCE; i++)
+    {
+        float2 xi = Hammersley(i, NUM_SAMPLES_IRRADIANCE);
+        float3 L = ImportanceSampleCosineHemisphere(xi, tbn);
+        irradiance += _RadianceMap.SampleLevel(sampler_RadianceMap, L, 0).rgb; // cos 项和 pdf 约掉了
+    }
+
+    return irradiance / float(NUM_SAMPLES_IRRADIANCE);
+}
+
+[numthreads(4, 4, 6)]
+void CalcIrradianceMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
+{
+    float width, height, elements;
+    _IrradianceMap.GetDimensions(width, height, elements);
+
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    int cubeFace = gtid.z;
+    float3 uv = float3(dtid.x / width, dtid.y / height, 1.0);
+    float3 N = normalize(mul(_UVToDirMatrices[cubeFace], uv));
+    _IrradianceMap[int3(dtid.xy, cubeFace)] = SampleIrradiance(N);
+}
+
+#pragma kernel ProjSH9Main
+
+#define SH9_CALCULATING
+#include "Includes/SH9.hlsl"
+
+#define NUM_SAMPLES_SH9 4096
+
+TextureCube _SH9InputMap;
+SamplerState sampler_SH9InputMap;
+
+float3 SampleUniformSphere(float2 xi)
+{
+    float cosTheta = 1.0 - 2.0 * xi.x;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float phi = 2.0 * PI * xi.y;
+
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float z = cosTheta;
+    return float3(x, y, z);
+}
+
+float3 CalcSH9Coef(int basisIndex)
+{
+    float3 coef = 0;
+
+    for (int i = 0; i < NUM_SAMPLES_SH9; i++)
+    {
+        float2 xi = Hammersley(i, NUM_SAMPLES_SH9);
+        float3 dir = SampleUniformSphere(xi);
+        float3 input = _SH9InputMap.SampleLevel(sampler_SH9InputMap, dir, 0).rgb;
+
+        float basis[9];
+        GetSH9Basis(dir, basis);
+        coef += input * basis[basisIndex];
+    }
+
+    // pdf 是 1 / (4 * PI)
+    return coef * 4 * PI / NUM_SAMPLES_SH9;
+}
+
+[numthreads(9, 1, 1)]
+void ProjSH9Main(int3 dtid : SV_DispatchThreadID)
+{
+    _SH9Coefs[dtid.x] = CalcSH9Coef(dtid.x);
+}

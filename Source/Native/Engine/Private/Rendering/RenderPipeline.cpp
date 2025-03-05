@@ -28,6 +28,7 @@ namespace march
         m_SkyboxMaterial.reset("Assets/skybox.mat");
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
+        m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
         GenerateSSAORandomVectorMap();
 
         GfxBufferDesc desc1{};
@@ -59,6 +60,8 @@ namespace march
         m_MaxClusterZIdsBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_MaxClusterZIds", desc4);
 
         m_RenderGraph = std::make_unique<RenderGraph>();
+
+        GenerateDiffuseIrradianceMap();
     }
 
     RenderPipeline::~RenderPipeline() {}
@@ -83,6 +86,7 @@ namespace march
             m_Resource.ColorTarget = m_RenderGraph->ImportTexture("_CameraColorTarget", display->GetColorBuffer());
             m_Resource.DepthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
             m_Resource.CbCamera = CreateCameraConstantBuffer("cbCamera", camera);
+            m_Resource.SH9Coefs = m_RenderGraph->ImportBuffer("_SH9Coefs", m_SH9Coefs.get());
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
             CullLights();
@@ -324,6 +328,7 @@ namespace march
         builder.In(m_Resource.SSAOMap);
         builder.In(m_Resource.CbShadow);
         builder.In(m_Resource.ShadowMap);
+        builder.In(m_Resource.SH9Coefs);
 
         builder.SetColorTarget(m_Resource.ColorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
@@ -343,6 +348,7 @@ namespace march
             context.SetVariable(m_Resource.SSAOMap);
             context.SetVariable(m_Resource.CbShadow);
             context.SetVariable(m_Resource.ShadowMap);
+            context.SetVariable(m_Resource.SH9Coefs);
 
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_DeferredLitMaterial.get(), 0);
         });
@@ -578,5 +584,49 @@ namespace march
             kernelIndex = m_SSAOShader->FindKernel("VBlurMain");
             context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
         });
+    }
+
+    void RenderPipeline::GenerateDiffuseIrradianceMap()
+    {
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R11G11B10_Float;
+        desc.Flags = GfxTextureFlags::UnorderedAccess;
+        desc.Dimension = GfxTextureDimension::Cube;
+        desc.Width = 256;
+        desc.Height = 256;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Bilinear;
+        desc.Wrap = GfxTextureWrapMode::Repeat;
+        desc.MipmapBias = 0;
+        m_DiffuseIrradianceMap = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_DiffuseIrradianceMap", desc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+
+        GfxBufferDesc sh9Desc{};
+        sh9Desc.Stride = sizeof(XMFLOAT3);
+        sh9Desc.Count = 9;
+        sh9Desc.Usages = GfxBufferUsages::Structured | GfxBufferUsages::RWStructured;
+        sh9Desc.Flags = GfxBufferFlags::None;
+        m_SH9Coefs = std::make_unique<GfxBuffer>(GetGfxDevice(), "_SH9Coefs", sh9Desc);
+
+        GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+        cmd->BeginEvent("BakeDiffuseIrradiance");
+        {
+            GfxTexture* skybox = nullptr;
+            m_SkyboxMaterial->GetTexture("_Cubemap", &skybox);
+
+            cmd->SetTexture("_RadianceMap", skybox);
+            cmd->SetTexture("_IrradianceMap", m_DiffuseIrradianceMap.get());
+
+            std::optional<size_t> kernelIndex1 = m_DiffuseIrradianceShader->FindKernel("CalcIrradianceMain");
+            cmd->DispatchComputeByThreadCount(m_DiffuseIrradianceShader.get(), *kernelIndex1, desc.Width, desc.Height, 6);
+
+            cmd->SetBuffer("_SH9Coefs", m_SH9Coefs.get());
+            cmd->SetTexture("_SH9InputMap", m_DiffuseIrradianceMap.get());
+
+            std::optional<size_t> kernelIndex2 = m_DiffuseIrradianceShader->FindKernel("ProjSH9Main");
+            cmd->DispatchCompute(m_DiffuseIrradianceShader.get(), *kernelIndex2, 1, 1, 1);
+        }
+        cmd->EndEvent();
+        cmd->SubmitAndRelease();
     }
 }

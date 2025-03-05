@@ -1,20 +1,25 @@
 #ifndef _BRDF_INCLUDED
 #define _BRDF_INCLUDED
 
-#define PI      3.14159265
-#define FLT_EPS 5.960464478e-8 // 2^-24, machine epsilon: 1 + EPS = 1 (half of the ULP for 1.0f)
+#include "Common.hlsl"
+#include "Constants.hlsl"
 
 struct BRDFData
 {
-    float3 albedo;
-    float metallic;
-    float a2;
+    float3 f0;
+    float3 diffuseBRDF; // Lambertian diffuse BRDF = albedo / PI
+    float roughness;
+    float a2; // a = roughness^2
 };
 
-float RoughnessToAlpha2(float roughness)
+BRDFData GetBRDFData(float3 albedo, float metallic, float roughness)
 {
-    float a = roughness * roughness;
-    return a * a;
+    BRDFData data;
+    data.f0 = lerp(0.04, albedo, metallic);
+    data.diffuseBRDF = lerp(albedo, 0, metallic) / PI;
+    data.roughness = roughness;
+    data.a2 = Square(roughness * roughness);
+    return data;
 }
 
 float3 F_Schlick(float3 f0, float3 f90, float cosTheta)
@@ -38,15 +43,19 @@ float V_SmithJointGGX(float a2, float NoV, float NoL)
     return 0.5 * rcp(smithV + smithL + FLT_EPS); // 必须加 epsilon，避免除以 0
 }
 
-float3 DiffuseSpecularBRDF(BRDFData data, float NoV, float NoL, float NoH, float LoH)
+float3 DirectBRDF(BRDFData data, float NoV, float NoL, float NoH, float LoH)
 {
-    float3 f0 = lerp(0.04, data.albedo, data.metallic);
-    float3 F = F_Schlick(f0, 1.0, LoH);
-
-    float3 diffuseAlbedo = lerp(data.albedo, 0, data.metallic);
-    float3 diffuseTerm = (1.0 - F) * diffuseAlbedo / PI;
+    float3 F = F_Schlick(data.f0, 1.0, LoH);
+    float3 diffuseTerm = (1.0 - F) * data.diffuseBRDF;
     float3 specularTerm = F * D_GGX(data.a2, NoH) * V_SmithJointGGX(data.a2, NoV, NoL);
     return diffuseTerm + specularTerm;
+}
+
+float3 EnvironmentDiffuseBRDF(BRDFData data, float NoV)
+{
+    float3 f90 = max(1.0 - data.roughness, data.f0);
+    float3 F = F_Schlick(data.f0, f90, NoV);
+    return (1.0 - F) * data.diffuseBRDF;
 }
 
 #endif // _BRDF_INCLUDED
