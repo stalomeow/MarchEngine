@@ -215,7 +215,7 @@ namespace March.Editor.AssetPipeline
                 throw new InvalidOperationException("Can not create an asset outside project folder");
             }
 
-            AssetImporter? importer = GetOrCreateAssetImporter(location.AssetPath, out bool isNewlyCreated);
+            AssetImporter? importer = GetOrCreateAssetImporter(location.AssetPath, allowNonExistingAsset: true, out bool isNewlyCreated);
 
             if (importer is not DirectAssetImporter directAssetImporter || !isNewlyCreated)
             {
@@ -397,7 +397,7 @@ namespace March.Editor.AssetPipeline
 
         public static AssetImporter? GetAssetImporter(string path, AssetReimportMode mode = AssetReimportMode.FastCheck)
         {
-            AssetImporter? importer = GetOrCreateAssetImporter(path, out bool isNewlyCreated);
+            AssetImporter? importer = GetOrCreateAssetImporter(path, allowNonExistingAsset: false, out bool isNewlyCreated);
 
             if (importer != null)
             {
@@ -494,7 +494,7 @@ namespace March.Editor.AssetPipeline
             }
         }
 
-        private static AssetImporter? GetOrCreateAssetImporter(string path, out bool isNewlyCreated)
+        private static AssetImporter? GetOrCreateAssetImporter(string path, bool allowNonExistingAsset, out bool isNewlyCreated)
         {
             var location = AssetLocation.FromPath(path);
 
@@ -510,13 +510,17 @@ namespace March.Editor.AssetPipeline
             }
             else
             {
-                // 允许给当前不存在的资产创建 DirectAssetImporter
+                if (!allowNonExistingAsset && !File.Exists(location.AssetFullPath) && !Directory.Exists(location.AssetFullPath))
+                {
+                    if (File.Exists(location.ImporterFullPath))
+                    {
+                        Log.Message(LogLevel.Info, "Importer file exists but asset file does not", $"{location.ImporterFullPath}");
+                        File.Delete(location.ImporterFullPath);
+                    }
 
-                //if (!File.Exists(location.AssetFullPath) && !Directory.Exists(location.AssetFullPath))
-                //{
-                //    isNewlyCreated = false;
-                //    return null;
-                //}
+                    isNewlyCreated = false;
+                    return null;
+                }
 
                 if (File.Exists(location.ImporterFullPath))
                 {
