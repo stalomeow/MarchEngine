@@ -56,7 +56,7 @@ namespace march
         BufferHandle VisibleLightCounter;
         BufferHandle MaxClusterZIds;
 
-        BufferHandle SH9Coefs;
+        BufferHandle EnvDiffuseSH9Coefs;
 
         BufferHandle CbSSAO;
         TextureHandle SSAOMap;
@@ -79,7 +79,7 @@ namespace march
             ClusterPunctualLightIndices = {};
             VisibleLightCounter = {};
             MaxClusterZIds = {};
-            SH9Coefs = {};
+            EnvDiffuseSH9Coefs = {};
             CbSSAO = {};
             SSAOMap = {};
             SSAOMapTemp = {};
@@ -149,8 +149,7 @@ namespace march
         std::unique_ptr<GfxBuffer> m_VisibleLightCounterBuffer = nullptr;
         std::unique_ptr<GfxBuffer> m_MaxClusterZIdsBuffer = nullptr;
 
-        std::unique_ptr<GfxTexture> m_DiffuseIrradianceMap = nullptr;
-        std::unique_ptr<GfxBuffer> m_SH9Coefs = nullptr;
+        std::unique_ptr<GfxBuffer> m_EnvDiffuseSH9Coefs = nullptr;
 
         RenderPipelineResource m_Resource{};
 

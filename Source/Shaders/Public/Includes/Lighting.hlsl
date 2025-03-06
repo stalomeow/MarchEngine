@@ -31,6 +31,8 @@ StructuredBuffer<LightRawData> _PunctualLights;
     StructuredBuffer<int> _ClusterPunctualLightIndices;
 #endif
 
+StructuredBuffer<float3> _EnvDiffuseSH9Coefs;
+
 int GetNumDirectionalLights()
 {
     return _NumLights.x;
@@ -216,7 +218,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     }
 
     // Environment
-    result += EnvironmentDiffuseBRDF(data, NoV) * SampleSH9(N) * occlusion;
+    result += EnvironmentDiffuseBRDF(data, NoV) * SampleSH9(_EnvDiffuseSH9Coefs, N) * occlusion;
 
     return result;
 }
