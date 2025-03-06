@@ -11,13 +11,19 @@ struct BRDFData
     float a2; // a = roughness^2
 };
 
+float RoughnessToAlphaSquared(float roughness)
+{
+    float a = Square(roughness);
+    return Square(a);
+}
+
 BRDFData GetBRDFData(float3 albedo, float metallic, float roughness)
 {
     BRDFData data;
     data.f0 = lerp(0.04, albedo, metallic);
     data.diffuseBRDF = lerp(albedo, 0, metallic) / PI;
     data.roughness = roughness;
-    data.a2 = Square(roughness * roughness);
+    data.a2 = RoughnessToAlphaSquared(roughness);
     return data;
 }
 
@@ -55,6 +61,13 @@ float3 EnvironmentDiffuseBRDF(BRDFData data, float NoV)
     float3 f90 = max(1.0 - data.roughness, data.f0);
     float3 F = F_Schlick(data.f0, f90, NoV);
     return (1.0 - F) * data.diffuseBRDF;
+}
+
+float3 EnvironmentSpecularBRDF(BRDFData data, float NoV, Texture2D lut, SamplerState samplerState)
+{
+    float2 uv = float2(NoV, data.roughness);
+    float2 brdf = lut.SampleLevel(samplerState, uv, 0).rg;
+    return data.f0 * brdf.x + brdf.y;
 }
 
 #endif // _BRDF_INCLUDED

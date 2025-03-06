@@ -32,6 +32,10 @@ StructuredBuffer<LightRawData> _PunctualLights;
 #endif
 
 StructuredBuffer<float3> _EnvDiffuseSH9Coefs;
+TextureCube _EnvSpecularRadianceMap;
+SamplerState sampler_EnvSpecularRadianceMap;
+Texture2D _EnvSpecularBRDFLUT;
+SamplerState sampler_EnvSpecularBRDFLUT;
 
 int GetNumDirectionalLights()
 {
@@ -184,6 +188,24 @@ float3 DirectLighting(Light light, BRDFData data, float3 N, float3 V, float NoV)
     return brdf * irradiance;
 }
 
+float3 EnvDiffuseLighting(BRDFData data, float3 N, float NoV)
+{
+    return EnvironmentDiffuseBRDF(data, NoV) * SampleSH9(_EnvDiffuseSH9Coefs, N);
+}
+
+float3 EnvSpecularLighting(BRDFData data, float3 N, float3 V, float NoV)
+{
+    float3 R = reflect(-V, N);
+    float3 radiance = _EnvSpecularRadianceMap.SampleLevel(sampler_EnvSpecularRadianceMap, R, data.roughness).rgb;
+    float3 brdf = EnvironmentSpecularBRDF(data, NoV, _EnvSpecularBRDFLUT, sampler_EnvSpecularBRDFLUT);
+    return brdf * radiance;
+}
+
+float3 EnvLighting(BRDFData data, float3 N, float3 V, float NoV)
+{
+    return EnvDiffuseLighting(data, N, NoV) + EnvSpecularLighting(data, N, V, NoV);
+}
+
 float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 positionVS, float2 uv, float3 emission, float occlusion)
 {
     int3 clusterId = GetClusterId(uv, positionVS);
@@ -218,7 +240,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     }
 
     // Environment
-    result += EnvironmentDiffuseBRDF(data, NoV) * SampleSH9(_EnvDiffuseSH9Coefs, N) * occlusion;
+    result += EnvLighting(data, N, V, NoV) * occlusion;
 
     return result;
 }

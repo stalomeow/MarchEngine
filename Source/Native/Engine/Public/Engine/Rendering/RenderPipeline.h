@@ -57,6 +57,8 @@ namespace march
         BufferHandle MaxClusterZIds;
 
         BufferHandle EnvDiffuseSH9Coefs;
+        TextureHandle EnvSpecularRadianceMap;
+        TextureHandle EnvSpecularBRDFLUT;
 
         BufferHandle CbSSAO;
         TextureHandle SSAOMap;
@@ -80,6 +82,8 @@ namespace march
             VisibleLightCounter = {};
             MaxClusterZIds = {};
             EnvDiffuseSH9Coefs = {};
+            EnvSpecularRadianceMap = {};
+            EnvSpecularBRDFLUT = {};
             CbSSAO = {};
             SSAOMap = {};
             SSAOMapTemp = {};
@@ -135,6 +139,7 @@ namespace march
         void SSAO();
 
         void GenerateDiffuseIrradianceMap();
+        void GenerateSpecularIBL();
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
@@ -142,6 +147,7 @@ namespace march
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;
+        asset_ptr<ComputeShader> m_SpecularIBLShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;
@@ -150,6 +156,8 @@ namespace march
         std::unique_ptr<GfxBuffer> m_MaxClusterZIdsBuffer = nullptr;
 
         std::unique_ptr<GfxBuffer> m_EnvDiffuseSH9Coefs = nullptr;
+        std::unique_ptr<GfxTexture> m_EnvSpecularRadianceMap = nullptr;
+        std::unique_ptr<GfxTexture> m_EnvSpecularBRDFLUT = nullptr;
 
         RenderPipelineResource m_Resource{};
 

@@ -240,6 +240,12 @@ namespace march
         m_GlobalBuffers.clear();
     }
 
+    void GfxCommandContext::UnsetTexturesAndBuffers()
+    {
+        UnsetTextures();
+        UnsetBuffers();
+    }
+
     void GfxCommandContext::SetColorTarget(const GfxRenderTargetDesc& colorTarget)
     {
         SetRenderTargets(1, &colorTarget, nullptr);

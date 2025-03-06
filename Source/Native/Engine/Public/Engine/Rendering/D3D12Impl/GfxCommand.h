@@ -209,6 +209,7 @@ namespace march
         void SetBuffer(const std::string& name, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
         void SetBuffer(int32_t id, GfxBuffer* value, GfxBufferElement element = GfxBufferElement::StructuredData);
         void UnsetBuffers();
+        void UnsetTexturesAndBuffers();
 
         void SetColorTarget(const GfxRenderTargetDesc& colorTarget);
         void SetDepthStencilTarget(const GfxRenderTargetDesc& depthStencilTarget);

@@ -29,6 +29,7 @@ namespace march
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
         m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
+        m_SpecularIBLShader.reset("Engine/Shaders/SpecularIBL.compute");
         GenerateSSAORandomVectorMap();
 
         GfxBufferDesc desc1{};
@@ -62,6 +63,7 @@ namespace march
         m_RenderGraph = std::make_unique<RenderGraph>();
 
         GenerateDiffuseIrradianceMap();
+        GenerateSpecularIBL();
     }
 
     RenderPipeline::~RenderPipeline() {}
@@ -87,6 +89,8 @@ namespace march
             m_Resource.DepthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
             m_Resource.CbCamera = CreateCameraConstantBuffer("cbCamera", camera);
             m_Resource.EnvDiffuseSH9Coefs = m_RenderGraph->ImportBuffer("_EnvDiffuseSH9Coefs", m_EnvDiffuseSH9Coefs.get());
+            m_Resource.EnvSpecularRadianceMap = m_RenderGraph->ImportTexture("_EnvSpecularRadianceMap", m_EnvSpecularRadianceMap.get());
+            m_Resource.EnvSpecularBRDFLUT = m_RenderGraph->ImportTexture("_EnvSpecularBRDFLUT", m_EnvSpecularBRDFLUT.get());
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
             CullLights();
@@ -329,6 +333,8 @@ namespace march
         builder.In(m_Resource.CbShadow);
         builder.In(m_Resource.ShadowMap);
         builder.In(m_Resource.EnvDiffuseSH9Coefs);
+        builder.In(m_Resource.EnvSpecularRadianceMap);
+        builder.In(m_Resource.EnvSpecularBRDFLUT);
 
         builder.SetColorTarget(m_Resource.ColorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
@@ -349,6 +355,8 @@ namespace march
             context.SetVariable(m_Resource.CbShadow);
             context.SetVariable(m_Resource.ShadowMap);
             context.SetVariable(m_Resource.EnvDiffuseSH9Coefs);
+            context.SetVariable(m_Resource.EnvSpecularRadianceMap);
+            context.SetVariable(m_Resource.EnvSpecularBRDFLUT);
 
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_DeferredLitMaterial.get(), 0);
         });
@@ -606,6 +614,83 @@ namespace march
 
             std::optional<size_t> kernelIndex = m_DiffuseIrradianceShader->FindKernel("CalcSH9Main");
             cmd->DispatchCompute(m_DiffuseIrradianceShader.get(), *kernelIndex, 1, 1, 1);
+        }
+        cmd->EndEvent();
+        cmd->SubmitAndRelease();
+    }
+
+    struct SpecularIBLPrefilterConsts
+    {
+        XMFLOAT2 Params; // x: roughness, y: face
+    };
+
+    void RenderPipeline::GenerateSpecularIBL()
+    {
+        GfxTextureDesc desc1{};
+        desc1.Format = GfxTextureFormat::R11G11B10_Float;
+        desc1.Flags = GfxTextureFlags::UnorderedAccess | GfxTextureFlags::Mipmaps;
+        desc1.Dimension = GfxTextureDimension::Cube;
+        desc1.Width = 128;
+        desc1.Height = 128;
+        desc1.DepthOrArraySize = 1;
+        desc1.MSAASamples = 1;
+        desc1.Filter = GfxTextureFilterMode::Trilinear; // 在多个 roughness 之间插值
+        desc1.Wrap = GfxTextureWrapMode::Clamp;
+        desc1.MipmapBias = 0;
+        m_EnvSpecularRadianceMap = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularRadianceMap", desc1, GfxTextureAllocStrategy::DefaultHeapCommitted);
+
+        GfxTextureDesc desc2{};
+        desc2.Format = GfxTextureFormat::R16G16_Float;
+        desc2.Flags = GfxTextureFlags::UnorderedAccess;
+        desc2.Dimension = GfxTextureDimension::Tex2D;
+        desc2.Width = 512;
+        desc2.Height = 512;
+        desc2.DepthOrArraySize = 1;
+        desc2.MSAASamples = 1;
+        desc2.Filter = GfxTextureFilterMode::Bilinear;
+        desc2.Wrap = GfxTextureWrapMode::Clamp;
+        desc2.MipmapBias = 0;
+        m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);
+
+        GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+        cmd->BeginEvent("BakeSpecularIBL");
+        {
+            GfxTexture* skybox = nullptr;
+            m_SkyboxMaterial->GetTexture("_Cubemap", &skybox);
+            cmd->SetTexture("_RadianceMap", skybox);
+
+            std::optional<size_t> kernelIndex1 = m_SpecularIBLShader->FindKernel("PrefilterMain");
+
+            for (uint32_t mip = 0; mip < m_EnvSpecularRadianceMap->GetMipLevels(); mip++)
+            {
+                float roughness = static_cast<float>(mip) / (m_EnvSpecularRadianceMap->GetMipLevels() - 1);
+                cmd->SetTexture("_PrefilteredMap", m_EnvSpecularRadianceMap.get(), GfxTextureElement::Default, mip);
+
+                GfxBufferDesc desc3{};
+                desc3.Stride = sizeof(SpecularIBLPrefilterConsts);
+                desc3.Count = 1;
+                desc3.Usages = GfxBufferUsages::Constant;
+                desc3.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+                SpecularIBLPrefilterConsts consts{};
+                consts.Params.x = roughness;
+
+                for (uint32_t face = 0; face < 6; face++)
+                {
+                    consts.Params.y = static_cast<float>(face);
+
+                    GfxBuffer cb{ GetGfxDevice(), "cbPrefilter", desc3 };
+                    cb.SetData(&consts);
+                    cmd->SetBuffer("cbPrefilter", &cb);
+
+                    cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex1, desc1.Width, desc1.Height, 1);
+                }
+            }
+
+            std::optional<size_t> kernelIndex2 = m_SpecularIBLShader->FindKernel("BRDFMain");
+            cmd->UnsetTexturesAndBuffers();
+            cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
+            cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex2, desc2.Width, desc2.Height, 1);
         }
         cmd->EndEvent();
         cmd->SubmitAndRelease();

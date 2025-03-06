@@ -1,0 +1,113 @@
+#pragma kernel PrefilterMain
+#pragma kernel BRDFMain
+
+#include "Includes/Common.hlsl"
+#include "Includes/Sampling.hlsl"
+#include "Includes/BRDF.hlsl"
+
+#define NUM_SAMPLES_PREFILTER 1024
+#define NUM_SAMPLES_BRDF 1024
+
+TextureCube _RadianceMap;
+SamplerState sampler_RadianceMap;
+RWTexture2DArray<float3> _PrefilteredMap;
+
+cbuffer cbPrefilter
+{
+    float2 _PrefilterParams; // x: roughness, y: face
+};
+
+float3 GetAverageRadiance(float roughness, float3 R)
+{
+    float3 N = R;
+    float3 V = R;
+
+    float3x3 tbn = GetTBNForRandomSampling(N);
+    float a2 = RoughnessToAlphaSquared(roughness);
+
+    float3 radiance = 0;
+    float weights = 0;
+
+    for (int i = 0; i < NUM_SAMPLES_PREFILTER; i++)
+    {
+        float2 xi = Hammersley(i, NUM_SAMPLES_PREFILTER);
+        float3 H = SampleHemisphereGGX(xi, a2, tbn);
+        float3 L = reflect(-V, H);
+        float NoL = saturate(dot(N, L));
+
+        if (NoL > 0)
+        {
+            radiance += _RadianceMap.SampleLevel(sampler_RadianceMap, L, 0).rgb * NoL;
+            weights += NoL;
+        }
+    }
+
+    return radiance / weights;
+}
+
+[numthreads(16, 16, 1)]
+void PrefilterMain(int3 dtid : SV_DispatchThreadID)
+{
+    float width, height, elements;
+    _PrefilteredMap.GetDimensions(width, height, elements);
+
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    float roughness = _PrefilterParams.x;
+    int face = (int) _PrefilterParams.y;
+
+    float2 uv = float2(dtid.x / (width - 1), dtid.y / (height - 1));
+    float3 R = CubeFaceUVToDirection(uv, face);
+    _PrefilteredMap[int3(dtid.xy, face)] = GetAverageRadiance(roughness, R);
+}
+
+RWTexture2D<float2> _BRDFLUT;
+
+float2 IntegrateBRDF(float roughness, float NoV)
+{
+    float3 N = float3(0.0, 0.0, 1.0);
+    float3 V = float3(sqrt(1.0 - NoV * NoV), 0.0, NoV);
+
+    float3x3 tbn = GetTBNForRandomSampling(N);
+    float a2 = RoughnessToAlphaSquared(roughness);
+
+    float2 results = 0;
+
+    for (int i = 0; i < NUM_SAMPLES_BRDF; i++)
+    {
+        float2 xi = Hammersley(i, NUM_SAMPLES_BRDF);
+        float3 H = SampleHemisphereGGX(xi, a2, tbn);
+        float3 L = reflect(-V, H);
+        float NoL = saturate(L.z);
+        float VoH = saturate(dot(V, H));
+
+        if (NoL > 0)
+        {
+            float Vis = 1.0; //V_SmithJointGGX(a2, NoV, NoL);
+            float Fc = pow(1.0 - VoH, 5);
+            float FcVis = Fc * Vis;
+            results += float2(Vis - FcVis, FcVis); // NDF 和 NoL 被 pdf 约掉了
+        }
+    }
+
+    return results / NUM_SAMPLES_BRDF;
+}
+
+[numthreads(16, 16, 1)]
+void BRDFMain(int3 dtid : SV_DispatchThreadID)
+{
+    float width, height;
+    _BRDFLUT.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    float NoV = dtid.x / (width - 1);
+    float roughness = dtid.y / (height - 1);
+    _BRDFLUT[dtid.xy] = IntegrateBRDF(roughness, NoV);
+}

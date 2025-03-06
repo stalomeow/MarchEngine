@@ -44,6 +44,31 @@ float3 SampleHemisphereCosine(float2 xi, float3x3 tbn)
     return normalize(mul(tbn, float3(x, y, z)));
 }
 
+// 单位半球上 GGX 权重采样，立体角 pdf 是 D_GGX * NoH
+float3 SampleHemisphereGGX(float2 xi, float a2, float3x3 tbn)
+{
+    float cosThetaSq = (1.0 - xi.x) / (1 + (a2 - 1) * xi.x);
+    float cosTheta = sqrt(cosThetaSq);
+    float sinTheta = sqrt(1.0 - cosThetaSq);
+    float phi = 2.0 * PI * xi.y;
+
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float z = cosTheta;
+    return normalize(mul(tbn, float3(x, y, z)));
+}
+
+float3x3 GetTBNForRandomSampling(float3 N)
+{
+    // Ref: https://learnopengl.com/PBR/IBL/Specular-IBL
+    // from tangent-space vector to world-space sample vector
+
+    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
+    float3 tangent = normalize(cross(up, N));
+    float3 bitangent = cross(N, tangent);
+    return transpose(float3x3(tangent, bitangent, N)); // 行主序转置成列主序
+}
+
 // 将 Cubemap 上某个 Face 的 uv 转换为相对 Cube 原点的方向
 // uv 原点在左上角，xy 范围是 [0, 1]
 float3 CubeFaceUVToDirection(float2 uv, int face)
