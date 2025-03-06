@@ -2,7 +2,6 @@
 #define _BRDF_INCLUDED
 
 #include "Common.hlsl"
-#include "Constants.hlsl"
 
 struct BRDFData
 {

@@ -1,82 +1,14 @@
 #pragma kernel CalcSH9Main
 
-#include "Includes/Constants.hlsl"
+#include "Includes/Common.hlsl"
+#include "Includes/Sampling.hlsl"
 #include "Includes/SH9.hlsl"
-
-#define SQRT3 1.73205080757
-
-static const float3x3 _UVToDirMatrices[6] =
-{
-    // +X
-    {
-        0, 0, SQRT3 / 4.0,
-        0, -SQRT3 / 2.0, SQRT3 / 4.0,
-        -SQRT3 / 2.0, 0, SQRT3 / 4.0,
-    },
-    // -X
-    {
-        0, 0, -SQRT3 / 4.0,
-        0, -SQRT3 / 2.0, SQRT3 / 4.0,
-        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
-    },
-    // +Y
-    {
-        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
-        0, 0, SQRT3 / 4.0,
-        0, SQRT3 / 2.0, -SQRT3 / 4.0,
-    },
-    // -Y
-    {
-        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
-        0, 0, -SQRT3 / 4.0,
-        0, -SQRT3 / 2.0, SQRT3 / 4.0,
-    },
-    // +Z
-    {
-        SQRT3 / 2.0, 0, -SQRT3 / 4.0,
-        0, -SQRT3 / 2.0, SQRT3 / 4.0,
-        0, 0, SQRT3 / 4.0,
-    },
-    // -Z
-    {
-        -SQRT3 / 2.0, 0, SQRT3 / 4.0,
-        0, -SQRT3 / 2.0, SQRT3 / 4.0,
-        0, 0, -SQRT3 / 4.0,
-    },
-};
 
 #define NUM_SAMPLES 4096
 
 TextureCube _RadianceMap;
 SamplerState sampler_RadianceMap;
 RWStructuredBuffer<float3> _SH9Coefs;
-
-float RadicalInverse_VdC(uint bits)
-{
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
-}
-
-float2 Hammersley(uint i, uint N)
-{
-    return float2(float(i) / float(N), RadicalInverse_VdC(i));
-}
-
-float3 SampleUniformSphere(float2 xi)
-{
-    float cosTheta = 1.0 - 2.0 * xi.x;
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-    float phi = 2.0 * PI * xi.y;
-
-    float x = sinTheta * cos(phi);
-    float y = sinTheta * sin(phi);
-    float z = cosTheta;
-    return float3(x, y, z);
-}
 
 float3 GetIrradianceSH9Coef(int basisIndex)
 {
@@ -85,7 +17,7 @@ float3 GetIrradianceSH9Coef(int basisIndex)
     for (int i = 0; i < NUM_SAMPLES; i++)
     {
         float2 xi = Hammersley(i, NUM_SAMPLES);
-        float3 dir = SampleUniformSphere(xi);
+        float3 dir = SampleSphereUniform(xi);
         float3 radiance = _RadianceMap.SampleLevel(sampler_RadianceMap, dir, 0).rgb;
 
         float basis[9];
@@ -95,7 +27,7 @@ float3 GetIrradianceSH9Coef(int basisIndex)
     }
 
     coef *= 4 * PI / NUM_SAMPLES; // pdf 是 1 / (4 * PI)
-    return ConvolveSH9WithCosine(basisIndex, coef);
+    return ConvolveSH9WithCosine(basisIndex, coef); // Convert Radiance To Irradiance
 }
 
 [numthreads(9, 1, 1)]
