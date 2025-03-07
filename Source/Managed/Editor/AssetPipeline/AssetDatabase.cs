@@ -24,6 +24,8 @@ namespace March.Editor.AssetPipeline
 
         // TODO: check memory leaks
         private static readonly Dictionary<nint, NativeReference> s_NativeRefs = new();
+        private static readonly HashSet<MarchObject> s_DirtyAssets = new();
+        private static DateTime? s_LastSaveDirtyAssetsTimeUtc = null;
 
         private static readonly FileSystemWatcher s_ProjectAssetFileWatcher;
         private static readonly FileSystemWatcher s_EngineShaderWatcher;
@@ -95,6 +97,12 @@ namespace March.Editor.AssetPipeline
 
         private static void Update()
         {
+            ProcessFileSystemEvents();
+            SaveDirtyAssets();
+        }
+
+        private static void ProcessFileSystemEvents()
+        {
             while (s_FileSystemEvents.TryDequeue(out FileSystemEventArgs? e))
             {
                 if (AssetLocation.IsImporterFilePath(e.FullPath))
@@ -120,6 +128,43 @@ namespace March.Editor.AssetPipeline
                         OnAssetRenamed((RenamedEventArgs)e);
                         break;
                 }
+            }
+        }
+
+        private static void SaveDirtyAssets()
+        {
+            if (s_DirtyAssets.Count <= 0)
+            {
+                return;
+            }
+
+            const double SaveInterval = 2.0; // in seconds
+
+            bool needSave;
+            DateTime now = DateTime.UtcNow;
+
+            if (s_LastSaveDirtyAssetsTimeUtc == null)
+            {
+                needSave = true;
+            }
+            else
+            {
+                double sec = Math.Abs((now - s_LastSaveDirtyAssetsTimeUtc.Value).TotalSeconds);
+                needSave = (sec >= SaveInterval);
+            }
+
+            if (needSave)
+            {
+                foreach (MarchObject asset in s_DirtyAssets)
+                {
+                    if (GetAssetImporter(asset, AssetReimportMode.Dont) is DirectAssetImporter importer)
+                    {
+                        importer.SaveAsset();
+                    }
+                }
+
+                s_DirtyAssets.Clear();
+                s_LastSaveDirtyAssetsTimeUtc = now;
             }
         }
 
@@ -198,6 +243,14 @@ namespace March.Editor.AssetPipeline
             foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
             {
                 locations.Add(kv.Value.Location);
+            }
+        }
+
+        public static void SetDirty(MarchObject asset)
+        {
+            if (asset.IsPersistent)
+            {
+                s_DirtyAssets.Add(asset);
             }
         }
 

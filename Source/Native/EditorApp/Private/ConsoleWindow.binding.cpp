@@ -17,12 +17,12 @@ NATIVE_EXPORT_AUTO ConsoleWindow_SetLogTypeFilter(cs<ConsoleWindow*> w, cs_int v
     ConsoleWindowInternalUtility::SetLogTypeFilter(w, value);
 }
 
-NATIVE_EXPORT_AUTO ConsoleWindow_GetAutoScroll(cs<ConsoleWindow*> w)
+NATIVE_EXPORT_AUTO ConsoleWindow_GetEnableAutoScroll(cs<ConsoleWindow*> w)
 {
     retcs ConsoleWindowInternalUtility::GetAutoScroll(w);
 }
 
-NATIVE_EXPORT_AUTO ConsoleWindow_SetAutoScroll(cs<ConsoleWindow*> w, cs_bool value)
+NATIVE_EXPORT_AUTO ConsoleWindow_SetEnableAutoScroll(cs<ConsoleWindow*> w, cs_bool value)
 {
     ConsoleWindowInternalUtility::SetAutoScroll(w, value);
 }

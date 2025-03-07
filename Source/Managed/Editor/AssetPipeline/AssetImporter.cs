@@ -438,6 +438,7 @@ namespace March.Editor.AssetPipeline
         internal void SaveAsset()
         {
             PersistentManager.Save(MainAsset, Location.AssetFullPath);
+            ForceSaveImporter(); // 记录这次的写入时间，避免等会触发一次重新导入
         }
 
         protected abstract MarchObject CreateAsset();

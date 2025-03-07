@@ -156,6 +156,8 @@ namespace march
             isButtonClicked = ImGui::ColorButton(("##" + label).c_str(), buttonColor, buttonFlags, ImVec2(width, height));
         }
 
+        ImGui::PushID(label.c_str());
+
         // 打开 color picker 时，记录最初的颜色
         static ImVec4 originalColor{};
 
@@ -215,6 +217,8 @@ namespace march
 
             ImGui::EndPopup();
         }
+
+        ImGui::PopID();
 
         return isChanged;
     }
