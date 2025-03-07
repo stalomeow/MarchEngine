@@ -497,36 +497,39 @@ namespace March.Editor.AssetPipeline
                 EditorGUI.LabelField("Path", string.Empty, Target.Location.AssetPath);
             }
 
-            m_IsChanged |= DrawProperties(out bool showApplyRevertButtons);
-
-            if (showApplyRevertButtons)
+            using (new EditorGUI.DisabledScope(!Target.Location.IsEditable))
             {
-                EditorGUI.Space();
+                m_IsChanged |= DrawProperties(out bool showApplyRevertButtons);
 
-                float applyButtonWidth = EditorGUI.CalcButtonWidth("Apply");
-                float revertButtonWidth = EditorGUI.CalcButtonWidth("Revert");
-                float totalWidth = applyButtonWidth + EditorGUI.ItemSpacing.X + revertButtonWidth;
-                EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
-
-                using (new EditorGUI.DisabledScope(!m_IsChanged))
+                if (showApplyRevertButtons)
                 {
-                    if (EditorGUI.Button("Apply"))
-                    {
-                        ApplyChanges();
-                        m_IsChanged = false;
-                    }
+                    EditorGUI.Space();
 
-                    EditorGUI.SameLine();
+                    float applyButtonWidth = EditorGUI.CalcButtonWidth("Apply");
+                    float revertButtonWidth = EditorGUI.CalcButtonWidth("Revert");
+                    float totalWidth = applyButtonWidth + EditorGUI.ItemSpacing.X + revertButtonWidth;
+                    EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
 
-                    if (EditorGUI.Button("Revert"))
+                    using (new EditorGUI.DisabledScope(!m_IsChanged))
                     {
-                        RevertChanges();
-                        m_IsChanged = false;
+                        if (EditorGUI.Button("Apply"))
+                        {
+                            ApplyChanges();
+                            m_IsChanged = false;
+                        }
+
+                        EditorGUI.SameLine();
+
+                        if (EditorGUI.Button("Revert"))
+                        {
+                            RevertChanges();
+                            m_IsChanged = false;
+                        }
                     }
                 }
-            }
 
-            DrawAdditional();
+                DrawAdditional();
+            }
         }
 
         /// <summary>

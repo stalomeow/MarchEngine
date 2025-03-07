@@ -1,7 +1,8 @@
 * text=auto
 
 Source/Managed/Editor/ShaderLab/Internal/** linguist-generated
-Runtime/** linguist-vendored
+Runtime/**                                  linguist-vendored
+Resources/Meta/**                           linguist-generated
 
 *.h       linguist-language=cpp
 *.hpp     linguist-language=cpp

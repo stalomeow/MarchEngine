@@ -58,7 +58,7 @@ namespace March.Editor.Windows
             {
                 m_ProjectTree.Add(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
-            else if (location.Category == AssetCategory.EngineShader)
+            else if (location.IsEngineBuiltIn)
             {
                 m_EngineFileTree.Add(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
@@ -70,7 +70,7 @@ namespace March.Editor.Windows
             {
                 m_ProjectTree.Remove(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }
-            else if (location.Category == AssetCategory.EngineShader)
+            else if (location.IsEngineBuiltIn)
             {
                 m_EngineFileTree.Remove(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
             }

@@ -61,10 +61,10 @@ namespace March.Core
         #endregion
 
         [NativeProperty]
-        public static partial bool IsEngineResourceEditable { get; }
+        internal static partial bool IsEngineResourceEditable { get; }
 
         [NativeProperty]
-        public static partial bool IsEngineShaderEditable { get; }
+        internal static partial bool IsEngineShaderEditable { get; }
 
         [UnmanagedCallersOnly]
         private static void Initialize()

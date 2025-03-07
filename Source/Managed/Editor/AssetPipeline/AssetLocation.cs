@@ -11,7 +11,7 @@ namespace March.Editor.AssetPipeline
         Unknown,
         ProjectAsset,
         EngineShader,
-        EngineResources,
+        EngineResource,
     }
 
     public readonly struct AssetLocation
@@ -32,6 +32,15 @@ namespace March.Editor.AssetPipeline
         /// </summary>
         public string ImporterFullPath { get; private init; }
 
+        public bool IsEngineBuiltIn => Category is (AssetCategory.EngineShader or AssetCategory.EngineResource);
+
+        public bool IsEditable => Category switch
+        {
+            AssetCategory.EngineShader => Application.IsEngineShaderEditable,
+            AssetCategory.EngineResource => Application.IsEngineResourceEditable,
+            _ => true,
+        };
+
         public static AssetLocation FromPath(string path)
         {
             path = path.ValidatePath();
@@ -46,7 +55,7 @@ namespace March.Editor.AssetPipeline
                         Category = AssetCategory.ProjectAsset,
                         AssetPath = path,
                         AssetFullPath = AssetLocationUtility.CombinePath(Application.DataPath, path),
-                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path[7..] + k_ImporterPathSuffix), // "Assets/".Length == 7
                     };
                 }
 
@@ -58,7 +67,19 @@ namespace March.Editor.AssetPipeline
                         Category = AssetCategory.EngineShader,
                         AssetPath = path,
                         AssetFullPath = AssetLocationUtility.CombinePath(Application.EngineShaderPath, path[15..]), // "Engine/Shaders/".Length == 15
-                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.EngineResourcePath, "Meta", path[7..] + k_ImporterPathSuffix), // "Engine/".Length == 7
+                    };
+                }
+
+                // 需要排除掉 Engine/Resources 文件夹本身
+                if (path.StartsWith("Engine/Resources/", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    return new()
+                    {
+                        Category = AssetCategory.EngineResource,
+                        AssetPath = path,
+                        AssetFullPath = AssetLocationUtility.CombinePath(Application.EngineResourcePath, "Assets", path[17..]), // "Engine/Resources/".Length == 17
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.EngineResourcePath, "Meta", path[7..] + k_ImporterPathSuffix), // "Engine/".Length == 7
                     };
                 }
             }
@@ -78,29 +99,36 @@ namespace March.Editor.AssetPipeline
 
             if (!IsImporterFilePath(fullPath))
             {
-                if (fullPath.StartsWith(Application.DataPath + "/", StringComparison.CurrentCultureIgnoreCase))
+                if (TryGetRelativePath(AssetCategory.ProjectAsset, fullPath, out string? relativePath1))
                 {
-                    string relativePath = fullPath[(Application.DataPath.Length + 1)..];
-
                     return new()
                     {
                         Category = AssetCategory.ProjectAsset,
-                        AssetPath = relativePath,
+                        AssetPath = "Assets/" + relativePath1,
                         AssetFullPath = fullPath,
-                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", relativePath + k_ImporterPathSuffix),
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", relativePath1 + k_ImporterPathSuffix),
                     };
                 }
 
-                if (fullPath.StartsWith(Application.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
+                if (TryGetRelativePath(AssetCategory.EngineShader, fullPath, out string? relativePath2))
                 {
-                    string relativePath = fullPath[(Application.EngineShaderPath.Length + 1)..];
-
                     return new()
                     {
                         Category = AssetCategory.EngineShader,
-                        AssetPath = "Engine/Shaders/" + relativePath,
+                        AssetPath = "Engine/Shaders/" + relativePath2,
                         AssetFullPath = fullPath,
-                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", relativePath + k_ImporterPathSuffix),
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.EngineResourcePath, "Meta", "Shaders", relativePath2 + k_ImporterPathSuffix),
+                    };
+                }
+
+                if (TryGetRelativePath(AssetCategory.EngineResource, fullPath, out string? relativePath3))
+                {
+                    return new()
+                    {
+                        Category = AssetCategory.EngineResource,
+                        AssetPath = "Engine/Resources/" + relativePath3,
+                        AssetFullPath = fullPath,
+                        ImporterFullPath = AssetLocationUtility.CombinePath(Application.EngineResourcePath, "Meta", "Resources", relativePath3 + k_ImporterPathSuffix),
                     };
                 }
             }
@@ -115,6 +143,28 @@ namespace March.Editor.AssetPipeline
         }
 
         public static bool IsImporterFilePath(string path) => path.EndsWith(k_ImporterPathSuffix);
+
+        private static bool TryGetRelativePath(AssetCategory category, string fullPath, [NotNullWhen(true)] out string? relativePath)
+        {
+            string? basePath = GetBaseFullPath(category);
+
+            if (basePath != null && fullPath.StartsWith(basePath + "/", StringComparison.CurrentCultureIgnoreCase))
+            {
+                relativePath = fullPath[(basePath.Length + 1)..];
+                return true;
+            }
+
+            relativePath = null;
+            return false;
+        }
+
+        public static string? GetBaseFullPath(AssetCategory category) => category switch
+        {
+            AssetCategory.ProjectAsset => AssetLocationUtility.CombinePath(Application.DataPath, "Assets"),
+            AssetCategory.EngineShader => Application.EngineShaderPath,
+            AssetCategory.EngineResource => AssetLocationUtility.CombinePath(Application.EngineResourcePath, "Assets"),
+            _ => null,
+        };
     }
 
     public static class AssetLocationUtility

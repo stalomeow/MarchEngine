@@ -28,6 +28,7 @@ namespace March.Editor.AssetPipeline
 
         private static readonly FileSystemWatcher s_ProjectAssetFileWatcher;
         private static readonly FileSystemWatcher s_EngineShaderWatcher;
+        private static readonly FileSystemWatcher s_EngineResourceWatcher;
         private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileSystemEvents = new();
 
         public static event Action<AssetLocation>? OnChanged;
@@ -37,8 +38,9 @@ namespace March.Editor.AssetPipeline
 
         static AssetDatabase()
         {
-            s_ProjectAssetFileWatcher = new FileSystemWatcher(Path.Combine(Application.DataPath, "Assets"));
-            s_EngineShaderWatcher = new FileSystemWatcher(Application.EngineShaderPath);
+            s_ProjectAssetFileWatcher = new FileSystemWatcher(AssetLocation.GetBaseFullPath(AssetCategory.ProjectAsset)!);
+            s_EngineShaderWatcher = new FileSystemWatcher(AssetLocation.GetBaseFullPath(AssetCategory.EngineShader)!);
+            s_EngineResourceWatcher = new FileSystemWatcher(AssetLocation.GetBaseFullPath(AssetCategory.EngineResource)!);
         }
 
         internal static void Initialize()
@@ -47,6 +49,7 @@ namespace March.Editor.AssetPipeline
 
             SetupFileSystemWatcher(s_ProjectAssetFileWatcher);
             SetupFileSystemWatcher(s_EngineShaderWatcher);
+            SetupFileSystemWatcher(s_EngineResourceWatcher);
 
             Application.OnTick += Update;
             Application.OnQuit += Dispose;
@@ -54,8 +57,9 @@ namespace March.Editor.AssetPipeline
 
         private static void PreImportAllAssets()
         {
-            CreateImportersOnly(Path.Combine(Application.DataPath, "Assets"));
-            CreateImportersOnly(Application.EngineShaderPath);
+            CreateImportersOnly(AssetLocation.GetBaseFullPath(AssetCategory.ProjectAsset)!);
+            CreateImportersOnly(AssetLocation.GetBaseFullPath(AssetCategory.EngineShader)!);
+            CreateImportersOnly(AssetLocation.GetBaseFullPath(AssetCategory.EngineResource)!);
 
             // 现在 guid 表已经构建完毕，可以导入资产了
             AssetManager.Impl = new EditorAssetManagerImpl();
