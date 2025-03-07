@@ -1,5 +1,5 @@
+using March.Core;
 using March.Core.Pool;
-using March.Core.Rendering;
 using March.Editor.AssetPipeline;
 using System.Text.RegularExpressions;
 
@@ -51,7 +51,7 @@ namespace March.Editor.ShaderLab
                 basePaths.Add(directory);
             }
 
-            basePaths.Add(ShaderUtility.EngineShaderPath);
+            basePaths.Add(Application.EngineShaderPath);
         }
 
         private static string? GetFullPath(string path, List<string> basePaths)

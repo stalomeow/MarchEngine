@@ -618,20 +618,6 @@ namespace March.Core.Rendering
     [NativeTypeName("ShaderUtils")]
     public static partial class ShaderUtility
     {
-        #region EngineShaderPath
-
-        private static string? s_CachedEngineShaderPath;
-
-        /// <summary>
-        /// 引擎内置 Shader 的路径 (Unix Style)
-        /// </summary>
-        public static string EngineShaderPath => s_CachedEngineShaderPath ??= GetEngineShaderPathUnixStyle();
-
-        [NativeMethod]
-        private static partial string GetEngineShaderPathUnixStyle();
-
-        #endregion
-
         [NativeMethod]
         public static partial int GetIdFromString(StringLike name);
 

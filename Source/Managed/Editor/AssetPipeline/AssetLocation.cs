@@ -1,7 +1,6 @@
 using March.Core;
 using March.Core.Interop;
 using March.Core.Pool;
-using March.Core.Rendering;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -12,6 +11,7 @@ namespace March.Editor.AssetPipeline
         Unknown,
         ProjectAsset,
         EngineShader,
+        EngineResources,
     }
 
     public readonly struct AssetLocation
@@ -57,7 +57,7 @@ namespace March.Editor.AssetPipeline
                     {
                         Category = AssetCategory.EngineShader,
                         AssetPath = path,
-                        AssetFullPath = AssetLocationUtility.CombinePath(ShaderUtility.EngineShaderPath, path[15..]), // "Engine/Shaders/".Length == 15
+                        AssetFullPath = AssetLocationUtility.CombinePath(Application.EngineShaderPath, path[15..]), // "Engine/Shaders/".Length == 15
                         ImporterFullPath = AssetLocationUtility.CombinePath(Application.DataPath, "Meta", path + k_ImporterPathSuffix),
                     };
                 }
@@ -91,9 +91,9 @@ namespace March.Editor.AssetPipeline
                     };
                 }
 
-                if (fullPath.StartsWith(ShaderUtility.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
+                if (fullPath.StartsWith(Application.EngineShaderPath + "/", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    string relativePath = fullPath[(ShaderUtility.EngineShaderPath.Length + 1)..];
+                    string relativePath = fullPath[(Application.EngineShaderPath.Length + 1)..];
 
                     return new()
                     {

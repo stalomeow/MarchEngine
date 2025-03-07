@@ -168,7 +168,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>_DEBUG;_LIB;ENABLE_GFX_DEBUG_NAME;ENGINE_SHADER_UNIX_PATH="$(SolutionDir.Replace('\', '/'))Source/Shaders/Public";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;ENABLE_GFX_DEBUG_NAME;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>.\Internal;.\Public;.\ThirdParty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

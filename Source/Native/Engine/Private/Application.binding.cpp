@@ -21,3 +21,23 @@ NATIVE_EXPORT_AUTO Application_GetDataPath()
 {
     retcs GetApp()->GetDataPath();
 }
+
+NATIVE_EXPORT_AUTO Application_GetEngineResourcePath()
+{
+    retcs GetApp()->GetEngineResourcePath();
+}
+
+NATIVE_EXPORT_AUTO Application_GetEngineShaderPath()
+{
+    retcs GetApp()->GetEngineShaderPath();
+}
+
+NATIVE_EXPORT_AUTO Application_GetIsEngineResourceEditable()
+{
+    retcs GetApp()->IsEngineResourceEditable();
+}
+
+NATIVE_EXPORT_AUTO Application_GetIsEngineShaderEditable()
+{
+    retcs GetApp()->IsEngineShaderEditable();
+}

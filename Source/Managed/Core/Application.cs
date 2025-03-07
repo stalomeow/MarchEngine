@@ -32,6 +32,40 @@ namespace March.Core
 
         #endregion
 
+        #region EngineResourcePath
+
+        private static string? s_CachedEngineResourcePath;
+
+        /// <summary>
+        /// 获取引擎内置资源的路径 (Unix Style)
+        /// </summary>
+        public static string EngineResourcePath => s_CachedEngineResourcePath ??= GetEngineResourcePath();
+
+        [NativeMethod]
+        private static partial string GetEngineResourcePath();
+
+        #endregion
+
+        #region EngineShaderPath
+
+        private static string? s_CachedEngineShaderPath;
+
+        /// <summary>
+        /// 获取引擎内置 Shader 的路径 (Unix Style)
+        /// </summary>
+        public static string EngineShaderPath => s_CachedEngineShaderPath ??= GetEngineShaderPath();
+
+        [NativeMethod]
+        private static partial string GetEngineShaderPath();
+
+        #endregion
+
+        [NativeProperty]
+        public static partial bool IsEngineResourceEditable { get; }
+
+        [NativeProperty]
+        public static partial bool IsEngineShaderEditable { get; }
+
         [UnmanagedCallersOnly]
         private static void Initialize()
         {

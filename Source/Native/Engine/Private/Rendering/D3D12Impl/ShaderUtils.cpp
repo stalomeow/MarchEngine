@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
-#include "Engine/Misc/PathUtils.h"
 #include "Engine/Misc/StringUtils.h"
 #include <unordered_map>
 #include <stdexcept>
@@ -11,15 +10,6 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
-    std::string ShaderUtils::GetEngineShaderPathUnixStyle()
-    {
-#ifdef ENGINE_SHADER_UNIX_PATH
-        return ENGINE_SHADER_UNIX_PATH;
-#endif
-
-        return PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
-    }
-
     static std::unordered_map<std::string, int32> g_StringIdMap{};
     static int32 g_NextStringId = 0;
 

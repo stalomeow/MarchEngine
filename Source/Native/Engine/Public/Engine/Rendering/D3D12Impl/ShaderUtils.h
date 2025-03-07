@@ -8,8 +8,6 @@ namespace march
 {
     struct ShaderUtils
     {
-        static std::string GetEngineShaderPathUnixStyle();
-
         static int32 GetIdFromString(const std::string& str);
         static const std::string& GetStringFromId(int32 id);
 

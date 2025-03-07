@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Ints.h"
+#include "Engine/Application.h"
 #include "Engine/Misc/HashUtils.h"
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
@@ -346,7 +347,7 @@ namespace march
             }
 
             context.FileName = StringUtils::Utf8ToUtf16(filename);
-            context.IncludePath = StringUtils::Utf8ToUtf16(ShaderUtils::GetEngineShaderPathUnixStyle());
+            context.IncludePath = StringUtils::Utf8ToUtf16(GetApp()->GetEngineShaderPath());
             context.Source.Ptr = source.data();
             context.Source.Size = static_cast<SIZE_T>(source.size());
             context.Source.Encoding = DXC_CP_UTF8;

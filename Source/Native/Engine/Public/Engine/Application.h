@@ -35,6 +35,11 @@ namespace march
         static void ShowErrorMessageBox(const std::string& message);
 
         virtual const std::string& GetDataPath() const = 0;
+        virtual const std::string& GetEngineResourcePath() const = 0;
+        virtual const std::string& GetEngineShaderPath() const = 0;
+        virtual bool IsEngineResourceEditable() const = 0;
+        virtual bool IsEngineShaderEditable() const = 0;
+
         virtual RenderPipeline* GetRenderPipeline() const = 0;
 
         Application(const Application&) = delete;

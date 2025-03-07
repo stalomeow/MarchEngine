@@ -31,6 +31,8 @@ namespace march
         : m_SwapChain(nullptr)
         , m_RenderPipeline(nullptr)
         , m_DataPath{}
+        , m_EngineResourcePath{}
+        , m_EngineShaderPath{}
         , m_ImGuiIniFilename{}
     {
     }
@@ -54,6 +56,8 @@ namespace march
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
+        InitPaths();
+
         auto it = std::find(args.begin(), args.end(), "-project-path");
 
         if (it != args.end() && (it = std::next(it)) != args.end())
@@ -342,16 +346,47 @@ namespace march
         m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
     }
 
-    static std::string GetFontPath(std::string fontName)
+    void EditorApplication::InitPaths()
     {
-        std::string basePath = PathUtils::GetWorkingDirectoryUtf8();
-        return basePath + "\\Resources\\Fonts\\" + fontName;
+#ifdef ENGINE_RESOURCE_UNIX_PATH
+        m_EngineResourcePath = ENGINE_RESOURCE_UNIX_PATH;
+#else
+        m_EngineResourcePath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Resources";
+#endif
+
+#ifdef ENGINE_SHADER_UNIX_PATH
+        m_EngineShaderPath = ENGINE_SHADER_UNIX_PATH;
+#else
+        m_EngineShaderPath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
+#endif
     }
 
-    static std::string GetFontAwesomePath(std::string fontName)
+    bool EditorApplication::IsEngineResourceEditable() const
     {
-        std::string basePath = PathUtils::GetWorkingDirectoryUtf8();
-        return basePath + "\\Resources\\FontAwesome\\" + fontName;
+#ifdef ENGINE_RESOURCE_UNIX_PATH
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    bool EditorApplication::IsEngineShaderEditable() const
+    {
+#ifdef ENGINE_SHADER_UNIX_PATH
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    static std::string GetFontPath(Application* app, std::string fontName)
+    {
+        return app->GetEngineResourcePath() + "/Fonts/" + fontName;
+    }
+
+    static std::string GetFontAwesomePath(Application* app, std::string fontName)
+    {
+        return app->GetEngineResourcePath() + "/FontAwesome/" + fontName;
     }
 
     void EditorApplication::ReloadFonts()
@@ -364,7 +399,7 @@ namespace march
         // 英文字体
         ImFontConfig latinConfig{};
         latinConfig.PixelSnapH = true;
-        io.Fonts->AddFontFromFileTTF(GetFontPath("Inter-Regular.otf").c_str(), m_FontSizeLatin * dpiScale,
+        io.Fonts->AddFontFromFileTTF(GetFontPath(this, "Inter-Regular.otf").c_str(), m_FontSizeLatin * dpiScale,
             &latinConfig, io.Fonts->GetGlyphRangesDefault());
 
         // 中文字体
@@ -372,7 +407,7 @@ namespace march
         cjkConfig.MergeMode = true;
         cjkConfig.PixelSnapH = true;
         cjkConfig.RasterizerDensity = 1.5f; // 稍微放大一点，更清晰
-        io.Fonts->AddFontFromFileTTF(GetFontPath("NotoSansSC-Regular.ttf").c_str(), m_FontSizeCJK * dpiScale,
+        io.Fonts->AddFontFromFileTTF(GetFontPath(this, "NotoSansSC-Regular.ttf").c_str(), m_FontSizeCJK * dpiScale,
             &cjkConfig, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
         // Font Awesome 图标字体
@@ -387,9 +422,9 @@ namespace march
         iconConfig.GlyphMaxAdvanceX = iconFontSizePixels; // 让所有图标等宽
 
         // use FONT_ICON_FILE_NAME_FAR if you want regular instead of solid
-        io.Fonts->AddFontFromFileTTF(GetFontAwesomePath(FONT_ICON_FILE_NAME_FAS).c_str(), iconFontSizePixels,
+        io.Fonts->AddFontFromFileTTF(GetFontAwesomePath(this, FONT_ICON_FILE_NAME_FAS).c_str(), iconFontSizePixels,
             &iconConfig, faIconsRanges);
-        io.Fonts->AddFontFromFileTTF(GetFontAwesomePath(FONT_ICON_FILE_NAME_FAB).c_str(), iconFontSizePixels,
+        io.Fonts->AddFontFromFileTTF(GetFontAwesomePath(this, FONT_ICON_FILE_NAME_FAB).c_str(), iconFontSizePixels,
             &iconConfig, fabIconsRanges);
 
         io.Fonts->Build();

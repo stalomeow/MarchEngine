@@ -629,11 +629,6 @@ NATIVE_EXPORT_AUTO Shader_GetMaterialConstantBufferId()
     retcs Shader::GetMaterialConstantBufferId();
 }
 
-NATIVE_EXPORT_AUTO ShaderUtils_GetEngineShaderPathUnixStyle()
-{
-    retcs ShaderUtils::GetEngineShaderPathUnixStyle();
-}
-
 NATIVE_EXPORT_AUTO ShaderUtils_GetIdFromString(cs_string name)
 {
     retcs ShaderUtils::GetIdFromString(name);
