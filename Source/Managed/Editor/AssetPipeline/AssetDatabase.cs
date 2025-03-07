@@ -361,19 +361,24 @@ namespace March.Editor.AssetPipeline
 
             if (oldImporter == null)
             {
-                Log.Message(LogLevel.Warning, "Attempting to rename an asset whose importer is unknown", $"{oldLocation.AssetPath}");
-                return;
+                // 可能是资产被创建后立即重命名，直接当成新创建的资产处理
+                if (GetAssetImporter(newLocation.AssetPath) != null)
+                {
+                    OnImported?.Invoke(newLocation);
+                }
             }
-
-            if (s_Path2Importers.TryGetValue(newLocation.AssetPath, out AssetImporter? newImporter))
+            else
             {
-                Log.Message(LogLevel.Warning, "Asset already exists at new path. It will be deleted");
-                DeleteImporter(newImporter);
-                OnRemoved?.Invoke(newLocation);
-            }
+                if (s_Path2Importers.TryGetValue(newLocation.AssetPath, out AssetImporter? newImporter))
+                {
+                    Log.Message(LogLevel.Warning, "Asset already exists at new path. It will be deleted");
+                    DeleteImporter(newImporter);
+                    OnRemoved?.Invoke(newLocation);
+                }
 
-            oldImporter.MoveLocation(in newLocation);
-            OnRenamed?.Invoke(oldLocation, newLocation);
+                oldImporter.MoveLocation(in newLocation);
+                OnRenamed?.Invoke(oldLocation, newLocation);
+            }
         }
 
         private static void OnAssetCreated(FileSystemEventArgs e)
