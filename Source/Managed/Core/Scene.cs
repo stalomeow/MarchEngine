@@ -1,4 +1,5 @@
 using March.Core.Rendering;
+using March.Core.Serialization;
 using Newtonsoft.Json;
 
 namespace March.Core
@@ -6,15 +7,19 @@ namespace March.Core
     public class Scene : MarchObject, IDisposable
     {
         [JsonProperty]
+        [HideInInspector]
         public string Name { get; set; } = "New Scene";
 
         [JsonProperty]
+        [HideInInspector]
         public List<GameObject> RootGameObjects { get; private set; } = new();
 
         [JsonProperty]
+        [HideInInspector]
         public Material? SkyboxMaterial { get; set; } = null;
 
         [JsonProperty]
+        [HideInInspector]
         public Texture? EnvironmentRadianceMap { get; set; } = null;
 
         public GameObject CreateGameObject(string? name = null, GameObject? parent = null)
@@ -114,6 +119,9 @@ namespace March.Core
             }
 
             RootGameObjects.Clear();
+
+            SkyboxMaterial = null;
+            EnvironmentRadianceMap = null;
         }
     }
 }

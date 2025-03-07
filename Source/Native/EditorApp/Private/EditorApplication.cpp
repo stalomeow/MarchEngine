@@ -105,7 +105,6 @@ namespace march
         TickImpl(std::size(callbacks), callbacks);
 
         // 需要用到 managed method
-        m_RenderPipeline->InitResources();
         Gizmos::InitResources();
     }
 
@@ -118,23 +117,28 @@ namespace march
             return ImVec4((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, 1.0f);
         };
 
+        constexpr auto WithAlpha = [](const ImVec4& color, float alpha)
+        {
+            return ImVec4(color.x, color.y, color.z, alpha);
+        };
+
         auto& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        const ImVec4 dockingEmptyBgColor = ColorFromBytes(18, 18, 18);
-        const ImVec4 bgColor = ColorFromBytes(25, 25, 26);
-        const ImVec4 menuColor = ColorFromBytes(35, 35, 36);
-        const ImVec4 lightBgColor = ColorFromBytes(90, 90, 92);
-        const ImVec4 veryLightBgColor = ColorFromBytes(110, 110, 115);
+        constexpr ImVec4 dockingEmptyBgColor = ColorFromBytes(18, 18, 18);
+        constexpr ImVec4 bgColor = ColorFromBytes(25, 25, 26);
+        constexpr ImVec4 menuColor = ColorFromBytes(35, 35, 36);
+        constexpr ImVec4 lightBgColor = ColorFromBytes(90, 90, 92);
+        constexpr ImVec4 veryLightBgColor = ColorFromBytes(110, 110, 115);
 
-        const ImVec4 panelColor = ColorFromBytes(55, 55, 59);
-        const ImVec4 panelHoverColor = ColorFromBytes(35, 80, 142);
-        const ImVec4 panelActiveColor = ColorFromBytes(0, 95, 170);
+        constexpr ImVec4 panelColor = ColorFromBytes(55, 55, 59);
+        constexpr ImVec4 panelHoverColor = ColorFromBytes(35, 80, 142);
+        constexpr ImVec4 panelActiveColor = ColorFromBytes(0, 95, 170);
 
-        const ImVec4 textColor = ColorFromBytes(230, 230, 230);
-        const ImVec4 textHighlightColor = ColorFromBytes(255, 255, 255);
-        const ImVec4 textDisabledColor = ColorFromBytes(151, 151, 151);
-        const ImVec4 borderColor = ColorFromBytes(58, 58, 58);
+        constexpr ImVec4 textColor = ColorFromBytes(230, 230, 230);
+        constexpr ImVec4 textHighlightColor = ColorFromBytes(255, 255, 255);
+        constexpr ImVec4 textDisabledColor = ColorFromBytes(151, 151, 151);
+        constexpr ImVec4 borderColor = ColorFromBytes(58, 58, 58);
 
         colors[ImGuiCol_Text] = textColor;
         colors[ImGuiCol_TextDisabled] = textDisabledColor;
@@ -156,8 +160,8 @@ namespace march
         colors[ImGuiCol_ScrollbarGrabHovered] = veryLightBgColor;
         colors[ImGuiCol_ScrollbarGrabActive] = veryLightBgColor;
         colors[ImGuiCol_CheckMark] = textColor;
-        colors[ImGuiCol_SliderGrab] = textColor;
-        colors[ImGuiCol_SliderGrabActive] = textHighlightColor;
+        colors[ImGuiCol_SliderGrab] = WithAlpha(textColor, 0.4f);
+        colors[ImGuiCol_SliderGrabActive] = WithAlpha(textHighlightColor, 0.4f);
         colors[ImGuiCol_Button] = panelColor;
         colors[ImGuiCol_ButtonHovered] = panelHoverColor;
         colors[ImGuiCol_ButtonActive] = panelActiveColor;

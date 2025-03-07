@@ -99,7 +99,7 @@ namespace march
         RenderPipeline();
         ~RenderPipeline();
 
-        void InitResources();
+        void InitResourcesIfNot();
 
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
@@ -127,6 +127,8 @@ namespace march
             }
         }
 
+        void SetSkyboxMaterial(Material* material) { m_SkyboxMaterial = material; }
+
         BufferHandle CreateCameraConstantBuffer(const std::string& name, Camera* camera);
         BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
 
@@ -140,12 +142,12 @@ namespace march
         void GenerateSSAORandomVectorMap();
         void SSAO();
 
-        void GenerateDiffuseIrradianceMap();
-        void GenerateSpecularIBL();
+        void CreateLightResources();
+        void CreateEnvLightResources();
+        void BakeEnvLight(GfxTexture* radianceMap);
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
-        asset_ptr<Material> m_SkyboxMaterial = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;
@@ -161,11 +163,14 @@ namespace march
         std::unique_ptr<GfxTexture> m_EnvSpecularRadianceMap = nullptr;
         asset_ptr<GfxExternalTexture> m_EnvSpecularBRDFLUT = nullptr;
 
+        Material* m_SkyboxMaterial = nullptr;
+
         RenderPipelineResource m_Resource{};
 
     private:
         std::vector<MeshRenderer*> m_Renderers{};
         std::vector<Light*> m_Lights{};
         std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
+        bool m_IsResourceLoaded = false;
     };
 }

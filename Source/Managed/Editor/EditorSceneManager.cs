@@ -57,6 +57,13 @@ namespace March.Editor
             {
                 gameObject.AwakeRecursive();
             }
+
+            RenderPipeline.SetSkyboxMaterial(CurrentScene.SkyboxMaterial);
+
+            if (CurrentScene.EnvironmentRadianceMap != null)
+            {
+                RenderPipeline.BakeEnvLight(CurrentScene.EnvironmentRadianceMap);
+            }
         }
 
         private static void DeactivateCurrentScene()

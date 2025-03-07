@@ -27,3 +27,13 @@ NATIVE_EXPORT_AUTO RenderPipeline_Render(cs<Camera*> camera, cs<Material*> gridG
 {
     GetApp()->GetRenderPipeline()->Render(camera, gridGizmoMaterial);
 }
+
+NATIVE_EXPORT_AUTO RenderPipeline_SetSkyboxMaterial(cs<Material*> material)
+{
+    GetApp()->GetRenderPipeline()->SetSkyboxMaterial(material);
+}
+
+NATIVE_EXPORT_AUTO RenderPipeline_BakeEnvLight(cs<GfxTexture*> radianceMap)
+{
+    GetApp()->GetRenderPipeline()->BakeEnvLight(radianceMap);
+}
