@@ -20,7 +20,11 @@ using namespace DirectX;
 
 namespace march
 {
-    RenderPipeline::RenderPipeline()
+    RenderPipeline::RenderPipeline() {}
+
+    RenderPipeline::~RenderPipeline() {}
+
+    void RenderPipeline::InitResources()
     {
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>();
@@ -65,8 +69,6 @@ namespace march
         GenerateDiffuseIrradianceMap();
         GenerateSpecularIBL();
     }
-
-    RenderPipeline::~RenderPipeline() {}
 
     void RenderPipeline::Render(Camera* camera, Material* gridGizmoMaterial)
     {
@@ -626,6 +628,8 @@ namespace march
 
     void RenderPipeline::GenerateSpecularIBL()
     {
+        m_EnvSpecularBRDFLUT.reset("Engine/Resources/Textures/EnvSpecularBRDFLUT.dds");
+
         GfxTextureDesc desc1{};
         desc1.Format = GfxTextureFormat::R11G11B10_Float;
         desc1.Flags = GfxTextureFlags::UnorderedAccess | GfxTextureFlags::Mipmaps;
@@ -639,7 +643,7 @@ namespace march
         desc1.MipmapBias = 0;
         m_EnvSpecularRadianceMap = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularRadianceMap", desc1, GfxTextureAllocStrategy::DefaultHeapCommitted);
 
-        GfxTextureDesc desc2{};
+        /*GfxTextureDesc desc2{};
         desc2.Format = GfxTextureFormat::R16G16_Float;
         desc2.Flags = GfxTextureFlags::UnorderedAccess;
         desc2.Dimension = GfxTextureDimension::Tex2D;
@@ -650,7 +654,7 @@ namespace march
         desc2.Filter = GfxTextureFilterMode::Bilinear;
         desc2.Wrap = GfxTextureWrapMode::Clamp;
         desc2.MipmapBias = 0;
-        m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);
+        m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);*/
 
         GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
         cmd->BeginEvent("BakeSpecularIBL");
@@ -687,10 +691,10 @@ namespace march
                 }
             }
 
-            std::optional<size_t> kernelIndex2 = m_SpecularIBLShader->FindKernel("BRDFMain");
-            cmd->UnsetTexturesAndBuffers();
-            cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
-            cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex2, desc2.Width, desc2.Height, 1);
+            //std::optional<size_t> kernelIndex2 = m_SpecularIBLShader->FindKernel("BRDFMain");
+            //cmd->UnsetTexturesAndBuffers();
+            //cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
+            //cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex2, desc2.Width, desc2.Height, 1);
         }
         cmd->EndEvent();
         cmd->SubmitAndRelease();

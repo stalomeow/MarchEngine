@@ -72,6 +72,21 @@ namespace March.Editor.Windows
                 var go = SceneManager.CurrentScene.CreateGameObject(parent: Selection.Active as GameObject);
                 Selection.Active = go;
             });
+
+            s_ContextMenu.AddMenuItem("Delete", (ref object? arg) =>
+            {
+                if (Selection.Active is not GameObject go)
+                {
+                    return;
+                }
+
+                go.transform.Detach();
+                SceneManager.CurrentScene.RootGameObjects.Remove(go);
+                go.Dispose();
+
+                Selection.Active = null;
+
+            }, enabled: (ref object? arg) => Selection.Active is GameObject);
         }
 
         public HierarchyWindow() : base(FontAwesome6.BarsStaggered, "Hierarchy")

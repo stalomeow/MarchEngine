@@ -32,7 +32,7 @@ namespace March.Editor
         private static void Initialize()
         {
             AssetDatabase.Initialize();
-            SceneManager.InitializeEditor(selected: go => Selection.Active == go);
+            EditorSceneManager.Initialize();
 
             LoadWindows();
 

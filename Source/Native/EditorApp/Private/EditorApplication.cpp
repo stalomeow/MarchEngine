@@ -99,12 +99,13 @@ namespace march
         Display::CreateMainDisplay(10, 10); // dummy
 
         InitImGui();
+        m_RenderPipeline = std::make_unique<RenderPipeline>();
 
         ManagedMethod callbacks[] = { ManagedMethod::Application_Initialize, ManagedMethod::EditorApplication_Initialize };
         TickImpl(std::size(callbacks), callbacks);
 
         // 需要用到 managed method
-        m_RenderPipeline = std::make_unique<RenderPipeline>();
+        m_RenderPipeline->InitResources();
         Gizmos::InitResources();
     }
 

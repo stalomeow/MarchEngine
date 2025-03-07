@@ -160,10 +160,7 @@ namespace March.Editor.AssetPipeline
             {
                 foreach (MarchObject asset in s_DirtyAssets)
                 {
-                    if (GetAssetImporter(asset, AssetReimportMode.Dont) is DirectAssetImporter importer)
-                    {
-                        importer.SaveAsset();
-                    }
+                    SaveAssetImmediately(asset);
                 }
 
                 s_DirtyAssets.Clear();
@@ -173,8 +170,11 @@ namespace March.Editor.AssetPipeline
 
         private static void Dispose()
         {
+            SaveDirtyAssets();
+
             s_ProjectAssetFileWatcher.Dispose();
             s_EngineShaderWatcher.Dispose();
+            s_EngineResourceWatcher.Dispose();
         }
 
         public static string? GetGuidByPath(string path)
@@ -257,6 +257,14 @@ namespace March.Editor.AssetPipeline
             }
         }
 
+        public static void SaveAssetImmediately(MarchObject asset)
+        {
+            if (asset.IsPersistent && GetAssetImporter(asset, AssetReimportMode.Dont) is DirectAssetImporter importer)
+            {
+                importer.SaveAsset();
+            }
+        }
+
         public static void Create(string path, MarchObject asset)
         {
             var location = AssetLocation.FromPath(path);
@@ -271,7 +279,7 @@ namespace March.Editor.AssetPipeline
                 throw new InvalidOperationException("Can not create an asset outside project folder");
             }
 
-            AssetImporter? importer = GetOrCreateAssetImporter(location.AssetPath, allowNonExistingAsset: true, out bool isNewlyCreated);
+            AssetImporter? importer = GetOrCreateAssetImporter(location.AssetPath, allowNonExistedAsset: true, out bool isNewlyCreated);
 
             if (importer is not DirectAssetImporter directAssetImporter || !isNewlyCreated)
             {
@@ -458,7 +466,7 @@ namespace March.Editor.AssetPipeline
 
         public static AssetImporter? GetAssetImporter(string path, AssetReimportMode mode = AssetReimportMode.FastCheck)
         {
-            AssetImporter? importer = GetOrCreateAssetImporter(path, allowNonExistingAsset: false, out bool isNewlyCreated);
+            AssetImporter? importer = GetOrCreateAssetImporter(path, allowNonExistedAsset: false, out bool isNewlyCreated);
 
             if (importer != null)
             {
@@ -555,7 +563,7 @@ namespace March.Editor.AssetPipeline
             }
         }
 
-        private static AssetImporter? GetOrCreateAssetImporter(string path, bool allowNonExistingAsset, out bool isNewlyCreated)
+        private static AssetImporter? GetOrCreateAssetImporter(string path, bool allowNonExistedAsset, out bool isNewlyCreated)
         {
             var location = AssetLocation.FromPath(path);
 
@@ -571,7 +579,7 @@ namespace March.Editor.AssetPipeline
             }
             else
             {
-                if (!allowNonExistingAsset && !File.Exists(location.AssetFullPath) && !Directory.Exists(location.AssetFullPath))
+                if (!allowNonExistedAsset && !File.Exists(location.AssetFullPath) && !Directory.Exists(location.AssetFullPath))
                 {
                     if (File.Exists(location.ImporterFullPath))
                     {

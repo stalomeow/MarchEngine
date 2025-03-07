@@ -67,10 +67,7 @@ namespace March.Core
         internal static partial bool IsEngineShaderEditable { get; }
 
         [UnmanagedCallersOnly]
-        private static void Initialize()
-        {
-            SceneManager.Initialize();
-        }
+        private static void Initialize() { }
 
         [UnmanagedCallersOnly]
         private static void Tick() => OnTick?.Invoke();

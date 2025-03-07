@@ -1,11 +1,21 @@
+using March.Core.Rendering;
 using Newtonsoft.Json;
 
 namespace March.Core
 {
     public class Scene : MarchObject, IDisposable
     {
-        [JsonProperty] public string Name = "New Scene";
-        [JsonProperty] public List<GameObject> RootGameObjects = [];
+        [JsonProperty]
+        public string Name { get; set; } = "New Scene";
+
+        [JsonProperty]
+        public List<GameObject> RootGameObjects { get; private set; } = new();
+
+        [JsonProperty]
+        public Material? SkyboxMaterial { get; set; } = null;
+
+        [JsonProperty]
+        public Texture? EnvironmentRadianceMap { get; set; } = null;
 
         public GameObject CreateGameObject(string? name = null, GameObject? parent = null)
         {

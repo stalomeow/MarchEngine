@@ -99,6 +99,8 @@ namespace march
         RenderPipeline();
         ~RenderPipeline();
 
+        void InitResources();
+
         void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
 
         void AddMeshRenderer(MeshRenderer* obj) { m_Renderers.push_back(obj); }
@@ -157,7 +159,7 @@ namespace march
 
         std::unique_ptr<GfxBuffer> m_EnvDiffuseSH9Coefs = nullptr;
         std::unique_ptr<GfxTexture> m_EnvSpecularRadianceMap = nullptr;
-        std::unique_ptr<GfxTexture> m_EnvSpecularBRDFLUT = nullptr;
+        asset_ptr<GfxExternalTexture> m_EnvSpecularBRDFLUT = nullptr;
 
         RenderPipelineResource m_Resource{};
 

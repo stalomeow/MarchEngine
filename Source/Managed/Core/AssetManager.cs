@@ -52,7 +52,7 @@ namespace March.Core
 
     public static class AssetManager
     {
-        public static IAssetManagerImpl Impl { get; set; } = new DefaultAssetManagerImpl();
+        internal static IAssetManagerImpl Impl { get; set; } = new DefaultAssetManagerImpl();
 
         public static string? GetGuidByPath(string path) => Impl.GetGuidByPath(path);
 

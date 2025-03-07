@@ -1,29 +1,25 @@
-using March.Core.Rendering;
-
 namespace March.Core
 {
+    public interface ISceneManagerImpl
+    {
+        Scene CurrentScene { get; }
+
+        void LoadScene(string path);
+    }
+
+    file class DefaultSceneManagerImpl : ISceneManagerImpl
+    {
+        public Scene CurrentScene { get; } = new();
+
+        public void LoadScene(string path) { }
+    }
+
     public static class SceneManager
     {
-        public static Scene CurrentScene { get; set; } = new();
+        internal static ISceneManagerImpl Impl { get; set; } = new DefaultSceneManagerImpl();
 
-        internal static void Initialize()
-        {
-            foreach (var gameObject in CurrentScene.RootGameObjects)
-            {
-                gameObject.AwakeRecursive();
-            }
+        public static Scene CurrentScene => Impl.CurrentScene;
 
-            Application.OnTick += () => CurrentScene.Update();
-            Application.OnQuit += () => CurrentScene.Dispose();
-        }
-
-        internal static void InitializeEditor(Func<GameObject, bool> selected)
-        {
-            Application.OnTick += () =>
-            {
-                Gizmos.Clear();
-                CurrentScene.DrawGizmos(selected);
-            };
-        }
+        public static void LoadScene(string path) => Impl.LoadScene(path);
     }
 }
