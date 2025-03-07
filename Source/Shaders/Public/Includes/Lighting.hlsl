@@ -195,8 +195,12 @@ float3 EnvDiffuseLighting(BRDFData data, float3 N, float NoV)
 
 float3 EnvSpecularLighting(BRDFData data, float3 N, float3 V, float NoV)
 {
+    float unused1, unused2, mipLevels;
+    _EnvSpecularRadianceMap.GetDimensions(0, unused1, unused2, mipLevels);
+
     float3 R = reflect(-V, N);
-    float3 radiance = _EnvSpecularRadianceMap.SampleLevel(sampler_EnvSpecularRadianceMap, R, data.roughness).rgb;
+    float lod = data.roughness * (mipLevels - 1);
+    float3 radiance = _EnvSpecularRadianceMap.SampleLevel(sampler_EnvSpecularRadianceMap, R, lod).rgb;
     float3 brdf = EnvironmentSpecularBRDF(data, NoV, _EnvSpecularBRDFLUT, sampler_EnvSpecularBRDFLUT);
     return brdf * radiance;
 }
