@@ -1,0 +1,19 @@
+﻿{
+  "$id": "0",
+  "$type": "March.Editor.AssetPipeline.Importers.ShaderImporter, March.Editor",
+  "m_UseReversedZBuffer": true,
+  "m_ColorSpace": 0,
+  "m_SerializedVersion": 82,
+  "m_AssetLastWriteTimeUtc": "2025-02-27T14:20:50.9616183Z",
+  "m_MainAssetGuid": "8c14ca53a7594a88a203b3ceff1142e9",
+  "m_GuidToAssetMap": {
+    "8c14ca53a7594a88a203b3ceff1142e9": {
+      "Name": "Main",
+      "NormalIcon": "",
+      "ExpandedIcon": ""
+    }
+  },
+  "m_DependentImporterLastWriteTimeUtc": {
+    "Engine/Shaders/Includes/Common.hlsl": "2025-03-06T08:12:25.5707181Z"
+  }
+}
