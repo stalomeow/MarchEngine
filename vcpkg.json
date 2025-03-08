@@ -6,7 +6,8 @@
     {
       "name": "directxtex",
       "features": [
-        "dx12"
+        "dx12",
+        "openexr"
       ]
     },
     "fmt",

@@ -11,6 +11,7 @@
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Debug.h"
 #include <DirectXColors.h>
+#include <DirectXTexEXR.h>
 #include <filesystem>
 
 using namespace DirectX;
@@ -678,9 +679,15 @@ namespace march
         desc.MipmapBias = args.MipmapBias;
 
         std::wstring wFilePath = StringUtils::Utf8ToUtf16(filePath);
-        if (fs::path(filePath).extension() == ".dds")
+        fs::path ext = fs::path(filePath).extension();
+
+        if (ext == ".dds")
         {
             CHECK_HR(LoadFromDDSFile(wFilePath.c_str(), DDS_FLAGS_NONE, nullptr, m_Image));
+        }
+        else if (ext == ".exr")
+        {
+            CHECK_HR(LoadFromEXRFile(wFilePath.c_str(), nullptr, m_Image));
         }
         else
         {
@@ -699,21 +706,30 @@ namespace march
             if (m_Image.GetMetadata().mipLevels == 1 && (m_Image.GetMetadata().width > 1 || m_Image.GetMetadata().height > 1))
             {
                 ScratchImage mipChain;
+                HRESULT hr;
 
                 if (m_Image.GetMetadata().dimension == TEX_DIMENSION_TEXTURE3D)
                 {
                     // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps3D
                     // This function does not operate directly on block compressed images.
-                    CHECK_HR(GenerateMipMaps3D(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+                    hr = GenerateMipMaps3D(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain);
                 }
                 else
                 {
                     // https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps
                     // This function does not operate directly on block compressed images.
-                    CHECK_HR(GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain));
+                    hr = GenerateMipMaps(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), TEX_FILTER_BOX, 0, mipChain);
                 }
 
-                m_Image = std::move(mipChain);
+                if (SUCCEEDED(hr))
+                {
+                    m_Image = std::move(mipChain);
+                }
+                else
+                {
+                    // 在边长不是 pow2 的情况下会失败
+                    desc.Flags &= ~GfxTextureFlags::Mipmaps;
+                }
             }
         }
         else if (m_Image.GetMetadata().mipLevels > 1)

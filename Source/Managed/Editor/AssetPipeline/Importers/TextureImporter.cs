@@ -1,3 +1,4 @@
+using March.Core.Diagnostics;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
@@ -7,7 +8,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", Version = 14)]
+    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", ".exr", Version = 16)]
     public class TextureImporter : AssetImporter
     {
         [JsonProperty]
@@ -57,6 +58,12 @@ namespace March.Editor.AssetPipeline.Importers
 
             string name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);
             texture.LoadFromFile(name, Location.AssetFullPath, in args);
+
+            if (GenerateMipmaps && (texture.Desc.Flags & TextureFlags.Mipmaps) != TextureFlags.Mipmaps)
+            {
+                Log.Message(LogLevel.Error, "Failed to generate mipmaps for texture", $"{Location.AssetPath}");
+                GenerateMipmaps = false;
+            }
         }
     }
 
