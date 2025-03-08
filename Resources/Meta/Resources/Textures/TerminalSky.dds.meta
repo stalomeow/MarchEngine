@@ -1,11 +1,11 @@
 ﻿{
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.TextureImporter, March.Editor",
-  "m_SerializedVersion": 24,
-  "m_AssetLastWriteTimeUtc": "2024-09-26T07:06:47Z",
-  "m_MainAssetGuid": "f2c6ea9ca8a1492aa0e6defe678c2280",
+  "m_SerializedVersion": 26,
+  "m_AssetLastWriteTimeUtc": "2025-03-08T13:03:15.1324391Z",
+  "m_MainAssetGuid": "6b4f2da66b614742b4c75236e202c2fb",
   "m_GuidToAssetMap": {
-    "f2c6ea9ca8a1492aa0e6defe678c2280": {
+    "6b4f2da66b614742b4c75236e202c2fb": {
       "Name": "Main",
       "NormalIcon": "",
       "ExpandedIcon": ""

@@ -8,7 +8,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", ".exr", Version = 16)]
+    [CustomAssetImporter("Texture Asset", ".dds", ".jpg", ".jpeg", ".png", ".exr", Version = 18)]
     public class TextureImporter : AssetImporter
     {
         [JsonProperty]

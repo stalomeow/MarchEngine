@@ -13,6 +13,7 @@
 #include <DirectXColors.h>
 #include <DirectXTexEXR.h>
 #include <filesystem>
+#include <optional>
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -612,10 +613,11 @@ namespace march
         UploadImage(desc, CREATETEX_DEFAULT);
     }
 
-    static DXGI_FORMAT GetCompressedFormat(const ScratchImage& image, GfxTextureCompression compression)
+    static std::optional<DXGI_FORMAT> GetCompressedFormat(const ScratchImage& image, GfxTextureCompression compression)
     {
         // https://docs.unity3d.com/6000.0/Documentation/Manual/texture-choose-format-by-platform.html
         // https://docs.unity3d.com/6000.0/Documentation/Manual/texture-formats-reference.html
+        // https://docs.unity3d.com/6000.0/Documentation/Manual/class-TextureImporter-type-specific.html#default-formats
 
         DXGI_FORMAT format = image.GetMetadata().format;
 
@@ -626,7 +628,23 @@ namespace march
 
         DXGI_FORMAT result;
 
-        if (HasAlpha(format) && !image.IsAlphaAllOpaque())
+        if (FormatDataType(format) == FORMAT_TYPE_FLOAT)
+        {
+            // HDR
+            switch (compression)
+            {
+            case GfxTextureCompression::NormalQuality:
+            case GfxTextureCompression::HighQuality:
+            case GfxTextureCompression::LowQuality:
+                // TODO 现在 BC6 是在 CPU 上压缩的，太 tm 慢了，根本没法等
+                // result = DXGI_FORMAT_BC6H_UF16;
+                // break;
+                return std::nullopt;
+            default:
+                throw GfxException("Invalid texture compression");
+            }
+        }
+        else if (HasAlpha(format) && !image.IsAlphaAllOpaque())
         {
             switch (compression)
             {
@@ -764,22 +782,24 @@ namespace march
 
         if (args.Compression != GfxTextureCompression::None)
         {
-            ScratchImage compressed;
-
-            // TODO 目前 BC7 压缩速度巨慢
-            TEX_COMPRESS_FLAGS flags = TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL;
-
-            if (!desc.HasFlag(GfxTextureFlags::SRGB))
+            if (std::optional<DXGI_FORMAT> targetFormat = GetCompressedFormat(m_Image, args.Compression))
             {
-                // By default, BC1-3 uses a perceptual weighting.
-                // By using this flag, the perceptual weighting is disabled which can be useful
-                // when using the RGB channels for other data.
-                flags |= TEX_COMPRESS_UNIFORM;
-            }
+                ScratchImage compressed;
 
-            DXGI_FORMAT targetFormat = GetCompressedFormat(m_Image, args.Compression);
-            CHECK_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), targetFormat, flags, TEX_THRESHOLD_DEFAULT, compressed));
-            m_Image = std::move(compressed);
+                // TODO 目前 BC7 压缩速度巨慢
+                TEX_COMPRESS_FLAGS flags = TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL;
+
+                if (!desc.HasFlag(GfxTextureFlags::SRGB))
+                {
+                    // By default, BC1-3 uses a perceptual weighting.
+                    // By using this flag, the perceptual weighting is disabled which can be useful
+                    // when using the RGB channels for other data.
+                    flags |= TEX_COMPRESS_UNIFORM;
+                }
+
+                CHECK_HR(Compress(m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), *targetFormat, flags, TEX_THRESHOLD_DEFAULT, compressed));
+                m_Image = std::move(compressed);
+            }
         }
 
         const TexMetadata& metadata = m_Image.GetMetadata();
