@@ -33,7 +33,7 @@ NATIVE_EXPORT_AUTO RenderPipeline_SetSkyboxMaterial(cs<Material*> material)
     GetApp()->GetRenderPipeline()->SetSkyboxMaterial(material);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_BakeEnvLight(cs<GfxTexture*> radianceMap)
+NATIVE_EXPORT_AUTO RenderPipeline_BakeEnvLight(cs<GfxTexture*> radianceMap, cs_float diffuseIntensityMultiplier, cs_float specularIntensityMultiplier)
 {
-    GetApp()->GetRenderPipeline()->BakeEnvLight(radianceMap);
+    GetApp()->GetRenderPipeline()->BakeEnvLight(radianceMap, diffuseIntensityMultiplier, specularIntensityMultiplier);
 }

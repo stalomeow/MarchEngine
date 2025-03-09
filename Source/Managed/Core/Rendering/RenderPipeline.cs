@@ -25,6 +25,6 @@ namespace March.Core.Rendering
         internal static partial void SetSkyboxMaterial(Material? material);
 
         [NativeMethod]
-        internal static partial void BakeEnvLight(Texture radianceMap);
+        internal static partial void BakeEnvLight(Texture radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier);
     }
 }

@@ -144,7 +144,7 @@ namespace march
 
         void CreateLightResources();
         void CreateEnvLightResources();
-        void BakeEnvLight(GfxTexture* radianceMap);
+        void BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier);
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;

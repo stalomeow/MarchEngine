@@ -62,7 +62,10 @@ namespace March.Editor
 
             if (CurrentScene.EnvironmentRadianceMap != null)
             {
-                RenderPipeline.BakeEnvLight(CurrentScene.EnvironmentRadianceMap);
+                RenderPipeline.BakeEnvLight(
+                    CurrentScene.EnvironmentRadianceMap,
+                    CurrentScene.EnvironmentDiffuseIntensityMultiplier,
+                    CurrentScene.EnvironmentSpecularIntensityMultiplier);
             }
         }
 

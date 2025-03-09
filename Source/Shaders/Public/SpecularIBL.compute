@@ -14,7 +14,7 @@ RWTexture2DArray<float3> _PrefilteredMap;
 
 cbuffer cbPrefilter
 {
-    float2 _PrefilterParams; // x: roughness, y: face
+    float3 _PrefilterParams; // x: roughness, y: face, z: intensityMultiplier
 };
 
 float3 GetAverageRadiance(float roughness, float3 R)
@@ -61,7 +61,7 @@ void PrefilterMain(int3 dtid : SV_DispatchThreadID)
 
     float2 uv = float2(dtid.x / max(1, width - 1), dtid.y / max(1, height - 1));
     float3 R = CubeFaceUVToDirection(uv, face);
-    _PrefilteredMap[int3(dtid.xy, face)] = GetAverageRadiance(roughness, R);
+    _PrefilteredMap[int3(dtid.xy, face)] = GetAverageRadiance(roughness, R) * _PrefilterParams.z;
 }
 
 RWTexture2D<float2> _BRDFLUT;

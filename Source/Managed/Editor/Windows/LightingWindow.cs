@@ -34,11 +34,28 @@ namespace March.Editor.Windows
                     {
                         scene.EnvironmentRadianceMap = radianceMap;
                         AssetDatabase.SetDirty(scene);
+                    }
+                }
 
-                        if (radianceMap != null)
-                        {
-                            RenderPipeline.BakeEnvLight(radianceMap);
-                        }
+                float diffuseIntensityMultiplier = scene.EnvironmentDiffuseIntensityMultiplier;
+                if (EditorGUI.FloatSliderField("Diffuse Intensity Multiplier", "", ref diffuseIntensityMultiplier, 0.0f, 1.0f))
+                {
+                    scene.EnvironmentDiffuseIntensityMultiplier = diffuseIntensityMultiplier;
+                    AssetDatabase.SetDirty(scene);
+                }
+
+                float specularIntensityMultiplier = scene.EnvironmentSpecularIntensityMultiplier;
+                if (EditorGUI.FloatSliderField("Specular Intensity Multiplier", "", ref specularIntensityMultiplier, 0.0f, 1.0f))
+                {
+                    scene.EnvironmentSpecularIntensityMultiplier = specularIntensityMultiplier;
+                    AssetDatabase.SetDirty(scene);
+                }
+
+                using (new EditorGUI.DisabledScope(radianceMap == null))
+                {
+                    if (EditorGUI.ButtonRight("Bake"))
+                    {
+                        RenderPipeline.BakeEnvLight(radianceMap, diffuseIntensityMultiplier, specularIntensityMultiplier);
                     }
                 }
             }

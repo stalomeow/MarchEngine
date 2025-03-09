@@ -10,6 +10,11 @@ TextureCube _RadianceMap;
 SamplerState sampler_RadianceMap;
 RWStructuredBuffer<float3> _SH9Coefs;
 
+cbuffer cbSH9
+{
+    float _IntensityMultiplier;
+};
+
 float3 GetIrradianceSH9Coef(int basisIndex)
 {
     float3 coef = 0;
@@ -33,5 +38,5 @@ float3 GetIrradianceSH9Coef(int basisIndex)
 [numthreads(9, 1, 1)]
 void CalcSH9Main(int3 dtid : SV_DispatchThreadID)
 {
-    _SH9Coefs[dtid.x] = GetIrradianceSH9Coef(dtid.x);
+    _SH9Coefs[dtid.x] = GetIrradianceSH9Coef(dtid.x) * _IntensityMultiplier;
 }

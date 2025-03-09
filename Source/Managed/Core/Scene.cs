@@ -22,6 +22,14 @@ namespace March.Core
         [HideInInspector]
         public Texture? EnvironmentRadianceMap { get; set; } = null;
 
+        [JsonProperty]
+        [HideInInspector]
+        public float EnvironmentDiffuseIntensityMultiplier { get; set; } = 1.0f;
+
+        [JsonProperty]
+        [HideInInspector]
+        public float EnvironmentSpecularIntensityMultiplier { get; set; } = 1.0f;
+
         public GameObject CreateGameObject(string? name = null, GameObject? parent = null)
         {
             GameObject go = new();

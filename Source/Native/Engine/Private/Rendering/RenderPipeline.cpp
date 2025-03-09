@@ -654,12 +654,17 @@ namespace march
         m_EnvSpecularBRDFLUT.reset("Engine/Resources/Textures/EnvSpecularBRDFLUT.dds");
     }
 
-    struct SpecularIBLPrefilterConsts
+    struct DiffuseIrradianceSH9Consts
     {
-        XMFLOAT2 Params; // x: roughness, y: face
+        float IntensityMultiplier;
     };
 
-    void RenderPipeline::BakeEnvLight(GfxTexture* radianceMap)
+    struct SpecularIBLPrefilterConsts
+    {
+        XMFLOAT3 Params; // x: roughness, y: face, z: intensityMultiplier
+    };
+
+    void RenderPipeline::BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier)
     {
         InitResourcesIfNot();
 
@@ -670,6 +675,17 @@ namespace march
             {
                 cmd->SetTexture("_RadianceMap", radianceMap);
                 cmd->SetBuffer("_SH9Coefs", m_EnvDiffuseSH9Coefs.get());
+
+                GfxBufferDesc cbDesc{};
+                cbDesc.Stride = sizeof(DiffuseIrradianceSH9Consts);
+                cbDesc.Count = 1;
+                cbDesc.Usages = GfxBufferUsages::Constant;
+                cbDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+                DiffuseIrradianceSH9Consts consts{ std::clamp(diffuseIntensityMultiplier, 0.0f, 1.0f)};
+                GfxBuffer cb{ GetGfxDevice(), "cbSH9", cbDesc };
+                cb.SetData(&consts);
+                cmd->SetBuffer("cbSH9", &cb);
 
                 std::optional<size_t> sh9Kernel = m_DiffuseIrradianceShader->FindKernel("CalcSH9Main");
                 cmd->DispatchCompute(m_DiffuseIrradianceShader.get(), *sh9Kernel, 1, 1, 1);
@@ -684,18 +700,20 @@ namespace march
                 std::optional<size_t> prefilterKernel = m_SpecularIBLShader->FindKernel("PrefilterMain");
                 const GfxTextureDesc& outputDesc = m_EnvSpecularRadianceMap->GetDesc();
 
+                GfxBufferDesc cbDesc{};
+                cbDesc.Stride = sizeof(SpecularIBLPrefilterConsts);
+                cbDesc.Count = 1;
+                cbDesc.Usages = GfxBufferUsages::Constant;
+                cbDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+                SpecularIBLPrefilterConsts consts{};
+                consts.Params.z = std::clamp(specularIntensityMultiplier, 0.0f, 1.0f);
+
                 for (uint32_t mip = 0; mip < m_EnvSpecularRadianceMap->GetMipLevels(); mip++)
                 {
                     float roughness = static_cast<float>(mip) / (m_EnvSpecularRadianceMap->GetMipLevels() - 1);
                     cmd->SetTexture("_PrefilteredMap", m_EnvSpecularRadianceMap.get(), GfxTextureElement::Default, mip);
 
-                    GfxBufferDesc cbDesc{};
-                    cbDesc.Stride = sizeof(SpecularIBLPrefilterConsts);
-                    cbDesc.Count = 1;
-                    cbDesc.Usages = GfxBufferUsages::Constant;
-                    cbDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
-
-                    SpecularIBLPrefilterConsts consts{};
                     consts.Params.x = roughness;
 
                     for (uint32_t face = 0; face < 6; face++)
