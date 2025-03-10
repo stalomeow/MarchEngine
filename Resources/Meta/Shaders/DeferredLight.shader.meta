@@ -3,8 +3,8 @@
   "$type": "March.Editor.AssetPipeline.Importers.ShaderImporter, March.Editor",
   "m_UseReversedZBuffer": true,
   "m_ColorSpace": 0,
-  "m_SerializedVersion": 82,
-  "m_AssetLastWriteTimeUtc": "2025-03-05T14:44:08.2220858Z",
+  "m_SerializedVersion": 83,
+  "m_AssetLastWriteTimeUtc": "2025-03-10T10:31:50.0519688Z",
   "m_MainAssetGuid": "2a7ea5338fb9432ca5cd5313ddca2fe3",
   "m_GuidToAssetMap": {
     "2a7ea5338fb9432ca5cd5313ddca2fe3": {
@@ -16,7 +16,7 @@
   "m_DependentImporterLastWriteTimeUtc": {
     "Engine/Shaders/Includes/Common.hlsl": "2025-03-06T08:12:25.5707181Z",
     "Engine/Shaders/Includes/GBuffer.hlsl": "2025-03-06T08:12:26.1190452Z",
-    "Engine/Shaders/Includes/Lighting.hlsl": "2025-03-07T09:31:04.2948438Z",
+    "Engine/Shaders/Includes/Lighting.hlsl": "2025-03-10T15:23:06.6129713Z",
     "Engine/Shaders/Includes/AmbientOcclusion.hlsl": "2025-03-06T07:59:08.6016278Z"
   }
 }

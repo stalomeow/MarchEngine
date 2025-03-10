@@ -9,7 +9,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Compute Shader Asset", ".compute", Version = 11)]
+    [CustomAssetImporter("Compute Shader Asset", ".compute", Version = 12)]
     public class ComputeShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -41,10 +41,8 @@ namespace March.Editor.AssetPipeline.Importers
             shader.ClearWarningsAndErrors();
             shader.Name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);
 
-            if (shader.Compile(Location.AssetFullPath, content))
-            {
-                AddDependency(ref context, content);
-            }
+            AddDependency(ref context, content);
+            shader.Compile(Location.AssetFullPath, content);
         }
 
         private void AddDependency(ref AssetImportContext context, string source)

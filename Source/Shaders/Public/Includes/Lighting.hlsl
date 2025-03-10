@@ -210,7 +210,7 @@ float3 EnvLighting(BRDFData data, float3 N, float3 V, float NoV)
     return EnvDiffuseLighting(data, N, NoV) + EnvSpecularLighting(data, N, V, NoV);
 }
 
-float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 positionVS, float2 uv, float3 emission, float occlusion)
+float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 positionVS, float2 positionSS, float2 uv, float3 emission, float occlusion)
 {
     int3 clusterId = GetClusterId(uv, positionVS);
     int clusterIndex = GetClusterIndex(clusterId);
@@ -226,7 +226,7 @@ float3 FragmentPBR(BRDFData data, float3 positionWS, float3 normalWS, float3 pos
     float3 N = normalWS;
     float3 V = normalize(GetCameraWorldSpacePosition() - positionWS);
     float NoV = saturate(dot(N, V));
-    float shadow = SampleShadowMap(TransformWorldToShadowCoord(positionWS));
+    float shadow = SampleShadowMap(positionSS, TransformWorldToShadowCoord(positionWS));
 
     // Directional lights
     for (int i = 0; i < GetNumDirectionalLights(); i++)

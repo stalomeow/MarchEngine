@@ -12,7 +12,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = 74)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = 75)]
     public class ShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -77,14 +77,16 @@ namespace March.Editor.AssetPipeline.Importers
 
         private void CompileShaderPassWithFallback(ref AssetImportContext context, Shader shader, int passIndex, string source)
         {
+            AddDependency(ref context, source);
+
             if (shader.CompilePass(passIndex, Location.AssetFullPath, source))
             {
-                AddDependency(ref context, source);
                 return;
             }
 
             if (shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program))
             {
+                // 如果使用了 fallback shader，需要再额外添加 fallback 的依赖
                 AddDependency(ref context, FallbackShaderCodes.Program);
             }
             else

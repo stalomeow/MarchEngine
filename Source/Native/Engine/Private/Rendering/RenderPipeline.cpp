@@ -375,7 +375,21 @@ namespace march
         {
             drawShadow = true;
 
-            BoundingBox aabb = m_Renderers[0]->GetBounds();
+            BoundingBox aabb{};
+
+            for (size_t i = 0; i < m_Renderers.size(); i++)
+            {
+                if (i == 0)
+                {
+                    aabb = m_Renderers[i]->GetBounds();
+                }
+                else
+                {
+                    BoundingBox temp{};
+                    BoundingBox::CreateMerged(temp, aabb, m_Renderers[i]->GetBounds());
+                    aabb = temp;
+                }
+            }
 
             BoundingSphere sphere = {};
             BoundingSphere::CreateFromBoundingBox(sphere, aabb);
