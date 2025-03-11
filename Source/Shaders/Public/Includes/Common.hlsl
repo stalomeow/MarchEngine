@@ -2,7 +2,12 @@
 #define _COMMON_INCLUDED
 
 #define PI      3.14159265
-#define FLT_EPS 5.960464478e-8 // 2^-24, machine epsilon: 1 + EPS = 1 (half of the ULP for 1.0f)
+
+#define FLT_INF asfloat(0x7F800000)
+#define FLT_NAN asfloat(0xffc00000)
+#define FLT_EPS 5.960464478e-8  // 2^-24, machine epsilon: 1 + EPS = 1 (half of the ULP for 1.0f)
+#define FLT_MIN 1.175494351e-38 // Minimum normalized positive floating-point number
+#define FLT_MAX 3.402823466e+38 // Maximum representable floating-point number
 
 struct InstanceData
 {

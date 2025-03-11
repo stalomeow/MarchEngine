@@ -106,6 +106,6 @@ namespace march
 
     public:
         static constexpr float MinLabelWidth = 160.0f;
-        static constexpr float MaxFieldWidth = 320.0f;
+        static constexpr float MaxFieldWidth = 280.0f;
     };
 }

@@ -60,13 +60,7 @@ namespace march
 
     void Light::SetIntensity(float value)
     {
-        if (value < 0)
-        {
-            LOG_ERROR("Intensity must be greater than or equal to 0.");
-            return;
-        }
-
-        m_Intensity = value;
+        m_Intensity = std::max(value, 0.0f);
     }
 
     LightUnit Light::GetUnit() const
@@ -92,13 +86,7 @@ namespace march
 
     void Light::SetAttenuationRadius(float value)
     {
-        if (value < 0)
-        {
-            LOG_ERROR("Attenuation radius must be greater than or equal to 0.");
-            return;
-        }
-
-        m_AttenuationRadius = value;
+        m_AttenuationRadius = std::max(value, 0.0f);
     }
 
     float Light::GetSpotInnerConeAngle() const
@@ -108,13 +96,7 @@ namespace march
 
     void Light::SetSpotInnerConeAngle(float value)
     {
-        if (value < 0 || value > m_SpotOuterConeAngle)
-        {
-            LOG_ERROR("Inner cone angle must be in the range [0, outer cone angle].");
-            return;
-        }
-
-        m_SpotInnerConeAngle = value;
+        m_SpotInnerConeAngle = std::clamp(value, 0.0f, m_SpotOuterConeAngle);
     }
 
     float Light::GetSpotOuterConeAngle() const
@@ -124,13 +106,7 @@ namespace march
 
     void Light::SetSpotOuterConeAngle(float value)
     {
-        if (value < m_SpotInnerConeAngle || value > 90.0f)
-        {
-            LOG_ERROR("Outer cone angle must be in the range [inner cone angle, 90].");
-            return;
-        }
-
-        m_SpotOuterConeAngle = value;
+        m_SpotOuterConeAngle = std::clamp(value, m_SpotInnerConeAngle, 90.0f);
     }
 
     // Ref: https://github.com/Unity-Technologies/Graphics/blob/ffdd1e73164d4090f51b37e7634776c87eb7f6cc/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightUtils.cs#L293
@@ -186,11 +162,7 @@ namespace march
 
     void Light::SetColorTemperature(float value)
     {
-        if (value < 1000 || value > 40000)
-        {
-            LOG_ERROR("Color temperature must be in the range [1000, 40000].");
-            return;
-        }
+        value = std::clamp(value, 1000.0f, 40000.0f);
 
         if (m_ColorTemperature != value)
         {
@@ -201,6 +173,46 @@ namespace march
                 m_Color = CorrelatedColorTemperatureToRGB(m_ColorTemperature);
             }
         }
+    }
+
+    float Light::GetAngularDiameter() const
+    {
+        return m_AngularDiameter;
+    }
+
+    void Light::SetAngularDiameter(float value)
+    {
+        m_AngularDiameter = std::clamp(value, 0.0f, 90.0f);
+    }
+
+    int32 Light::GetShadowDepthBias() const
+    {
+        return m_ShadowDepthBias;
+    }
+
+    void Light::SetShadowDepthBias(int32 value)
+    {
+        m_ShadowDepthBias = value;
+    }
+
+    float Light::GetShadowSlopeScaledDepthBias() const
+    {
+        return m_ShadowSlopeScaledDepthBias;
+    }
+
+    void Light::SetShadowSlopeScaledDepthBias(float value)
+    {
+        m_ShadowSlopeScaledDepthBias = value;
+    }
+
+    float Light::GetShadowDepthBiasClamp() const
+    {
+        return m_ShadowDepthBiasClamp;
+    }
+
+    void Light::SetShadowDepthBiasClamp(float value)
+    {
+        m_ShadowDepthBiasClamp = value;
     }
 
     void Light::FillLightData(LightData& data, bool receiveShadow) const

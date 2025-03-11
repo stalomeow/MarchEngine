@@ -2,7 +2,7 @@
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.ShaderIncludeImporter, March.Editor",
   "m_SerializedVersion": 10,
-  "m_AssetLastWriteTimeUtc": "2025-03-10T15:23:05.7583927Z",
+  "m_AssetLastWriteTimeUtc": "2025-03-11T15:20:29.6978691Z",
   "m_MainAssetGuid": "04afaf31b2314b648f741370903c98a4",
   "m_GuidToAssetMap": {
     "04afaf31b2314b648f741370903c98a4": {
@@ -12,7 +12,7 @@
     }
   },
   "m_DependentImporterLastWriteTimeUtc": {
-    "Engine/Shaders/Includes/Common.hlsl": "2025-03-06T08:12:25.5707181Z",
-    "Engine/Shaders/Includes/Sampling.hlsl": "2025-03-10T10:17:50.7886632Z"
+    "Engine/Shaders/Includes/Common.hlsl": "2025-03-11T14:49:58.2338913Z",
+    "Engine/Shaders/Includes/Sampling.hlsl": "2025-03-11T14:49:59.3178918Z"
   }
 }

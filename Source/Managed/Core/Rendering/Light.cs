@@ -74,6 +74,27 @@ namespace March.Core.Rendering
         [NativeProperty]
         public partial float SpotOuterConeAngle { get; set; } // in degrees
 
+        [JsonProperty]
+        [InspectorName("Angular Diameter")]
+        [FloatDrawer(Min = 0.0f, Max = 90.0f)]
+        [NativeProperty]
+        public partial float AngularDiameter { get; set; } // in degrees
+
+        [JsonProperty]
+        [InspectorName("Depth Bias")]
+        [NativeProperty]
+        public partial int ShadowDepthBias { get; set; }
+
+        [JsonProperty]
+        [InspectorName("Slope Scaled Bias")]
+        [NativeProperty]
+        public partial float ShadowSlopeScaledDepthBias { get; set; }
+
+        [JsonProperty]
+        [InspectorName("Depth Bias Clamp")]
+        [NativeProperty]
+        public partial float ShadowDepthBiasClamp { get; set; }
+
         protected override void OnEnable()
         {
             base.OnEnable();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Ints.h"
 #include "Engine/Component.h"
 #include <DirectXMath.h>
 
@@ -52,6 +53,14 @@ namespace march
         bool m_UseColorTemperature = false;
         float m_ColorTemperature = 6500.0f; // in Kelvin, Default to D65
 
+        // https://en.wikipedia.org/wiki/Angular_diameter
+        // 默认使用太阳的角直径
+        float m_AngularDiameter = 0.5f; // in degrees
+
+        int32 m_ShadowDepthBias = 0;
+        float m_ShadowSlopeScaledDepthBias = 2.0f;
+        float m_ShadowDepthBiasClamp = 0.0f;
+
     public:
         LightType GetType() const;
         void SetType(LightType value);
@@ -79,6 +88,18 @@ namespace march
 
         float GetColorTemperature() const;
         void SetColorTemperature(float value);
+
+        float GetAngularDiameter() const;
+        void SetAngularDiameter(float value);
+
+        int32 GetShadowDepthBias() const;
+        void SetShadowDepthBias(int32 value);
+
+        float GetShadowSlopeScaledDepthBias() const;
+        void SetShadowSlopeScaledDepthBias(float value);
+
+        float GetShadowDepthBiasClamp() const;
+        void SetShadowDepthBiasClamp(float value);
 
         void FillLightData(LightData& data, bool receiveShadow) const;
     };

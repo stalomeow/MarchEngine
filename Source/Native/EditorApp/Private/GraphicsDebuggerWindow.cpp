@@ -55,13 +55,6 @@ namespace march
 
             ImGui::EndDisabled();
         }
-
-        if (ImGui::CollapsingHeader("Shadow"))
-        {
-            EditorGUI::IntField("Depth Bias", "", &GfxSettings::ShadowDepthBias);
-            EditorGUI::FloatField("Slope Bias", "", &GfxSettings::ShadowSlopeScaledDepthBias);
-            EditorGUI::FloatField("Bias Clamp", "", &GfxSettings::ShadowDepthBiasClamp);
-        }
     }
 
     static void DrawOnlineDescriptorAllocatorUsageBulletText(GfxOnlineDescriptorAllocator* allocator, const std::string& name)

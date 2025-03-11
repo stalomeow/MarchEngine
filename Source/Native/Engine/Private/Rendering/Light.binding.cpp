@@ -96,3 +96,43 @@ NATIVE_EXPORT_AUTO Light_SetColorTemperature(cs<Light*> pLight, cs_float tempera
 {
     pLight->SetColorTemperature(temperature);
 }
+
+NATIVE_EXPORT_AUTO Light_GetAngularDiameter(cs<Light*> pLight)
+{
+    retcs pLight->GetAngularDiameter();
+}
+
+NATIVE_EXPORT_AUTO Light_SetAngularDiameter(cs<Light*> pLight, cs_float value)
+{
+    pLight->SetAngularDiameter(value);
+}
+
+NATIVE_EXPORT_AUTO Light_GetShadowDepthBias(cs<Light*> pLight)
+{
+    retcs pLight->GetShadowDepthBias();
+}
+
+NATIVE_EXPORT_AUTO Light_SetShadowDepthBias(cs<Light*> pLight, cs_int value)
+{
+    pLight->SetShadowDepthBias(value);
+}
+
+NATIVE_EXPORT_AUTO Light_GetShadowSlopeScaledDepthBias(cs<Light*> pLight)
+{
+    retcs pLight->GetShadowSlopeScaledDepthBias();
+}
+
+NATIVE_EXPORT_AUTO Light_SetShadowSlopeScaledDepthBias(cs<Light*> pLight, cs_float value)
+{
+    pLight->SetShadowSlopeScaledDepthBias(value);
+}
+
+NATIVE_EXPORT_AUTO Light_GetShadowDepthBiasClamp(cs<Light*> pLight)
+{
+    retcs pLight->GetShadowDepthBiasClamp();
+}
+
+NATIVE_EXPORT_AUTO Light_SetShadowDepthBiasClamp(cs<Light*> pLight, cs_float value)
+{
+    pLight->SetShadowDepthBiasClamp(value);
+}

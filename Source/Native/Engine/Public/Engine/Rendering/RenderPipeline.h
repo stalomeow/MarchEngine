@@ -38,6 +38,7 @@ namespace march
     struct ShadowConstants
     {
         DirectX::XMFLOAT4X4 ShadowMatrix;
+        DirectX::XMFLOAT4 ShadowParams; // x: depth2RadialScale
     };
 
     struct RenderPipelineResource
@@ -133,8 +134,8 @@ namespace march
         BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
 
         void CullLights();
-        void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix);
-        void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix);
+        void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix, float depth2RadialScale);
+        void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix, float& depth2RadialScale);
         void ClearAndDrawObjects(bool wireframe);
         void DrawSceneViewGrid(Material* material);
         void DrawSkybox();

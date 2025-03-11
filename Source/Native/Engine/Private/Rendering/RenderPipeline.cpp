@@ -78,10 +78,11 @@ namespace march
             CullLights();
 
             XMFLOAT4X4 shadowMatrix{};
-            DrawShadowCasters(shadowMatrix);
+            float depth2RadialScale = 0;
+            DrawShadowCasters(shadowMatrix, depth2RadialScale);
 
             SSAO();
-            DeferredLighting(shadowMatrix);
+            DeferredLighting(shadowMatrix, depth2RadialScale);
             DrawSkybox();
 
             if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
@@ -285,7 +286,7 @@ namespace march
         });
     }
 
-    void RenderPipeline::DeferredLighting(const XMFLOAT4X4& shadowMatrix)
+    void RenderPipeline::DeferredLighting(const XMFLOAT4X4& shadowMatrix, float depth2RadialScale)
     {
         GfxBufferDesc bufDesc{};
         bufDesc.Stride = sizeof(ShadowConstants);
@@ -293,7 +294,9 @@ namespace march
         bufDesc.Usages = GfxBufferUsages::Constant;
         bufDesc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
-        ShadowConstants consts{ shadowMatrix };
+        ShadowConstants consts{};
+        consts.ShadowMatrix = shadowMatrix;
+        consts.ShadowParams.x = depth2RadialScale;
 
         static int32_t bufferId = ShaderUtils::GetIdFromString("cbShadow");
         m_Resource.CbShadow = m_RenderGraph->RequestBufferWithContent(bufferId, bufDesc, &consts);
@@ -344,7 +347,7 @@ namespace march
         });
     }
 
-    void RenderPipeline::DrawShadowCasters(XMFLOAT4X4& shadowMatrix)
+    void RenderPipeline::DrawShadowCasters(XMFLOAT4X4& shadowMatrix, float& depth2RadialScale)
     {
         BufferHandle cbShadowCamera{};
 
@@ -367,6 +370,7 @@ namespace march
             drawShadow = false;
 
             shadowMatrix = MathUtils::Identity4x4();
+            depth2RadialScale = 0;
 
             desc.Width = 1;
             desc.Height = 1;
@@ -415,6 +419,9 @@ namespace march
 
             XMStoreFloat4x4(&shadowMatrix, XMMatrixMultiply(XMMatrixMultiply(vp, scale), trans)); // DirectX 用的行向量
 
+            float s = std::tanf(XMConvertToRadians(0.5f * m_Lights[0]->GetAngularDiameter()));
+            depth2RadialScale = s * std::abs(proj._11 / proj._33);
+
             cbShadowCamera = CreateCameraConstantBuffer("cbShadowCamera", pos, view, proj);
         }
 
@@ -426,10 +433,13 @@ namespace march
         if (drawShadow)
         {
             builder.In(cbShadowCamera);
+            builder.SetDepthBias(
+                m_Lights[0]->GetShadowDepthBias(),
+                m_Lights[0]->GetShadowSlopeScaledDepthBias(),
+                m_Lights[0]->GetShadowDepthBiasClamp());
         }
 
         builder.SetDepthStencilTarget(m_Resource.ShadowMap, RenderTargetInitMode::Clear);
-        builder.SetDepthBias(GfxSettings::ShadowDepthBias, GfxSettings::ShadowSlopeScaledDepthBias, GfxSettings::ShadowDepthBiasClamp);
         builder.SetRenderFunc([this, drawShadow, cbShadowCamera](RenderGraphContext& context)
         {
             if (drawShadow)
