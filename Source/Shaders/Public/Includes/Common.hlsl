@@ -175,6 +175,16 @@ float4 GetPlane(float3 a, float3 b, float3 c)
     return GetPlane(GetPlaneNormal(a, b, c), a);
 }
 
+// 检查 lhs 深度是否比 rhs 深度更近
+bool IsDepthCloser(float lhs, float rhs)
+{
+#ifdef MARCH_REVERSED_Z
+    return lhs > rhs;
+#else
+    return lhs < rhs;
+#endif
+}
+
 // Static Samplers
 // https://docs.unity3d.com/Manual/SL-SamplerStates.html
 

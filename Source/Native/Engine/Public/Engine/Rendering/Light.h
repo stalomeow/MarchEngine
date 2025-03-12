@@ -57,7 +57,7 @@ namespace march
         // 默认使用太阳的角直径
         float m_AngularDiameter = 0.5f; // in degrees
 
-        int32 m_ShadowDepthBias = 0;
+        int32 m_ShadowDepthBias = 200;
         float m_ShadowSlopeScaledDepthBias = 2.0f;
         float m_ShadowDepthBiasClamp = 0.0f;
 
