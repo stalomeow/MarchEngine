@@ -24,7 +24,8 @@ namespace March.Core.Rendering
     {
         public Light() : base(New()) { }
 
-        // TODO 检查属性反序列化的顺序。属性在赋值时可能影响其他属性的值，所以要检查赋值的顺序
+        // 反序列化顺序（由声明的顺序决定）非常重要，因为一些属性会相互影响
+        // 正确的顺序：Type -> Color -> UseColorTemperature -> ColorTemperature -> Unit -> Intensity
 
         [JsonProperty]
         [NativeProperty]
