@@ -2,6 +2,9 @@
 #include "Engine/Rendering/Camera.h"
 #include "Engine/Rendering/Display.h"
 #include "Engine/Rendering/D3D12.h"
+#include "Engine/Misc/SequenceUtils.h"
+#include "Engine/Misc/MathUtils.h"
+#include "Engine/Application.h"
 #include "Engine/Transform.h"
 #include <algorithm>
 
@@ -18,6 +21,7 @@ namespace march
         , m_EnableWireframe(false)
         , m_EnableGizmos(false)
         , m_CustomTargetDisplay(nullptr)
+        , m_PrevNonJitteredViewProjectionMatrix(MathUtils::Identity4x4())
     {
     }
 
@@ -97,6 +101,12 @@ namespace march
         return m_EnableGizmos;
     }
 
+    uint32 Camera::GetTAAFrameIndex() const
+    {
+        // 每 1024 帧循环一次
+        return static_cast<uint32>(GetApp()->GetFrameCount() & 1023);
+    }
+
     XMFLOAT4X4 Camera::GetViewMatrix() const
     {
         XMFLOAT4X4 result;
@@ -116,6 +126,25 @@ namespace march
         XMFLOAT4X4 result;
         XMStoreFloat4x4(&result, LoadViewProjectionMatrix());
         return result;
+    }
+
+    XMFLOAT4X4 Camera::GetNonJitteredProjectionMatrix() const
+    {
+        XMFLOAT4X4 result;
+        XMStoreFloat4x4(&result, LoadNonJitteredProjectionMatrix());
+        return result;
+    }
+
+    XMFLOAT4X4 Camera::GetNonJitteredViewProjectionMatrix() const
+    {
+        XMFLOAT4X4 result;
+        XMStoreFloat4x4(&result, LoadNonJitteredViewProjectionMatrix());
+        return result;
+    }
+
+    XMFLOAT4X4 Camera::GetPrevNonJitteredViewProjectionMatrix() const
+    {
+        return m_PrevNonJitteredViewProjectionMatrix;
     }
 
     XMMATRIX Camera::LoadViewMatrix() const
@@ -140,6 +169,28 @@ namespace march
 
     XMMATRIX Camera::LoadProjectionMatrix() const
     {
+        XMVECTOR jitterVec = XMLoadFloat2(&SequenceUtils::Halton(GetTAAFrameIndex()));
+        jitterVec = XMVectorMultiplyAdd(jitterVec, XMVectorReplicate(2.0f), XMVectorReplicate(-1.0f)); // [-1, 1]
+
+        float width = static_cast<float>(GetPixelWidth());
+        float height = static_cast<float>(GetPixelHeight());
+
+        // jitterVec 用于平移 NDC 空间的 X 和 Y，且需要保证平移的距离不超过一个像素
+        jitterVec = XMVectorDivide(jitterVec, XMVectorSet(width, height, 1.0f, 1.0f));
+        XMMATRIX jitterMat = XMMatrixTranslation(XMVectorGetX(jitterVec), XMVectorGetY(jitterVec), 0.0f);
+
+        // DirectX 中使用的是行向量
+        return XMMatrixMultiply(LoadNonJitteredProjectionMatrix(), jitterMat);
+    }
+
+    XMMATRIX Camera::LoadViewProjectionMatrix() const
+    {
+        // DirectX 中使用的是行向量
+        return XMMatrixMultiply(LoadViewMatrix(), LoadProjectionMatrix());
+    }
+
+    XMMATRIX Camera::LoadNonJitteredProjectionMatrix() const
+    {
         if constexpr (GfxSettings::UseReversedZBuffer)
         {
             return XMMatrixPerspectiveFovLH(m_FovY, GetAspectRatio(), m_FarZ, m_NearZ);
@@ -150,10 +201,21 @@ namespace march
         }
     }
 
-    XMMATRIX Camera::LoadViewProjectionMatrix() const
+    XMMATRIX Camera::LoadNonJitteredViewProjectionMatrix() const
     {
         // DirectX 中使用的是行向量
-        return XMMatrixMultiply(LoadViewMatrix(), LoadProjectionMatrix());
+        return XMMatrixMultiply(LoadViewMatrix(), LoadNonJitteredProjectionMatrix());
+    }
+
+    XMMATRIX Camera::LoadPrevNonJitteredViewProjectionMatrix() const
+    {
+        return XMLoadFloat4x4(&m_PrevNonJitteredViewProjectionMatrix);
+    }
+
+    void Camera::PrepareFrameData()
+    {
+        // 记录上一帧的 NonJitteredViewProjectionMatrix
+        m_PrevNonJitteredViewProjectionMatrix = GetNonJitteredViewProjectionMatrix();
     }
 
     const std::vector<Camera*>& Camera::GetAllCameras()

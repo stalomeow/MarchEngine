@@ -22,9 +22,12 @@ namespace march
         uint32_t GetPixelHeight() const;
         void Resize(uint32_t width, uint32_t height);
 
+        void UpdateHistoryColorBuffer();
+
         GfxTextureFormat GetColorFormat() const;
         GfxTextureFormat GetDepthStencilFormat() const;
         GfxRenderTexture* GetColorBuffer() const;
+        GfxRenderTexture* GetHistoryColorBuffer() const;
         GfxRenderTexture* GetDepthStencilBuffer() const;
         GfxRenderTexture* GetResolvedColorBuffer() const;
         GfxRenderTexture* GetResolvedDepthStencilBuffer() const;
@@ -40,6 +43,7 @@ namespace march
         bool m_EnableMSAA;
 
         std::unique_ptr<GfxRenderTexture> m_ColorBuffer;
+        std::unique_ptr<GfxRenderTexture> m_HistoryColorBuffer;
         std::unique_ptr<GfxRenderTexture> m_DepthStencilBuffer;
         std::unique_ptr<GfxRenderTexture> m_ResolvedColorBuffer;
         std::unique_ptr<GfxRenderTexture> m_ResolvedDepthStencilBuffer;

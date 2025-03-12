@@ -12,6 +12,7 @@ namespace march
         : m_Name(name)
         , m_EnableMSAA(false)
         , m_ColorBuffer(nullptr)
+        , m_HistoryColorBuffer(nullptr)
         , m_DepthStencilBuffer(nullptr)
         , m_ResolvedColorBuffer(nullptr)
         , m_ResolvedDepthStencilBuffer(nullptr)
@@ -60,6 +61,14 @@ namespace march
         CreateBuffers(width, height);
     }
 
+    void Display::UpdateHistoryColorBuffer()
+    {
+        if (m_HistoryColorBuffer != nullptr)
+        {
+            std::swap(m_ColorBuffer, m_HistoryColorBuffer);
+        }
+    }
+
     GfxTextureFormat Display::GetColorFormat() const
     {
         return ColorFormat;
@@ -73,6 +82,11 @@ namespace march
     GfxRenderTexture* Display::GetColorBuffer() const
     {
         return m_ColorBuffer.get();
+    }
+
+    GfxRenderTexture* Display::GetHistoryColorBuffer() const
+    {
+        return m_HistoryColorBuffer.get();
     }
 
     GfxRenderTexture* Display::GetDepthStencilBuffer() const
@@ -96,7 +110,7 @@ namespace march
 
         GfxTextureDesc colorDesc{};
         colorDesc.Format = ColorFormat;
-        colorDesc.Flags = GfxTextureFlags::None;
+        colorDesc.Flags = m_EnableMSAA ? GfxTextureFlags::None : GfxTextureFlags::UnorderedAccess;
         colorDesc.Dimension = GfxTextureDimension::Tex2D;
         colorDesc.Width = width;
         colorDesc.Height = height;
@@ -106,7 +120,16 @@ namespace march
         colorDesc.Wrap = GfxTextureWrapMode::Clamp;
         colorDesc.MipmapBias = 0.0f;
 
-        m_ColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+        m_ColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor1", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+
+        if (!m_EnableMSAA)
+        {
+            m_HistoryColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor2", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+        }
+        else
+        {
+            m_HistoryColorBuffer = nullptr;
+        }
 
         GfxTextureDesc dsDesc{};
         dsDesc.Format = DepthStencilFormat;

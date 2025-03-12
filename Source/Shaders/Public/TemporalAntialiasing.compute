@@ -1,0 +1,112 @@
+#pragma kernel CSMain
+
+#include "Includes/Common.hlsl"
+#include "Includes/ColorSpace.hlsl"
+
+#define NUM_THREADS_X 16
+#define NUM_THREADS_Y 16
+
+Texture2D _HistoryColorTexture;
+Texture2D _MotionVectorTexture;
+RWTexture2D<float4> _CurrentColorTexture;
+
+groupshared float3 gs_Colors[(NUM_THREADS_X + 2) * (NUM_THREADS_Y + 2)];
+
+int GetColorIndex(int2 id)
+{
+    return (id.y + 1) * (NUM_THREADS_X + 2) + (id.x + 1);
+}
+
+float4 PrefetchColors(int3 gtid, int3 dtid, int width, int height)
+{
+    float4 color = _CurrentColorTexture[dtid.xy];
+    gs_Colors[GetColorIndex(gtid.xy)] = color.rgb;
+
+    bool firstColumn = (gtid.x == 0);
+    bool lastColumn = (gtid.x == NUM_THREADS_X - 1);
+
+    if (firstColumn)
+    {
+        gs_Colors[GetColorIndex(int2(-1, gtid.y))] = _CurrentColorTexture[int2(max(dtid.x - 1, 0), dtid.y)].rgb;
+    }
+
+    if (lastColumn)
+    {
+        gs_Colors[GetColorIndex(int2(NUM_THREADS_X, gtid.y))] = _CurrentColorTexture[int2(min(dtid.x + 1, width - 1), dtid.y)].rgb;
+    }
+
+    if (gtid.y == 0)
+    {
+        gs_Colors[GetColorIndex(int2(gtid.x, -1))] = _CurrentColorTexture[int2(dtid.x, max(dtid.y - 1, 0))].rgb;
+
+        if (firstColumn)
+        {
+            gs_Colors[GetColorIndex(int2(-1, -1))] = _CurrentColorTexture[int2(max(dtid.x - 1, 0), max(dtid.y - 1, 0))].rgb;
+        }
+
+        if (lastColumn)
+        {
+            gs_Colors[GetColorIndex(int2(NUM_THREADS_X, -1))] = _CurrentColorTexture[int2(min(dtid.x + 1, width - 1), max(dtid.y - 1, 0))].rgb;
+        }
+    }
+
+    if (gtid.y == NUM_THREADS_Y - 1)
+    {
+        gs_Colors[GetColorIndex(int2(gtid.x, NUM_THREADS_Y))] = _CurrentColorTexture[int2(dtid.x, min(dtid.y + 1, height - 1))].rgb;
+
+        if (firstColumn)
+        {
+            gs_Colors[GetColorIndex(int2(-1, NUM_THREADS_Y))] = _CurrentColorTexture[int2(max(dtid.x - 1, 0), min(dtid.y + 1, height - 1))].rgb;
+        }
+
+        if (lastColumn)
+        {
+            gs_Colors[GetColorIndex(int2(NUM_THREADS_X, NUM_THREADS_Y))] = _CurrentColorTexture[int2(min(dtid.x + 1, width - 1), min(dtid.y + 1, height - 1))].rgb;
+        }
+    }
+
+    return color;
+}
+
+#define GAMMA 1.0f
+
+[numthreads(NUM_THREADS_X, NUM_THREADS_Y, 1)]
+void CSMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
+{
+    int width, height;
+    _CurrentColorTexture.GetDimensions(width, height);
+
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    float4 currentColor = PrefetchColors(gtid, dtid, width, height);
+    GroupMemoryBarrierWithGroupSync();
+
+    float3 m1 = 0, m2 = 0;
+
+    for (int i = -1; i <= 1; i++)
+    {
+        for (int j = -1; j <= 1; j++)
+        {
+            int idx = GetColorIndex(int2(gtid.x + i, gtid.y + j));
+            float3 c = RGBToYCoCg(gs_Colors[idx]);
+            m1 += c;
+            m2 += c * c;
+        }
+    }
+
+    float3 mu = m1 / 9;
+    // sigma的计算公式严格来说不是这样的
+    //https://en.wikipedia.org/wiki/Standard_deviation，这里是一个近似
+    float3 sigma = sqrt(abs(m2 / 9 - mu * mu));
+    float3 aabbMin = mu - GAMMA * sigma;
+    float3 aabbMax = mu + GAMMA * sigma;
+
+    float2 velocity = _MotionVectorTexture.Load(int3(dtid.xy, 0)).rg;
+    float2 uv = float2((dtid.x + 0.5) / float(width), (dtid.y + 0.5) / float(height));
+    float3 historyColor = _HistoryColorTexture.SampleLevel(sampler_LinearClamp, uv - velocity, 0).rgb;
+    historyColor = YCoCgToRGB(clamp(RGBToYCoCg(historyColor), aabbMin, aabbMax));
+    _CurrentColorTexture[dtid.xy] = float4(lerp(currentColor.rgb, historyColor, 0.95), currentColor.a);
+}

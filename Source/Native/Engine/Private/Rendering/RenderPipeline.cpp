@@ -40,12 +40,26 @@ namespace march
         m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
         m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
         m_SpecularIBLShader.reset("Engine/Shaders/SpecularIBL.compute");
+        m_TAAShader.reset("Engine/Shaders/TemporalAntialiasing.compute");
 
         GenerateSSAORandomVectorMap();
         CreateLightResources();
         CreateEnvLightResources();
 
         m_RenderGraph = std::make_unique<RenderGraph>();
+    }
+
+    void RenderPipeline::PrepareFrameData()
+    {
+        for (MeshRenderer* renderer : m_Renderers)
+        {
+            renderer->PrepareFrameData();
+        }
+
+        for (Camera* camera : Camera::GetAllCameras())
+        {
+            camera->PrepareFrameData();
+        }
     }
 
     void RenderPipeline::Render(Camera* camera, Material* gridGizmoMaterial)
@@ -69,12 +83,14 @@ namespace march
             m_Resource.Reset();
             m_Resource.ColorTarget = m_RenderGraph->ImportTexture("_CameraColorTarget", display->GetColorBuffer());
             m_Resource.DepthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
+            m_Resource.HistoryColorTexture = m_RenderGraph->ImportTexture("_HistoryColorTexture", display->GetHistoryColorBuffer());
             m_Resource.CbCamera = CreateCameraConstantBuffer("cbCamera", camera);
             m_Resource.EnvDiffuseSH9Coefs = m_RenderGraph->ImportBuffer("_EnvDiffuseSH9Coefs", m_EnvDiffuseSH9Coefs.get());
             m_Resource.EnvSpecularRadianceMap = m_RenderGraph->ImportTexture("_EnvSpecularRadianceMap", m_EnvSpecularRadianceMap.get());
             m_Resource.EnvSpecularBRDFLUT = m_RenderGraph->ImportTexture("_EnvSpecularBRDFLUT", m_EnvSpecularBRDFLUT.get());
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
+            DrawMotionVector();
             CullLights();
 
             XMFLOAT4X4 shadowMatrix{};
@@ -91,7 +107,10 @@ namespace march
                 Gizmos::AddRenderGraphPass(m_RenderGraph.get(), m_Resource.CbCamera, m_Resource.ColorTarget, m_Resource.DepthStencilTarget);
             }
 
+            TAA();
+
             m_RenderGraph->CompileAndExecute();
+            display->UpdateHistoryColorBuffer();
         }
         catch (const std::exception& e)
         {
@@ -101,10 +120,26 @@ namespace march
 
     BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& name, Camera* camera)
     {
-        return CreateCameraConstantBuffer(name, camera->GetTransform()->GetPosition(), camera->GetViewMatrix(), camera->GetProjectionMatrix());
+        CameraConstants consts{};
+        consts.ViewMatrix = camera->GetViewMatrix();
+        consts.ProjectionMatrix = camera->GetProjectionMatrix();
+        consts.ViewProjectionMatrix = camera->GetViewProjectionMatrix();
+        XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ViewMatrix)));
+        XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ProjectionMatrix)));
+        XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ViewProjectionMatrix)));
+        consts.NonJitteredViewProjectionMatrix = camera->GetNonJitteredViewProjectionMatrix();
+        consts.PrevNonJitteredViewProjectionMatrix = camera->GetPrevNonJitteredViewProjectionMatrix();
+
+        GfxBufferDesc desc{};
+        desc.Stride = sizeof(CameraConstants);
+        desc.Count = 1;
+        desc.Usages = GfxBufferUsages::Constant;
+        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        return m_RenderGraph->RequestBufferWithContent(name, desc, &consts);
     }
 
-    BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& name, const XMFLOAT3& position, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
+    BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& name, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
     {
         XMMATRIX view = XMLoadFloat4x4(&viewMatrix);
         XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
@@ -117,6 +152,8 @@ namespace march
         XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
         XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
         XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
+
+        // 不设置 NonJitteredMatrix
 
         GfxBufferDesc desc{};
         desc.Stride = sizeof(CameraConstants);
@@ -404,9 +441,6 @@ namespace march
             XMVECTOR eyePos = XMLoadFloat3(&sphere.Center);
             eyePos = XMVectorSubtract(eyePos, XMVectorScale(forward, sphere.Radius + 1));
 
-            XMFLOAT3 pos = {};
-            XMStoreFloat3(&pos, eyePos);
-
             XMFLOAT4X4 view = {};
             XMStoreFloat4x4(&view, XMMatrixLookToLH(eyePos, forward, up));
 
@@ -422,7 +456,7 @@ namespace march
             float s = std::tanf(XMConvertToRadians(0.5f * m_Lights[0]->GetAngularDiameter()));
             depth2RadialScale = s * std::abs(proj._11 / proj._33);
 
-            cbShadowCamera = CreateCameraConstantBuffer("cbShadowCamera", pos, view, proj);
+            cbShadowCamera = CreateCameraConstantBuffer("cbShadowCamera", view, proj);
         }
 
         static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
@@ -755,5 +789,55 @@ namespace march
         }
         cmd->EndEvent();
         cmd->SubmitAndRelease();
+    }
+
+    void RenderPipeline::DrawMotionVector()
+    {
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R16G16_Float;
+        desc.Flags = GfxTextureFlags::None;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = m_Resource.ColorTarget.GetDesc().Width;
+        desc.Height = m_Resource.ColorTarget.GetDesc().Height;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Point;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0;
+
+        static int32 mvId = ShaderUtils::GetIdFromString("_MotionVectorTexture");
+        m_Resource.MotionVectorTexture = m_RenderGraph->RequestTexture(mvId, desc);
+
+        auto builder = m_RenderGraph->AddPass("MotionVector");
+
+        builder.In(m_Resource.CbCamera);
+        builder.SetColorTarget(m_Resource.MotionVectorTexture, RenderTargetInitMode::Clear);
+        builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget); // TODO support readonly
+
+        builder.SetRenderFunc([this](RenderGraphContext& context)
+        {
+            context.SetVariable(m_Resource.CbCamera);
+            context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "MotionVector");
+        });
+    }
+
+    void RenderPipeline::TAA()
+    {
+        auto builder = m_RenderGraph->AddPass("TemporalAntialiasing");
+
+        builder.In(m_Resource.HistoryColorTexture);
+        builder.In(m_Resource.MotionVectorTexture);
+        builder.InOut(m_Resource.ColorTarget);
+
+        builder.SetRenderFunc([this](RenderGraphContext& context)
+        {
+            context.SetVariable(m_Resource.HistoryColorTexture);
+            context.SetVariable(m_Resource.MotionVectorTexture);
+            context.SetVariable(m_Resource.ColorTarget, "_CurrentColorTexture");
+
+            const GfxTextureDesc& desc = m_Resource.ColorTarget.GetDesc();
+            std::optional<size_t> kernel = m_TAAShader->FindKernel("CSMain");
+            context.DispatchComputeByThreadCount(m_TAAShader.get(), *kernel, desc.Width, desc.Height, 1);
+        });
     }
 }

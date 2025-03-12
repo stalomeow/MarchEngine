@@ -55,6 +55,9 @@ namespace March.Core.Rendering
         internal partial bool EnableGizmos { get; set; }
 
         [NativeProperty]
+        public partial uint TAAFrameIndex { get; }
+
+        [NativeProperty]
         public partial Matrix4x4 ViewMatrix { get; }
 
         [NativeProperty]
@@ -62,6 +65,15 @@ namespace March.Core.Rendering
 
         [NativeProperty]
         public partial Matrix4x4 ViewProjectionMatrix { get; }
+
+        [NativeProperty]
+        public partial Matrix4x4 NonJitteredProjectionMatrix { get; }
+
+        [NativeProperty]
+        public partial Matrix4x4 NonJitteredViewProjectionMatrix { get; }
+
+        [NativeProperty]
+        public partial Matrix4x4 PrevNonJitteredViewProjectionMatrix { get; }
 
         [NativeMethod]
         internal partial void SetCustomTargetDisplay(nint display);

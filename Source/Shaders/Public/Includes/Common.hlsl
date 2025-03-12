@@ -13,6 +13,7 @@ struct InstanceData
 {
     float4x4 _MatrixWorld;
     float4x4 _MatrixWorldIT; // 逆转置
+    float4x4 _MatrixPrevWorld; // 上一帧的矩阵
 };
 
 StructuredBuffer<InstanceData> _InstanceBuffer;
@@ -25,6 +26,8 @@ cbuffer cbCamera
     float4x4 _MatrixInvView;
     float4x4 _MatrixInvProjection;
     float4x4 _MatrixInvViewProjection;
+    float4x4 _MatrixNonJitteredViewProjection; // non-jittered
+    float4x4 _MatrixPrevNonJitteredViewProjection; // 上一帧的 non-jittered
 };
 
 float Square(float x)
@@ -42,9 +45,19 @@ float4x4 GetObjectToWorldMatrixIT(uint instanceID)
     return _InstanceBuffer[instanceID]._MatrixWorldIT;
 }
 
+float4x4 GetObjectToWorldMatrixLastFrame(uint instanceID)
+{
+    return _InstanceBuffer[instanceID]._MatrixPrevWorld;
+}
+
 float3 TransformObjectToWorld(uint instanceID, float3 positionOS)
 {
     return mul(GetObjectToWorldMatrix(instanceID), float4(positionOS, 1.0)).xyz;
+}
+
+float3 TransformObjectToWorldLastFrame(uint instanceID, float3 positionOS)
+{
+    return mul(GetObjectToWorldMatrixLastFrame(instanceID), float4(positionOS, 1.0)).xyz;
 }
 
 float3 TransformObjectToWorldDir(uint instanceID, float3 dirOS)
@@ -72,6 +85,16 @@ float4 TransformViewToHClip(float3 positionVS)
 float4 TransformWorldToHClip(float3 positionWS)
 {
     return mul(_MatrixViewProjection, float4(positionWS, 1.0));
+}
+
+float4 TransformWorldToHClipNonJittered(float3 positionWS)
+{
+    return mul(_MatrixNonJitteredViewProjection, float4(positionWS, 1.0));
+}
+
+float4 TransformWorldToHClipNonJitteredLastFrame(float3 positionWS)
+{
+    return mul(_MatrixPrevNonJitteredViewProjection, float4(positionWS, 1.0));
 }
 
 float3 TransformObjectToWorldNormal(uint instanceID, float3 normalOS)

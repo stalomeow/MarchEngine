@@ -87,6 +87,11 @@ NATIVE_EXPORT_AUTO Camera_SetEnableGizmos(cs<Camera*> camera, cs_bool value)
     CameraInternalUtility::SetEnableGizmos(camera, value);
 }
 
+NATIVE_EXPORT_AUTO Camera_GetTAAFrameIndex(cs<Camera*> camera)
+{
+    retcs camera->GetTAAFrameIndex();
+}
+
 NATIVE_EXPORT_AUTO Camera_GetViewMatrix(cs<Camera*> camera)
 {
     retcs camera->GetViewMatrix();
@@ -100,6 +105,21 @@ NATIVE_EXPORT_AUTO Camera_GetProjectionMatrix(cs<Camera*> camera)
 NATIVE_EXPORT_AUTO Camera_GetViewProjectionMatrix(cs<Camera*> camera)
 {
     retcs camera->GetViewProjectionMatrix();
+}
+
+NATIVE_EXPORT_AUTO Camera_GetNonJitteredProjectionMatrix(cs<Camera*> camera)
+{
+    retcs camera->GetNonJitteredProjectionMatrix();
+}
+
+NATIVE_EXPORT_AUTO Camera_GetNonJitteredViewProjectionMatrix(cs<Camera*> camera)
+{
+    retcs camera->GetNonJitteredViewProjectionMatrix();
+}
+
+NATIVE_EXPORT_AUTO Camera_GetPrevNonJitteredViewProjectionMatrix(cs<Camera*> camera)
+{
+    retcs camera->GetPrevNonJitteredViewProjectionMatrix();
 }
 
 NATIVE_EXPORT_AUTO Camera_SetCustomTargetDisplay(cs<Camera*> camera, cs<Display*> display)

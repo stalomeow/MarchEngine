@@ -1,5 +1,6 @@
 using March.Core.Interop;
 using Newtonsoft.Json;
+using System.Numerics;
 
 namespace March.Core.Rendering
 {
@@ -64,6 +65,9 @@ namespace March.Core.Rendering
         /// </summary>
         [NativeProperty("Bounds")]
         public partial Bounds bounds { get; }
+
+        [NativeProperty]
+        public partial Matrix4x4 PrevLocalToWorldMatrix { get; }
 
         [NativeMethod]
         private static partial nint New();

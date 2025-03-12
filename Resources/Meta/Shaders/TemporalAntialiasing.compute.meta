@@ -4,10 +4,10 @@
   "m_UseReversedZBuffer": true,
   "m_ColorSpace": 0,
   "m_SerializedVersion": 20,
-  "m_AssetLastWriteTimeUtc": "2025-03-12T15:25:45.9449689Z",
-  "m_MainAssetGuid": "f4722de9071b4a0bbb606105b76a1a30",
+  "m_AssetLastWriteTimeUtc": "2025-03-12T15:27:12.1462219Z",
+  "m_MainAssetGuid": "88229666ce78485693a856a991fba0e1",
   "m_GuidToAssetMap": {
-    "f4722de9071b4a0bbb606105b76a1a30": {
+    "88229666ce78485693a856a991fba0e1": {
       "Name": "Main",
       "NormalIcon": "",
       "ExpandedIcon": ""
@@ -15,7 +15,6 @@
   },
   "m_DependentImporterLastWriteTimeUtc": {
     "Engine/Shaders/Includes/Common.hlsl": "2025-03-12T14:19:45.2891345Z",
-    "Engine/Shaders/Includes/Sampling.hlsl": "2025-03-12T14:19:46.4051172Z",
-    "Engine/Shaders/Includes/BRDF.hlsl": "2025-03-12T14:19:45.7279274Z"
+    "Engine/Shaders/Includes/ColorSpace.hlsl": "2025-03-12T15:15:55.4209105Z"
   }
 }

@@ -56,6 +56,7 @@
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxPipeline.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
+    <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />

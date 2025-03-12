@@ -330,6 +330,7 @@ namespace march
         ImGui::NewFrame();
 
         {
+            m_RenderPipeline->PrepareFrameData();
             DrawBaseImGui();
 
             for (size_t i = 0; i < numMethods; i++)

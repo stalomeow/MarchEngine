@@ -45,4 +45,32 @@ float4 Gamma22ToLinear(float4 x)
     return float4(Gamma22ToLinear(x.rgb), x.a);
 }
 
+// Ref: https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl
+// This function take a rgb color (best is to provide color in sRGB space)
+// and return a YCoCg color in [0..1] space for 8bit (An offset is apply in the function)
+// Ref: http://www.nvidia.com/object/real-time-ycocg-dxt-compression.html
+#define YCOCG_CHROMA_BIAS (128.0 / 255.0)
+
+float3 RGBToYCoCg(float3 rgb)
+{
+    float3 YCoCg;
+    YCoCg.x = dot(rgb, float3(0.25, 0.5, 0.25));
+    YCoCg.y = dot(rgb, float3(0.5, 0.0, -0.5)) + YCOCG_CHROMA_BIAS;
+    YCoCg.z = dot(rgb, float3(-0.25, 0.5, -0.25)) + YCOCG_CHROMA_BIAS;
+    return YCoCg;
+}
+
+float3 YCoCgToRGB(float3 YCoCg)
+{
+    float Y = YCoCg.x;
+    float Co = YCoCg.y - YCOCG_CHROMA_BIAS;
+    float Cg = YCoCg.z - YCOCG_CHROMA_BIAS;
+
+    float3 rgb;
+    rgb.r = Y + Co - Cg;
+    rgb.g = Y + Cg;
+    rgb.b = Y - Co - Cg;
+    return rgb;
+}
+
 #endif

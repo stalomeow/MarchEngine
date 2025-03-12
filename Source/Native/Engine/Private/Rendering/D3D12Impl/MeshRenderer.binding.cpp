@@ -27,3 +27,8 @@ NATIVE_EXPORT_AUTO MeshRenderer_GetBounds(cs<MeshRenderer*> self)
 {
     retcs self->GetBounds();
 }
+
+NATIVE_EXPORT_AUTO MeshRenderer_GetPrevLocalToWorldMatrix(cs<MeshRenderer*> self)
+{
+    retcs self->GetPrevLocalToWorldMatrix();
+}

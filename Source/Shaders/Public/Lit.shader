@@ -128,9 +128,81 @@ Shader "Lit"
 
     Pass
     {
+        Name "MotionVector"
+
+        Cull [_CullMode]
+        ZTest Equal
+        ZWrite Off
+        ColorMask RG
+
+        Tags
+        {
+            "LightMode" = "MotionVector"
+        }
+
+        HLSLPROGRAM
+        #pragma target 6.0
+        #pragma vs vert
+        #pragma ps frag
+
+        #pragma multi_compile _ _ALPHATEST_ON
+
+        struct Attributes
+        {
+            float3 positionOS : POSITION;
+            float2 uv : TEXCOORD0;
+            uint instanceID : SV_InstanceID;
+        };
+
+        struct Varyings
+        {
+            float4 positionCS : SV_Position;
+            float2 uv : TEXCOORD0;
+            float4 positionCSCurrNonJittered : TEXCOORD1;
+            float4 positionCSPrevNonJittered : TEXCOORD2;
+        };
+
+        Varyings vert(Attributes input)
+        {
+            float3 positionWSCurr = TransformObjectToWorld(input.instanceID, input.positionOS);
+            float3 positionWSPrev = TransformObjectToWorldLastFrame(input.instanceID, input.positionOS);
+
+            Varyings output;
+            output.positionCS = TransformWorldToHClip(positionWSCurr);
+            output.uv = input.uv;
+            output.positionCSCurrNonJittered = TransformWorldToHClipNonJittered(positionWSCurr);
+            output.positionCSPrevNonJittered = TransformWorldToHClipNonJitteredLastFrame(positionWSPrev);
+            return output;
+        }
+
+        float2 GetUV(float4 positionCS)
+        {
+            float2 ndc = positionCS.xy / positionCS.w;
+            float2 uv = ndc * 0.5 + 0.5;
+            uv.y = 1.0 - uv.y;
+            return uv;
+        }
+
+        float2 frag(Varyings input) : SV_Target
+        {
+            float4 albedo = _BaseMap.Sample(sampler_BaseMap, input.uv) * _BaseColor;
+
+            #ifdef _ALPHATEST_ON
+                clip(albedo.a - _Cutoff);
+            #endif
+
+            float2 curr = GetUV(input.positionCSCurrNonJittered);
+            float2 prev = GetUV(input.positionCSPrevNonJittered);
+            return curr - prev;
+        }
+        ENDHLSL
+    }
+
+    Pass
+    {
         Name "ShadowCaster"
 
-        Cull Back
+        Cull [_CullMode]
         ZTest Less
         ZWrite On
         ColorMask 0

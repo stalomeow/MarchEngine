@@ -9,6 +9,7 @@ Resources/Meta/**                           linguist-generated
 *.cpp     linguist-language=cpp
 *.cxx     linguist-language=cpp
 *.compute linguist-language=hlsl
+*.shader  linguist-language=shaderlab
 
 vcpkg.json                                                     text eol=lf
 vcpkg-configuration.json                                       text eol=lf

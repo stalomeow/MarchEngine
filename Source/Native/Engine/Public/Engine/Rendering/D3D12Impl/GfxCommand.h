@@ -308,6 +308,7 @@ namespace march
         {
             DirectX::XMFLOAT4X4 Matrix;
             DirectX::XMFLOAT4X4 MatrixIT; // 逆转置，用于法线变换
+            DirectX::XMFLOAT4X4 MatrixPrev; // 上一帧的矩阵
         };
 
         GfxBuffer m_InstanceBuffer;
@@ -333,6 +334,6 @@ namespace march
         void SetInstanceBufferData(uint32_t numInstances, const InstanceData* instances);
         void DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount);
 
-        static InstanceData CreateInstanceData(const DirectX::XMFLOAT4X4& matrix);
+        static InstanceData CreateInstanceData(const DirectX::XMFLOAT4X4& currMatrix, const DirectX::XMFLOAT4X4& prevMatrix);
     };
 }

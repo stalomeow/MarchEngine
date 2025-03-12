@@ -783,7 +783,8 @@ namespace march
 
     void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
-        SetInstanceBufferData(1, &CreateInstanceData(matrix));
+        // TODO 允许设置上一帧的矩阵
+        SetInstanceBufferData(1, &CreateInstanceData(matrix, matrix));
 
         ID3D12PipelineState* pso = material->GetPSO(shaderPassIndex, subMesh.InputDesc, m_OutputDesc);
         SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
@@ -850,7 +851,7 @@ namespace march
 
                 ID3D12PipelineState* pso = mat->GetPSO(*shaderPassIndex, renderer->Mesh->GetInputDesc(), m_OutputDesc);
                 DrawCall dc{ renderer->Mesh, j, mat, *shaderPassIndex };
-                psoMap[pso][dc].emplace_back(CreateInstanceData(renderer->GetTransform()->GetLocalToWorldMatrix()));
+                psoMap[pso][dc].emplace_back(CreateInstanceData(renderer->GetTransform()->GetLocalToWorldMatrix(), renderer->GetPrevLocalToWorldMatrix()));
             }
         }
 
@@ -889,11 +890,11 @@ namespace march
         DispatchCompute(shader, kernelIndex, groupCountX, groupCountY, groupCountZ);
     }
 
-    GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& matrix)
+    GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& currMatrix, const XMFLOAT4X4& prevMatrix)
     {
         XMFLOAT4X4 matrixIT{};
-        XMStoreFloat4x4(&matrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&matrix))));
-        return InstanceData{ matrix, matrixIT };
+        XMStoreFloat4x4(&matrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&currMatrix))));
+        return InstanceData{ currMatrix, matrixIT, prevMatrix };
     }
 
     void GfxCommandContext::ResolveTexture(GfxTexture* source, GfxTexture* destination)

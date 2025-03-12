@@ -27,6 +27,8 @@ namespace march
         DirectX::XMFLOAT4X4 InvViewMatrix;
         DirectX::XMFLOAT4X4 InvProjectionMatrix;
         DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
+        DirectX::XMFLOAT4X4 NonJitteredViewProjectionMatrix;
+        DirectX::XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
     };
 
     struct LightConstants
@@ -45,8 +47,11 @@ namespace march
     {
         TextureHandle ColorTarget;
         TextureHandle DepthStencilTarget;
+        TextureHandle HistoryColorTexture;
 
         std::vector<TextureHandle> GBuffers;
+
+        TextureHandle MotionVectorTexture;
 
         BufferHandle CbCamera;
         BufferHandle CbLight;
@@ -73,7 +78,9 @@ namespace march
         {
             ColorTarget = {};
             DepthStencilTarget = {};
+            HistoryColorTexture = {};
             GBuffers.clear();
+            MotionVectorTexture = {};
             CbCamera = {};
             CbLight = {};
             DirectionalLights = {};
@@ -128,10 +135,12 @@ namespace march
             }
         }
 
+        void PrepareFrameData();
+
         void SetSkyboxMaterial(Material* material) { m_SkyboxMaterial = material; }
 
         BufferHandle CreateCameraConstantBuffer(const std::string& name, Camera* camera);
-        BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
+        BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
 
         void CullLights();
         void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix, float depth2RadialScale);
@@ -147,12 +156,16 @@ namespace march
         void CreateEnvLightResources();
         void BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier);
 
+        void DrawMotionVector();
+        void TAA();
+
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;
         asset_ptr<ComputeShader> m_SpecularIBLShader = nullptr;
+        asset_ptr<ComputeShader> m_TAAShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;

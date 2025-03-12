@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Ints.h"
 #include "Engine/Component.h"
 #include <DirectXMath.h>
 #include <stdint.h>
@@ -30,13 +31,23 @@ namespace march
         bool GetEnableWireframe() const;
         bool GetEnableGizmos() const;
 
+        uint32 GetTAAFrameIndex() const;
+
         DirectX::XMFLOAT4X4 GetViewMatrix() const;
         DirectX::XMFLOAT4X4 GetProjectionMatrix() const;
         DirectX::XMFLOAT4X4 GetViewProjectionMatrix() const;
+        DirectX::XMFLOAT4X4 GetNonJitteredProjectionMatrix() const;
+        DirectX::XMFLOAT4X4 GetNonJitteredViewProjectionMatrix() const;
+        DirectX::XMFLOAT4X4 GetPrevNonJitteredViewProjectionMatrix() const;
 
         DirectX::XMMATRIX LoadViewMatrix() const;
         DirectX::XMMATRIX LoadProjectionMatrix() const;
         DirectX::XMMATRIX LoadViewProjectionMatrix() const;
+        DirectX::XMMATRIX LoadNonJitteredProjectionMatrix() const;
+        DirectX::XMMATRIX LoadNonJitteredViewProjectionMatrix() const;
+        DirectX::XMMATRIX LoadPrevNonJitteredViewProjectionMatrix() const;
+
+        void PrepareFrameData();
 
         static const std::vector<Camera*>& GetAllCameras();
 
@@ -51,6 +62,7 @@ namespace march
         bool m_EnableWireframe;
         bool m_EnableGizmos;
         Display* m_CustomTargetDisplay;
+        DirectX::XMFLOAT4X4 m_PrevNonJitteredViewProjectionMatrix;
 
         static std::vector<Camera*> s_AllCameras;
     };

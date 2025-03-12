@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Public\Engine\Memory\RefCounting.h" />
+    <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxException.h" />
