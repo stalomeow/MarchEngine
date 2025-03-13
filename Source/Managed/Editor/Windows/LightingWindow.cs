@@ -55,7 +55,7 @@ namespace March.Editor.Windows
                 {
                     if (EditorGUI.ButtonRight("Bake"))
                     {
-                        RenderPipeline.BakeEnvLight(radianceMap, diffuseIntensityMultiplier, specularIntensityMultiplier);
+                        RenderPipeline.BakeEnvLight(radianceMap!, diffuseIntensityMultiplier, specularIntensityMultiplier);
                     }
                 }
             }
