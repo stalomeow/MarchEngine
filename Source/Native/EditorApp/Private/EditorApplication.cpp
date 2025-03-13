@@ -34,6 +34,7 @@ namespace march
         , m_EngineResourcePath{}
         , m_EngineShaderPath{}
         , m_ImGuiIniFilename{}
+        , m_IsInitialized(false)
     {
     }
 
@@ -100,12 +101,6 @@ namespace march
 
         InitImGui();
         m_RenderPipeline = std::make_unique<RenderPipeline>();
-
-        ManagedMethod callbacks[] = { ManagedMethod::Application_Initialize, ManagedMethod::EditorApplication_Initialize };
-        TickImpl(std::size(callbacks), callbacks);
-
-        // 需要用到 managed method
-        Gizmos::InitResources();
     }
 
     static void SetStyles()
@@ -240,9 +235,6 @@ namespace march
 
     void EditorApplication::OnQuit()
     {
-        ManagedMethod callbacks[] = { ManagedMethod::Application_Quit };
-        TickImpl(std::size(callbacks), callbacks);
-
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
@@ -314,13 +306,7 @@ namespace march
         EditorWindow::DockSpaceOverMainViewport();
     }
 
-    void EditorApplication::OnTick()
-    {
-        ManagedMethod callbacks[] = { ManagedMethod::Application_Tick };
-        TickImpl(std::size(callbacks), callbacks);
-    }
-
-    void EditorApplication::TickImpl(size_t numMethods, ManagedMethod* pMethods)
+    void EditorApplication::OnTick(bool willQuit)
     {
         m_SwapChain->WaitForFrameLatency();
 
@@ -330,21 +316,38 @@ namespace march
         ImGui::NewFrame();
 
         {
-            m_RenderPipeline->PrepareFrameData();
-            DrawBaseImGui();
-
-            for (size_t i = 0; i < numMethods; i++)
+            if (!m_IsInitialized)
             {
-                DotNet::RuntimeInvoke(pMethods[i]);
+                DotNet::RuntimeInvoke(ManagedMethod::Application_Initialize);
+                DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_Initialize);
+                Gizmos::InitResources(); // 需要用到 managed method
+                m_IsInitialized = true;
             }
 
-            ImGui::Render();
-            ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_SwapChain->GetBackBuffer());
+            if (willQuit)
+            {
+                DotNet::RuntimeInvoke(ManagedMethod::Application_Quit);
+            }
+            else
+            {
+                m_RenderPipeline->PrepareFrameData();
+                DrawBaseImGui();
+
+                DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
+                m_RenderPipeline->Render();
+
+                ImGui::Render();
+                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_SwapChain->GetBackBuffer());
+            }
         }
 
         ImGui::EndFrame();
         GetGfxDevice()->EndFrame();
-        m_SwapChain->Present();
+
+        if (!willQuit)
+        {
+            m_SwapChain->Present();
+        }
     }
 
     void EditorApplication::OnResize()
@@ -446,7 +449,7 @@ namespace march
 
     void EditorApplication::OnPaint()
     {
-        OnTick();
+        OnTick(false);
     }
 
     void EditorApplication::CalculateFrameStats()

@@ -34,8 +34,9 @@ namespace march
         m_IsResourceLoaded = true;
 
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
-        m_DeferredLitMaterial = std::make_unique<Material>();
-        m_DeferredLitMaterial->SetShader(m_DeferredLitShader.get());
+        m_DeferredLitMaterial = std::make_unique<Material>(m_DeferredLitShader.get());
+        m_SceneViewGridShader.reset("Engine/Shaders/SceneViewGrid.shader");
+        m_SceneViewGridMaterial = std::make_unique<Material>(m_SceneViewGridShader.get());
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
         m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
@@ -62,7 +63,7 @@ namespace march
         }
     }
 
-    void RenderPipeline::Render(Camera* camera, Material* gridGizmoMaterial)
+    void RenderPipeline::RenderSingleCamera(Camera* camera)
     {
         try
         {
@@ -101,9 +102,9 @@ namespace march
             DeferredLighting(shadowMatrix, depth2RadialScale);
             DrawSkybox();
 
-            if (camera->GetEnableGizmos() && gridGizmoMaterial != nullptr)
+            if (camera->GetEnableGizmos())
             {
-                DrawSceneViewGrid(gridGizmoMaterial);
+                DrawSceneViewGrid();
                 Gizmos::AddRenderGraphPass(m_RenderGraph.get(), m_Resource.CbCamera, m_Resource.ColorTarget, m_Resource.DepthStencilTarget);
             }
 
@@ -115,6 +116,14 @@ namespace march
         catch (const std::exception& e)
         {
             LOG_ERROR("error: {}", e.what());
+        }
+    }
+
+    void RenderPipeline::Render()
+    {
+        for (Camera* camera : Camera::GetAllCameras())
+        {
+            RenderSingleCamera(camera);
         }
     }
 
@@ -503,17 +512,17 @@ namespace march
         });
     }
 
-    void RenderPipeline::DrawSceneViewGrid(Material* material)
+    void RenderPipeline::DrawSceneViewGrid()
     {
         auto builder = m_RenderGraph->AddPass("SceneViewGrid");
 
         builder.In(m_Resource.CbCamera);
         builder.SetColorTarget(m_Resource.ColorTarget);
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
-        builder.SetRenderFunc([this, material](RenderGraphContext& context)
+        builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.SetVariable(m_Resource.CbCamera);
-            context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, material, 0);
+            context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_SceneViewGridMaterial.get(), 0);
         });
     }
 

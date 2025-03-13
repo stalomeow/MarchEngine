@@ -17,11 +17,6 @@ namespace March.Core.Rendering
         internal static partial void Remove(Light light);
 
         [NativeMethod]
-        internal static partial void Render(Camera camera, Material? gridGizmoMaterial);
-
-        public static void Render(Camera camera) => Render(camera, null);
-
-        [NativeMethod]
         internal static partial void SetSkyboxMaterial(Material? material);
 
         [NativeMethod]

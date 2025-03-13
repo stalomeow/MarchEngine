@@ -23,11 +23,6 @@ NATIVE_EXPORT_AUTO RenderPipeline_RemoveLight(cs<Light*> pLight)
     GetApp()->GetRenderPipeline()->RemoveLight(pLight);
 }
 
-NATIVE_EXPORT_AUTO RenderPipeline_Render(cs<Camera*> camera, cs<Material*> gridGizmoMaterial)
-{
-    GetApp()->GetRenderPipeline()->Render(camera, gridGizmoMaterial);
-}
-
 NATIVE_EXPORT_AUTO RenderPipeline_SetSkyboxMaterial(cs<Material*> material)
 {
     GetApp()->GetRenderPipeline()->SetSkyboxMaterial(material);

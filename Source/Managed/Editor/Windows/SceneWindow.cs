@@ -2,8 +2,6 @@ using March.Core;
 using March.Core.IconFont;
 using March.Core.Interop;
 using March.Core.Rendering;
-using March.Core.Serialization;
-using March.Editor.AssetPipeline;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
@@ -33,7 +31,6 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/General/Scene")]
     internal unsafe partial class SceneWindow : EditorWindow
     {
-        private readonly Material m_GridMaterial = new();
         private readonly Scene m_DummyScene = new();
         private readonly Camera m_SceneViewCamera;
 
@@ -47,14 +44,10 @@ namespace March.Editor.Windows
 
             m_SceneViewCamera = go.AddComponent<Camera>();
             m_SceneViewCamera.EnableGizmos = true;
-
-            m_GridMaterial.Shader = AssetDatabase.Load<Shader>("Engine/Shaders/SceneViewGrid.shader")!;
         }
 
         protected override void OnClose()
         {
-            m_GridMaterial.Shader = null;
-            m_GridMaterial.Dispose();
             m_DummyScene.Dispose();
 
             base.OnClose();
@@ -100,43 +93,6 @@ namespace March.Editor.Windows
         {
             get => m_SceneViewCamera.FarClipPlane;
             set => m_SceneViewCamera.FarClipPlane = value;
-        }
-
-        [JsonProperty]
-        public Color GridXAxisColor
-        {
-            get => m_GridMaterial.MustGetColor("_XAxisColor");
-            set => m_GridMaterial.SetColor("_XAxisColor", value);
-        }
-
-        [JsonProperty]
-        public Color GridZAxisColor
-        {
-            get => m_GridMaterial.MustGetColor("_ZAxisColor");
-            set => m_GridMaterial.SetColor("_ZAxisColor", value);
-        }
-
-        [JsonProperty]
-        public Color GridLineColor
-        {
-            get => m_GridMaterial.MustGetColor("_LineColor");
-            set => m_GridMaterial.SetColor("_LineColor", value);
-        }
-
-        [JsonProperty]
-        [FloatDrawer(Min = 0.0f, Max = 1.0f, Slider = true)]
-        public float GridAntialiasing
-        {
-            get => m_GridMaterial.MustGetFloat("_Antialiasing");
-            set => m_GridMaterial.SetFloat("_Antialiasing", value);
-        }
-
-        [JsonProperty]
-        [FloatDrawer(Min = 0.0f, Max = 1.0f, Slider = true)]
-        public float GridFadeOut
-        {
-            get => m_GridMaterial.MustGetFloat("_FadeOut");
-            set => m_GridMaterial.SetFloat("_FadeOut", value);
         }
 
         [JsonProperty]
@@ -200,13 +156,15 @@ namespace March.Editor.Windows
             base.OnDraw();
             DrawMenuBar();
 
+            m_SceneViewCamera.SetCustomTargetDisplay(UpdateDisplay());
+
             if (WindowMode == SceneWindowMode.SceneView)
             {
+                DrawSceneView();
+                DrawGizmosGUI();
                 ManipulateTransform();
                 TravelScene();
                 HandleDragDrop();
-                DrawScene();
-                DrawGizmosGUI();
             }
             else
             {
@@ -219,29 +177,7 @@ namespace March.Editor.Windows
                         EditorGUI.ObjectPropertyFields(m_SceneViewCamera);
                     }
                 }
-
-                EditorGUI.Space();
-
-                if (EditorGUI.Foldout("Grid", string.Empty))
-                {
-                    using (new EditorGUI.IndentedScope(2))
-                    {
-                        var contract = (JsonObjectContract)PersistentManager.ResolveJsonContract(GetType());
-                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridXAxisColor)));
-                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridZAxisColor)));
-                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridLineColor)));
-                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridAntialiasing)));
-                        EditorGUI.PropertyField(contract.GetEditorProperty(this, nameof(GridFadeOut)));
-                    }
-                }
             }
-        }
-
-        private void DrawScene()
-        {
-            m_SceneViewCamera.SetCustomTargetDisplay(UpdateDisplay());
-            RenderPipeline.Render(m_SceneViewCamera, m_GridMaterial);
-            DrawSceneView();
         }
 
         private void TravelScene()

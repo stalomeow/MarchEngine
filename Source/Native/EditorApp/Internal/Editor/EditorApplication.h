@@ -29,7 +29,7 @@ namespace march
         bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
         void OnStart(const std::vector<std::string>& args) override;
         void OnQuit() override;
-        void OnTick() override;
+        void OnTick(bool willQuit) override;
         void OnResize() override;
         void OnDisplayScaleChange() override;
         void OnPaint() override;
@@ -37,7 +37,6 @@ namespace march
     private:
         void InitImGui();
         void DrawBaseImGui();
-        void TickImpl(size_t numMethods, ManagedMethod* pMethods);
         void CalculateFrameStats();
         void ReloadFonts();
         void InitPaths();
@@ -49,6 +48,8 @@ namespace march
         std::string m_EngineResourcePath;
         std::string m_EngineShaderPath;
         std::string m_ImGuiIniFilename;
+
+        bool m_IsInitialized;
 
         const float m_FontSizeLatin = 15.0f;
         const float m_FontSizeCJK = 19.0f;

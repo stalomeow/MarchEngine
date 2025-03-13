@@ -109,7 +109,8 @@ namespace march
 
         void InitResourcesIfNot();
 
-        void Render(Camera* camera, Material* gridGizmoMaterial = nullptr);
+        void RenderSingleCamera(Camera* camera);
+        void Render();
 
         void AddMeshRenderer(MeshRenderer* obj) { m_Renderers.push_back(obj); }
 
@@ -146,7 +147,7 @@ namespace march
         void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix, float depth2RadialScale);
         void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix, float& depth2RadialScale);
         void ClearAndDrawObjects(bool wireframe);
-        void DrawSceneViewGrid(Material* material);
+        void DrawSceneViewGrid();
         void DrawSkybox();
 
         void GenerateSSAORandomVectorMap();
@@ -161,6 +162,8 @@ namespace march
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
+        asset_ptr<Shader> m_SceneViewGridShader = nullptr;
+        std::unique_ptr<Material> m_SceneViewGridMaterial = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;

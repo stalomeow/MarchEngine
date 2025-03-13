@@ -210,9 +210,13 @@ namespace march
 
             if (m_Timer->Tick())
             {
-                OnTick();
+                OnTick(false);
             }
         }
+
+        // 强制 tick 一次
+        m_Timer->Tick();
+        OnTick(true);
 
         OnQuit();
         return static_cast<int>(msg.wParam);

@@ -51,7 +51,7 @@ namespace march
         Application();
 
         virtual void OnStart(const std::vector<std::string>& args) {}
-        virtual void OnTick() {}
+        virtual void OnTick(bool willQuit) {}
         virtual void OnQuit() {}
 
         virtual void OnResize() {}
