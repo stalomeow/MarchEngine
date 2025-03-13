@@ -892,9 +892,9 @@ namespace march
 
     GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& currMatrix, const XMFLOAT4X4& prevMatrix)
     {
-        XMFLOAT4X4 matrixIT{};
-        XMStoreFloat4x4(&matrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&currMatrix))));
-        return InstanceData{ currMatrix, matrixIT, prevMatrix };
+        XMFLOAT4X4 currMatrixIT{};
+        XMStoreFloat4x4(&currMatrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&currMatrix))));
+        return InstanceData{ currMatrix, currMatrixIT, prevMatrix };
     }
 
     void GfxCommandContext::ResolveTexture(GfxTexture* source, GfxTexture* destination)

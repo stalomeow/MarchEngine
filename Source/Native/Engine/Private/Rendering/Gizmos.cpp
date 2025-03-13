@@ -194,7 +194,7 @@ namespace march
     static ImVec2 GetImGuiScreenPosition(const XMFLOAT3& position, bool* outVisible)
     {
         XMVECTOR p = LoadTransformedPosition(position);
-        XMVECTOR posNDC = XMVector3TransformCoord(p, g_GUICamera->LoadViewProjectionMatrix());
+        XMVECTOR posNDC = XMVector3TransformCoord(p, g_GUICamera->LoadNonJitteredViewProjectionMatrix());
 
         if (outVisible != nullptr)
         {
