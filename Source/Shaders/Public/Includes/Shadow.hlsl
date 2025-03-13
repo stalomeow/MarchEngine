@@ -129,7 +129,7 @@ float PercentageCloserFiltering(float depth2RadialScale, float3 shadowCoord, flo
 
 float2x2 GetPCSSRotationJitter(float2 positionSS)
 {
-    float angle = InterleavedGradientNoise(positionSS, 1) * 2 * PI;
+    float angle = InterleavedGradientNoise(positionSS, GetTAAFrameIndex()) * 2 * PI;
     float cosAngle = cos(angle);
     float sinAngle = sin(angle);
     return float2x2(cosAngle, -sinAngle, sinAngle, cosAngle);

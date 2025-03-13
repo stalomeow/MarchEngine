@@ -29,6 +29,7 @@ namespace march
         DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
         DirectX::XMFLOAT4X4 NonJitteredViewProjectionMatrix;
         DirectX::XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
+        DirectX::XMFLOAT4 TAAParams; // x: TAAFrameIndex
     };
 
     struct LightConstants

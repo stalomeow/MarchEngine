@@ -28,6 +28,7 @@ cbuffer cbCamera
     float4x4 _MatrixInvViewProjection;
     float4x4 _MatrixNonJitteredViewProjection; // non-jittered
     float4x4 _MatrixPrevNonJitteredViewProjection; // 上一帧的 non-jittered
+    float4 _TAAParams; // x: TAAFrameIndex
 };
 
 float Square(float x)
@@ -206,6 +207,11 @@ bool IsDepthCloser(float lhs, float rhs)
 #else
     return lhs < rhs;
 #endif
+}
+
+uint GetTAAFrameIndex()
+{
+    return uint(_TAAParams.x);
 }
 
 // Static Samplers

@@ -138,6 +138,7 @@ namespace march
         XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ViewProjectionMatrix)));
         consts.NonJitteredViewProjectionMatrix = camera->GetNonJitteredViewProjectionMatrix();
         consts.PrevNonJitteredViewProjectionMatrix = camera->GetPrevNonJitteredViewProjectionMatrix();
+        consts.TAAParams.x = static_cast<float>(camera->GetTAAFrameIndex());
 
         GfxBufferDesc desc{};
         desc.Stride = sizeof(CameraConstants);
@@ -162,7 +163,7 @@ namespace march
         XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
         XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
 
-        // 不设置 NonJitteredMatrix
+        // 不设置 TAA 的参数
 
         GfxBufferDesc desc{};
         desc.Stride = sizeof(CameraConstants);
