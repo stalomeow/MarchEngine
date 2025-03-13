@@ -12,6 +12,7 @@
     <None Include="$(MSBuildThisFileDirectory)public\Blur.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\CullLight.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\DiffuseIrradiance.compute" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\ACES.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\AmbientOcclusion.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\BRDF.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />

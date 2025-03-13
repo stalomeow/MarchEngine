@@ -9,6 +9,10 @@
 #define FLT_MIN 1.175494351e-38 // Minimum normalized positive floating-point number
 #define FLT_MAX 3.402823466e+38 // Maximum representable floating-point number
 
+#define HALF_EPS 4.8828125e-4    // 2^-11, machine epsilon: 1 + EPS = 1 (half of the ULP for 1.0f)
+#define HALF_MIN 6.103515625e-5  // 2^-14, the same value for 10, 11 and 16-bit: https://www.khronos.org/opengl/wiki/Small_Float_Formats
+#define HALF_MAX 65504.0
+
 struct InstanceData
 {
     float4x4 _MatrixWorld;
@@ -212,6 +216,53 @@ bool IsDepthCloser(float lhs, float rhs)
 uint GetTAAFrameIndex()
 {
     return uint(_TAAParams.x);
+}
+
+float Min3(float x, float y, float z)
+{
+    return min(min(x, y), z);
+}
+
+float Max3(float x, float y, float z)
+{
+    return max(max(x, y), z);
+}
+
+// Ref: https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl
+// Inserts the bits indicated by 'mask' from 'src' into 'dst'.
+uint BitFieldInsert(uint mask, uint src, uint dst)
+{
+    return (src & mask) | (dst & ~mask);
+}
+
+// Ref: https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl
+// Composes a floating point value with the magnitude of 'x' and the sign of 's'.
+// See the comment about FastSign() below.
+float CopySign(float x, float s, bool ignoreNegZero = true)
+{
+    if (ignoreNegZero)
+    {
+        return (s >= 0) ? abs(x) : -abs(x);
+    }
+    else
+    {
+        uint negZero = 0x80000000u;
+        uint signBit = negZero & asuint(s);
+        return asfloat(BitFieldInsert(negZero, signBit, asuint(x)));
+    }
+}
+
+// Ref: https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl
+// Returns -1 for negative numbers and 1 for positive numbers.
+// 0 can be handled in 2 different ways.
+// The IEEE floating point standard defines 0 as signed: +0 and -0.
+// However, mathematics typically treats 0 as unsigned.
+// Therefore, we treat -0 as +0 by default: FastSign(+0) = FastSign(-0) = 1.
+// If (ignoreNegZero = false), FastSign(-0, false) = -1.
+// Note that the sign() function in HLSL implements signum, which returns 0 for 0.
+float FastSign(float s, bool ignoreNegZero = true)
+{
+    return CopySign(1.0, s, ignoreNegZero);
 }
 
 // Static Samplers
