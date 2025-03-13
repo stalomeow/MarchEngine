@@ -12,7 +12,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = 75)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = 76)]
     public class ShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -22,6 +22,14 @@ namespace March.Editor.AssetPipeline.Importers
         [JsonProperty]
         [HideInInspector]
         private GraphicsColorSpace m_ColorSpace = GraphicsSettings.ColorSpace;
+
+        [JsonProperty]
+        [HideInInspector]
+        private List<string> m_Warnings = [];
+
+        [JsonProperty]
+        [HideInInspector]
+        private List<string> m_Errors = [];
 
         protected override bool CheckNeedReimport(bool fullCheck)
         {
@@ -41,7 +49,9 @@ namespace March.Editor.AssetPipeline.Importers
 
         private void CompileShader(ref AssetImportContext context, Shader shader, string content)
         {
-            shader.ClearWarningsAndErrors();
+            m_Warnings.Clear();
+            m_Errors.Clear();
+
             ParsedShaderData result = ParseShaderLabWithFallback(shader, content);
 
             shader.Name = result.Name;
@@ -73,18 +83,47 @@ namespace March.Editor.AssetPipeline.Importers
             {
                 CompileShaderPassWithFallback(ref context, shader, i, result.GetSourceCode(i));
             }
+
+            if (m_Warnings.Count > 0)
+            {
+                m_Warnings = m_Warnings.Distinct().ToList();
+            }
+
+            if (m_Errors.Count > 0)
+            {
+                m_Errors = m_Errors.Distinct().ToList();
+            }
+        }
+
+        public int WarningCount => m_Warnings.Count;
+
+        public int ErrorCount => m_Errors.Count;
+
+        public override void LogImportMessages()
+        {
+            base.LogImportMessages();
+
+            foreach (string warning in m_Warnings)
+            {
+                Log.Message(LogLevel.Warning, warning);
+            }
+
+            foreach (string error in m_Errors)
+            {
+                Log.Message(LogLevel.Error, error);
+            }
         }
 
         private void CompileShaderPassWithFallback(ref AssetImportContext context, Shader shader, int passIndex, string source)
         {
             AddDependency(ref context, source);
 
-            if (shader.CompilePass(passIndex, Location.AssetFullPath, source))
+            if (shader.CompilePass(passIndex, Location.AssetFullPath, source, m_Warnings, m_Errors))
             {
                 return;
             }
 
-            if (shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program))
+            if (shader.CompilePass(passIndex, Location.AssetFullPath, FallbackShaderCodes.Program, m_Warnings, m_Errors))
             {
                 // 如果使用了 fallback shader，需要再额外添加 fallback 的依赖
                 AddDependency(ref context, FallbackShaderCodes.Program);
@@ -112,13 +151,7 @@ namespace March.Editor.AssetPipeline.Importers
 
             if (!errors.IsEmpty)
             {
-                foreach (string e in errors)
-                {
-                    if (shader.AddError(e))
-                    {
-                        Log.Message(LogLevel.Error, e);
-                    }
-                }
+                m_Errors.AddRange(errors);
 
                 result = ParseShaderLab(Location.AssetFullPath, FallbackShaderCodes.ShaderLab, out errors);
 
@@ -194,26 +227,18 @@ Shader ""ErrorShader""
 
     internal class ShaderImporterDrawer : AssetImporterDrawerFor<ShaderImporter>
     {
+        protected override bool RequireAssets => true;
+
         protected override bool DrawProperties(out bool showApplyRevertButtons)
         {
             bool isChanged = base.DrawProperties(out showApplyRevertButtons);
 
-            Shader shader = (Shader)Target.MainAsset;
-
-            EditorGUI.LabelField("Warnings", string.Empty, shader.Warnings.Length.ToString());
-            EditorGUI.LabelField("Errors", string.Empty, shader.Errors.Length.ToString());
+            EditorGUI.LabelField("Warnings", string.Empty, Target.WarningCount.ToString());
+            EditorGUI.LabelField("Errors", string.Empty, Target.ErrorCount.ToString());
 
             if (EditorGUI.ButtonRight("Show Warnings and Errors"))
             {
-                foreach (string warning in shader.Warnings)
-                {
-                    Log.Message(LogLevel.Warning, warning);
-                }
-
-                foreach (string error in shader.Errors)
-                {
-                    Log.Message(LogLevel.Error, error);
-                }
+                Target.LogImportMessages();
             }
 
             EditorGUI.Space();
@@ -222,6 +247,8 @@ Shader ""ErrorShader""
 
             if (EditorGUI.Foldout("Properties", string.Empty, defaultOpen: true))
             {
+                Shader shader = (Shader)Target.MainAsset;
+
                 using (new EditorGUI.IndentedScope())
                 {
                     foreach (ShaderProperty prop in shader.Properties)
@@ -237,6 +264,23 @@ Shader ""ErrorShader""
                         {
                             EditorGUI.LabelField(prop.Name, string.Empty, prop.Type.ToString());
                         }
+                    }
+                }
+            }
+
+            EditorGUI.Space();
+            EditorGUI.Separator();
+            EditorGUI.Space();
+
+            if (EditorGUI.Foldout("Passes", string.Empty, defaultOpen: true))
+            {
+                Shader shader = (Shader)Target.MainAsset;
+
+                using (new EditorGUI.IndentedScope())
+                {
+                    foreach (ShaderPass pass in shader.Passes)
+                    {
+                        EditorGUI.BulletLabel(pass.Name, "");
                     }
                 }
             }

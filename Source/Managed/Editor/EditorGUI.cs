@@ -315,6 +315,9 @@ namespace March.Editor
             return Button(label);
         }
 
+        [NativeMethod]
+        public static partial void BulletLabel(StringLike label, StringLike tooltip);
+
         #region Object
 
         public static bool MarchObjectField<T>(StringLike label, StringLike tooltip, ref T? asset) where T : MarchObject

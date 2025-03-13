@@ -1,8 +1,6 @@
-using March.Core.Diagnostics;
 using March.Core.Interop;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -634,12 +632,6 @@ namespace March.Core.Rendering
         public partial string Name { get; set; }
 
         [JsonProperty]
-        public ImmutableArray<string> Warnings { get; private set; } = [];
-
-        [JsonProperty]
-        public ImmutableArray<string> Errors { get; private set; } = [];
-
-        [JsonProperty]
         internal ShaderProperty[] Properties
         {
             get => m_Properties;
@@ -703,37 +695,7 @@ namespace March.Core.Rendering
 
         public Shader() : base(New()) { }
 
-        public bool HasWarningOrError => !Warnings.IsEmpty || !Errors.IsEmpty;
-
-        internal void ClearWarningsAndErrors()
-        {
-            Warnings = Warnings.Clear();
-            Errors = Errors.Clear();
-        }
-
-        internal bool AddWarning(string warning)
-        {
-            if (!Warnings.Contains(warning))
-            {
-                Warnings = Warnings.Add(warning);
-                return true;
-            }
-
-            return false;
-        }
-
-        internal bool AddError(string error)
-        {
-            if (!Errors.Contains(error))
-            {
-                Errors = Errors.Add(error);
-                return true;
-            }
-
-            return false;
-        }
-
-        internal bool CompilePass(int passIndex, string filename, string source)
+        internal bool CompilePass(int passIndex, string filename, string source, List<string> outWarnings, List<string> outErrors)
         {
             nint nativeWarnings = nint.Zero;
             nint nativeError = nint.Zero;
@@ -745,23 +707,13 @@ namespace March.Core.Rendering
 
                 for (int i = 0; i < warnings.Length; i++)
                 {
-                    string w = NativeString.GetAndFree(warnings[i]);
-
-                    if (AddWarning(w))
-                    {
-                        Log.Message(LogLevel.Warning, w);
-                    }
+                    outWarnings.Add(NativeString.GetAndFree(warnings[i]));
                 }
             }
 
             if (nativeError != nint.Zero)
             {
-                string e = NativeString.GetAndFree(nativeError);
-
-                if (AddError(e))
-                {
-                    Log.Message(LogLevel.Error, e);
-                }
+                outErrors.Add(NativeString.GetAndFree(nativeError));
             }
 
             return success;
@@ -833,12 +785,6 @@ namespace March.Core.Rendering
         public partial string Name { get; set; }
 
         [JsonProperty]
-        public ImmutableArray<string> Warnings { get; private set; } = [];
-
-        [JsonProperty]
-        public ImmutableArray<string> Errors { get; private set; } = [];
-
-        [JsonProperty]
         internal ComputeShaderKernel[] Kernels
         {
             get
@@ -856,37 +802,7 @@ namespace March.Core.Rendering
 
         public ComputeShader() : base(New()) { }
 
-        public bool HasWarningOrError => !Warnings.IsEmpty || !Errors.IsEmpty;
-
-        internal void ClearWarningsAndErrors()
-        {
-            Warnings = Warnings.Clear();
-            Errors = Errors.Clear();
-        }
-
-        internal bool AddWarning(string warning)
-        {
-            if (!Warnings.Contains(warning))
-            {
-                Warnings = Warnings.Add(warning);
-                return true;
-            }
-
-            return false;
-        }
-
-        internal bool AddError(string error)
-        {
-            if (!Errors.Contains(error))
-            {
-                Errors = Errors.Add(error);
-                return true;
-            }
-
-            return false;
-        }
-
-        internal bool Compile(string filename, string source)
+        internal bool Compile(string filename, string source, List<string> outWarnings, List<string> outErrors)
         {
             nint nativeWarnings = nint.Zero;
             nint nativeError = nint.Zero;
@@ -898,23 +814,13 @@ namespace March.Core.Rendering
 
                 for (int i = 0; i < warnings.Length; i++)
                 {
-                    string w = NativeString.GetAndFree(warnings[i]);
-
-                    if (AddWarning(w))
-                    {
-                        Log.Message(LogLevel.Warning, w);
-                    }
+                    outWarnings.Add(NativeString.GetAndFree(warnings[i]));
                 }
             }
 
             if (nativeError != nint.Zero)
             {
-                string e = NativeString.GetAndFree(nativeError);
-
-                if (AddError(e))
-                {
-                    Log.Message(LogLevel.Error, e);
-                }
+                outErrors.Add(NativeString.GetAndFree(nativeError));
             }
 
             return success;

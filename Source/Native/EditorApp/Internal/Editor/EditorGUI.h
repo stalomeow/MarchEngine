@@ -104,6 +104,8 @@ namespace march
         // always call EndMainViewportSideBar() after BeginMainViewportSideBar()
         static void EndMainViewportSideBar();
 
+        static void BulletLabel(const std::string& label, const std::string& tooltip);
+
     public:
         static constexpr float MinLabelWidth = 160.0f;
         static constexpr float MaxFieldWidth = 280.0f;

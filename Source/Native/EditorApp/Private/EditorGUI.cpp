@@ -735,4 +735,14 @@ namespace march
     {
         ImGui::End();
     }
+
+    void EditorGUI::BulletLabel(const std::string& label, const std::string& tooltip)
+    {
+        ImGui::BulletText("%s", label.c_str());
+
+        if (!tooltip.empty())
+        {
+            ImGui::SetItemTooltip(tooltip.c_str());
+        }
+    }
 }

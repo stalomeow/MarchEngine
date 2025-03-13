@@ -67,7 +67,13 @@ namespace March.Editor.AssetPipeline
             foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
             {
                 // 第一次导入时，进行完整检查
-                kv.Value.ReimportAndSave(AssetReimportMode.FullCheck);
+                bool reimported = kv.Value.ReimportAndSave(AssetReimportMode.FullCheck);
+
+                // 如果触发了 Reimport，那么会自动输出日志
+                if (!reimported)
+                {
+                    kv.Value.LogImportMessages();
+                }
             }
 
             static void CreateImportersOnly(string directoryFullPath)

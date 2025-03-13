@@ -295,3 +295,8 @@ NATIVE_EXPORT_AUTO EditorGUI_EndMainMenuBar()
 {
     EditorGUI::EndMainMenuBar();
 }
+
+NATIVE_EXPORT_AUTO EditorGUI_BulletLabel(cs_string label, cs_string tooltip)
+{
+    EditorGUI::BulletLabel(label, tooltip);
+}

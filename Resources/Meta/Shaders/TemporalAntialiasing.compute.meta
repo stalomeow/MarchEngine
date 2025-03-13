@@ -3,7 +3,9 @@
   "$type": "March.Editor.AssetPipeline.Importers.ComputeShaderImporter, March.Editor",
   "m_UseReversedZBuffer": true,
   "m_ColorSpace": 0,
-  "m_SerializedVersion": 20,
+  "m_Warnings": [],
+  "m_Errors": [],
+  "m_SerializedVersion": 21,
   "m_AssetLastWriteTimeUtc": "2025-03-12T15:27:12.1462219Z",
   "m_MainAssetGuid": "88229666ce78485693a856a991fba0e1",
   "m_GuidToAssetMap": {

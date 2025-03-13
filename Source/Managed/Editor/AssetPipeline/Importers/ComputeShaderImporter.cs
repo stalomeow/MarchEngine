@@ -9,7 +9,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Compute Shader Asset", ".compute", Version = 12)]
+    [CustomAssetImporter("Compute Shader Asset", ".compute", Version = 13)]
     public class ComputeShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -19,6 +19,14 @@ namespace March.Editor.AssetPipeline.Importers
         [JsonProperty]
         [HideInInspector]
         private GraphicsColorSpace m_ColorSpace = GraphicsSettings.ColorSpace;
+
+        [JsonProperty]
+        [HideInInspector]
+        private List<string> m_Warnings = [];
+
+        [JsonProperty]
+        [HideInInspector]
+        private List<string> m_Errors = [];
 
         protected override bool CheckNeedReimport(bool fullCheck)
         {
@@ -38,11 +46,42 @@ namespace March.Editor.AssetPipeline.Importers
 
         private void CompileShader(ref AssetImportContext context, ComputeShader shader, string content)
         {
-            shader.ClearWarningsAndErrors();
+            m_Warnings.Clear();
+            m_Errors.Clear();
+
             shader.Name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);
 
             AddDependency(ref context, content);
-            shader.Compile(Location.AssetFullPath, content);
+            shader.Compile(Location.AssetFullPath, content, m_Warnings, m_Errors);
+
+            if (m_Warnings.Count > 0)
+            {
+                m_Warnings = m_Warnings.Distinct().ToList();
+            }
+
+            if (m_Errors.Count > 0)
+            {
+                m_Errors = m_Errors.Distinct().ToList();
+            }
+        }
+
+        public int WarningCount => m_Warnings.Count;
+
+        public int ErrorCount => m_Errors.Count;
+
+        public override void LogImportMessages()
+        {
+            base.LogImportMessages();
+
+            foreach (string warning in m_Warnings)
+            {
+                Log.Message(LogLevel.Warning, warning);
+            }
+
+            foreach (string error in m_Errors)
+            {
+                Log.Message(LogLevel.Error, error);
+            }
         }
 
         private void AddDependency(ref AssetImportContext context, string source)
@@ -59,25 +98,34 @@ namespace March.Editor.AssetPipeline.Importers
 
     internal class ComputeShaderImporterDrawer : AssetImporterDrawerFor<ComputeShaderImporter>
     {
+        protected override bool RequireAssets => true;
+
         protected override bool DrawProperties(out bool showApplyRevertButtons)
         {
             bool isChanged = base.DrawProperties(out showApplyRevertButtons);
 
-            ComputeShader shader = (ComputeShader)Target.MainAsset;
-
-            EditorGUI.LabelField("Warnings", string.Empty, shader.Warnings.Length.ToString());
-            EditorGUI.LabelField("Errors", string.Empty, shader.Errors.Length.ToString());
+            EditorGUI.LabelField("Warnings", string.Empty, Target.WarningCount.ToString());
+            EditorGUI.LabelField("Errors", string.Empty, Target.ErrorCount.ToString());
 
             if (EditorGUI.ButtonRight("Show Warnings and Errors"))
             {
-                foreach (string warning in shader.Warnings)
-                {
-                    Log.Message(LogLevel.Warning, warning);
-                }
+                Target.LogImportMessages();
+            }
 
-                foreach (string error in shader.Errors)
+            EditorGUI.Space();
+            EditorGUI.Separator();
+            EditorGUI.Space();
+
+            if (EditorGUI.Foldout("Kernels", string.Empty, defaultOpen: true))
+            {
+                ComputeShader shader = (ComputeShader)Target.MainAsset;
+
+                using (new EditorGUI.IndentedScope())
                 {
-                    Log.Message(LogLevel.Error, error);
+                    foreach (ComputeShaderKernel kernel in shader.Kernels)
+                    {
+                        EditorGUI.BulletLabel(kernel.Name, "");
+                    }
                 }
             }
 

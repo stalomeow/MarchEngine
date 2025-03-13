@@ -137,6 +137,7 @@ namespace March.Editor.AssetPipeline
             {
                 context.Dispose();
                 SafeInvokeAction(OnDidReimport);
+                LogImportMessages();
             }
         }
 
@@ -313,6 +314,8 @@ namespace March.Editor.AssetPipeline
         }
 
         protected abstract void OnImportAssets(ref AssetImportContext context);
+
+        public virtual void LogImportMessages() { }
 
         protected virtual MarchObject? TryLoadAssetFromCache(string guid)
         {
