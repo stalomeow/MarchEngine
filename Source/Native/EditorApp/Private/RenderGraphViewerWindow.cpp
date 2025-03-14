@@ -56,6 +56,7 @@ namespace march
             else if (pass.IsAsyncCompute)
             {
                 data.Status = PassStatus::AsyncCompute;
+                data.IsAsyncComputeBatchedWithPrevious = pass.IsBatchedWithPrevious;
             }
             else if (pass.PassIndexToWait)
             {
@@ -141,6 +142,7 @@ namespace march
 
             // Draw headers
             ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+            std::vector<std::string> tooltips{};
             for (int i = 0; i < ImGui::TableGetColumnCount(); i++)
             {
                 if (!ImGui::TableSetColumnIndex(i))
@@ -159,25 +161,29 @@ namespace march
                 {
                     const PassData& pass = m_Passes[passIndex];
                     char* passIcon;
-                    std::string tooltip;
+                    tooltips.clear();
 
                     switch (pass.Status)
                     {
                     case PassStatus::Culled:
                         passIcon = ICON_FA_XMARK;
-                        tooltip = "Pass is culled and won't be executed";
+                        tooltips.push_back("Pass is culled and won't be executed");
                         break;
                     case PassStatus::AsyncCompute:
                         passIcon = ICON_FA_ARROWS_TURN_RIGHT;
-                        tooltip = "Pass will be executed asynchronously";
+                        tooltips.push_back("Pass will be executed asynchronously");
+
+                        if (pass.IsAsyncComputeBatchedWithPrevious)
+                        {
+                            tooltips.push_back("Pass is batched with the previous one");
+                        }
                         break;
                     case PassStatus::Deadline:
                         passIcon = ICON_FA_HOURGLASS_END;
-                        tooltip = StringUtils::Format("This is the deadline for '{}', by which it must be completed", pass.DeadlineOwnerPassName);
+                        tooltips.push_back(StringUtils::Format("This is the deadline for '{}', by which it must be completed", pass.DeadlineOwnerPassName));
                         break;
                     default:
                         passIcon = ICON_FA_ARROW_RIGHT_LONG;
-                        tooltip = "";
                         break;
                     }
 
@@ -191,9 +197,9 @@ namespace march
                     {
                         ImGui::TextUnformatted(pass.FullName.c_str());
 
-                        if (!tooltip.empty())
+                        for (const std::string& t : tooltips)
                         {
-                            ImGui::BulletText(tooltip.c_str());
+                            ImGui::BulletText(t.c_str());
                         }
 
                         ImGui::EndTooltip();

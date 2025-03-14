@@ -48,6 +48,9 @@
     <ClInclude Include="Internal\Editor\SceneWindow.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="EditorApp.manifest" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

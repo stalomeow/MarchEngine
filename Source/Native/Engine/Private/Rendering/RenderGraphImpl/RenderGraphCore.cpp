@@ -226,11 +226,13 @@ namespace march
         // 如果后面的 async compute 执行完了，那前面的肯定也执行完了，所以 deadline 的值会逐渐变小
         size_t asyncComputeDeadlineIndexExclusive = m_Passes.size();
 
-        // 注意 size_t 是无符号的，所以不能用 i >= 0
+        // 注意 size_t 是无符号的，所以不能用 passIndex >= 0
         for (size_t passIndex = m_Passes.size() - 1; passIndex != -1; passIndex--)
         {
             CullPass(passIndex, asyncComputeDeadlineIndexExclusive);
         }
+
+        BatchAsyncComputePasses();
 
         // 设置资源的生命周期
         for (size_t i = 0; i < m_ResourceManager->GetNumResources(); i++)
@@ -428,6 +430,66 @@ namespace march
         return overlappedPassCount;
     }
 
+    void RenderGraph::BatchAsyncComputePasses()
+    {
+        std::optional<size_t> firstAsyncComputePassIndex = std::nullopt;
+        std::optional<size_t> lastAsyncComputePassIndex = std::nullopt;
+
+        // 只有连续的 async compute pass 才能合批
+
+        for (size_t passIndex = 0; passIndex < m_Passes.size(); passIndex++)
+        {
+            RenderGraphPass& pass = m_Passes[passIndex];
+
+            if (pass.IsCulled)
+            {
+                continue;
+            }
+
+            if (pass.IsAsyncCompute)
+            {
+                if (firstAsyncComputePassIndex)
+                {
+                    pass.IsBatchedWithPrevious = true;
+
+                    // 合批后，Resource Barrier 会提前到第一个 async compute pass，资源的生命周期也要提前
+                    size_t firstAsyncComputePassIndexValue = *firstAsyncComputePassIndex;
+
+                    for (size_t resourceIndex : pass.ResourcesIn)
+                    {
+                        m_ResourceManager->SetAlive(resourceIndex, firstAsyncComputePassIndexValue);
+                    }
+
+                    for (size_t resourceIndex : pass.ResourcesOut)
+                    {
+                        m_ResourceManager->SetAlive(resourceIndex, firstAsyncComputePassIndexValue);
+                    }
+                }
+                else
+                {
+                    firstAsyncComputePassIndex = passIndex;
+                }
+
+                lastAsyncComputePassIndex = passIndex;
+            }
+            else if (lastAsyncComputePassIndex)
+            {
+                m_Passes[*lastAsyncComputePassIndex].NeedSyncPoint = true;
+
+                firstAsyncComputePassIndex = std::nullopt;
+                lastAsyncComputePassIndex = std::nullopt;
+            }
+        }
+
+        if (lastAsyncComputePassIndex)
+        {
+            m_Passes[*lastAsyncComputePassIndex].NeedSyncPoint = true;
+
+            firstAsyncComputePassIndex = std::nullopt;
+            lastAsyncComputePassIndex = std::nullopt;
+        }
+    }
+
     void RenderGraph::RequestPassResources(const RenderGraphPass& pass)
     {
         for (size_t resourceIndex : pass.ResourcesBorn)
@@ -436,10 +498,8 @@ namespace march
         }
     }
 
-    void RenderGraph::EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass)
+    void RenderGraph::EnsureAsyncComputePassResourceStates(RenderGraphContext& context, size_t passIndex)
     {
-        assert(pass.IsAsyncCompute);
-
         // https://microsoft.github.io/DirectX-Specs/d3d/CPUEfficiency.html#state-support-by-command-list-type
         constexpr D3D12_RESOURCE_STATES disallowedComputeStates
             = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
@@ -459,56 +519,81 @@ namespace march
 
         bool hasValidDirectContext = false;
 
-        for (size_t resourceIndex : pass.ResourcesIn)
+        for (size_t i = passIndex; i < m_Passes.size(); i++)
         {
-            // 如果既读又写，那么当作写，在下面一个循环中处理
-            if (pass.ResourcesOut.count(resourceIndex) > 0)
+            const RenderGraphPass& pass = m_Passes[i];
+
+            if (pass.IsCulled)
             {
                 continue;
             }
 
-            auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
-
-            if ((res->GetState() & D3D12_RESOURCE_STATE_GENERIC_READ) != D3D12_RESOURCE_STATE_GENERIC_READ)
+            // 如果合批的话，需要把 Resource Barrier 提前到第一个 async compute pass
+            if (!pass.IsAsyncCompute || (i != passIndex && !pass.IsBatchedWithPrevious))
             {
-                if (!hasValidDirectContext)
-                {
-                    context.Ensure(GfxCommandType::Direct);
-                    hasValidDirectContext = true;
-                }
-
-                // 只读的资源都转成 GENERIC_READ，避免两个并行的 pass 中出现 Resource Barrier
-                context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_GENERIC_READ);
+                break;
             }
-        }
 
-        for (size_t resourceIndex : pass.ResourcesOut)
-        {
-            auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
-
-            if ((res->GetState() & disallowedComputeStates) != 0)
+            for (size_t resourceIndex : pass.ResourcesIn)
             {
-                if (!hasValidDirectContext)
+                // 如果既读又写，那么当作写，在下面一个循环中处理
+                if (pass.ResourcesOut.count(resourceIndex) > 0)
                 {
-                    context.Ensure(GfxCommandType::Direct);
-                    hasValidDirectContext = true;
+                    continue;
                 }
 
-                // 需要写的资源都转成 COMMON，避免 Resource Barrier 中出现 disallowedComputeStates
-                context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_COMMON);
+                auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
+
+                if ((res->GetState() & D3D12_RESOURCE_STATE_GENERIC_READ) != D3D12_RESOURCE_STATE_GENERIC_READ)
+                {
+                    if (!hasValidDirectContext)
+                    {
+                        context.Ensure(GfxCommandType::Direct);
+                        hasValidDirectContext = true;
+                    }
+
+                    // 只读的资源都转成 GENERIC_READ，避免两个并行的 pass 中出现 Resource Barrier
+                    context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_GENERIC_READ);
+                }
+            }
+
+            for (size_t resourceIndex : pass.ResourcesOut)
+            {
+                auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
+
+                if ((res->GetState() & disallowedComputeStates) != 0)
+                {
+                    if (!hasValidDirectContext)
+                    {
+                        context.Ensure(GfxCommandType::Direct);
+                        hasValidDirectContext = true;
+                    }
+
+                    // 需要写的资源都转成 COMMON，避免 Resource Barrier 中出现 disallowedComputeStates
+                    context.GetCommandContext()->TransitionResource(res, D3D12_RESOURCE_STATE_COMMON);
+                }
             }
         }
     }
 
-    GfxCommandContext* RenderGraph::EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass)
+    GfxCommandContext* RenderGraph::EnsurePassContext(RenderGraphContext& context, size_t passIndex)
     {
+        const RenderGraphPass& pass = m_Passes[passIndex];
+
         if (pass.IsAsyncCompute)
         {
-            EnsureAsyncComputePassResourceStates(context, pass);
+            if (pass.IsBatchedWithPrevious)
+            {
+                context.Ensure(GfxCommandType::AsyncCompute);
+            }
+            else
+            {
+                EnsureAsyncComputePassResourceStates(context, passIndex);
 
-            // 对于 async compute pass，每次都要创建新的 context，这样才能得到对应的 sync point
-            // 为了避免资源竞争，还需要等待之前的非 async compute pass 执行完
-            context.New(GfxCommandType::AsyncCompute, /* waitPreviousOneOnGpu */ true);
+                // 对于 async compute pass，每次都要创建新的 context，这样才能得到对应的 sync point
+                // 为了避免资源竞争，还需要等待之前的非 async compute pass 执行完
+                context.New(GfxCommandType::AsyncCompute, /* waitPreviousOneOnGpu */ true);
+            }
         }
         else if (pass.PassIndexToWait)
         {
@@ -650,15 +735,17 @@ namespace march
 
         try
         {
-            for (RenderGraphPass& pass : m_Passes)
+            for (size_t passIndex = 0; passIndex < m_Passes.size(); passIndex++)
             {
+                RenderGraphPass& pass = m_Passes[passIndex];
+
                 if (pass.IsCulled)
                 {
                     continue;
                 }
 
                 RequestPassResources(pass);
-                GfxCommandContext* cmd = EnsurePassContext(context, pass);
+                GfxCommandContext* cmd = EnsurePassContext(context, passIndex);
 
                 cmd->BeginEvent(pass.Name);
                 {
@@ -676,7 +763,7 @@ namespace march
 
                 ReleasePassResources(pass);
 
-                if (pass.IsAsyncCompute)
+                if (pass.IsAsyncCompute && pass.NeedSyncPoint)
                 {
                     pass.SyncPoint = context.UncheckedSubmit();
                 }

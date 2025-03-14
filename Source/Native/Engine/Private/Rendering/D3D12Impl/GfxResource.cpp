@@ -33,15 +33,15 @@ namespace march
     GfxResource::~GfxResource()
     {
 #ifdef ENABLE_GFX_DEBUG_NAME
-        if (m_Resource)
-        {
-            wchar_t name[256];
-            UINT size = sizeof(name);
-            if (SUCCEEDED(m_Resource->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
-            {
-                LOG_TRACE(L"Release D3D12 Resource {}", name);
-            }
-        }
+        //if (m_Resource)
+        //{
+        //    wchar_t name[256];
+        //    UINT size = sizeof(name);
+        //    if (SUCCEEDED(m_Resource->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, name)))
+        //    {
+        //        LOG_TRACE(L"Release D3D12 Resource {}", name);
+        //    }
+        //}
 #endif
 
         m_Device = nullptr;

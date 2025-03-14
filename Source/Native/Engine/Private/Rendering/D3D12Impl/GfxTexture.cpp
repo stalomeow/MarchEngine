@@ -553,7 +553,7 @@ namespace march
                 it->second = device->GetOfflineDescriptorAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)->Allocate();
                 device->GetD3DDevice4()->CreateSampler(&samplerDesc, it->second.GetHandle());
 
-                LOG_TRACE("Create new sampler");
+                //LOG_TRACE("Create new sampler");
             }
 
             m_SamplerDescriptor = it->second.GetHandle();

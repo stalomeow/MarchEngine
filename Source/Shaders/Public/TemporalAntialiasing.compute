@@ -109,5 +109,5 @@ void CSMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
     float2 uv = float2((dtid.x + 0.5) / float(width), (dtid.y + 0.5) / float(height));
     float3 historyColor = _HistoryColorTexture.SampleLevel(sampler_LinearClamp, uv - velocity, 0).rgb;
     historyColor = YCoCgToRGB(clamp(RGBToYCoCg(historyColor), aabbMin, aabbMax));
-    _CurrentColorTexture[dtid.xy] = float4(lerp(currentColor.rgb, historyColor, 0.9), currentColor.a);
+    _CurrentColorTexture[dtid.xy] = float4(lerp(currentColor.rgb, historyColor, 0.95), currentColor.a);
 }

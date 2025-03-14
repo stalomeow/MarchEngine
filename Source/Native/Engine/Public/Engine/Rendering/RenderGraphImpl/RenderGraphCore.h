@@ -93,7 +93,9 @@ namespace march
         std::vector<size_t> ResourcesDead{};          // 生命周期到本结点结束的资源
 
         bool IsAsyncCompute = false;
-        GfxSyncPoint SyncPoint{};                             // 如果当前 pass 是 async-compute，则会产生一个 sync point
+        bool IsBatchedWithPrevious = false; // 两个连续的 async-compute pass 可以合并，后一个 pass 的 Resource Barrier 也会提前
+        bool NeedSyncPoint = false;         // 如果当前 pass 是 async-compute，并且该值为 true，则会产生一个 sync point
+        GfxSyncPoint SyncPoint{};
         std::optional<size_t> PassIndexToWait = std::nullopt; // 在执行当前 pass 前需要等待的 pass，利用 sync point 实现
     };
 
@@ -164,10 +166,11 @@ namespace march
         void CullPass(size_t passIndex, size_t& asyncComputeDeadlineIndexExclusive);
         void CompileAsyncCompute(size_t passIndex, size_t& deadlineIndexExclusive);
         size_t AvoidAsyncComputeResourceHazard(size_t passIndex, size_t& deadlineIndexExclusive);
+        void BatchAsyncComputePasses();
 
         void RequestPassResources(const RenderGraphPass& pass);
-        void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, const RenderGraphPass& pass);
-        GfxCommandContext* EnsurePassContext(RenderGraphContext& context, const RenderGraphPass& pass);
+        void EnsureAsyncComputePassResourceStates(RenderGraphContext& context, size_t passIndex);
+        GfxCommandContext* EnsurePassContext(RenderGraphContext& context, size_t passIndex);
         GfxRenderTargetDesc ResolveRenderTarget(const RenderGraphPassRenderTarget& target);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ReleasePassResources(const RenderGraphPass& pass);

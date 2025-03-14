@@ -27,6 +27,7 @@ namespace march
             std::string FullName{};
             std::string ShortName{};
             PassStatus Status = PassStatus::Normal;
+            bool IsAsyncComputeBatchedWithPrevious = false;
             std::string DeadlineOwnerPassName{};
         };
 

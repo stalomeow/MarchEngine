@@ -35,4 +35,7 @@
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
     <ClInclude Include="Internal\Editor\BusyProgressBar.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="EditorApp.manifest" />
+  </ItemGroup>
 </Project>

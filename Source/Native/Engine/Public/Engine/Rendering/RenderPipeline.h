@@ -167,6 +167,8 @@ namespace march
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Shader> m_SceneViewGridShader = nullptr;
         std::unique_ptr<Material> m_SceneViewGridMaterial = nullptr;
+        asset_ptr<Shader> m_CameraMotionVectorShader = nullptr;
+        std::unique_ptr<Material> m_CameraMotionVectorMaterial = nullptr;
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;

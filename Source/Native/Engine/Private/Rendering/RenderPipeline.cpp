@@ -37,6 +37,8 @@ namespace march
         m_DeferredLitMaterial = std::make_unique<Material>(m_DeferredLitShader.get());
         m_SceneViewGridShader.reset("Engine/Shaders/SceneViewGrid.shader");
         m_SceneViewGridMaterial = std::make_unique<Material>(m_SceneViewGridShader.get());
+        m_CameraMotionVectorShader.reset("Engine/Shaders/CameraMotionVector.shader");
+        m_CameraMotionVectorMaterial = std::make_unique<Material>(m_CameraMotionVectorShader.get());
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
         m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
@@ -92,14 +94,16 @@ namespace march
             m_Resource.EnvSpecularBRDFLUT = m_RenderGraph->ImportTexture("_EnvSpecularBRDFLUT", m_EnvSpecularBRDFLUT.get());
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
-            DrawMotionVector();
+
             CullLights();
+            SSAO();
+
+            DrawMotionVector();
 
             XMFLOAT4X4 shadowMatrix{};
             float depth2RadialScale = 0;
             DrawShadowCasters(shadowMatrix, depth2RadialScale);
 
-            SSAO();
             DeferredLighting(shadowMatrix, depth2RadialScale);
             DrawSkybox();
 
@@ -610,6 +614,8 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass("ScreenSpaceAmbientOcclusion");
 
+        builder.EnableAsyncCompute(true);
+
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbSSAO);
         builder.In(m_Resource.SSAORandomVectorMap);
@@ -823,11 +829,12 @@ namespace march
 
         builder.In(m_Resource.CbCamera);
         builder.SetColorTarget(m_Resource.MotionVectorTexture, RenderTargetInitMode::Clear);
-        builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget); // TODO support readonly
+        builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.SetVariable(m_Resource.CbCamera);
+            context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_CameraMotionVectorMaterial.get(), 0);
             context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "MotionVector");
         });
     }
