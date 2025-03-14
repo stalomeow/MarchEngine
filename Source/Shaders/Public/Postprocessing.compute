@@ -1,0 +1,24 @@
+#pragma kernel CSMain
+
+#include "Includes/ACES.hlsl"
+
+RWTexture2D<float4> _ColorTexture;
+
+float3 AcesTonemap(float3 x)
+{
+    // x 在 sRGB 线性空间中
+
+    half3 aces = unity_to_ACES(x);
+    half3 oces = RRT(aces);
+
+    // 代码中实现的 ODT 不包括 sRGB 的 OETF，所以结果是在 sRGB 线性空间中
+    return ODT_RGBmonitor_100nits_dim(oces);
+}
+
+[numthreads(16, 16, 1)]
+void CSMain(int3 dtid : SV_DispatchThreadID)
+{
+    float4 c = _ColorTexture[dtid.xy];
+    c.rgb = AcesTonemap(c.rgb);
+    _ColorTexture[dtid.xy] = c;
+}

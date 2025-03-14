@@ -298,6 +298,26 @@ namespace march
             m_Cmd->UpdateSubresources(destination, firstSubresource, numSubresources, srcData);
         }
 
+        void CopyTexture(GfxTexture* sourceTexture, GfxTextureElement sourceElement, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxTextureElement destinationElement, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
+        {
+            m_Cmd->CopyTexture(sourceTexture, sourceElement, sourceArraySlice, sourceMipSlice, destinationTexture, destinationElement, destinationArraySlice, destinationMipSlice);
+        }
+
+        void CopyTexture(GfxTexture* sourceTexture, GfxTextureElement sourceElement, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxTextureElement destinationElement, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
+        {
+            m_Cmd->CopyTexture(sourceTexture, sourceElement, sourceFace, sourceArraySlice, sourceMipSlice, destinationTexture, destinationElement, destinationFace, destinationArraySlice, destinationMipSlice);
+        }
+
+        void CopyTexture(GfxTexture* sourceTexture, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
+        {
+            m_Cmd->CopyTexture(sourceTexture, sourceArraySlice, sourceMipSlice, destinationTexture, destinationArraySlice, destinationMipSlice);
+        }
+
+        void CopyTexture(GfxTexture* sourceTexture, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
+        {
+            m_Cmd->CopyTexture(sourceTexture, sourceFace, sourceArraySlice, sourceMipSlice, destinationTexture, destinationFace, destinationArraySlice, destinationMipSlice);
+        }
+
         GfxDevice* GetDevice() const { return m_Cmd->GetDevice(); }
         GfxCommandContext* GetCommandContext() const { return m_Cmd; }
     };

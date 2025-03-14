@@ -179,7 +179,7 @@ namespace march
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
                     srvDesc.Texture2D.MostDetailedMip = 0;
                     srvDesc.Texture2D.MipLevels = -1; // Set to -1 to indicate all the mipmap levels from MostDetailedMip on down to least detailed.
-                    srvDesc.Texture2D.PlaneSlice = 0;
+                    srvDesc.Texture2D.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     srvDesc.Texture2D.ResourceMinLODClamp = 0;
                     break;
                 case GfxTextureDimension::Tex3D:
@@ -201,7 +201,7 @@ namespace march
                     srvDesc.Texture2DArray.ResourceMinLODClamp = 0;
                     srvDesc.Texture2DArray.FirstArraySlice = 0;
                     srvDesc.Texture2DArray.ArraySize = static_cast<UINT>(m_Desc.DepthOrArraySize);
-                    srvDesc.Texture2DArray.PlaneSlice = 0;
+                    srvDesc.Texture2DArray.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     break;
                 case GfxTextureDimension::CubeArray:
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
@@ -284,7 +284,7 @@ namespace march
                 case GfxTextureDimension::Tex2D:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
                     uavDesc.Texture2D.MipSlice = static_cast<UINT>(mipSlice);
-                    uavDesc.Texture2D.PlaneSlice = 0;
+                    uavDesc.Texture2D.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     break;
                 case GfxTextureDimension::Tex3D:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
@@ -297,21 +297,21 @@ namespace march
                     uavDesc.Texture2DArray.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2DArray.FirstArraySlice = 0;
                     uavDesc.Texture2DArray.ArraySize = 6;
-                    uavDesc.Texture2DArray.PlaneSlice = 0;
+                    uavDesc.Texture2DArray.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     break;
                 case GfxTextureDimension::Tex2DArray:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
                     uavDesc.Texture2DArray.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2DArray.FirstArraySlice = 0;
                     uavDesc.Texture2DArray.ArraySize = static_cast<UINT>(m_Desc.DepthOrArraySize);
-                    uavDesc.Texture2DArray.PlaneSlice = 0;
+                    uavDesc.Texture2DArray.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     break;
                 case GfxTextureDimension::CubeArray:
                     uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
                     uavDesc.Texture2DArray.MipSlice = static_cast<UINT>(mipSlice);
                     uavDesc.Texture2DArray.FirstArraySlice = 0;
                     uavDesc.Texture2DArray.ArraySize = static_cast<UINT>(m_Desc.DepthOrArraySize) * 6;
-                    uavDesc.Texture2DArray.PlaneSlice = 0;
+                    uavDesc.Texture2DArray.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     break;
                 default:
                     throw GfxException("Invalid uav dimension");
@@ -441,7 +441,7 @@ namespace march
                 case GfxTextureDimension::Tex2D:
                     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
                     rtvDesc.Texture2D.MipSlice = static_cast<UINT>(query.MipSlice);
-                    rtvDesc.Texture2D.PlaneSlice = 0;
+                    rtvDesc.Texture2D.PlaneSlice = m_Desc.GetPlaneSlice();
                     break;
                 case GfxTextureDimension::Cube:
                 case GfxTextureDimension::Tex2DArray:
@@ -450,7 +450,7 @@ namespace march
                     rtvDesc.Texture2DArray.FirstArraySlice = static_cast<UINT>(query.WOrArraySlice);
                     rtvDesc.Texture2DArray.ArraySize = static_cast<UINT>(query.WOrArraySize);
                     rtvDesc.Texture2DArray.MipSlice = static_cast<UINT>(query.MipSlice);
-                    rtvDesc.Texture2DArray.PlaneSlice = 0;
+                    rtvDesc.Texture2DArray.PlaneSlice = m_Desc.GetPlaneSlice();
                     break;
                 default:
                     throw GfxException("Invalid render target dimension");
@@ -560,6 +560,58 @@ namespace march
         }
 
         return *m_SamplerDescriptor;
+    }
+
+    uint32_t GfxTexture::GetSubresourceIndex(GfxTextureElement element, uint32_t arraySlice, uint32_t mipSlice) const
+    {
+        if (m_Desc.Dimension == GfxTextureDimension::Cube || m_Desc.Dimension == GfxTextureDimension::CubeArray)
+        {
+            throw GfxException("Use GetSubresourceIndex(GfxTextureElement, GfxCubemapFace, uint32_t, uint32_t) for cubemap");
+        }
+
+        if (mipSlice >= m_MipLevels)
+        {
+            throw GfxException("Mip slice out of range");
+        }
+
+        uint32_t arraySize = (m_Desc.Dimension == GfxTextureDimension::Tex3D) ? 1 : m_Desc.DepthOrArraySize;
+
+        if (arraySlice >= arraySize)
+        {
+            throw GfxException("Array slice out of range");
+        }
+
+        return D3D12CalcSubresource(
+            static_cast<UINT>(mipSlice),
+            static_cast<UINT>(arraySlice),
+            static_cast<UINT>(m_Desc.GetPlaneSlice(element)),
+            static_cast<UINT>(m_MipLevels),
+            static_cast<UINT>(arraySize));
+    }
+
+    uint32_t GfxTexture::GetSubresourceIndex(GfxTextureElement element, GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice) const
+    {
+        if (m_Desc.Dimension != GfxTextureDimension::Cube && m_Desc.Dimension != GfxTextureDimension::CubeArray)
+        {
+            throw GfxException("Use GetSubresourceIndex(GfxTextureElement, uint32_t, uint32_t) for non-cubemap");
+        }
+
+        if (mipSlice >= m_MipLevels)
+        {
+            throw GfxException("Mip slice out of range");
+        }
+
+        if (arraySlice >= m_Desc.DepthOrArraySize)
+        {
+            throw GfxException("Array slice out of range");
+        }
+
+        return D3D12CalcSubresource(
+            static_cast<UINT>(mipSlice),
+            static_cast<UINT>(arraySlice * 6) + static_cast<UINT>(face),
+            static_cast<UINT>(m_Desc.GetPlaneSlice(element)),
+            static_cast<UINT>(m_MipLevels),
+            static_cast<UINT>(m_Desc.DepthOrArraySize * 6));
     }
 
     GfxTexture* GfxTexture::GetDefault(GfxDefaultTexture texture, GfxTextureDimension dimension)

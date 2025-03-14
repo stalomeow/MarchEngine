@@ -22,8 +22,6 @@ namespace march
         uint32_t GetPixelHeight() const;
         void Resize(uint32_t width, uint32_t height);
 
-        void UpdateHistoryColorBuffer();
-
         GfxTextureFormat GetColorFormat() const;
         GfxTextureFormat GetDepthStencilFormat() const;
         GfxRenderTexture* GetColorBuffer() const;

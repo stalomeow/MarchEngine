@@ -306,6 +306,29 @@ namespace march
         return flags;
     }
 
+    uint32_t GfxTextureDesc::GetPlaneSlice(GfxTextureElement element) const
+    {
+        if (IsDepthStencil())
+        {
+            // https://learn.microsoft.com/en-us/windows/win32/direct3d12/subresources#plane-slice
+
+            if (element == GfxTextureElement::Default || element == GfxTextureElement::Depth)
+            {
+                return 0;
+            }
+            else if (element == GfxTextureElement::Stencil)
+            {
+                return 1;
+            }
+        }
+        else if (element == GfxTextureElement::Default || element == GfxTextureElement::Color)
+        {
+            return 0;
+        }
+
+        throw GfxException("Invalid texture element");
+    }
+
     void GfxTextureDesc::SetResDXGIFormat(DXGI_FORMAT format, bool updateFlags)
     {
         bool sRGB = false;

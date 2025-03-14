@@ -42,6 +42,7 @@ namespace march
         m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
         m_SpecularIBLShader.reset("Engine/Shaders/SpecularIBL.compute");
         m_TAAShader.reset("Engine/Shaders/TemporalAntialiasing.compute");
+        m_PostprocessingShader.reset("Engine/Shaders/Postprocessing.compute");
 
         GenerateSSAORandomVectorMap();
         CreateLightResources();
@@ -109,9 +110,9 @@ namespace march
             }
 
             TAA();
+            Postprocessing();
 
             m_RenderGraph->CompileAndExecute();
-            display->UpdateHistoryColorBuffer();
         }
         catch (const std::exception& e)
         {
@@ -835,19 +836,37 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("TemporalAntialiasing");
 
-        builder.In(m_Resource.HistoryColorTexture);
         builder.In(m_Resource.MotionVectorTexture);
+        builder.InOut(m_Resource.HistoryColorTexture);
         builder.InOut(m_Resource.ColorTarget);
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.HistoryColorTexture);
             context.SetVariable(m_Resource.MotionVectorTexture);
+            context.SetVariable(m_Resource.HistoryColorTexture);
             context.SetVariable(m_Resource.ColorTarget, "_CurrentColorTexture");
 
             const GfxTextureDesc& desc = m_Resource.ColorTarget.GetDesc();
             std::optional<size_t> kernel = m_TAAShader->FindKernel("CSMain");
             context.DispatchComputeByThreadCount(m_TAAShader.get(), *kernel, desc.Width, desc.Height, 1);
+
+            context.CopyTexture(m_Resource.ColorTarget, 0, 0, m_Resource.HistoryColorTexture, 0, 0);
+        });
+    }
+
+    void RenderPipeline::Postprocessing()
+    {
+        auto builder = m_RenderGraph->AddPass("Postprocessing");
+
+        builder.InOut(m_Resource.ColorTarget);
+
+        builder.SetRenderFunc([this](RenderGraphContext& context)
+        {
+            context.SetVariable(m_Resource.ColorTarget, "_ColorTexture");
+
+            const GfxTextureDesc& desc = m_Resource.ColorTarget.GetDesc();
+            std::optional<size_t> kernel = m_PostprocessingShader->FindKernel("CSMain");
+            context.DispatchComputeByThreadCount(m_PostprocessingShader.get(), *kernel, desc.Width, desc.Height, 1);
         });
     }
 }

@@ -984,4 +984,60 @@ namespace march
             static_cast<UINT>(numSubresources),
             srcData);
     }
+
+    void GfxCommandContext::CopyTexture(
+        GfxTexture* sourceTexture,
+        GfxTextureElement sourceElement,
+        uint32_t sourceArraySlice,
+        uint32_t sourceMipSlice,
+        GfxTexture* destinationTexture,
+        GfxTextureElement destinationElement,
+        uint32_t destinationArraySlice,
+        uint32_t destinationMipSlice)
+    {
+        uint32_t srcSubresource = sourceTexture->GetSubresourceIndex(sourceElement, sourceArraySlice, sourceMipSlice);
+        uint32_t dstSubresource = destinationTexture->GetSubresourceIndex(destinationElement, destinationArraySlice, destinationMipSlice);
+
+        TransitionResource(sourceTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+        TransitionResource(destinationTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_DEST);
+        FlushResourceBarriers();
+
+        CD3DX12_TEXTURE_COPY_LOCATION src(sourceTexture->GetUnderlyingD3DResource(), static_cast<UINT>(srcSubresource));
+        CD3DX12_TEXTURE_COPY_LOCATION dst(destinationTexture->GetUnderlyingD3DResource(), static_cast<UINT>(dstSubresource));
+        m_CommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+    }
+
+    void GfxCommandContext::CopyTexture(
+        GfxTexture* sourceTexture,
+        GfxTextureElement sourceElement,
+        GfxCubemapFace sourceFace,
+        uint32_t sourceArraySlice,
+        uint32_t sourceMipSlice,
+        GfxTexture* destinationTexture,
+        GfxTextureElement destinationElement,
+        GfxCubemapFace destinationFace,
+        uint32_t destinationArraySlice,
+        uint32_t destinationMipSlice)
+    {
+        uint32_t srcSubresource = sourceTexture->GetSubresourceIndex(sourceElement, sourceFace, sourceArraySlice, sourceMipSlice);
+        uint32_t dstSubresource = destinationTexture->GetSubresourceIndex(destinationElement, destinationFace, destinationArraySlice, destinationMipSlice);
+
+        TransitionResource(sourceTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+        TransitionResource(destinationTexture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_DEST);
+        FlushResourceBarriers();
+
+        CD3DX12_TEXTURE_COPY_LOCATION src(sourceTexture->GetUnderlyingD3DResource(), static_cast<UINT>(srcSubresource));
+        CD3DX12_TEXTURE_COPY_LOCATION dst(destinationTexture->GetUnderlyingD3DResource(), static_cast<UINT>(dstSubresource));
+        m_CommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+    }
+
+    void GfxCommandContext::CopyTexture(GfxTexture* sourceTexture, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
+    {
+        CopyTexture(sourceTexture, GfxTextureElement::Default, sourceArraySlice, sourceMipSlice, destinationTexture, GfxTextureElement::Default, destinationArraySlice, destinationMipSlice);
+    }
+
+    void GfxCommandContext::CopyTexture(GfxTexture* sourceTexture, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
+    {
+        CopyTexture(sourceTexture, GfxTextureElement::Default, sourceFace, sourceArraySlice, sourceMipSlice, destinationTexture, GfxTextureElement::Default, destinationFace, destinationArraySlice, destinationMipSlice);
+    }
 }

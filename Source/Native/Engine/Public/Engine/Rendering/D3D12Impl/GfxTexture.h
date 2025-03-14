@@ -190,6 +190,8 @@ namespace march
         DXGI_FORMAT GetSrvUavDXGIFormat(GfxTextureElement element = GfxTextureElement::Default) const noexcept;
         D3D12_RESOURCE_FLAGS GetResFlags(bool isReadOnly) const noexcept;
 
+        uint32_t GetPlaneSlice(GfxTextureElement element = GfxTextureElement::Default) const;
+
         // 如果 updateFlags 为 true，会根据 format 更新 Flags，例如 sRGB
         void SetResDXGIFormat(DXGI_FORMAT format, bool updateFlags = false);
     };
@@ -224,6 +226,9 @@ namespace march
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(uint32_t wOrArraySlice = 0, uint32_t wOrArraySize = 1, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(GfxCubemapFace face, uint32_t faceCount = 1, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetSampler();
+
+        uint32_t GetSubresourceIndex(GfxTextureElement element, uint32_t arraySlice, uint32_t mipSlice) const;
+        uint32_t GetSubresourceIndex(GfxTextureElement element, GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice) const;
 
         GfxDevice* GetDevice() const { return m_Device; }
         RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }

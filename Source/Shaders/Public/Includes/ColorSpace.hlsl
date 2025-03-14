@@ -2,6 +2,7 @@
 #define _COLOR_SPACE_INCLUDED
 
 // https://github.com/microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/ColorSpaceUtility.hlsli
+// https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl
 
 float3 LinearToSRGB(float3 x)
 {
@@ -45,7 +46,6 @@ float4 Gamma22ToLinear(float4 x)
     return float4(Gamma22ToLinear(x.rgb), x.a);
 }
 
-// Ref: https://github.com/Unity-Technologies/Graphics/blob/master/Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl
 // This function take a rgb color (best is to provide color in sRGB space)
 // and return a YCoCg color in [0..1] space for 8bit (An offset is apply in the function)
 // Ref: http://www.nvidia.com/object/real-time-ycocg-dxt-compression.html

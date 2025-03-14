@@ -161,6 +161,8 @@ namespace march
         void DrawMotionVector();
         void TAA();
 
+        void Postprocessing();
+
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Shader> m_SceneViewGridShader = nullptr;
@@ -170,6 +172,7 @@ namespace march
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;
         asset_ptr<ComputeShader> m_SpecularIBLShader = nullptr;
         asset_ptr<ComputeShader> m_TAAShader = nullptr;
+        asset_ptr<ComputeShader> m_PostprocessingShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;

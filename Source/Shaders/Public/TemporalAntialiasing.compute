@@ -2,13 +2,12 @@
 
 #include "Includes/Common.hlsl"
 #include "Includes/ColorSpace.hlsl"
-#include "Includes/ACES.hlsl"
 
 #define NUM_THREADS_X 16
 #define NUM_THREADS_Y 16
 
-Texture2D _HistoryColorTexture;
 Texture2D _MotionVectorTexture;
+Texture2D _HistoryColorTexture;
 RWTexture2D<float4> _CurrentColorTexture;
 
 groupshared float3 gs_Colors[(NUM_THREADS_X + 2) * (NUM_THREADS_Y + 2)];
@@ -18,18 +17,10 @@ int GetColorIndex(int2 id)
     return (id.y + 1) * (NUM_THREADS_X + 2) + (id.x + 1);
 }
 
-float3 ACESFilm(float3 x)
-{
-    float3 aces = ACEScg_to_ACES(x);
-    float3 oces = RRT(half3(aces));
-    float3 odt = ODT_RGBmonitor_100nits_dim(oces);
-    return odt;
-}
-
 float4 PrefetchColors(int3 gtid, int3 dtid, int width, int height)
 {
     float4 color = _CurrentColorTexture[dtid.xy];
-    color.rgb = ACESFilm(color.rgb);
+    color.rgb = (color.rgb);
     gs_Colors[GetColorIndex(gtid.xy)] = color.rgb;
 
     bool firstColumn = (gtid.x == 0);
@@ -37,41 +28,41 @@ float4 PrefetchColors(int3 gtid, int3 dtid, int width, int height)
 
     if (firstColumn)
     {
-        gs_Colors[GetColorIndex(int2(-1, gtid.y))] = ACESFilm(_CurrentColorTexture[int2(max(dtid.x - 1, 0), dtid.y)].rgb);
+        gs_Colors[GetColorIndex(int2(-1, gtid.y))] = (_CurrentColorTexture[int2(max(dtid.x - 1, 0), dtid.y)].rgb);
     }
 
     if (lastColumn)
     {
-        gs_Colors[GetColorIndex(int2(NUM_THREADS_X, gtid.y))] = ACESFilm(_CurrentColorTexture[int2(min(dtid.x + 1, width - 1), dtid.y)].rgb);
+        gs_Colors[GetColorIndex(int2(NUM_THREADS_X, gtid.y))] = (_CurrentColorTexture[int2(min(dtid.x + 1, width - 1), dtid.y)].rgb);
     }
 
     if (gtid.y == 0)
     {
-        gs_Colors[GetColorIndex(int2(gtid.x, -1))] = ACESFilm(_CurrentColorTexture[int2(dtid.x, max(dtid.y - 1, 0))].rgb);
+        gs_Colors[GetColorIndex(int2(gtid.x, -1))] = (_CurrentColorTexture[int2(dtid.x, max(dtid.y - 1, 0))].rgb);
 
         if (firstColumn)
         {
-            gs_Colors[GetColorIndex(int2(-1, -1))] = ACESFilm(_CurrentColorTexture[int2(max(dtid.x - 1, 0), max(dtid.y - 1, 0))].rgb);
+            gs_Colors[GetColorIndex(int2(-1, -1))] = (_CurrentColorTexture[int2(max(dtid.x - 1, 0), max(dtid.y - 1, 0))].rgb);
         }
 
         if (lastColumn)
         {
-            gs_Colors[GetColorIndex(int2(NUM_THREADS_X, -1))] = ACESFilm(_CurrentColorTexture[int2(min(dtid.x + 1, width - 1), max(dtid.y - 1, 0))].rgb);
+            gs_Colors[GetColorIndex(int2(NUM_THREADS_X, -1))] = (_CurrentColorTexture[int2(min(dtid.x + 1, width - 1), max(dtid.y - 1, 0))].rgb);
         }
     }
 
     if (gtid.y == NUM_THREADS_Y - 1)
     {
-        gs_Colors[GetColorIndex(int2(gtid.x, NUM_THREADS_Y))] = ACESFilm(_CurrentColorTexture[int2(dtid.x, min(dtid.y + 1, height - 1))].rgb);
+        gs_Colors[GetColorIndex(int2(gtid.x, NUM_THREADS_Y))] = (_CurrentColorTexture[int2(dtid.x, min(dtid.y + 1, height - 1))].rgb);
 
         if (firstColumn)
         {
-            gs_Colors[GetColorIndex(int2(-1, NUM_THREADS_Y))] = ACESFilm(_CurrentColorTexture[int2(max(dtid.x - 1, 0), min(dtid.y + 1, height - 1))].rgb);
+            gs_Colors[GetColorIndex(int2(-1, NUM_THREADS_Y))] = (_CurrentColorTexture[int2(max(dtid.x - 1, 0), min(dtid.y + 1, height - 1))].rgb);
         }
 
         if (lastColumn)
         {
-            gs_Colors[GetColorIndex(int2(NUM_THREADS_X, NUM_THREADS_Y))] = ACESFilm(_CurrentColorTexture[int2(min(dtid.x + 1, width - 1), min(dtid.y + 1, height - 1))].rgb);
+            gs_Colors[GetColorIndex(int2(NUM_THREADS_X, NUM_THREADS_Y))] = (_CurrentColorTexture[int2(min(dtid.x + 1, width - 1), min(dtid.y + 1, height - 1))].rgb);
         }
     }
 

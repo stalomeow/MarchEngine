@@ -61,14 +61,6 @@ namespace march
         CreateBuffers(width, height);
     }
 
-    void Display::UpdateHistoryColorBuffer()
-    {
-        if (m_HistoryColorBuffer != nullptr)
-        {
-            std::swap(m_ColorBuffer, m_HistoryColorBuffer);
-        }
-    }
-
     GfxTextureFormat Display::GetColorFormat() const
     {
         return ColorFormat;
@@ -120,11 +112,11 @@ namespace march
         colorDesc.Wrap = GfxTextureWrapMode::Clamp;
         colorDesc.MipmapBias = 0.0f;
 
-        m_ColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor1", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+        m_ColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
 
         if (!m_EnableMSAA)
         {
-            m_HistoryColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "DisplayColor2", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+            m_HistoryColorBuffer = std::make_unique<GfxRenderTexture>(device, m_Name + "HistoryColor", colorDesc, GfxTextureAllocStrategy::DefaultHeapCommitted);
         }
         else
         {
