@@ -68,12 +68,11 @@ namespace march
         virtual void OnKeyDown(WPARAM btnState) { }
         virtual void OnKeyUp(WPARAM btnState) { }
 
-        virtual bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) { return false; }
+        virtual LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
 
     private:
         bool InitWindow(int nCmdShow);
         int RunImpl(LPWSTR lpCmdLine);
-        LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
         static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
         bool m_IsStarted;

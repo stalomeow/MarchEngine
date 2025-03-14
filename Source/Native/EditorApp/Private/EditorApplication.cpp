@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Editor/EditorApplication.h"
+#include "Editor/BusyProgressBar.h"
 #include "Editor/EditorGUI.h"
 #include "Editor/ConsoleWindow.h"
 #include "Engine/Rendering/D3D12.h"
@@ -30,6 +31,7 @@ namespace march
     EditorApplication::EditorApplication()
         : m_SwapChain(nullptr)
         , m_RenderPipeline(nullptr)
+        , m_ProgressBar(nullptr)
         , m_DataPath{}
         , m_EngineResourcePath{}
         , m_EngineShaderPath{}
@@ -45,18 +47,30 @@ namespace march
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    bool EditorApplication::OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult)
+    LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
+        LRESULT result;
+
+        m_ProgressBar->BeginDisabledScope();
+
         if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
         {
-            outResult = true;
-            return true;
+            result = true;
         }
-        return false;
+        else
+        {
+            result = Application::HandleMessage(msg, wParam, lParam);
+        }
+
+        m_ProgressBar->EndDisabledScope();
+
+        return result;
     }
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
+        m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300);
+
         InitPaths();
 
         auto it = std::find(args.begin(), args.end(), "-project-path");
@@ -330,6 +344,7 @@ namespace march
             }
             else
             {
+                m_ProgressBar->ReportAlive();
                 m_RenderPipeline->PrepareFrameData();
                 DrawBaseImGui();
 
@@ -558,5 +573,17 @@ namespace march
         }
 
         return "";
+    }
+
+    void EditorApplication::OnPause()
+    {
+        m_ProgressBar->BeginDisabledScope();
+        Application::OnPause();
+    }
+
+    void EditorApplication::OnResume()
+    {
+        Application::OnResume();
+        m_ProgressBar->EndDisabledScope();
     }
 }

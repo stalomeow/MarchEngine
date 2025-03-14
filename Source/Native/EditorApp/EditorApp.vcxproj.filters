@@ -20,6 +20,7 @@
     <ClCompile Include="Private\SceneWindow.cpp" />
     <ClCompile Include="Private\WinMain.cpp" />
     <ClCompile Include="Private\pch.cpp" />
+    <ClCompile Include="Private\BusyProgressBar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Internal\Editor\ConsoleWindow.h" />
@@ -32,5 +33,6 @@
     <ClInclude Include="Internal\Editor\SceneWindow.h" />
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
+    <ClInclude Include="Internal\Editor\BusyProgressBar.h" />
   </ItemGroup>
 </Project>

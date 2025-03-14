@@ -230,11 +230,6 @@ namespace march
 
     LRESULT Application::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        if (LRESULT result = 0; OnMessage(msg, wParam, lParam, result))
-        {
-            return result;
-        }
-
         switch (msg)
         {
         case WM_ACTIVATE:

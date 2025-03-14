@@ -4,6 +4,7 @@
 #include <string>
 #include <fmt/core.h>
 #include <fmt/xchar.h>
+#include <fmt/chrono.h>
 
 namespace march::StringUtils
 {

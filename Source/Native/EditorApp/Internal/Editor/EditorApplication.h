@@ -7,6 +7,7 @@
 
 namespace march
 {
+    class BusyProgressBar;
     class GfxSwapChain;
     class RenderPipeline;
     enum class ManagedMethod;
@@ -26,13 +27,15 @@ namespace march
         std::string SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const;
 
     protected:
-        bool OnMessage(UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& outResult) override;
+        LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) override;
         void OnStart(const std::vector<std::string>& args) override;
         void OnQuit() override;
         void OnTick(bool willQuit) override;
         void OnResize() override;
         void OnDisplayScaleChange() override;
         void OnPaint() override;
+        void OnPause() override;
+        void OnResume() override;
 
     private:
         void InitImGui();
@@ -43,6 +46,7 @@ namespace march
 
         std::unique_ptr<GfxSwapChain> m_SwapChain;
         std::unique_ptr<RenderPipeline> m_RenderPipeline;
+        std::unique_ptr<BusyProgressBar> m_ProgressBar;
 
         std::string m_DataPath;
         std::string m_EngineResourcePath;
