@@ -11,6 +11,8 @@ Resources/Meta/**                           linguist-generated
 *.compute linguist-language=hlsl
 *.shader  linguist-language=shaderlab
 
+Source/Native/EditorApp/EditorApp.manifest linguist-language=xml
+
 vcpkg.json                                                     text eol=lf
 vcpkg-configuration.json                                       text eol=lf
 Resources/FontAwesome/LICENSE.txt                              text eol=lf

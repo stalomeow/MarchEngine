@@ -69,8 +69,6 @@ namespace march
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
-        m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300);
-
         InitPaths();
 
         auto it = std::find(args.begin(), args.end(), "-project-path");
@@ -99,6 +97,7 @@ namespace march
             desc.EnableDebugLayer = true;
         }
 
+        m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300);
         DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
