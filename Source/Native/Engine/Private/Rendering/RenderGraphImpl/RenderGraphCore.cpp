@@ -590,7 +590,7 @@ namespace march
             {
                 EnsureAsyncComputePassResourceStates(context, passIndex);
 
-                // 对于 async compute pass，每次都要创建新的 context，这样才能得到对应的 sync point
+                // 对于 async compute pass，要创建新的 context，这样才能得到对应的 sync point
                 // 为了避免资源竞争，还需要等待之前的非 async compute pass 执行完
                 context.New(GfxCommandType::AsyncCompute, /* waitPreviousOneOnGpu */ true);
             }
