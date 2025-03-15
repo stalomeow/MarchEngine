@@ -106,7 +106,7 @@ void CSMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
     float3 aabbMax = mu + GAMMA * sigma;
 
     float2 velocity = _MotionVectorTexture.Load(int3(dtid.xy, 0)).rg;
-    float2 uv = float2((dtid.x + 0.5) / float(width), (dtid.y + 0.5) / float(height));
+    float2 uv = GetUVFromTexelLocation(dtid.xy, width, height);
     float3 historyColor = _HistoryColorTexture.SampleLevel(sampler_LinearClamp, uv - velocity, 0).rgb;
     historyColor = YCoCgToRGB(clamp(RGBToYCoCg(historyColor), aabbMin, aabbMax));
     _CurrentColorTexture[dtid.xy] = float4(lerp(currentColor.rgb, historyColor, 0.95), currentColor.a);

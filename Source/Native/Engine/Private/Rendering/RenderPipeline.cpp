@@ -709,22 +709,7 @@ namespace march
         desc1.MipmapBias = 0;
         m_EnvSpecularRadianceMap = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularRadianceMap", desc1, GfxTextureAllocStrategy::DefaultHeapCommitted);
 
-        // GfxTextureDesc desc2{};
-        // desc2.Format = GfxTextureFormat::R16G16_Float;
-        // desc2.Flags = GfxTextureFlags::UnorderedAccess;
-        // desc2.Dimension = GfxTextureDimension::Tex2D;
-        // desc2.Width = 512;
-        // desc2.Height = 512;
-        // desc2.DepthOrArraySize = 1;
-        // desc2.MSAASamples = 1;
-        // desc2.Filter = GfxTextureFilterMode::Bilinear;
-        // desc2.Wrap = GfxTextureWrapMode::Clamp;
-        // desc2.MipmapBias = 0;
-        // m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);
-        // std::optional<size_t> kernelIndex2 = m_SpecularIBLShader->FindKernel("BRDFMain");
-        // cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
-        // cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex2, desc2.Width, desc2.Height, 1);
-
+        //GenerateEnvSpecularBRDFLUT();
         // 现在不需要每次启动时都重新生成，可以直接加载
         m_EnvSpecularBRDFLUT.reset("Engine/Resources/Textures/EnvSpecularBRDFLUT.dds");
     }
@@ -806,6 +791,33 @@ namespace march
         }
         cmd->EndEvent();
         cmd->SubmitAndRelease();
+    }
+
+    void RenderPipeline::GenerateEnvSpecularBRDFLUT()
+    {
+        //InitResourcesIfNot();
+
+        //GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+        //cmd->BeginEvent("SpecularBRDFLUT");
+        //{
+        //    GfxTextureDesc desc2{};
+        //    desc2.Format = GfxTextureFormat::R16G16_Float;
+        //    desc2.Flags = GfxTextureFlags::UnorderedAccess;
+        //    desc2.Dimension = GfxTextureDimension::Tex2D;
+        //    desc2.Width = 512;
+        //    desc2.Height = 512;
+        //    desc2.DepthOrArraySize = 1;
+        //    desc2.MSAASamples = 1;
+        //    desc2.Filter = GfxTextureFilterMode::Bilinear;
+        //    desc2.Wrap = GfxTextureWrapMode::Clamp;
+        //    desc2.MipmapBias = 0;
+        //    m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);
+        //    std::optional<size_t> kernelIndex2 = m_SpecularIBLShader->FindKernel("BRDFMain");
+        //    cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
+        //    cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex2, desc2.Width, desc2.Height, 1);
+        //}
+        //cmd->EndEvent();
+        //cmd->SubmitAndRelease();
     }
 
     void RenderPipeline::DrawMotionVector()

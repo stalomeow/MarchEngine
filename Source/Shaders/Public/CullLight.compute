@@ -47,7 +47,7 @@ void CullClusterMain(int3 gtid : SV_GroupThreadID, int gidx : SV_GroupIndex, int
     }
 
     GBufferData gbuffer = LoadGBufferData(dtid.xy);
-    float2 uv = float2(dtid.x / width, dtid.y / height);
+    float2 uv = GetUVFromTexelLocation(dtid.xy, width, height);
     float3 positionVS = ComputeViewSpacePosition(uv, gbuffer.depth);
     int3 clusterId = GetClusterId(uv, positionVS);
 

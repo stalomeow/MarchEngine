@@ -44,14 +44,15 @@ Shader "DeferredLight"
 
         float4 frag(Varyings input) : SV_Target
         {
-            GBufferData gbuffer = LoadGBufferData(input.positionCS.xy);
+            uint2 positionSS = GetScreenPositionFromSVPositionInput(input.positionCS);
+            GBufferData gbuffer = LoadGBufferData(positionSS);
             BRDFData brdfData = GetBRDFData(gbuffer.albedo, gbuffer.metallic, gbuffer.roughness);
 
             float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
             float3 positionVS = TransformWorldToView(positionWS);
             float occlusion = min(SampleScreenSpaceAmbientOcclusion(input.uv), gbuffer.occlusion);
 
-            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, positionVS, input.positionCS.xy, input.uv, gbuffer.emission, occlusion);
+            float3 color = FragmentPBR(brdfData, positionWS, gbuffer.normalWS, positionVS, positionSS, input.uv, gbuffer.emission, occlusion);
             return float4(color, 1.0);
         }
         ENDHLSL

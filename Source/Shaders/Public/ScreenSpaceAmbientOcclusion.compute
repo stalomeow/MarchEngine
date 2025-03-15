@@ -43,13 +43,18 @@ float OcclusionFunction(float distZ)
     return step(_SurfaceEpsilon, distZ) * occlusion; // distZ >= _SurfaceEpsilon ? occlusion : 0
 }
 
-[numthreads(8, 8, 1)]
+[numthreads(16, 16, 1)]
 void SSAOMain(int3 dtid : SV_DispatchThreadID)
 {
     float width, height;
     _SSAOMap.GetDimensions(width, height);
-    float2 uv = dtid.xy / float2(width, height);
 
+    if (dtid.x >= width || dtid.y >= height)
+    {
+        return;
+    }
+
+    float2 uv = GetUVFromTexelLocation(dtid.xy, width, height);
     GBufferData gbuffer = SampleGBufferData(uv);
     float3 p = ComputeViewSpacePosition(uv, gbuffer.depth);
     float3 n = TransformWorldToViewNormal(gbuffer.normalWS);
@@ -65,8 +70,7 @@ void SSAOMain(int3 dtid : SV_DispatchThreadID)
 
         float3 samplePosVS = p + flip * _OcclusionRadius * offset;
         float4 samplePosCS = TransformViewToHClip(samplePosVS);
-        float2 sampleUV = samplePosCS.xy / samplePosCS.w * 0.5 + 0.5;
-        sampleUV.y = 1.0 - sampleUV.y; // uv starts at top
+        float2 sampleUV = GetScreenUVFromNDC(samplePosCS.xy / samplePosCS.w);
 
         GBufferData sampleGBuffer = SampleGBufferData(sampleUV);
         float3 r = ComputeViewSpacePosition(sampleUV, sampleGBuffer.depth);
@@ -118,7 +122,7 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.x] = _Input[int2(x, dtid.y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(float2(x, dtid.y) / float2(width, height));
+        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(x, dtid.y), width, height));
         _NormalDepthCache[gtid.x] = float4(g.normalWS, g.depth);
     }
 
@@ -128,7 +132,7 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.x + 2 * RADIUS] = _Input[int2(x, dtid.y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(float2(x, dtid.y) / float2(width, height));
+        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(x, dtid.y), width, height));
         _NormalDepthCache[gtid.x + 2 * RADIUS] = float4(g.normalWS, g.depth);
     }
 
@@ -136,7 +140,7 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
     _ColorCache[gtid.x + RADIUS] = _Input[loc];
 
     // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-    GBufferData g1 = SampleGBufferData(float2(loc) / float2(width, height));
+    GBufferData g1 = SampleGBufferData(GetUVFromTexelLocation(loc, width, height));
     _NormalDepthCache[gtid.x + RADIUS] = float4(g1.normalWS, g1.depth);
 
     GroupMemoryBarrierWithGroupSync();
@@ -183,7 +187,7 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.y] = _Input[int2(dtid.x, y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(float2(dtid.x, y) / float2(width, height));
+        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(dtid.x, y), width, height));
         _NormalDepthCache[gtid.y] = float4(g.normalWS, g.depth);
     }
 
@@ -193,7 +197,7 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.y + 2 * RADIUS] = _Input[int2(dtid.x, y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(float2(dtid.x, y) / float2(width, height));
+        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(dtid.x, y), width, height));
         _NormalDepthCache[gtid.y + 2 * RADIUS] = float4(g.normalWS, g.depth);
     }
 
@@ -201,7 +205,7 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
     _ColorCache[gtid.y + RADIUS] = _Input[loc];
 
     // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-    GBufferData g1 = SampleGBufferData(float2(loc) / float2(width, height));
+    GBufferData g1 = SampleGBufferData(GetUVFromTexelLocation(loc, width, height));
     _NormalDepthCache[gtid.y + RADIUS] = float4(g1.normalWS, g1.depth);
 
     GroupMemoryBarrierWithGroupSync();

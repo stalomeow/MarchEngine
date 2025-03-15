@@ -175,14 +175,6 @@ Shader "Lit"
             return output;
         }
 
-        float2 GetUV(float4 positionCS)
-        {
-            float2 ndc = positionCS.xy / positionCS.w;
-            float2 uv = ndc * 0.5 + 0.5;
-            uv.y = 1.0 - uv.y;
-            return uv;
-        }
-
         float2 frag(Varyings input) : SV_Target
         {
             float4 albedo = _BaseMap.Sample(sampler_BaseMap, input.uv) * _BaseColor;
@@ -191,8 +183,8 @@ Shader "Lit"
                 clip(albedo.a - _Cutoff);
             #endif
 
-            float2 curr = GetUV(input.positionCSCurrNonJittered);
-            float2 prev = GetUV(input.positionCSPrevNonJittered);
+            float2 curr = GetScreenUVFromNDC(input.positionCSCurrNonJittered.xy / input.positionCSCurrNonJittered.w);
+            float2 prev = GetScreenUVFromNDC(input.positionCSPrevNonJittered.xy / input.positionCSPrevNonJittered.w);
             return curr - prev;
         }
         ENDHLSL

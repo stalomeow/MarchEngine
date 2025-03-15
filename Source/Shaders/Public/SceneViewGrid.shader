@@ -42,9 +42,7 @@ Shader "SceneViewGrid"
 
         float3 GetDepthAndWorldPosition(float2 uv, out float depth)
         {
-            float4 ndc = float4(uv.x, 1 - uv.y, 0, 1);
-            ndc.xy = ndc.xy * 2 - 1;
-
+            float4 ndc = float4(GetNDCFromScreenUV(uv, 0.0), 1.0);
             float4x4 ivp = _MatrixInvViewProjection;
             ndc.z = dot(ivp[1].xyw, ndc.xyw) / (-ivp[1].z);
 

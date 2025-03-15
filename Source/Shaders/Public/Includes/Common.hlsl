@@ -130,28 +130,67 @@ float4 GetFullScreenTriangleVertexPositionCS(uint vertexID, float z = MARCH_NEAR
     return float4(uv * 2.0 - 1.0, z, 1.0);
 }
 
-float3 ComputeWorldSpacePosition(float2 screenUV, float ndcDepth)
+float3 GetNDCFromScreenUV(float2 uv, float ndcDepth)
 {
     // screen uv 原点在左上角，xy 范围是 [0, 1]，y 轴朝下
     // ndc 原点在中心，xy 范围是 [-1, 1]，z 范围是 [0, 1]，y 轴朝上
+    uv.y = 1.0 - uv.y;
+    return float3(uv * 2.0 - 1.0, ndcDepth);
+}
 
-    float4 ndc = float4(screenUV.x, 1 - screenUV.y, ndcDepth, 1);
-    ndc.xy = ndc.xy * 2 - 1;
+float2 GetScreenUVFromNDC(float2 positionNDC)
+{
+    // screen uv 原点在左上角，xy 范围是 [0, 1]，y 轴朝下
+    // ndc 原点在中心，xy 范围是 [-1, 1]，z 范围是 [0, 1]，y 轴朝上
+    float2 uv = positionNDC.xy * 0.5 + 0.5;
+    uv.y = 1.0 - uv.y;
+    return uv;
+}
 
-    float4 positionWS = mul(_MatrixInvViewProjection, ndc);
+float3 ComputeWorldSpacePosition(float2 screenUV, float ndcDepth)
+{
+    float3 ndc = GetNDCFromScreenUV(screenUV, ndcDepth);
+    float4 positionWS = mul(_MatrixInvViewProjection, float4(ndc, 1.0));
     return positionWS.xyz / positionWS.w;
 }
 
 float3 ComputeViewSpacePosition(float2 screenUV, float ndcDepth)
 {
-    // screen uv 原点在左上角，xy 范围是 [0, 1]，y 轴朝下
-    // ndc 原点在中心，xy 范围是 [-1, 1]，z 范围是 [0, 1]，y 轴朝上
-
-    float4 ndc = float4(screenUV.x, 1 - screenUV.y, ndcDepth, 1);
-    ndc.xy = ndc.xy * 2 - 1;
-
-    float4 positionVS = mul(_MatrixInvProjection, ndc);
+    float3 ndc = GetNDCFromScreenUV(screenUV, ndcDepth);
+    float4 positionVS = mul(_MatrixInvProjection, float4(ndc, 1.0));
     return positionVS.xyz / positionVS.w;
+}
+
+float2 GetUVFromTexelLocation(uint2 location, float width, float height)
+{
+    // 加 0.5 放到纹素中心
+    return (location + 0.5) / float2(width, height);
+}
+
+uint2 GetScreenPositionFromSVPositionInput(float4 svPositionInput)
+{
+    // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics#direct3d-9-vpos-and-direct3d-10-sv_position
+    // In Direct3D 10 and later, the SV_Position semantic (when used in the context of a pixel shader) specifies screen space coordinates (offset by 0.5).
+    return uint2(svPositionInput.xy);
+}
+
+float2 GetScreenUVFromSVPositionInput(float4 svPositionInput, float screenWidth, float screenHeight)
+{
+    // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics#direct3d-9-vpos-and-direct3d-10-sv_position
+    // In Direct3D 10 and later, the SV_Position semantic (when used in the context of a pixel shader) specifies screen space coordinates (offset by 0.5).
+    return svPositionInput.xy / float2(screenWidth, screenHeight);
+}
+
+float GetNDCDepthFromSVPositionInput(float4 svPositionInput)
+{
+    // https://zhuanlan.zhihu.com/p/597918725
+    return svPositionInput.z;
+}
+
+float GetViewSpaceZFromSVPositionInput(float4 svPositionInput)
+{
+    // https://zhuanlan.zhihu.com/p/597918725
+    return svPositionInput.w;
 }
 
 float GetCameraNearZ()

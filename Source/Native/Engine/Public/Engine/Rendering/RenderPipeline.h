@@ -157,6 +157,7 @@ namespace march
         void CreateLightResources();
         void CreateEnvLightResources();
         void BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier);
+        void GenerateEnvSpecularBRDFLUT();
 
         void DrawMotionVector();
         void TAA();
