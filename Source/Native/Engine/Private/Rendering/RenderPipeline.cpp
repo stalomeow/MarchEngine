@@ -293,7 +293,6 @@ namespace march
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
-        builder.In(m_Resource.DirectionalLights);
         builder.In(m_Resource.PunctualLights);
         builder.Out(m_Resource.ClusterPunctualLightRanges);
         builder.Out(m_Resource.ClusterPunctualLightIndices);
@@ -309,7 +308,6 @@ namespace march
         {
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbLight);
-            context.SetVariable(m_Resource.DirectionalLights);
             context.SetVariable(m_Resource.PunctualLights);
             context.SetVariable(m_Resource.ClusterPunctualLightRanges);
             context.SetVariable(m_Resource.ClusterPunctualLightIndices);
@@ -769,9 +767,10 @@ namespace march
                 SpecularIBLPrefilterConsts consts{};
                 consts.Params.z = std::clamp(specularIntensityMultiplier, 0.0f, 1.0f);
 
-                for (uint32_t mip = 0; mip < m_EnvSpecularRadianceMap->GetMipLevels(); mip++)
+                // 最后一级 mip 每个面只有一个像素，忽略它
+                for (uint32_t mip = 0; mip < m_EnvSpecularRadianceMap->GetMipLevels() - 1; mip++)
                 {
-                    float roughness = static_cast<float>(mip) / (m_EnvSpecularRadianceMap->GetMipLevels() - 1);
+                    float roughness = static_cast<float>(mip) / (m_EnvSpecularRadianceMap->GetMipLevels() - 2);
                     cmd->SetTexture("_PrefilteredMap", m_EnvSpecularRadianceMap.get(), GfxTextureElement::Default, mip);
 
                     consts.Params.x = roughness;

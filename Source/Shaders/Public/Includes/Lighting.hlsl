@@ -199,7 +199,7 @@ float3 EnvSpecularLighting(BRDFData data, float3 N, float3 V, float NoV)
     _EnvSpecularRadianceMap.GetDimensions(0, unused1, unused2, mipLevels);
 
     float3 R = reflect(-V, N);
-    float lod = data.roughness * (mipLevels - 1);
+    float lod = data.roughness * (mipLevels - 2); // 最后一级 mip 每个面只有一个像素，忽略它
     float3 radiance = _EnvSpecularRadianceMap.SampleLevel(sampler_EnvSpecularRadianceMap, R, lod).rgb;
     float3 brdf = EnvironmentSpecularBRDF(data, NoV, _EnvSpecularBRDFLUT, sampler_EnvSpecularBRDFLUT);
     return brdf * radiance;
