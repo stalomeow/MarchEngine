@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "resource.h"
 #include "Editor/EditorApplication.h"
 #include "Editor/BusyProgressBar.h"
 #include "Editor/EditorGUI.h"
@@ -41,6 +42,11 @@ namespace march
     }
 
     EditorApplication::~EditorApplication() {}
+
+    HICON EditorApplication::GetIcon()
+    {
+        return LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDI_ICON_MARCH_7TH));
+    }
 
     // Win32 message handler
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.

@@ -36,6 +36,7 @@ namespace march
         void OnPaint() override;
         void OnPause() override;
         void OnResume() override;
+        HICON GetIcon() override;
 
     private:
         void InitImGui();

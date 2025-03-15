@@ -118,6 +118,7 @@ namespace march
         wc.lpfnWndProc = WndProc;
         wc.hInstance = m_InstanceHandle;
         wc.lpszClassName = L"MarchEngineMainWindow";
+        wc.hIcon = GetIcon();
 
         if (!RegisterClassW(&wc))
         {

@@ -46,10 +46,14 @@
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="Internal\Editor\RenderGraphViewerWindow.h" />
     <ClInclude Include="Internal\Editor\SceneWindow.h" />
+    <ClInclude Include="Internal\resource.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="EditorApp.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="EditorApp.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

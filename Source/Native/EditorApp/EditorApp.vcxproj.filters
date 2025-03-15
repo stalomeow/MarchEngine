@@ -34,8 +34,12 @@
     <ClInclude Include="Internal\pch.h" />
     <ClInclude Include="ThirdParty\imoguizmo.hpp" />
     <ClInclude Include="Internal\Editor\BusyProgressBar.h" />
+    <ClInclude Include="Internal\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="EditorApp.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="EditorApp.rc" />
   </ItemGroup>
 </Project>

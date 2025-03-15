@@ -68,6 +68,8 @@ namespace march
         virtual void OnKeyDown(WPARAM btnState) { }
         virtual void OnKeyUp(WPARAM btnState) { }
 
+        virtual HICON GetIcon() { return NULL; }
+
         virtual LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
 
     private:
