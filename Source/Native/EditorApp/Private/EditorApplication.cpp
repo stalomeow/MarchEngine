@@ -206,13 +206,13 @@ namespace march
         colors[ImGuiCol_TabDimmedSelectedOverline] = panelColor;
         colors[ImGuiCol_TabSelectedOverline] = panelActiveColor;
 
-        style.WindowRounding = 0.0f;
-        style.ChildRounding = 0.0f;
-        style.FrameRounding = 0.0f;
-        style.GrabRounding = 0.0f;
-        style.PopupRounding = 0.0f;
-        style.ScrollbarRounding = 0.0f;
-        style.TabRounding = 0.0f;
+        style.WindowRounding = 3.0f;
+        style.ChildRounding = 3.0f;
+        style.FrameRounding = 3.0f;
+        style.PopupRounding = 3.0f;
+        style.ScrollbarRounding = 3.0f;
+        style.GrabRounding = 3.0f;
+        style.TabRounding = 3.0f;
         style.TabBarBorderSize = 2.0f;
         style.TabBarOverlineSize = 2.0f;
     }
