@@ -203,6 +203,7 @@ namespace march
         D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) override;
         bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) override;
         std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
+        std::string GetProgramTypePreprocessorMacro(size_t programType) override;
         void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override {}
     };
 

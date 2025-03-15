@@ -61,6 +61,19 @@ namespace march
         return program + "_" + model;
     }
 
+    std::string ShaderPass::GetProgramTypePreprocessorMacro(size_t programType)
+    {
+        switch (static_cast<ShaderProgramType>(programType))
+        {
+        case ShaderProgramType::Vertex:   return "SHADER_STAGE_VERTEX";
+        case ShaderProgramType::Pixel:    return "SHADER_STAGE_PIXEL";
+        case ShaderProgramType::Domain:   return "SHADER_STAGE_DOMAIN";
+        case ShaderProgramType::Hull:     return "SHADER_STAGE_HULL";
+        case ShaderProgramType::Geometry: return "SHADER_STAGE_GEOMETRY";
+        default:                          return "SHADER_STAGE_UNKNOWN";
+        }
+    }
+
     bool Shader::CompilePass(size_t passIndex, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
     {
         auto recordConstantBufferCallback = [this](ID3D12ShaderReflectionConstantBuffer* cbuffer) -> void

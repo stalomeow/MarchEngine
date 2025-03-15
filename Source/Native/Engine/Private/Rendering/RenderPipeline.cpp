@@ -199,7 +199,7 @@ namespace march
         gBufferDesc.Format = GfxTextureFormat::R32_Float;
         m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer4", gBufferDesc));
 
-        auto builder = m_RenderGraph->AddPass("DrawObjects");
+        auto builder = m_RenderGraph->AddPass("DrawGBuffer");
 
         builder.In(m_Resource.CbCamera);
 

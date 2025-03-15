@@ -31,6 +31,11 @@ namespace march
         return "cs_" + model;
     }
 
+    std::string ComputeShaderKernel::GetProgramTypePreprocessorMacro(size_t programType)
+    {
+        return "SHADER_STAGE_COMPUTE";
+    }
+
     void ComputeShaderKernel::RecordEntrypointCallback(size_t programType, std::string& entrypoint)
     {
         entrypoint = GetName();

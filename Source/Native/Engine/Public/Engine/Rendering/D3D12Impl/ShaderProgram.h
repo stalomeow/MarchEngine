@@ -267,6 +267,7 @@ namespace march
         virtual D3D12_SHADER_VISIBILITY GetShaderVisibility(size_t programType) = 0;
         virtual bool GetEntrypointProgramType(const std::string& key, size_t* pOutProgramType) = 0;
         virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
+        virtual std::string GetProgramTypePreprocessorMacro(size_t programType) = 0;
         virtual void RecordEntrypointCallback(size_t programType, std::string& entrypoint) = 0;
 
     private:
@@ -319,7 +320,7 @@ namespace march
 
         bool PreprocessAndGetCompilationConfig(const std::string& source, CompilationConfig& config, std::string& error);
         bool CompileRecursive(CompilationContext& context);
-        Microsoft::WRL::ComPtr<IDxcResult> CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile);
+        Microsoft::WRL::ComPtr<IDxcResult> CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile, size_t programType);
 
     protected:
         bool Compile(
@@ -592,7 +593,7 @@ namespace march
 
             std::wstring wEntrypoint = StringUtils::Utf8ToUtf16(context.Config.Entrypoints[i]);
             std::wstring wTargetProfile = StringUtils::Utf8ToUtf16(GetTargetProfile(context.Config.ShaderModel, i));
-            Microsoft::WRL::ComPtr<IDxcResult> pResults = CompileEntrypoint(context, wEntrypoint, wTargetProfile);
+            Microsoft::WRL::ComPtr<IDxcResult> pResults = CompileEntrypoint(context, wEntrypoint, wTargetProfile, i);
 
             // 编译失败
             if (pResults == nullptr)
@@ -622,7 +623,7 @@ namespace march
     }
 
     template <size_t _NumProgramTypes>
-    Microsoft::WRL::ComPtr<IDxcResult> ShaderProgramGroup<_NumProgramTypes>::CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile)
+    Microsoft::WRL::ComPtr<IDxcResult> ShaderProgramGroup<_NumProgramTypes>::CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile, size_t programType)
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
 
@@ -651,6 +652,7 @@ namespace march
         }
 
         std::vector<std::wstring> defines{};
+        defines.push_back(StringUtils::Utf8ToUtf16(GetProgramTypePreprocessorMacro(programType)));
         ShaderCompilationInternalUtils::AppendEngineMacros(defines);
 
         for (const std::string& kw : context.Keywords)
