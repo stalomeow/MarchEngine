@@ -1,0 +1,60 @@
+#pragma kernel CSMain
+
+Texture2D _InputTexture;
+RWTexture2D<float> _OutputTexture;
+
+float GetNearestDepth(float depth0, float depth1)
+{
+#if MARCH_REVERSED_Z
+    return max(depth0, depth1);
+#else
+    return min(depth0, depth1);
+#endif
+}
+
+float GetFarthestDepth(float depth0, float depth1)
+{
+#if MARCH_REVERSED_Z
+    return min(depth0, depth1);
+#else
+    return max(depth0, depth1);
+#endif
+}
+
+float GetNearestDepth(float depth0, float depth1, float depth2, float depth3)
+{
+    return GetNearestDepth(GetNearestDepth(depth0, depth1), GetNearestDepth(depth2, depth3));
+}
+
+float GetFarthestDepth(float depth0, float depth1, float depth2, float depth3)
+{
+    return GetFarthestDepth(GetFarthestDepth(depth0, depth1), GetFarthestDepth(depth2, depth3));
+}
+
+[numthreads(16, 16, 1)]
+void CSMain(int3 dtid : SV_DispatchThreadID)
+{
+    float depth0 = _InputTexture.Load(int3(dtid.x * 2, dtid.y * 2, 0)).r;
+    float depth1 = _InputTexture.Load(int3(dtid.x * 2 + 1, dtid.y * 2, 0)).r;
+    float depth2 = _InputTexture.Load(int3(dtid.x * 2, dtid.y * 2 + 1, 0)).r;
+    float depth3 = _InputTexture.Load(int3(dtid.x * 2 + 1, dtid.y * 2 + 1, 0)).r;
+    float nearest = GetNearestDepth(depth0, depth1, depth2, depth3);
+
+    int width, height, numberOfLevels;
+    _InputTexture.GetDimensions(0, width, height, numberOfLevels);
+
+    // 奇数需要多读一个像素
+    if (width & 1)
+    {
+        float depth4 = _InputTexture.Load(int3(dtid.x * 2 + 2, dtid.y * 2, 0)).r;
+        nearest = GetNearestDepth(nearest, depth4);
+    }
+
+    if (height & 1)
+    {
+        float depth4 = _InputTexture.Load(int3(dtid.x * 2, dtid.y * 2 + 2, 0)).r;
+        nearest = GetNearestDepth(nearest, depth4);
+    }
+
+    _OutputTexture[dtid.xy] = nearest;
+}

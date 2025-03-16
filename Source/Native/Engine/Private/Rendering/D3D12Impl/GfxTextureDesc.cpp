@@ -316,7 +316,7 @@ namespace march
             {
                 return 0;
             }
-            else if (element == GfxTextureElement::Stencil)
+            else if (HasStencil() && element == GfxTextureElement::Stencil)
             {
                 return 1;
             }

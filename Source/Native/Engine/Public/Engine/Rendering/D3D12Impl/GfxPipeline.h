@@ -17,6 +17,7 @@
 #include <bitset>
 #include <unordered_map>
 #include <limits>
+#include <optional>
 
 namespace march
 {
@@ -255,11 +256,60 @@ namespace march
         GfxOfflineDescriptorTable<64> m_SrvUavCache[NumProgramTypes];
         GfxOfflineDescriptorTable<16> m_SamplerCache[NumProgramTypes];
 
+        struct ResourceStateKey
+        {
+            RefCountPtr<GfxResource> Resource;
+            uint32_t SubresourceIndex; // -1 表示整个资源
+
+            bool operator ==(const ResourceStateKey& other) const
+            {
+                return Resource == other.Resource && SubresourceIndex == other.SubresourceIndex;
+            }
+        };
+
+        struct ResourceStateKeyHash
+        {
+            size_t operator()(const ResourceStateKey& key) const
+            {
+                return std::hash<RefCountPtr<GfxResource>>()(key.Resource) ^ std::hash<uint32_t>()(key.SubresourceIndex);
+            }
+        };
+
         // 暂存 srv/uav/cbv 资源需要的状态
-        std::unordered_map<RefCountPtr<GfxResource>, D3D12_RESOURCE_STATES> m_StagedResourceStates;
+        std::unordered_map<ResourceStateKey, D3D12_RESOURCE_STATES, ResourceStateKeyHash> m_StagedResourceStates;
 
         static constexpr bool AllowPixelProgram = PipelineTraits::PixelProgramType < NumProgramTypes;
         static constexpr bool IsPixelProgram(size_t type) { return type == PipelineTraits::PixelProgramType; }
+
+        void StageResourceState(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES state)
+        {
+            uint32_t subresourceIndex = -1;
+            m_StagedResourceStates[ResourceStateKey{ resource, subresourceIndex }] |= state;
+        }
+
+        void StageTextureMipSliceSubresourceState(GfxTexture* texture, GfxTextureElement element, uint32_t mipSlice, D3D12_RESOURCE_STATES state)
+        {
+            GfxTextureDimension dimension = texture->GetDesc().Dimension;
+            RefCountPtr<GfxResource> resource = texture->GetUnderlyingResource();
+
+            for (uint32_t arraySlice = 0; arraySlice < texture->GetDesc().DepthOrArraySize; arraySlice++)
+            {
+                if (dimension == GfxTextureDimension::Cube || dimension == GfxTextureDimension::CubeArray)
+                {
+                    for (int faceIndex = 0; faceIndex < 6; faceIndex++)
+                    {
+                        GfxCubemapFace face = static_cast<GfxCubemapFace>(faceIndex);
+                        uint32_t subresourceIndex = texture->GetSubresourceIndex(element, face, arraySlice, mipSlice);
+                        m_StagedResourceStates[ResourceStateKey{ resource, subresourceIndex }] |= state;
+                    }
+                }
+                else
+                {
+                    uint32_t subresourceIndex = texture->GetSubresourceIndex(element, arraySlice, mipSlice);
+                    m_StagedResourceStates[ResourceStateKey{ resource, subresourceIndex }] |= state;
+                }
+            }
+        }
 
         void SetSrvCbvBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element, bool isConstantBuffer)
         {
@@ -284,12 +334,12 @@ namespace march
             }
 
             // 记录状态，之后会统一使用 ResourceBarrier
-            m_StagedResourceStates[buffer->GetUnderlyingResource()] |= state;
+            StageResourceState(buffer->GetUnderlyingResource(), state);
         }
 
-        void SetSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element)
+        void SetSrvTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element, std::optional<uint32_t> mipSlice)
         {
-            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSrv(element);
+            D3D12_CPU_DESCRIPTOR_HANDLE offlineDescriptor = texture->GetSrv(element, mipSlice);
             m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
 
             D3D12_RESOURCE_STATES state;
@@ -306,7 +356,14 @@ namespace march
             }
 
             // 记录状态，之后会统一使用 ResourceBarrier
-            m_StagedResourceStates[texture->GetUnderlyingResource()] |= state;
+            if (mipSlice)
+            {
+                StageTextureMipSliceSubresourceState(texture, element, *mipSlice, state);
+            }
+            else
+            {
+                StageResourceState(texture->GetUnderlyingResource(), state);
+            }
         }
 
         void SetUavBuffer(size_t type, uint32_t index, GfxBuffer* buffer, GfxBufferElement element)
@@ -315,7 +372,7 @@ namespace march
             m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
 
             // 记录状态，之后会统一使用 ResourceBarrier
-            m_StagedResourceStates[buffer->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            StageResourceState(buffer->GetUnderlyingResource(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         void SetUavTexture(size_t type, uint32_t index, GfxTexture* texture, GfxTextureElement element, uint32_t mipSlice)
@@ -324,7 +381,7 @@ namespace march
             m_SrvUavCache[type].Set(static_cast<size_t>(index), offlineDescriptor);
 
             // 记录状态，之后会统一使用 ResourceBarrier
-            m_StagedResourceStates[texture->GetUnderlyingResource()] |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            StageTextureMipSliceSubresourceState(texture, element, mipSlice, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         void SetSampler(size_t type, uint32_t index, GfxTexture* texture)
@@ -443,10 +500,11 @@ namespace march
                 for (const auto& tex : m_RootSignature->GetSrvTextures(i))
                 {
                     GfxTextureElement element = GfxTextureElement::Default;
+                    std::optional<uint32_t> mipSlice = std::nullopt;
 
-                    if (GfxTexture* texture = fn(tex, &element))
+                    if (GfxTexture* texture = fn(tex, &element, &mipSlice))
                     {
-                        SetSrvTexture(i, tex.DescriptorTableSlotTexture, texture, element);
+                        SetSrvTexture(i, tex.DescriptorTableSlotTexture, texture, element, mipSlice);
 
                         if (tex.DescriptorTableSlotSampler.has_value())
                         {
@@ -490,11 +548,11 @@ namespace march
                 for (const auto& tex : m_RootSignature->GetUavTextures(i))
                 {
                     GfxTextureElement element = GfxTextureElement::Default;
-                    uint32_t mipSlice = 0;
+                    std::optional<uint32_t> mipSlice = std::nullopt;
 
                     if (GfxTexture* texture = fn(tex, &element, &mipSlice))
                     {
-                        SetUavTexture(i, tex.DescriptorTableSlot, texture, element, mipSlice);
+                        SetUavTexture(i, tex.DescriptorTableSlot, texture, element, mipSlice.value_or(0));
                     }
                     else
                     {
@@ -507,9 +565,9 @@ namespace march
         template <typename TransitionFunc>
         void TransitionResources(TransitionFunc fn)
         {
-            for (const auto& [resource, state] : m_StagedResourceStates)
+            for (const auto& [key, state] : m_StagedResourceStates)
             {
-                fn(resource, state);
+                fn(key.Resource, key.SubresourceIndex, state);
             }
 
             m_StagedResourceStates.clear();

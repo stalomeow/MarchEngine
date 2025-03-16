@@ -45,6 +45,7 @@ namespace march
         m_SpecularIBLShader.reset("Engine/Shaders/SpecularIBL.compute");
         m_TAAShader.reset("Engine/Shaders/TemporalAntialiasing.compute");
         m_PostprocessingShader.reset("Engine/Shaders/Postprocessing.compute");
+        m_HizShader.reset("Engine/Shaders/HierarchicalZ.compute");
 
         GenerateSSAORandomVectorMap();
         CreateLightResources();
@@ -95,6 +96,7 @@ namespace march
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
 
+            Hiz();
             CullLights();
             SSAO();
 
@@ -885,6 +887,47 @@ namespace march
             const GfxTextureDesc& desc = m_Resource.ColorTarget.GetDesc();
             std::optional<size_t> kernel = m_PostprocessingShader->FindKernel("CSMain");
             context.DispatchComputeByThreadCount(m_PostprocessingShader.get(), *kernel, desc.Width, desc.Height, 1);
+        });
+    }
+
+    void RenderPipeline::Hiz()
+    {
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R32_Float;
+        desc.Flags = GfxTextureFlags::Mipmaps | GfxTextureFlags::UnorderedAccess;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = m_Resource.ColorTarget.GetDesc().Width;
+        desc.Height = m_Resource.ColorTarget.GetDesc().Height;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Point;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0.0f;
+
+        static int32 hizId = ShaderUtils::GetIdFromString("_HiZTexture");
+        m_Resource.HiZTexture = m_RenderGraph->RequestTexture(hizId, desc);
+
+        auto builder = m_RenderGraph->AddPass("HierarchicalZ");
+
+        builder.In(m_Resource.GBuffers[4]);
+        builder.Out(m_Resource.HiZTexture);
+        builder.AllowPassCulling(false);
+
+        builder.SetRenderFunc([this](RenderGraphContext& context)
+        {
+            context.CopyTexture(m_Resource.GBuffers[4], 0, 0, m_Resource.HiZTexture, 0, 0);
+
+            std::optional<size_t> kernel = m_HizShader->FindKernel("CSMain");
+
+            for (uint32_t mipLevel = 1; mipLevel < m_Resource.HiZTexture->GetMipLevels(); mipLevel++)
+            {
+                context.SetVariable(m_Resource.HiZTexture, "_InputTexture", GfxTextureElement::Default, mipLevel - 1);
+                context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, mipLevel);
+
+                uint32_t width = std::max(m_Resource.HiZTexture->GetDesc().Width >> mipLevel, 1u);
+                uint32_t height = std::max(m_Resource.HiZTexture->GetDesc().Height >> mipLevel, 1u);
+                context.DispatchComputeByThreadCount(m_HizShader.get(), *kernel, width, height, 1);
+            }
         });
     }
 }

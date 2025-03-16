@@ -544,7 +544,7 @@ namespace march
 
                 auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
 
-                if ((res->GetState() & D3D12_RESOURCE_STATE_GENERIC_READ) != D3D12_RESOURCE_STATE_GENERIC_READ)
+                if (!res->HasAllStates(D3D12_RESOURCE_STATE_GENERIC_READ))
                 {
                     if (!hasValidDirectContext)
                     {
@@ -561,7 +561,7 @@ namespace march
             {
                 auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
 
-                if ((res->GetState() & disallowedComputeStates) != 0)
+                if (res->HasAnyStates(disallowedComputeStates))
                 {
                     if (!hasValidDirectContext)
                     {
@@ -930,19 +930,19 @@ namespace march
         }
     }
 
-    void RenderGraphContext::SetVariable(const TextureHandle& texture, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
+    void RenderGraphContext::SetVariable(const TextureHandle& texture, GfxTextureElement element, std::optional<uint32_t> mipSlice)
     {
-        SetVariable(texture, texture.GetId(), element, unorderedAccessMipSlice);
+        SetVariable(texture, texture.GetId(), element, mipSlice);
     }
 
-    void RenderGraphContext::SetVariable(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
+    void RenderGraphContext::SetVariable(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element, std::optional<uint32_t> mipSlice)
     {
-        SetVariable(texture, ShaderUtils::GetIdFromString(aliasName), element, unorderedAccessMipSlice);
+        SetVariable(texture, ShaderUtils::GetIdFromString(aliasName), element, mipSlice);
     }
 
-    void RenderGraphContext::SetVariable(const TextureHandle& texture, int32 aliasId, GfxTextureElement element, uint32_t unorderedAccessMipSlice)
+    void RenderGraphContext::SetVariable(const TextureHandle& texture, int32 aliasId, GfxTextureElement element, std::optional<uint32_t> mipSlice)
     {
-        m_Cmd->SetTexture(aliasId, texture, element, unorderedAccessMipSlice);
+        m_Cmd->SetTexture(aliasId, texture, element, mipSlice);
     }
 
     void RenderGraphContext::SetVariable(const BufferHandle& buffer, GfxBufferElement element)

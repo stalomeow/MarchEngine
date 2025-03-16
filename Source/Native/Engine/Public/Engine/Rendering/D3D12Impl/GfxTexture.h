@@ -221,13 +221,14 @@ namespace march
 
         virtual bool IsReadOnly() const = 0;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default);
+        // 如果没有 mipSlice，就绑定所有的 mips
+        D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default, std::optional<uint32_t> mipSlice = std::nullopt);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxTextureElement element = GfxTextureElement::Default, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(uint32_t wOrArraySlice = 0, uint32_t wOrArraySize = 1, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(GfxCubemapFace face, uint32_t faceCount = 1, uint32_t arraySlice = 0, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetSampler();
 
-        uint32_t GetSubresourceIndex(GfxTextureElement element, uint32_t arraySlice, uint32_t mipSlice) const;
+        uint32_t GetSubresourceIndex(GfxTextureElement element, uint32_t wOrArraySlice, uint32_t mipSlice) const;
         uint32_t GetSubresourceIndex(GfxTextureElement element, GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice) const;
 
         GfxDevice* GetDevice() const { return m_Device; }
@@ -282,7 +283,7 @@ namespace march
         };
 
         // Lazy creation
-        GfxOfflineDescriptor m_SrvDescriptors[2];
+        std::unordered_map<uint32_t, GfxOfflineDescriptor> m_SrvDescriptors[2];
         std::unordered_map<uint32_t, GfxOfflineDescriptor> m_UavDescriptors[2];
         std::unordered_map<RtvDsvQuery, GfxOfflineDescriptor, RtvDsvQueryHash> m_RtvDsvDescriptors;
         std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> m_SamplerDescriptor;

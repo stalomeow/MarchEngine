@@ -228,9 +228,9 @@ namespace march
         void Submit();
 
     public:
-        void SetVariable(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
-        void SetVariable(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
-        void SetVariable(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default, uint32_t unorderedAccessMipSlice = 0);
+        void SetVariable(const TextureHandle& texture, GfxTextureElement element = GfxTextureElement::Default, std::optional<uint32_t> mipSlice = std::nullopt);
+        void SetVariable(const TextureHandle& texture, const std::string& aliasName, GfxTextureElement element = GfxTextureElement::Default, std::optional<uint32_t> mipSlice = std::nullopt);
+        void SetVariable(const TextureHandle& texture, int32 aliasId, GfxTextureElement element = GfxTextureElement::Default, std::optional<uint32_t> mipSlice = std::nullopt);
 
         void SetVariable(const BufferHandle& buffer, GfxBufferElement element = GfxBufferElement::StructuredData);
         void SetVariable(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);

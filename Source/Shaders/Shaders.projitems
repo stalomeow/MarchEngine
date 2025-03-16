@@ -13,6 +13,7 @@
     <None Include="$(MSBuildThisFileDirectory)public\CameraMotionVector.shader" />
     <None Include="$(MSBuildThisFileDirectory)public\CullLight.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\DiffuseIrradiance.compute" />
+    <None Include="$(MSBuildThisFileDirectory)public\HierarchicalZ.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\ACES.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\AmbientOcclusion.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\includes\BRDF.hlsl" />

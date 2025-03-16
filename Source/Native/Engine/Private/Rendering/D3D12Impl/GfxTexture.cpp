@@ -98,9 +98,9 @@ namespace march
             m_Resource = nullptr;
         }
 
-        for (GfxOfflineDescriptor& srv : m_SrvDescriptors)
+        for (std::unordered_map<uint32_t, GfxOfflineDescriptor>& srvMap : m_SrvDescriptors)
         {
-            srv.DeferredRelease();
+            srvMap.clear();
         }
 
         for (std::unordered_map<uint32_t, GfxOfflineDescriptor>& uavMap : m_UavDescriptors)
@@ -145,9 +145,24 @@ namespace march
         throw GfxException("Invalid texture element");
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSrv(GfxTextureElement element)
+    D3D12_CPU_DESCRIPTOR_HANDLE GfxTexture::GetSrv(GfxTextureElement element, std::optional<uint32_t> mipSlice)
     {
-        GfxOfflineDescriptor& srv = m_SrvDescriptors[GetSrvUavIndex(m_Desc, element)];
+        bool useMSAA = m_Desc.MSAASamples > 1;
+        UINT mostDetailedMip = 0;
+        UINT mipLevels = -1; // Set to -1 to indicate all the mipmap levels from MostDetailedMip on down to least detailed.
+
+        // 如果有 MSAA 的话，就没有 mip slice
+        if (useMSAA)
+        {
+            mipSlice = 0;
+        }
+        else if (mipSlice)
+        {
+            mostDetailedMip = static_cast<UINT>(*mipSlice);
+            mipLevels = 1;
+        }
+
+        GfxOfflineDescriptor& srv = m_SrvDescriptors[GetSrvUavIndex(m_Desc, element)][mipSlice.value_or(-1)];
 
         if (!srv)
         {
@@ -155,7 +170,7 @@ namespace march
             srvDesc.Format = m_Desc.GetSrvUavDXGIFormat(element);
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-            if (m_Desc.MSAASamples > 1)
+            if (useMSAA)
             {
                 switch (m_Desc.Dimension)
                 {
@@ -177,27 +192,27 @@ namespace march
                 {
                 case GfxTextureDimension::Tex2D:
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                    srvDesc.Texture2D.MostDetailedMip = 0;
-                    srvDesc.Texture2D.MipLevels = -1; // Set to -1 to indicate all the mipmap levels from MostDetailedMip on down to least detailed.
+                    srvDesc.Texture2D.MostDetailedMip = mostDetailedMip;
+                    srvDesc.Texture2D.MipLevels = mipLevels;
                     srvDesc.Texture2D.PlaneSlice = m_Desc.GetPlaneSlice(element);
                     srvDesc.Texture2D.ResourceMinLODClamp = 0;
                     break;
                 case GfxTextureDimension::Tex3D:
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-                    srvDesc.Texture3D.MostDetailedMip = 0;
-                    srvDesc.Texture3D.MipLevels = -1;
+                    srvDesc.Texture3D.MostDetailedMip = mostDetailedMip;
+                    srvDesc.Texture3D.MipLevels = mipLevels;
                     srvDesc.Texture3D.ResourceMinLODClamp = 0;
                     break;
                 case GfxTextureDimension::Cube:
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-                    srvDesc.TextureCube.MostDetailedMip = 0;
-                    srvDesc.TextureCube.MipLevels = -1;
+                    srvDesc.TextureCube.MostDetailedMip = mostDetailedMip;
+                    srvDesc.TextureCube.MipLevels = mipLevels;
                     srvDesc.TextureCube.ResourceMinLODClamp = 0;
                     break;
                 case GfxTextureDimension::Tex2DArray:
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                    srvDesc.Texture2DArray.MostDetailedMip = 0;
-                    srvDesc.Texture2DArray.MipLevels = -1;
+                    srvDesc.Texture2DArray.MostDetailedMip = mostDetailedMip;
+                    srvDesc.Texture2DArray.MipLevels = mipLevels;
                     srvDesc.Texture2DArray.ResourceMinLODClamp = 0;
                     srvDesc.Texture2DArray.FirstArraySlice = 0;
                     srvDesc.Texture2DArray.ArraySize = static_cast<UINT>(m_Desc.DepthOrArraySize);
@@ -205,8 +220,8 @@ namespace march
                     break;
                 case GfxTextureDimension::CubeArray:
                     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
-                    srvDesc.TextureCubeArray.MostDetailedMip = 0;
-                    srvDesc.TextureCubeArray.MipLevels = -1;
+                    srvDesc.TextureCubeArray.MostDetailedMip = mostDetailedMip;
+                    srvDesc.TextureCubeArray.MipLevels = mipLevels;
                     srvDesc.TextureCubeArray.ResourceMinLODClamp = 0;
                     srvDesc.TextureCubeArray.First2DArrayFace = 0;
                     srvDesc.TextureCubeArray.NumCubes = static_cast<UINT>(m_Desc.DepthOrArraySize);
@@ -562,7 +577,7 @@ namespace march
         return *m_SamplerDescriptor;
     }
 
-    uint32_t GfxTexture::GetSubresourceIndex(GfxTextureElement element, uint32_t arraySlice, uint32_t mipSlice) const
+    uint32_t GfxTexture::GetSubresourceIndex(GfxTextureElement element, uint32_t wOrArraySlice, uint32_t mipSlice) const
     {
         if (m_Desc.Dimension == GfxTextureDimension::Cube || m_Desc.Dimension == GfxTextureDimension::CubeArray)
         {
@@ -574,19 +589,17 @@ namespace march
             throw GfxException("Mip slice out of range");
         }
 
-        uint32_t arraySize = (m_Desc.Dimension == GfxTextureDimension::Tex3D) ? 1 : m_Desc.DepthOrArraySize;
-
-        if (arraySlice >= arraySize)
+        if (wOrArraySlice >= m_Desc.DepthOrArraySize)
         {
-            throw GfxException("Array slice out of range");
+            throw GfxException("W or array slice out of range");
         }
 
         return D3D12CalcSubresource(
             static_cast<UINT>(mipSlice),
-            static_cast<UINT>(arraySlice),
+            static_cast<UINT>(wOrArraySlice),
             static_cast<UINT>(m_Desc.GetPlaneSlice(element)),
             static_cast<UINT>(m_MipLevels),
-            static_cast<UINT>(arraySize));
+            static_cast<UINT>(m_Desc.DepthOrArraySize));
     }
 
     uint32_t GfxTexture::GetSubresourceIndex(GfxTextureElement element, GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice) const

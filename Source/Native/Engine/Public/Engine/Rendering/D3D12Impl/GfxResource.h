@@ -24,11 +24,15 @@ namespace march
     {
         GfxDevice* m_Device;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource;
-        D3D12_RESOURCE_STATES m_State;
-        bool m_IsStateLocked;
+        uint32_t m_SubresourceCount;
 
         GfxResourceAllocator* m_Allocator; // 可以没有
         GfxResourceAllocation m_Allocation;
+
+        bool m_IsStateLocked;
+        bool m_AllStatesSame;
+        D3D12_RESOURCE_STATES m_State; // 整个 Resource 的 State，当所有 Subresource State 一致时才有效
+        std::unique_ptr<D3D12_RESOURCE_STATES[]> m_SubresourceStates;
 
     public:
         GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
@@ -36,15 +40,21 @@ namespace march
         ~GfxResource();
 
         bool IsHeapCpuAccessible() const;
-        void SetState(D3D12_RESOURCE_STATES state);
+
         void LockState(bool lock);
+        D3D12_RESOURCE_STATES GetState(uint32_t subresource) const;
+        bool HasAllStates(D3D12_RESOURCE_STATES states) const;
+        bool HasAnyStates(D3D12_RESOURCE_STATES states) const;
+        void SetState(D3D12_RESOURCE_STATES state);
+        void SetState(D3D12_RESOURCE_STATES state, uint32_t subresource);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxResourceAllocator* GetAllocator() const { return m_Allocator; }
         ID3D12Resource* GetD3DResource() const { return m_Resource.Get(); }
         D3D12_RESOURCE_DESC GetD3DResourceDesc() const { return m_Resource->GetDesc(); }
-        D3D12_RESOURCE_STATES GetState() const { return m_State; }
+        uint32_t GetSubresourceCount() const { return m_SubresourceCount; }
         bool IsStateLocked() const { return m_IsStateLocked; }
+        bool AreAllSubresourceStatesSame() const { return m_AllStatesSame; }
     };
 
     class GfxResourceAllocator

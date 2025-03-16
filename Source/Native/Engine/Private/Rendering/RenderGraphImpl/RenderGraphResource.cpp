@@ -32,8 +32,8 @@ namespace march
 
     __forceinline static bool AllowGenericRead(RefCountPtr<GfxResource> resource)
     {
-        return (resource->GetState() & D3D12_RESOURCE_STATE_GENERIC_READ) == D3D12_RESOURCE_STATE_GENERIC_READ
-            || !resource->IsStateLocked(); // 允许把状态改为 GENERIC_READ 的也算
+        // 允许把状态改为 GENERIC_READ 的也算
+        return resource->HasAllStates(D3D12_RESOURCE_STATE_GENERIC_READ) || !resource->IsStateLocked();
     }
 
     __forceinline static bool AllowGenericRead(GfxBuffer* buffer)

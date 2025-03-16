@@ -75,6 +75,8 @@ namespace march
         BufferHandle CbShadow;
         TextureHandle ShadowMap;
 
+        TextureHandle HiZTexture;
+
         void Reset()
         {
             ColorTarget = {};
@@ -99,6 +101,7 @@ namespace march
             SSAORandomVectorMap = {};
             CbShadow = {};
             ShadowMap = {};
+            HiZTexture = {};
         }
     };
 
@@ -164,6 +167,8 @@ namespace march
 
         void Postprocessing();
 
+        void Hiz();
+
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Shader> m_SceneViewGridShader = nullptr;
@@ -176,6 +181,7 @@ namespace march
         asset_ptr<ComputeShader> m_SpecularIBLShader = nullptr;
         asset_ptr<ComputeShader> m_TAAShader = nullptr;
         asset_ptr<ComputeShader> m_PostprocessingShader = nullptr;
+        asset_ptr<ComputeShader> m_HizShader = nullptr;
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;
