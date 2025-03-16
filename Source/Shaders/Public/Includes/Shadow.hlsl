@@ -76,7 +76,7 @@ bool BlockerSearch(float depth2RadialScale, float3 shadowCoord, float2x2 jitter,
         float receiver = shadowCoord.z + GetReceiverDepthBias(depth2RadialScale, offset);
         float blocker = _ShadowMap.SampleLevel(sampler_PointClamp, uv, 0).r;
 
-        if (IsDepthCloser(blocker, receiver))
+        if (IsDepthNearer(blocker, receiver))
         {
             blockerSum += blocker;
             blockerCount++;

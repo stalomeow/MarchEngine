@@ -5,24 +5,6 @@
 Texture2D _InputTexture;
 RWTexture2D<float> _OutputTexture;
 
-float GetNearestDepth(float depth0, float depth1)
-{
-#if MARCH_REVERSED_Z
-    return max(depth0, depth1);
-#else
-    return min(depth0, depth1);
-#endif
-}
-
-float GetFarthestDepth(float depth0, float depth1)
-{
-#if MARCH_REVERSED_Z
-    return min(depth0, depth1);
-#else
-    return max(depth0, depth1);
-#endif
-}
-
 [numthreads(16, 16, 1)]
 void CSMain(int3 dtid : SV_DispatchThreadID)
 {

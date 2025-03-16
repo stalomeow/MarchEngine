@@ -243,12 +243,30 @@ float4 GetPlane(float3 a, float3 b, float3 c)
 }
 
 // 检查 lhs 深度是否比 rhs 深度更近
-bool IsDepthCloser(float lhs, float rhs)
+bool IsDepthNearer(float lhs, float rhs)
 {
 #ifdef MARCH_REVERSED_Z
     return lhs > rhs;
 #else
     return lhs < rhs;
+#endif
+}
+
+float GetNearestDepth(float lhs, float rhs)
+{
+#if MARCH_REVERSED_Z
+    return max(lhs, rhs);
+#else
+    return min(lhs, rhs);
+#endif
+}
+
+float GetFarthestDepth(float lhs, float rhs)
+{
+#if MARCH_REVERSED_Z
+    return min(lhs, rhs);
+#else
+    return max(lhs, rhs);
 #endif
 }
 
