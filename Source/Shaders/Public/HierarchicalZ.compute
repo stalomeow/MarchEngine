@@ -1,5 +1,7 @@
 #pragma kernel CSMain
 
+#include "Includes/Common.hlsl"
+
 Texture2D _InputTexture;
 RWTexture2D<float> _OutputTexture;
 
@@ -21,39 +23,43 @@ float GetFarthestDepth(float depth0, float depth1)
 #endif
 }
 
-float GetNearestDepth(float depth0, float depth1, float depth2, float depth3)
-{
-    return GetNearestDepth(GetNearestDepth(depth0, depth1), GetNearestDepth(depth2, depth3));
-}
-
-float GetFarthestDepth(float depth0, float depth1, float depth2, float depth3)
-{
-    return GetFarthestDepth(GetFarthestDepth(depth0, depth1), GetFarthestDepth(depth2, depth3));
-}
-
 [numthreads(16, 16, 1)]
 void CSMain(int3 dtid : SV_DispatchThreadID)
 {
-    float depth0 = _InputTexture.Load(int3(dtid.x * 2, dtid.y * 2, 0)).r;
-    float depth1 = _InputTexture.Load(int3(dtid.x * 2 + 1, dtid.y * 2, 0)).r;
-    float depth2 = _InputTexture.Load(int3(dtid.x * 2, dtid.y * 2 + 1, 0)).r;
-    float depth3 = _InputTexture.Load(int3(dtid.x * 2 + 1, dtid.y * 2 + 1, 0)).r;
-    float nearest = GetNearestDepth(depth0, depth1, depth2, depth3);
+    int width, height;
+    _InputTexture.GetDimensions(width, height);
 
-    int width, height, numberOfLevels;
-    _InputTexture.GetDimensions(0, width, height, numberOfLevels);
+    int2 location = dtid.xy * 2;
+    float2 uv = (location + 1.0) / float2(width, height); // 采样四个像素的中心
+    float4 depth = _InputTexture.GatherRed(sampler_LinearClamp, uv);
+    float nearest = GetNearestDepth(GetNearestDepth(depth.x, depth.y), GetNearestDepth(depth.z, depth.w));
 
-    // 奇数需要多读一个像素
-    if (width & 1)
+    // 奇数需要多读一列/一排像素
+    bool extraColumn = (width & 1);
+    bool extraRow = (height & 1);
+
+    if (extraColumn)
     {
-        float depth4 = _InputTexture.Load(int3(dtid.x * 2 + 2, dtid.y * 2, 0)).r;
-        nearest = GetNearestDepth(nearest, depth4);
+        depth = _InputTexture.GatherRed(sampler_LinearClamp, uv, int2(1, 0));
+
+        // 需要取右侧两个像素的结果，xyzw 的顺序参考下面的链接
+        // https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+        nearest = GetNearestDepth(nearest, GetNearestDepth(depth.y, depth.z));
     }
 
-    if (height & 1)
+    if (extraRow)
     {
-        float depth4 = _InputTexture.Load(int3(dtid.x * 2, dtid.y * 2 + 2, 0)).r;
-        nearest = GetNearestDepth(nearest, depth4);
+        depth = _InputTexture.GatherRed(sampler_LinearClamp, uv, int2(0, 1));
+
+        // 需要取下侧两个像素的结果，xyzw 的顺序参考下面的链接
+        // https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+        nearest = GetNearestDepth(nearest, GetNearestDepth(depth.x, depth.y));
+    }
+
+    if (extraColumn && extraRow)
+    {
+        // 获取 3x3 区域右下角的像素
+        nearest = GetNearestDepth(nearest, _InputTexture.Load(int3(location + 2, 0)).r);
     }
 
     _OutputTexture[dtid.xy] = nearest;
