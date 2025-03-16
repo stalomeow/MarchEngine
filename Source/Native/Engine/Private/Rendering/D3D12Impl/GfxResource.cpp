@@ -5,6 +5,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Debug.h"
 #include <stdexcept>
+#include <assert.h>
 
 using namespace Microsoft::WRL;
 
@@ -38,6 +39,7 @@ namespace march
         , m_SubresourceStates(nullptr)
     {
         m_SubresourceCount = CalcSubresourceCount(m_Device->GetD3DDevice4(), m_Resource.Get());
+        assert(m_SubresourceCount >= 1);
     }
 
     GfxResource::GfxResource(GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state)
@@ -51,6 +53,7 @@ namespace march
         , m_SubresourceStates(nullptr)
     {
         m_SubresourceCount = CalcSubresourceCount(m_Device->GetD3DDevice4(), m_Resource.Get());
+        assert(m_SubresourceCount >= 1);
     }
 
     GfxResource::~GfxResource()
@@ -153,6 +156,17 @@ namespace march
 
     void GfxResource::SetState(D3D12_RESOURCE_STATES state, uint32_t subresource)
     {
+        if (subresource >= m_SubresourceCount)
+        {
+            throw GfxException("Subresource index out of range");
+        }
+
+        if (m_SubresourceCount == 1)
+        {
+            SetState(state);
+            return;
+        }
+
         if (m_IsStateLocked)
         {
             throw GfxException("Resource state is locked");

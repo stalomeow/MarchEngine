@@ -221,7 +221,7 @@ namespace march
 
         virtual bool IsReadOnly() const = 0;
 
-        // 如果没有 mipSlice，就绑定所有的 mips
+        // 如果没有指定 mipSlice，就绑定所有的 mips
         D3D12_CPU_DESCRIPTOR_HANDLE GetSrv(GfxTextureElement element = GfxTextureElement::Default, std::optional<uint32_t> mipSlice = std::nullopt);
         D3D12_CPU_DESCRIPTOR_HANDLE GetUav(GfxTextureElement element = GfxTextureElement::Default, uint32_t mipSlice = 0);
         D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsv(uint32_t wOrArraySlice = 0, uint32_t wOrArraySize = 1, uint32_t mipSlice = 0);
