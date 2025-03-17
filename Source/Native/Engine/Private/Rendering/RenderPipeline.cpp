@@ -201,9 +201,6 @@ namespace march
         gBufferDesc.Format = GfxTextureFormat::R11G11B10_Float; // HDR
         m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer3", gBufferDesc));
 
-        gBufferDesc.Format = GfxTextureFormat::R32_Float;
-        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer4", gBufferDesc));
-
         auto builder = m_RenderGraph->AddPass("DrawGBuffer");
 
         builder.In(m_Resource.CbCamera);
@@ -299,30 +296,22 @@ namespace march
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
         builder.In(m_Resource.PunctualLights);
+        builder.In(m_Resource.HiZTexture);
         builder.Out(m_Resource.ClusterPunctualLightRanges);
         builder.Out(m_Resource.ClusterPunctualLightIndices);
         builder.Out(m_Resource.VisibleLightCounter);
         builder.Out(m_Resource.MaxClusterZIds);
-
-        for (const TextureHandle& tex : m_Resource.GBuffers)
-        {
-            builder.In(tex);
-        }
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbLight);
             context.SetVariable(m_Resource.PunctualLights);
+            context.SetVariable(m_Resource.HiZTexture);
             context.SetVariable(m_Resource.ClusterPunctualLightRanges);
             context.SetVariable(m_Resource.ClusterPunctualLightIndices);
             context.SetVariable(m_Resource.VisibleLightCounter);
             context.SetVariable(m_Resource.MaxClusterZIds);
-
-            for (const TextureHandle& tex : m_Resource.GBuffers)
-            {
-                context.SetVariable(tex);
-            }
 
             // 每个 Buffer 元素对应一个线程
             std::optional<size_t> resetKernelIndex = m_CullLightShader->FindKernel("ResetMain");
@@ -375,6 +364,7 @@ namespace march
         builder.In(m_Resource.EnvDiffuseSH9Coefs);
         builder.In(m_Resource.EnvSpecularRadianceMap);
         builder.In(m_Resource.EnvSpecularBRDFLUT);
+        builder.In(m_Resource.HiZTexture);
 
         builder.SetColorTarget(m_Resource.ColorTarget, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
@@ -397,6 +387,7 @@ namespace march
             context.SetVariable(m_Resource.EnvDiffuseSH9Coefs);
             context.SetVariable(m_Resource.EnvSpecularRadianceMap);
             context.SetVariable(m_Resource.EnvSpecularBRDFLUT);
+            context.SetVariable(m_Resource.HiZTexture);
 
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_DeferredLitMaterial.get(), 0);
         });
@@ -622,6 +613,7 @@ namespace march
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbSSAO);
         builder.In(m_Resource.SSAORandomVectorMap);
+        builder.In(m_Resource.HiZTexture);
         builder.Out(m_Resource.SSAOMap);
         builder.Out(m_Resource.SSAOMapTemp);
 
@@ -635,6 +627,7 @@ namespace march
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.CbSSAO);
             context.SetVariable(m_Resource.SSAORandomVectorMap);
+            context.SetVariable(m_Resource.HiZTexture);
             context.SetVariable(m_Resource.SSAOMap);
 
             for (const TextureHandle& tex : m_Resource.GBuffers)
@@ -912,14 +905,14 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass("HierarchicalZ");
 
-        builder.In(m_Resource.GBuffers[4]);
+        builder.In(m_Resource.DepthStencilTarget);
         builder.Out(m_Resource.HiZTexture);
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.CopyTexture(m_Resource.GBuffers[4], 0, 0, m_Resource.HiZTexture, 0, 0);
-
-            std::optional<size_t> kernel = m_HizShader->FindKernel("CSMain");
+            context.SetVariable(m_Resource.DepthStencilTarget, "_InputTexture", GfxTextureElement::Depth);
+            context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, 0);
+            context.DispatchComputeByThreadCount(m_HizShader.get(), 0, m_Resource.DepthStencilTarget.GetDesc().Width, m_Resource.DepthStencilTarget.GetDesc().Height, 1);
 
             for (uint32_t mipLevel = 1; mipLevel < m_Resource.HiZTexture->GetMipLevels(); mipLevel++)
             {
@@ -928,7 +921,7 @@ namespace march
 
                 uint32_t width = std::max(m_Resource.HiZTexture->GetDesc().Width >> mipLevel, 1u);
                 uint32_t height = std::max(m_Resource.HiZTexture->GetDesc().Height >> mipLevel, 1u);
-                context.DispatchComputeByThreadCount(m_HizShader.get(), *kernel, width, height, 1);
+                context.DispatchComputeByThreadCount(m_HizShader.get(), 1, width, height, 1);
             }
         });
     }

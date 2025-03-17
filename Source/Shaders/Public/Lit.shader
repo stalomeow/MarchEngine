@@ -120,7 +120,6 @@ Shader "Lit"
             data.normalWS = bumpedNomalWS;
             data.emission = emission.rgb;
             data.occlusion = occlusion;
-            data.depth = input.positionCS.z;
             return PackGBufferData(data);
         }
         ENDHLSL

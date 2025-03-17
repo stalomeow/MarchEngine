@@ -1,4 +1,5 @@
-#pragma kernel CSMain
+#pragma kernel CopyDepthMain
+#pragma kernel GenMipMain
 
 #include "Includes/Common.hlsl"
 
@@ -6,7 +7,13 @@ Texture2D _InputTexture;
 RWTexture2D<float> _OutputTexture;
 
 [numthreads(16, 16, 1)]
-void CSMain(int3 dtid : SV_DispatchThreadID)
+void CopyDepthMain(int3 dtid : SV_DispatchThreadID)
+{
+    _OutputTexture[dtid.xy] = _InputTexture.Load(int3(dtid.xy, 0)).r;
+}
+
+[numthreads(16, 16, 1)]
+void GenMipMain(int3 dtid : SV_DispatchThreadID)
 {
     int width, height;
     _InputTexture.GetDimensions(width, height);

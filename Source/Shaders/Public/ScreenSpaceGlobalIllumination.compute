@@ -1,12 +1,11 @@
 #pragma kernel CSMain
 
 #include "Includes/Common.hlsl"
+#include "Includes/Depth.hlsl"
 #include "Includes/GBuffer.hlsl"
 
 #define MAX_DISTANCE 100
 
-Texture2D _HiZTexture;
-SamplerState sampler_HiZTexture;
 Texture2D _ColorTexture;
 SamplerState sampler_ColorTexture;
 RWTexture2D<float4> _OutputTexture;
@@ -14,7 +13,7 @@ RWTexture2D<float4> _OutputTexture;
 float2 GetGBufferUV(int2 location)
 {
     float width, height;
-    GetDepthGBufferDimensions(width, height);
+    GetSceneDepthDimensions(width, height);
     return GetUVFromTexelLocation(location, width, height);
 }
 
@@ -25,21 +24,12 @@ float2 GetUVDelta(float2 startUV, float3 endPositionVS)
     return endUV - startUV;
 }
 
-int GetMaxHizMipLevel()
-{
-    int width, height, numberOfLevels;
-    _HiZTexture.GetDimensions(0, width, height, numberOfLevels);
-    return numberOfLevels - 1;
-}
-
 [numthreads(16, 16, 1)]
 void CSMain(int3 dtid : SV_DispatchThreadID)
 {
     float2 uv = GetGBufferUV(dtid.xy);
-    GBufferData data = SampleGBufferData(uv);
-
-    float3 positionVS = ComputeViewSpacePosition(uv, data.depth);
-    float3 normalVS = TransformWorldToViewNormal(data.normalWS);
+    float3 positionVS = ComputeViewSpacePosition(uv, SampleSceneDepth(uv));
+    float3 normalVS = TransformWorldToViewNormal(SampleGBufferData(uv).normalWS);
     float3 rayDirVS = normalize(reflect(positionVS, normalVS));
     float3 endPositionVS = positionVS + rayDirVS * MAX_DISTANCE;
 
@@ -61,7 +51,7 @@ void CSMain(int3 dtid : SV_DispatchThreadID)
     float stepW = (endW - startW) / abs(diff.x);
 
     int mipLevel = 0;
-    int maxMipLevel = GetMaxHizMipLevel();
+    int maxMipLevel = GetHierarchicalSceneDepthMaxMipLevel();
     float2 currUV = uv;
     float currW = startW;
     bool hit = false;
@@ -69,8 +59,8 @@ void CSMain(int3 dtid : SV_DispatchThreadID)
 
     for (int i = 0; i < 64; i++)
     {
-        float width, height, _;
-        _HiZTexture.GetDimensions(mipLevel, width, height, _);
+        float width, height;
+        GetHierarchicalSceneDepthDimensions(mipLevel, width, height);
         float stepScale = rcp(isExchanged ? height : width);
         float2 newUV = currUV + stepUV * stepScale;
 
@@ -89,7 +79,7 @@ void CSMain(int3 dtid : SV_DispatchThreadID)
         float newViewZ = 1.0 / newW;
         float currViewZ = 1.0 / currW;
 
-        float nearestDepth = _HiZTexture.SampleLevel(sampler_HiZTexture, isExchanged ? newUV.yx : newUV, mipLevel).r;
+        float nearestDepth = SampleNearestHierarchicalSceneDepth(isExchanged ? newUV.yx : newUV, mipLevel);
         float nearestViewZ = GetLinearEyeDepth(nearestDepth);
 
         float rayZMin = min(newViewZ, currViewZ);

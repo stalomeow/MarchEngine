@@ -2,6 +2,7 @@
 
 #define AMBIENT_OCCLUSION_CALCULATING
 #include "Includes/Common.hlsl"
+#include "Includes/Depth.hlsl"
 #include "Includes/GBuffer.hlsl"
 #include "Includes/AmbientOcclusion.hlsl"
 
@@ -55,9 +56,8 @@ void SSAOMain(int3 dtid : SV_DispatchThreadID)
     }
 
     float2 uv = GetUVFromTexelLocation(dtid.xy, width, height);
-    GBufferData gbuffer = SampleGBufferData(uv);
-    float3 p = ComputeViewSpacePosition(uv, gbuffer.depth);
-    float3 n = TransformWorldToViewNormal(gbuffer.normalWS);
+    float3 p = ComputeViewSpacePosition(uv, SampleSceneDepth(uv));
+    float3 n = TransformWorldToViewNormal(SampleGBufferData(uv).normalWS);
     float3 randVec = _RandomVecMap.SampleLevel(sampler_LinearRepeat, 4.0 * uv, 0).xyz * 2.0 - 1.0;
 
     float occlusionSum = 0;
@@ -72,9 +72,7 @@ void SSAOMain(int3 dtid : SV_DispatchThreadID)
         float4 samplePosCS = TransformViewToHClip(samplePosVS);
         float2 sampleUV = GetScreenUVFromNDC(samplePosCS.xy / samplePosCS.w);
 
-        GBufferData sampleGBuffer = SampleGBufferData(sampleUV);
-        float3 r = ComputeViewSpacePosition(sampleUV, sampleGBuffer.depth);
-
+        float3 r = ComputeViewSpacePosition(sampleUV, SampleSceneDepth(sampleUV));
         float dp = max(dot(n, normalize(r - p)), 0.0);
         occlusionSum += dp * OcclusionFunction(p.z - r.z);
     }
@@ -122,8 +120,8 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.x] = _Input[int2(x, dtid.y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(x, dtid.y), width, height));
-        _NormalDepthCache[gtid.x] = float4(g.normalWS, g.depth);
+        float2 uv = GetUVFromTexelLocation(int2(x, dtid.y), width, height);
+        _NormalDepthCache[gtid.x] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
     }
 
     if (gtid.x >= N - RADIUS)
@@ -132,16 +130,16 @@ void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.x + 2 * RADIUS] = _Input[int2(x, dtid.y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(x, dtid.y), width, height));
-        _NormalDepthCache[gtid.x + 2 * RADIUS] = float4(g.normalWS, g.depth);
+        float2 uv = GetUVFromTexelLocation(int2(x, dtid.y), width, height);
+        _NormalDepthCache[gtid.x + 2 * RADIUS] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
     }
 
     int2 loc = min(dtid.xy, int2(width - 1, height - 1));
     _ColorCache[gtid.x + RADIUS] = _Input[loc];
 
     // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-    GBufferData g1 = SampleGBufferData(GetUVFromTexelLocation(loc, width, height));
-    _NormalDepthCache[gtid.x + RADIUS] = float4(g1.normalWS, g1.depth);
+    float2 uv1 = GetUVFromTexelLocation(loc, width, height);
+    _NormalDepthCache[gtid.x + RADIUS] = float4(SampleGBufferData(uv1).normalWS, SampleSceneDepth(uv1));
 
     GroupMemoryBarrierWithGroupSync();
 
@@ -187,8 +185,8 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.y] = _Input[int2(dtid.x, y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(dtid.x, y), width, height));
-        _NormalDepthCache[gtid.y] = float4(g.normalWS, g.depth);
+        float2 uv = GetUVFromTexelLocation(int2(dtid.x, y), width, height);
+        _NormalDepthCache[gtid.y] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
     }
 
     if (gtid.y >= N - RADIUS)
@@ -197,16 +195,16 @@ void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
         _ColorCache[gtid.y + 2 * RADIUS] = _Input[int2(dtid.x, y)];
 
         // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-        GBufferData g = SampleGBufferData(GetUVFromTexelLocation(int2(dtid.x, y), width, height));
-        _NormalDepthCache[gtid.y + 2 * RADIUS] = float4(g.normalWS, g.depth);
+        float2 uv = GetUVFromTexelLocation(int2(dtid.x, y), width, height);
+        _NormalDepthCache[gtid.y + 2 * RADIUS] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
     }
 
     int2 loc = min(dtid.xy, int2(width - 1, height - 1));
     _ColorCache[gtid.y + RADIUS] = _Input[loc];
 
     // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
-    GBufferData g1 = SampleGBufferData(GetUVFromTexelLocation(loc, width, height));
-    _NormalDepthCache[gtid.y + RADIUS] = float4(g1.normalWS, g1.depth);
+    float2 uv1 = GetUVFromTexelLocation(loc, width, height);
+    _NormalDepthCache[gtid.y + RADIUS] = float4(SampleGBufferData(uv1).normalWS, SampleSceneDepth(uv1));
 
     GroupMemoryBarrierWithGroupSync();
 

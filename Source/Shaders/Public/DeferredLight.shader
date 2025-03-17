@@ -24,6 +24,7 @@ Shader "DeferredLight"
         #pragma ps frag
 
         #include "Includes/Common.hlsl"
+        #include "Includes/Depth.hlsl"
         #include "Includes/GBuffer.hlsl"
         #include "Includes/Lighting.hlsl"
         #include "Includes/AmbientOcclusion.hlsl"
@@ -48,7 +49,7 @@ Shader "DeferredLight"
             GBufferData gbuffer = LoadGBufferData(positionSS);
             BRDFData brdfData = GetBRDFData(gbuffer.albedo, gbuffer.metallic, gbuffer.roughness);
 
-            float3 positionWS = ComputeWorldSpacePosition(input.uv, gbuffer.depth);
+            float3 positionWS = ComputeWorldSpacePosition(input.uv, SampleSceneDepth(input.uv));
             float3 positionVS = TransformWorldToView(positionWS);
             float occlusion = min(SampleScreenSpaceAmbientOcclusion(input.uv), gbuffer.occlusion);
 

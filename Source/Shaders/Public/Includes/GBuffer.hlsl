@@ -10,14 +10,12 @@ struct PixelGBufferOutput
     float4 GBuffer1 : SV_Target1; // normalWS, roughness
     float4 GBuffer2 : SV_Target2; // occlusion, unused
     float4 GBuffer3 : SV_Target3; // emission
-    float4 GBuffer4 : SV_Target4; // depth, unused
 };
 
 Texture2D _GBuffer0;
 Texture2D _GBuffer1;
 Texture2D _GBuffer2;
 Texture2D _GBuffer3;
-Texture2D _GBuffer4;
 
 struct GBufferData
 {
@@ -27,7 +25,6 @@ struct GBufferData
     float3 normalWS;
     float3 emission;
     float occlusion;
-    float depth;
 };
 
 PixelGBufferOutput PackGBufferData(GBufferData data)
@@ -41,12 +38,10 @@ PixelGBufferOutput PackGBufferData(GBufferData data)
     output.GBuffer2.gba = 0;
     output.GBuffer3.rgb = data.emission;
     output.GBuffer3.a = 0;
-    output.GBuffer4.r = data.depth;
-    output.GBuffer4.gba = 0;
     return output;
 }
 
-GBufferData UnpackGBufferData(float4 gbuffer0, float4 gbuffer1, float4 gbuffer2, float4 gbuffer3, float4 gbuffer4)
+GBufferData UnpackGBufferData(float4 gbuffer0, float4 gbuffer1, float4 gbuffer2, float4 gbuffer3)
 {
     GBufferData data;
     data.albedo = gbuffer0.rgb;
@@ -55,18 +50,7 @@ GBufferData UnpackGBufferData(float4 gbuffer0, float4 gbuffer1, float4 gbuffer2,
     data.roughness = gbuffer1.a;
     data.emission = gbuffer3.rgb;
     data.occlusion = gbuffer2.r;
-    data.depth = gbuffer4.r;
     return data;
-}
-
-void GetDepthGBufferDimensions(out uint width, out uint height)
-{
-    _GBuffer4.GetDimensions(width, height);
-}
-
-void GetDepthGBufferDimensions(out float width, out float height)
-{
-    _GBuffer4.GetDimensions(width, height);
 }
 
 GBufferData LoadGBufferData(int2 location)
@@ -75,8 +59,7 @@ GBufferData LoadGBufferData(int2 location)
     float4 gbuffer1 = _GBuffer1.Load(int3(location, 0));
     float4 gbuffer2 = _GBuffer2.Load(int3(location, 0));
     float4 gbuffer3 = _GBuffer3.Load(int3(location, 0));
-    float4 gbuffer4 = _GBuffer4.Load(int3(location, 0));
-    return UnpackGBufferData(gbuffer0, gbuffer1, gbuffer2, gbuffer3, gbuffer4);
+    return UnpackGBufferData(gbuffer0, gbuffer1, gbuffer2, gbuffer3);
 }
 
 GBufferData SampleGBufferData(float2 uv)
@@ -85,8 +68,7 @@ GBufferData SampleGBufferData(float2 uv)
     float4 gbuffer1 = _GBuffer1.SampleLevel(sampler_PointClamp, uv, 0);
     float4 gbuffer2 = _GBuffer2.SampleLevel(sampler_PointClamp, uv, 0);
     float4 gbuffer3 = _GBuffer3.SampleLevel(sampler_PointClamp, uv, 0);
-    float4 gbuffer4 = _GBuffer4.SampleLevel(sampler_PointClamp, uv, 0);
-    return UnpackGBufferData(gbuffer0, gbuffer1, gbuffer2, gbuffer3, gbuffer4);
+    return UnpackGBufferData(gbuffer0, gbuffer1, gbuffer2, gbuffer3);
 }
 
 #endif

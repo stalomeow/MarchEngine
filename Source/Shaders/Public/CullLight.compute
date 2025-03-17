@@ -4,7 +4,7 @@
 
 #define LIGHT_CULLING
 #include "Includes/Lighting.hlsl"
-#include "Includes/GBuffer.hlsl"
+#include "Includes/Depth.hlsl"
 
 RWStructuredBuffer<int> _VisibleLightCounter;
 RWStructuredBuffer<int> _MaxClusterZIds;
@@ -39,16 +39,15 @@ int GetGroupClusterIndex(int2 clusterId)
 void CullClusterMain(int3 gtid : SV_GroupThreadID, int gidx : SV_GroupIndex, int3 dtid : SV_DispatchThreadID)
 {
     float width, height;
-    GetDepthGBufferDimensions(width, height);
+    GetSceneDepthDimensions(width, height);
 
     if (dtid.x >= width || dtid.y >= height)
     {
         return;
     }
 
-    GBufferData gbuffer = LoadGBufferData(dtid.xy);
     float2 uv = GetUVFromTexelLocation(dtid.xy, width, height);
-    float3 positionVS = ComputeViewSpacePosition(uv, gbuffer.depth);
+    float3 positionVS = ComputeViewSpacePosition(uv, SampleSceneDepth(uv));
     int3 clusterId = GetClusterId(uv, positionVS);
 
     gs_GroupMaxClusterZIds[gidx] = -1;

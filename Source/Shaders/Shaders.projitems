@@ -19,6 +19,7 @@
     <None Include="$(MSBuildThisFileDirectory)public\includes\BRDF.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\ColorSpace.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Common.hlsl" />
+    <None Include="$(MSBuildThisFileDirectory)public\includes\Depth.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\GBuffer.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Lighting.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)Public\Includes\Packing.hlsl" />
