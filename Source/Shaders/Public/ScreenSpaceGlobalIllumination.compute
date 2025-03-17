@@ -1,0 +1,137 @@
+#pragma kernel CSMain
+
+#include "Includes/Common.hlsl"
+#include "Includes/GBuffer.hlsl"
+
+#define MAX_DISTANCE 100
+
+Texture2D _HiZTexture;
+SamplerState sampler_HiZTexture;
+Texture2D _ColorTexture;
+SamplerState sampler_ColorTexture;
+RWTexture2D<float4> _OutputTexture;
+
+float2 GetGBufferUV(int2 location)
+{
+    float width, height;
+    GetDepthGBufferDimensions(width, height);
+    return GetUVFromTexelLocation(location, width, height);
+}
+
+float2 GetUVDelta(float2 startUV, float3 endPositionVS)
+{
+    float4 endCS = TransformViewToHClip(endPositionVS);
+    float2 endUV = GetScreenUVFromNDC(endCS.xy / endCS.w);
+    return endUV - startUV;
+}
+
+int GetMaxHizMipLevel()
+{
+    int width, height, numberOfLevels;
+    _HiZTexture.GetDimensions(0, width, height, numberOfLevels);
+    return numberOfLevels - 1;
+}
+
+[numthreads(16, 16, 1)]
+void CSMain(int3 dtid : SV_DispatchThreadID)
+{
+    float2 uv = GetGBufferUV(dtid.xy);
+    GBufferData data = SampleGBufferData(uv);
+
+    float3 positionVS = ComputeViewSpacePosition(uv, data.depth);
+    float3 normalVS = TransformWorldToViewNormal(data.normalWS);
+    float3 rayDirVS = normalize(reflect(positionVS, normalVS));
+    float3 endPositionVS = positionVS + rayDirVS * MAX_DISTANCE;
+
+    float startW = 1.0 / positionVS.z;
+    float endW = 1.0 / endPositionVS.z;
+
+    bool isExchanged = false;
+    float2 diff = GetUVDelta(uv, endPositionVS);
+
+    // 斜率 > 1
+    if (abs(diff.y) > abs(diff.x))
+    {
+        isExchanged = true;
+        diff = diff.yx;
+        uv = uv.yx;
+    }
+
+    float2 stepUV = float2(1.0, diff.y / diff.x) * sign(diff.x);
+    float stepW = (endW - startW) / abs(diff.x);
+
+    int mipLevel = 0;
+    int maxMipLevel = GetMaxHizMipLevel();
+    float2 currUV = uv;
+    float currW = startW;
+    bool hit = false;
+    float2 hitUV = 0.0;
+
+    for (int i = 0; i < 64; i++)
+    {
+        float width, height, _;
+        _HiZTexture.GetDimensions(mipLevel, width, height, _);
+        float stepScale = rcp(isExchanged ? height : width);
+        float2 newUV = currUV + stepUV * stepScale;
+
+        if (any(newUV < 0.0) || any(newUV > 1.0))
+        {
+            if (mipLevel == 0)
+            {
+                break;
+            }
+
+            mipLevel--;
+            continue;
+        }
+
+        float newW = startW + stepW * abs(newUV.x - uv.x);
+        float newViewZ = 1.0 / newW;
+        float currViewZ = 1.0 / currW;
+
+        float nearestDepth = _HiZTexture.SampleLevel(sampler_HiZTexture, isExchanged ? newUV.yx : newUV, mipLevel).r;
+        float nearestViewZ = GetLinearEyeDepth(nearestDepth);
+
+        float rayZMin = min(newViewZ, currViewZ);
+        float rayZMax = max(newViewZ, currViewZ);
+
+        bool isBehind = (rayZMax - 0.1 >= nearestViewZ); // 加一个 bias 防止 stride 过小，自反射
+        //bool intersecting = isBehind && (rayZMin <= nearestViewZ + 0.5);
+
+        if (isBehind)
+        {
+            if (mipLevel == 0)
+            {
+                if (rayZMin <= nearestViewZ + 0.5)
+                {
+                    hit = true;
+                    hitUV = isExchanged ? newUV.yx : newUV;
+                    break;
+                }
+
+                currUV = newUV;
+                currW = newW;
+            }
+            else
+            {
+                mipLevel--;
+            }
+        }
+        else
+        {
+            currUV = newUV;
+            currW = newW;
+            mipLevel = min(mipLevel + 1, maxMipLevel);
+        }
+    }
+
+    if (hit)
+    {
+        float4 color = _ColorTexture.SampleLevel(sampler_ColorTexture, hitUV, 0);
+        _OutputTexture[dtid.xy] = float4(color.rgb, 1.0);
+    }
+    else
+    {
+        _OutputTexture[dtid.xy] = float4(0.0, 0.0, 0.0, 1.0);
+    }
+}

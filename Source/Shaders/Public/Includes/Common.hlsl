@@ -216,7 +216,6 @@ float3 GetCameraWorldSpacePosition()
     return _MatrixInvView._m03_m13_m23;
 }
 
-// TODO not tested
 float GetLinearEyeDepth(float ndcDepth)
 {
     // ndcDepth = A + B / viewZ
