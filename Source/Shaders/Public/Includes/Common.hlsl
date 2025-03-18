@@ -82,6 +82,12 @@ float3 TransformWorldToViewDir(float3 dirWS)
     return normalize(mul((float3x3) _MatrixView, dirWS));
 }
 
+float3 TransformViewToWorldDir(float3 dirVS)
+{
+    // Normalize to support uniform scaling
+    return normalize(mul((float3x3) _MatrixInvView, dirVS));
+}
+
 float4 TransformViewToHClip(float3 positionVS)
 {
     return mul(_MatrixProjection, float4(positionVS, 1.0));

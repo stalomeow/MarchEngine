@@ -77,6 +77,7 @@ namespace march
 
         TextureHandle HiZTexture;
         TextureHandle SSGITexture;
+        TextureHandle SSGITextureTemp;
 
         void Reset()
         {
@@ -104,6 +105,7 @@ namespace march
             ShadowMap = {};
             HiZTexture = {};
             SSGITexture = {};
+            SSGITextureTemp = {};
         }
     };
 

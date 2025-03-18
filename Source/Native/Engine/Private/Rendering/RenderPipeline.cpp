@@ -889,7 +889,7 @@ namespace march
     void RenderPipeline::Hiz()
     {
         GfxTextureDesc desc{};
-        desc.Format = GfxTextureFormat::R32_Float;
+        desc.Format = GfxTextureFormat::R32G32_Float;
         desc.Flags = GfxTextureFlags::Mipmaps | GfxTextureFlags::UnorderedAccess;
         desc.Dimension = GfxTextureDimension::Tex2D;
         desc.Width = m_Resource.ColorTarget.GetDesc().Width;
@@ -942,13 +942,17 @@ namespace march
 
         static int32 ssgiId = ShaderUtils::GetIdFromString("_SSGITexture");
         m_Resource.SSGITexture = m_RenderGraph->RequestTexture(ssgiId, desc);
+        static int32 ssgiTempId = ShaderUtils::GetIdFromString("_SSGITextureTemp");
+        m_Resource.SSGITextureTemp = m_RenderGraph->RequestTexture(ssgiTempId, desc);
 
         auto builder = m_RenderGraph->AddPass("ScreenSpaceGlobalIllumination");
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.HiZTexture);
         builder.In(m_Resource.ColorTarget);
+        builder.In(m_Resource.DepthStencilTarget);
         builder.Out(m_Resource.SSGITexture);
+        builder.Out(m_Resource.SSGITextureTemp);
 
         for (const TextureHandle& tex : m_Resource.GBuffers)
         {
@@ -962,6 +966,7 @@ namespace march
             context.SetVariable(m_Resource.CbCamera);
             context.SetVariable(m_Resource.HiZTexture);
             context.SetVariable(m_Resource.ColorTarget, "_ColorTexture");
+            context.SetVariable(m_Resource.DepthStencilTarget, "_StencilTexture", GfxTextureElement::Stencil);
             context.SetVariable(m_Resource.SSGITexture, "_OutputTexture");
 
             for (const TextureHandle& tex : m_Resource.GBuffers)
@@ -969,8 +974,23 @@ namespace march
                 context.SetVariable(tex);
             }
 
-            std::optional<size_t> kernel = m_SSGIShader->FindKernel("CSMain");
+            std::optional<size_t> kernel = m_SSGIShader->FindKernel("DiffuseMain");
             context.DispatchComputeByThreadCount(m_SSGIShader.get(), *kernel, w, h, 1);
+
+            for (int i = 0; i < 3; i++)
+            {
+                context.SetVariable(m_Resource.SSGITexture, "_Input");
+                context.SetVariable(m_Resource.SSGITextureTemp, "_Output");
+
+                kernel = m_SSGIShader->FindKernel("HBlurMain");
+                context.DispatchComputeByThreadCount(m_SSGIShader.get(), *kernel, w, h, 1);
+
+                context.SetVariable(m_Resource.SSGITextureTemp, "_Input");
+                context.SetVariable(m_Resource.SSGITexture, "_Output");
+
+                kernel = m_SSGIShader->FindKernel("VBlurMain");
+                context.DispatchComputeByThreadCount(m_SSGIShader.get(), *kernel, w, h, 1);
+            }
         });
     }
 }

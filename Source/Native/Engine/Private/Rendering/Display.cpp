@@ -6,7 +6,7 @@ namespace march
 {
     static const uint32_t MSAASampleCount = 4;
     static const GfxTextureFormat ColorFormat = GfxTextureFormat::R16G16B16A16_Float;
-    static const GfxTextureFormat DepthStencilFormat = GfxTextureFormat::D24_UNorm_S8_UInt;
+    static const GfxTextureFormat DepthStencilFormat = GfxTextureFormat::D32_Float_S8_UInt;
 
     Display::Display(const std::string& name, uint32_t width, uint32_t height)
         : m_Name(name)

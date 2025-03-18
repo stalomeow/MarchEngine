@@ -1,13 +1,19 @@
 #pragma kernel CSMain
+#pragma kernel DiffuseMain
 
 #include "Includes/Common.hlsl"
 #include "Includes/Depth.hlsl"
 #include "Includes/GBuffer.hlsl"
+#include "Includes/Sampling.hlsl"
+#include "Includes/BRDF.hlsl"
 
-#define MAX_DISTANCE 100
+#define MAX_DISTANCE 20
+#define MAX_ITER     32
+#define SPP          1
 
 Texture2D _ColorTexture;
 SamplerState sampler_ColorTexture;
+Texture2D<uint2> _StencilTexture;
 RWTexture2D<float4> _OutputTexture;
 
 float2 GetGBufferUV(int2 location)
@@ -17,105 +23,230 @@ float2 GetGBufferUV(int2 location)
     return GetUVFromTexelLocation(location, width, height);
 }
 
-float2 GetUVDelta(float2 startUV, float3 endPositionVS)
+float2 GetUVDelta(float2 startUV, float3 endPosVS)
 {
-    float4 endCS = TransformViewToHClip(endPositionVS);
+    float4 endCS = TransformViewToHClip(endPosVS);
     float2 endUV = GetScreenUVFromNDC(endCS.xy / endCS.w);
     return endUV - startUV;
+}
+
+bool HasObject(float2 uv)
+{
+    float width, height;
+    _StencilTexture.GetDimensions(width, height);
+    uint stencil = _StencilTexture.Load(int3(uv * float2(width, height), 0)).g;
+    return stencil != 0;
+}
+
+//bool HiZRayTracing(float2 startUV, float3 startPosVS, float3 rayDirVS, out float2 hitUV)
+//{
+//    float3 endPosVS = startPosVS + rayDirVS * MAX_DISTANCE;
+//    float startRcpZ = rcp(startPosVS.z);
+//    float endRcpZ = rcp(endPosVS.z);
+
+//    bool permute = false;
+//    float2 diff = GetUVDelta(startUV, endPosVS);
+
+//    // 斜率 > 1
+//    if (abs(diff.y) > abs(diff.x))
+//    {
+//        permute = true;
+//        diff = diff.yx;
+//        startUV = startUV.yx;
+//    }
+
+//    float2 stepUV = float2(1.0, diff.y / diff.x) * sign(diff.x);
+//    float stepRcpZ = (endRcpZ - startRcpZ) / abs(diff.x);
+
+//    int mipLevel = 0;
+//    int maxMipLevel = GetHierarchicalSceneDepthMaxMipLevel();
+//    float2 currUV = startUV;
+//    float currRcpZ = startRcpZ;
+
+//    bool hit = false;
+//    hitUV = 0.0;
+
+//    for (int i = 0; i < MAX_ITER; i++)
+//    {
+//        float width, height;
+//        GetHierarchicalSceneDepthDimensions(mipLevel, width, height);
+
+//        float stepScale = rcp(permute ? height : width);
+//        float2 size = permute ? float2(height, width) : float2(width, height);
+//        float2 newUV = currUV + stepUV * stepScale;
+//        float newRcpZ = startRcpZ + stepRcpZ * abs(newUV.x - startUV.x); // currRcpZ + stepRcpZ * stepScale;
+//        float newViewZ = rcp(newRcpZ);
+//        float currViewZ = rcp(currRcpZ);
+
+//        if (i == 0)
+//        {
+//            currUV = newUV;
+//            currRcpZ = newRcpZ;
+//            continue;
+//        }
+
+//        if (abs(newUV.x - startUV.x) > abs(diff.x)
+//            || any(newUV < 0.0) || any(newUV > 1.0) || !HasObject(permute ? newUV.yx : newUV))
+//        {
+//            if (mipLevel == 0)
+//            {
+//                break;
+//            }
+//            else
+//            {
+//                mipLevel--;
+//                continue;
+//            }
+//        }
+
+//        float sceneDepth = SampleNearestHierarchicalSceneDepth(permute ? newUV.yx : newUV, mipLevel);
+//        float sceneViewZ = GetLinearEyeDepth(sceneDepth);
+
+//        // 加一个 bias 防止 stride 过小，自反射
+//        if (max(newViewZ, currViewZ) - 0.2 >= sceneViewZ)
+//        {
+//            // ray 有一端跑到物体内部了
+
+//            if (mipLevel == 0)
+//            {
+//                if (min(newViewZ, currViewZ) <= sceneViewZ + 0.5)
+//                {
+//                    hit = true;
+//                    hitUV = permute ? newUV.yx : newUV;
+//                    break;
+//                }
+
+//                // 继续在 mip0 中搜索
+//                currUV = newUV;
+//                currRcpZ = newRcpZ;
+//            }
+//            else
+//            {
+//                mipLevel--;
+//            }
+//        }
+//        else
+//        {
+//            currUV = newUV;
+//            currRcpZ = newRcpZ;
+//            mipLevel = min(mipLevel + 1, maxMipLevel);
+//        }
+//    }
+
+//    return hit;
+//}
+
+float3 TransformViewToSS(float3 positionVS, float width, float height)
+{
+    float4 positionCS = TransformViewToHClip(positionVS);
+    float3 positionNDC = positionCS.xyz / positionCS.w;
+    float2 uv = GetScreenUVFromNDC(positionNDC.xy);
+    return float3(uv * float2(width, height), positionNDC.z);
+}
+
+bool HiZRayTracing(float2 startUV, float3 startPosVS, float3 rayDirVS, float3 normalWS, out float2 hitUV)
+{
+    float3 endPosVS = startPosVS + rayDirVS * MAX_DISTANCE;
+    bool isTowardEye = rayDirVS.z < 0;
+
+    float width, height;
+    GetSceneDepthDimensions(width, height);
+    float3 o = TransformViewToSS(startPosVS, width, height);
+    float3 end = TransformViewToSS(endPosVS, width, height);
+    float3 d = normalize(end - o);
+    float tmax = length(end - o);
+
+    int mipLevel = 2;
+    int maxMipLevel = GetHierarchicalSceneDepthMaxMipLevel();
+
+    bool hit = false;
+    hitUV = 0.0;
+    float t = 10;
+    int iter = 0;
+
+    while (iter++ < MAX_ITER && t < tmax)
+    {
+        float nextT = t + 1.1 * exp2(mipLevel);
+        float3 p = o + d * nextT;
+        float2 uv = p.xy / float2(width, height);
+
+        if (any(uv < 0.0) || any(uv > 1.0) || !HasObject(uv) || nextT > tmax)
+        {
+            if (mipLevel == 0)
+                break;
+            mipLevel--;
+            continue;
+        }
+
+        float rayDepth = GetLinearEyeDepth(p.z);
+
+        if (isTowardEye)
+        {
+            //float3 normal = SampleGBufferData(uv).normalWS;
+            float sceneDepth = GetLinearEyeDepth(SampleFarthestHierarchicalSceneDepth(uv, mipLevel));
+
+            if (rayDepth + 0.2 < sceneDepth)
+            {
+                if (mipLevel == 0)
+                {
+                    hit = true;
+                    hitUV = uv;
+                    break;
+                }
+
+                --mipLevel;
+            }
+            else
+            {
+                t = nextT;
+                mipLevel = min(mipLevel + 1, maxMipLevel);
+            }
+        }
+        else
+        {
+            //float3 normal = SampleGBufferData(uv).normalWS;
+            float sceneDepth = GetLinearEyeDepth(SampleNearestHierarchicalSceneDepth(uv, mipLevel));
+
+            if (rayDepth - 0.2 > sceneDepth)
+            {
+                if (mipLevel == 0)
+                {
+                    hit = true;
+                    hitUV = uv;
+                    break;
+                }
+
+                --mipLevel;
+            }
+            else
+            {
+                t = nextT;
+                mipLevel = min(mipLevel + 1, maxMipLevel);
+            }
+        }
+    }
+
+    return hit;
 }
 
 [numthreads(16, 16, 1)]
 void CSMain(int3 dtid : SV_DispatchThreadID)
 {
     float2 uv = GetGBufferUV(dtid.xy);
+
+    if (!HasObject(uv))
+    {
+        _OutputTexture[dtid.xy] = 0;
+        return;
+    }
+
     float3 positionVS = ComputeViewSpacePosition(uv, SampleSceneDepth(uv));
-    float3 normalVS = TransformWorldToViewNormal(SampleGBufferData(uv).normalWS);
+    float3 normalWS = SampleGBufferData(uv).normalWS;
+    float3 normalVS = TransformWorldToViewNormal(normalWS);
     float3 rayDirVS = normalize(reflect(positionVS, normalVS));
-    float3 endPositionVS = positionVS + rayDirVS * MAX_DISTANCE;
 
-    float startW = 1.0 / positionVS.z;
-    float endW = 1.0 / endPositionVS.z;
-
-    bool isExchanged = false;
-    float2 diff = GetUVDelta(uv, endPositionVS);
-
-    // 斜率 > 1
-    if (abs(diff.y) > abs(diff.x))
-    {
-        isExchanged = true;
-        diff = diff.yx;
-        uv = uv.yx;
-    }
-
-    float2 stepUV = float2(1.0, diff.y / diff.x) * sign(diff.x);
-    float stepW = (endW - startW) / abs(diff.x);
-
-    int mipLevel = 0;
-    int maxMipLevel = GetHierarchicalSceneDepthMaxMipLevel();
-    float2 currUV = uv;
-    float currW = startW;
-    bool hit = false;
-    float2 hitUV = 0.0;
-
-    for (int i = 0; i < 64; i++)
-    {
-        float width, height;
-        GetHierarchicalSceneDepthDimensions(mipLevel, width, height);
-        float stepScale = rcp(isExchanged ? height : width);
-        float2 newUV = currUV + stepUV * stepScale;
-
-        if (any(newUV < 0.0) || any(newUV > 1.0))
-        {
-            if (mipLevel == 0)
-            {
-                break;
-            }
-
-            mipLevel--;
-            continue;
-        }
-
-        float newW = startW + stepW * abs(newUV.x - uv.x);
-        float newViewZ = 1.0 / newW;
-        float currViewZ = 1.0 / currW;
-
-        float nearestDepth = SampleNearestHierarchicalSceneDepth(isExchanged ? newUV.yx : newUV, mipLevel);
-        float nearestViewZ = GetLinearEyeDepth(nearestDepth);
-
-        float rayZMin = min(newViewZ, currViewZ);
-        float rayZMax = max(newViewZ, currViewZ);
-
-        bool isBehind = (rayZMax - 0.1 >= nearestViewZ); // 加一个 bias 防止 stride 过小，自反射
-        //bool intersecting = isBehind && (rayZMin <= nearestViewZ + 0.5);
-
-        if (isBehind)
-        {
-            if (mipLevel == 0)
-            {
-                if (rayZMin <= nearestViewZ + 0.5)
-                {
-                    hit = true;
-                    hitUV = isExchanged ? newUV.yx : newUV;
-                    break;
-                }
-
-                currUV = newUV;
-                currW = newW;
-            }
-            else
-            {
-                mipLevel--;
-            }
-        }
-        else
-        {
-            currUV = newUV;
-            currW = newW;
-            mipLevel = min(mipLevel + 1, maxMipLevel);
-        }
-    }
-
-    if (hit)
+    float2 hitUV;
+    if (HiZRayTracing(uv, positionVS, rayDirVS, normalWS, hitUV))
     {
         float4 color = _ColorTexture.SampleLevel(sampler_ColorTexture, hitUV, 0);
         _OutputTexture[dtid.xy] = float4(color.rgb, 1.0);
@@ -124,4 +255,224 @@ void CSMain(int3 dtid : SV_DispatchThreadID)
     {
         _OutputTexture[dtid.xy] = float4(0.0, 0.0, 0.0, 1.0);
     }
+}
+
+float2 HashRandom(float2 p, float frameCount)
+{
+    float3 p3 = frac(float3(p.xyx) * float3(.1031, .1030, .0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    float3 frameMagicScale = float3(2.083f, 4.867f, 8.65);
+    p3 += frameCount * frameMagicScale;
+    return frac((p3.xx + p3.yz) * p3.zy);
+}
+
+[numthreads(16, 16, 1)]
+void DiffuseMain(int3 dtid : SV_DispatchThreadID)
+{
+    float2 uv = GetGBufferUV(dtid.xy);
+
+    if (!HasObject(uv))
+    {
+        _OutputTexture[dtid.xy] = 0;
+        return;
+    }
+
+    GBufferData gbuffer = SampleGBufferData(uv);
+    float3 positionVS = ComputeViewSpacePosition(uv, SampleSceneDepth(uv));
+
+    float3x3 tbn = GetTBNForRandomSampling(gbuffer.normalWS);
+    BRDFData brdfData = GetBRDFData(gbuffer.albedo, gbuffer.metallic, gbuffer.roughness);
+
+    float3 N = gbuffer.normalWS;
+    float3 V = TransformViewToWorldDir(normalize(-positionVS));
+    float NoV = saturate(dot(N, V));
+
+    float3 result = 0;
+    int sampleCount = 0;
+
+    for (int i = 0; i < SPP; i++)
+    {
+        float2 xi = HashRandom(dtid.xy * SPP + i, GetTAAFrameIndex());
+        float3 rayDirWS = SampleHemisphereCosine(xi, tbn);
+        float3 rayDirVS = TransformWorldToViewDir(rayDirWS);
+
+        float2 hitUV;
+        if (HiZRayTracing(uv, positionVS, rayDirVS, N, hitUV))
+        {
+            float3 L = rayDirWS;
+            float3 H = normalize(L + V);
+            float NoL = saturate(dot(N, L));
+            float NoH = saturate(dot(N, H));
+            float LoH = saturate(dot(L, H));
+            float3 brdf = DirectBRDF(brdfData, NoV, NoL, NoH, LoH);
+            float3 radiance = _ColorTexture.SampleLevel(sampler_ColorTexture, hitUV, 0).rgb;
+            result += brdf * radiance; // NoL 被 pdf 约掉了
+            sampleCount++;
+        }
+    }
+
+    result = (sampleCount == 0) ? 0 : (result * PI / sampleCount);
+    _OutputTexture[dtid.xy] = float4(result, 1.0);
+}
+
+#pragma kernel HBlurMain
+#pragma kernel VBlurMain
+
+#define N      256
+#define RADIUS 5
+
+// sigma = 2.0
+static const float _Weights[1 + 2 * RADIUS] =
+{
+    0.008812229292562285,
+    0.027143577143479373,
+    0.06511405659938267,
+    0.1216490730138096,
+    0.1769983568313557,
+    0.20056541423882085,
+    0.1769983568313557,
+    0.1216490730138096,
+    0.06511405659938267,
+    0.027143577143479373,
+    0.008812229292562285
+};
+
+Texture2D<float3> _Input;
+RWTexture2D<float3> _Output;
+groupshared float3 _ColorCache[N + 2 * RADIUS];
+groupshared float4 _NormalDepthCache[N + 2 * RADIUS];
+
+cbuffer cbBlur
+{
+    float _FilterSize;
+};
+
+[numthreads(N, 1, 1)]
+void HBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
+{
+    int width, height;
+    _Input.GetDimensions(width, height);
+
+    if (gtid.x < RADIUS)
+    {
+        int x = max(0, dtid.x - RADIUS);
+        _ColorCache[gtid.x] = _Input[int2(x, dtid.y)];
+
+        // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
+        float2 uv = GetUVFromTexelLocation(int2(x, dtid.y), width, height);
+        _NormalDepthCache[gtid.x] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
+    }
+
+    if (gtid.x >= N - RADIUS)
+    {
+        int x = min(width - 1, dtid.x + RADIUS);
+        _ColorCache[gtid.x + 2 * RADIUS] = _Input[int2(x, dtid.y)];
+
+        // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
+        float2 uv = GetUVFromTexelLocation(int2(x, dtid.y), width, height);
+        _NormalDepthCache[gtid.x + 2 * RADIUS] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
+    }
+
+    int2 loc = min(dtid.xy, int2(width - 1, height - 1));
+    _ColorCache[gtid.x + RADIUS] = _Input[loc];
+
+    // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
+    float2 uv1 = GetUVFromTexelLocation(loc, width, height);
+    _NormalDepthCache[gtid.x + RADIUS] = float4(SampleGBufferData(uv1).normalWS, SampleSceneDepth(uv1));
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // 总是计入中间的值
+    float3 result = _Weights[RADIUS] * _ColorCache[gtid.x + RADIUS];
+    float weights = _Weights[RADIUS];
+
+    float3 centerNormal = _NormalDepthCache[gtid.x + RADIUS].xyz;
+    float centerDepth = _NormalDepthCache[gtid.x + RADIUS].w;
+
+    [unroll]
+    for (int i = -RADIUS; i <= RADIUS; ++i)
+    {
+        if (i == 0)
+        {
+            continue;
+        }
+
+        int cacheIndex = gtid.x + RADIUS + i;
+        float3 normal = _NormalDepthCache[cacheIndex].xyz;
+        float depth = _NormalDepthCache[cacheIndex].w;
+
+        if (dot(normal, centerNormal) >= 0.8 && abs(depth - centerDepth) <= 0.2)
+        {
+            float w = _Weights[RADIUS + i];
+            result += w * _ColorCache[cacheIndex];
+            weights += w;
+        }
+    }
+
+    _Output[dtid.xy] = result / weights;
+}
+
+[numthreads(1, N, 1)]
+void VBlurMain(int3 gtid : SV_GroupThreadID, int3 dtid : SV_DispatchThreadID)
+{
+    int width, height;
+    _Input.GetDimensions(width, height);
+
+    if (gtid.y < RADIUS)
+    {
+        int y = max(0, dtid.y - RADIUS);
+        _ColorCache[gtid.y] = _Input[int2(dtid.x, y)];
+
+        // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
+        float2 uv = GetUVFromTexelLocation(int2(dtid.x, y), width, height);
+        _NormalDepthCache[gtid.y] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
+    }
+
+    if (gtid.y >= N - RADIUS)
+    {
+        int y = min(height - 1, dtid.y + RADIUS);
+        _ColorCache[gtid.y + 2 * RADIUS] = _Input[int2(dtid.x, y)];
+
+        // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
+        float2 uv = GetUVFromTexelLocation(int2(dtid.x, y), width, height);
+        _NormalDepthCache[gtid.y + 2 * RADIUS] = float4(SampleGBufferData(uv).normalWS, SampleSceneDepth(uv));
+    }
+
+    int2 loc = min(dtid.xy, int2(width - 1, height - 1));
+    _ColorCache[gtid.y + RADIUS] = _Input[loc];
+
+    // G-Buffer 大小和 _Input 可能不一样，所以要用 Sample
+    float2 uv1 = GetUVFromTexelLocation(loc, width, height);
+    _NormalDepthCache[gtid.y + RADIUS] = float4(SampleGBufferData(uv1).normalWS, SampleSceneDepth(uv1));
+
+    GroupMemoryBarrierWithGroupSync();
+
+    // 总是计入中间的值
+    float3 result = _Weights[RADIUS] * _ColorCache[gtid.y + RADIUS];
+    float weights = _Weights[RADIUS];
+
+    float3 centerNormal = _NormalDepthCache[gtid.y + RADIUS].xyz;
+    float centerDepth = _NormalDepthCache[gtid.y + RADIUS].w;
+
+    [unroll]
+    for (int i = -RADIUS; i <= RADIUS; ++i)
+    {
+        if (i == 0)
+        {
+            continue;
+        }
+
+        int cacheIndex = gtid.y + RADIUS + i;
+        float3 normal = _NormalDepthCache[cacheIndex].xyz;
+        float depth = _NormalDepthCache[cacheIndex].w;
+
+        if (dot(normal, centerNormal) >= 0.8 && abs(depth - centerDepth) <= 0.2)
+        {
+            float w = _Weights[RADIUS + i];
+            result += w * _ColorCache[cacheIndex];
+            weights += w;
+        }
+    }
+
+    _Output[dtid.xy] = result / weights;
 }

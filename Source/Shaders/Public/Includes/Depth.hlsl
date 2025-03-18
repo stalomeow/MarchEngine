@@ -26,9 +26,10 @@ float SampleNearestHierarchicalSceneDepth(float2 uv, float mipLevel)
 }
 
 // 采样 Hi-Z Buffer，每层 mip 保存的都是距离相机最远的深度值
-//float SampleFarthestHierarchicalSceneDepth(float2 uv, float mipLevel)
-//{
-//}
+float SampleFarthestHierarchicalSceneDepth(float2 uv, float mipLevel)
+{
+    return _HiZTexture.SampleLevel(sampler_HiZTexture, uv, mipLevel).g;
+}
 
 int GetHierarchicalSceneDepthMaxMipLevel()
 {

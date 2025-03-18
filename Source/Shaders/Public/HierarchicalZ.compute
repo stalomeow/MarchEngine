@@ -4,28 +4,18 @@
 #include "Includes/Common.hlsl"
 
 Texture2D _InputTexture;
-RWTexture2D<float> _OutputTexture;
+RWTexture2D<float2> _OutputTexture; // r: nearest, g: farthest
 
 [numthreads(16, 16, 1)]
 void CopyDepthMain(int3 dtid : SV_DispatchThreadID)
 {
-    _OutputTexture[dtid.xy] = _InputTexture.Load(int3(dtid.xy, 0)).r;
+    _OutputTexture[dtid.xy] = _InputTexture.Load(int3(dtid.xy, 0)).rr; // 拷贝到两个通道
 }
 
-[numthreads(16, 16, 1)]
-void GenMipMain(int3 dtid : SV_DispatchThreadID)
+float CalcNearestDepth(int2 location, float2 uv, bool extraColumn, bool extraRow)
 {
-    int width, height;
-    _InputTexture.GetDimensions(width, height);
-
-    int2 location = dtid.xy * 2;
-    float2 uv = (location + 1.0) / float2(width, height); // 采样四个像素的中心
     float4 depth = _InputTexture.GatherRed(sampler_LinearClamp, uv);
     float nearest = GetNearestDepth(GetNearestDepth(depth.x, depth.y), GetNearestDepth(depth.z, depth.w));
-
-    // 奇数需要多读一列/一排像素
-    bool extraColumn = (width & 1);
-    bool extraRow = (height & 1);
 
     if (extraColumn)
     {
@@ -51,5 +41,55 @@ void GenMipMain(int3 dtid : SV_DispatchThreadID)
         nearest = GetNearestDepth(nearest, _InputTexture.Load(int3(location + 2, 0)).r);
     }
 
-    _OutputTexture[dtid.xy] = nearest;
+    return nearest;
+}
+
+float CalcFarthestDepth(int2 location, float2 uv, bool extraColumn, bool extraRow)
+{
+    float4 depth = _InputTexture.GatherGreen(sampler_LinearClamp, uv);
+    float farthest = GetFarthestDepth(GetFarthestDepth(depth.x, depth.y), GetFarthestDepth(depth.z, depth.w));
+
+    if (extraColumn)
+    {
+        depth = _InputTexture.GatherGreen(sampler_LinearClamp, uv, int2(1, 0));
+
+        // 需要取右侧两个像素的结果，xyzw 的顺序参考下面的链接
+        // https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+        farthest = GetFarthestDepth(farthest, GetFarthestDepth(depth.y, depth.z));
+    }
+
+    if (extraRow)
+    {
+        depth = _InputTexture.GatherGreen(sampler_LinearClamp, uv, int2(0, 1));
+
+        // 需要取下侧两个像素的结果，xyzw 的顺序参考下面的链接
+        // https://wojtsterna.blogspot.com/2018/02/directx-11-hlsl-gatherred.html
+        farthest = GetFarthestDepth(farthest, GetFarthestDepth(depth.x, depth.y));
+    }
+
+    if (extraColumn && extraRow)
+    {
+        // 获取 3x3 区域右下角的像素
+        farthest = GetFarthestDepth(farthest, _InputTexture.Load(int3(location + 2, 0)).g);
+    }
+
+    return farthest;
+}
+
+[numthreads(16, 16, 1)]
+void GenMipMain(int3 dtid : SV_DispatchThreadID)
+{
+    int width, height;
+    _InputTexture.GetDimensions(width, height);
+
+    int2 location = dtid.xy * 2; // 上一层 mip 2x2 区域左上角的坐标
+    float2 uv = (location + 1.0) / float2(width, height); // Gather 2x2 区域四个像素的中心
+
+    // 奇数需要多读一列/一排像素
+    bool extraColumn = (width & 1);
+    bool extraRow = (height & 1);
+
+    float nearest = CalcNearestDepth(location, uv, extraColumn, extraRow);
+    float farthest = CalcFarthestDepth(location, uv, extraColumn, extraRow);
+    _OutputTexture[dtid.xy] = float2(nearest, farthest);
 }
