@@ -10,7 +10,7 @@ namespace march
     {
         DirectX::XMFLOAT4 Position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
         DirectX::XMFLOAT4 SpotDirection; // 聚光灯方向，w 未使用
-        DirectX::XMFLOAT4 Color;         // 颜色，接收阴影（w==1）
+        DirectX::XMFLOAT4 Color;         // 颜色，投射阴影（w==1）
         DirectX::XMFLOAT4 Params;        // AttenuationRadius, cos(SpotOuterConeAngle), rcp(cos(SpotInnerConeAngle)-cos(SpotOuterConeAngle)), IsSpotLight (w==1)
     };
 
@@ -61,6 +61,8 @@ namespace march
         float m_ShadowSlopeScaledDepthBias = 2.0f;
         float m_ShadowDepthBiasClamp = 0.0f;
 
+        bool m_IsCastingShadow = true;
+
     public:
         LightType GetType() const;
         void SetType(LightType value);
@@ -101,7 +103,10 @@ namespace march
         float GetShadowDepthBiasClamp() const;
         void SetShadowDepthBiasClamp(float value);
 
-        void FillLightData(LightData& data, bool receiveShadow) const;
+        bool GetIsCastingShadow() const;
+        void SetIsCastingShadow(bool value);
+
+        void FillLightData(LightData& data, bool castShadow) const;
     };
 
     struct LightUnitUtils

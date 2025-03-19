@@ -36,7 +36,8 @@ namespace March.Editor.Drawers
                 }
             }
 
-            if (EditorGUI.Foldout("Shadow", ""))
+            // 目前只有 Directional Light 支持阴影
+            if (light.Type == LightType.Directional && EditorGUI.Foldout("Shadow", ""))
             {
                 using (new EditorGUI.IndentedScope())
                 {
@@ -117,11 +118,14 @@ namespace March.Editor.Drawers
 
         private static bool DrawShadowProperties(Light light, JsonObjectContract contract)
         {
-            bool changed = false;
+            bool changed = EditorGUI.PropertyField(contract.GetEditorProperty(light, "IsCastingShadow"));
 
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ShadowDepthBias"));
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ShadowSlopeScaledDepthBias"));
-            changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ShadowDepthBiasClamp"));
+            using (new EditorGUI.DisabledScope(!light.IsCastingShadow))
+            {
+                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ShadowDepthBias"));
+                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ShadowSlopeScaledDepthBias"));
+                changed |= EditorGUI.PropertyField(contract.GetEditorProperty(light, "ShadowDepthBiasClamp"));
+            }
 
             return changed;
         }

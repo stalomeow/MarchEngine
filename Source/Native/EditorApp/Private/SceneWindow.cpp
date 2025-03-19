@@ -318,7 +318,7 @@ namespace march
 
         // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
         // The w component of the returned vector will always be 1.0.
-        XMVECTOR posNDC = XMVector3TransformCoord(posWS, camera->LoadViewProjectionMatrix());
+        XMVECTOR posNDC = XMVector3TransformCoord(posWS, camera->LoadNonJitteredViewProjectionMatrix());
 
         float z = XMVectorGetZ(posNDC);
         return z >= 0.0f && z <= 1.0f;
@@ -370,7 +370,7 @@ namespace march
         }
 
         XMFLOAT4X4 viewMatrix = camera->GetViewMatrix();
-        XMFLOAT4X4 projMatrix = camera->GetProjectionMatrix();
+        XMFLOAT4X4 projMatrix = camera->GetNonJitteredProjectionMatrix();
 
         const float* view = reinterpret_cast<float*>(viewMatrix.m);
         const float* proj = reinterpret_cast<float*>(projMatrix.m);

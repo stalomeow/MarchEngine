@@ -10,7 +10,7 @@ struct LightRawData
 {
     float4 position;      // 位置（w==1, 点光源/聚光灯）；方向（w==0, 平行光）
     float4 spotDirection; // 聚光灯方向，w 未使用
-    float4 color;         // 颜色，接收阴影（w==1）
+    float4 color;         // 颜色，投射阴影（w==1）
     float4 params;        // AttenuationRadius, cos(SpotOuterConeAngle), rcp(cos(SpotInnerConeAngle)-cos(SpotOuterConeAngle)), IsSpotLight (w==1)
 };
 

@@ -136,3 +136,13 @@ NATIVE_EXPORT_AUTO Light_SetShadowDepthBiasClamp(cs<Light*> pLight, cs_float val
 {
     pLight->SetShadowDepthBiasClamp(value);
 }
+
+NATIVE_EXPORT_AUTO Light_GetIsCastingShadow(cs<Light*> pLight)
+{
+    retcs pLight->GetIsCastingShadow();
+}
+
+NATIVE_EXPORT_AUTO Light_SetIsCastingShadow(cs<Light*> pLight, cs_bool value)
+{
+    pLight->SetIsCastingShadow(value);
+}

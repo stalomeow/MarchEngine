@@ -215,7 +215,17 @@ namespace march
         m_ShadowDepthBiasClamp = value;
     }
 
-    void Light::FillLightData(LightData& data, bool receiveShadow) const
+    bool Light::GetIsCastingShadow() const
+    {
+        return m_IsCastingShadow;
+    }
+
+    void Light::SetIsCastingShadow(bool value)
+    {
+        m_IsCastingShadow = value;
+    }
+
+    void Light::FillLightData(LightData& data, bool castShadow) const
     {
         if (m_Type == LightType::Directional)
         {
@@ -255,7 +265,7 @@ namespace march
         data.Color.x *= intensity;
         data.Color.y *= intensity;
         data.Color.z *= intensity;
-        data.Color.w = receiveShadow ? 1.0f : 0.0f;
+        data.Color.w = castShadow ? 1.0f : 0.0f;
 
         float cosSpotInnerConeAngle = cosf(XMConvertToRadians(m_SpotInnerConeAngle));
         float cosSpotOuterConeAngle = cosf(XMConvertToRadians(m_SpotOuterConeAngle));

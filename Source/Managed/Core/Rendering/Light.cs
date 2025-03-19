@@ -96,6 +96,12 @@ namespace March.Core.Rendering
         [NativeProperty]
         public partial float ShadowDepthBiasClamp { get; set; }
 
+        [JsonProperty]
+        [InspectorName("Casts Shadow")]
+        [Tooltip("Currently only Directional Light supports shadow and only one shadow map is supported.")]
+        [NativeProperty]
+        public partial bool IsCastingShadow { get; set; }
+
         protected override void OnEnable()
         {
             base.OnEnable();

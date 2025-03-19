@@ -287,6 +287,7 @@ namespace march
 
         directionalLights.clear();
         punctualLights.clear();
+        bool hasDirectionalLightShadow = false;
 
         for (const Light* light : m_Lights)
         {
@@ -297,8 +298,15 @@ namespace march
 
             if (light->GetType() == LightType::Directional)
             {
-                bool isFirst = directionalLights.empty();
-                light->FillLightData(directionalLights.emplace_back(), isFirst);
+                bool castShadow = false;
+
+                if (!hasDirectionalLightShadow && light->GetIsCastingShadow())
+                {
+                    hasDirectionalLightShadow = true;
+                    castShadow = true;
+                }
+
+                light->FillLightData(directionalLights.emplace_back(), castShadow);
             }
             else
             {
@@ -440,12 +448,26 @@ namespace march
         desc.Wrap = GfxTextureWrapMode::Clamp;
         desc.MipmapBias = 0.0f;
 
-        bool drawShadow;
+        bool drawShadow = false;
+        size_t lightIndex = 0;
 
-        if (m_Lights.empty() || m_MeshRenderers.empty())
+        if (!m_Lights.empty() && !m_MeshRenderers.empty())
         {
-            drawShadow = false;
+            for (size_t i = 0; i < m_Lights.size(); i++)
+            {
+                const Light* light = m_Lights[i];
 
+                if (light->GetIsActiveAndEnabled() && light->GetType() == LightType::Directional && light->GetIsCastingShadow())
+                {
+                    drawShadow = true;
+                    lightIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (!drawShadow)
+        {
             shadowMatrix = MathUtils::Identity4x4();
             depth2RadialScale = 0;
 
@@ -454,8 +476,6 @@ namespace march
         }
         else
         {
-            drawShadow = true;
-
             BoundingBox aabb{};
 
             for (size_t i = 0; i < m_MeshRenderers.size(); i++)
@@ -475,8 +495,8 @@ namespace march
             BoundingSphere sphere = {};
             BoundingSphere::CreateFromBoundingBox(sphere, aabb);
 
-            XMVECTOR forward = m_Lights[0]->GetTransform()->LoadForward();
-            XMVECTOR up = m_Lights[0]->GetTransform()->LoadUp();
+            XMVECTOR forward = m_Lights[lightIndex]->GetTransform()->LoadForward();
+            XMVECTOR up = m_Lights[lightIndex]->GetTransform()->LoadUp();
 
             XMVECTOR eyePos = XMLoadFloat3(&sphere.Center);
             eyePos = XMVectorSubtract(eyePos, XMVectorScale(forward, sphere.Radius + 1));
@@ -493,7 +513,7 @@ namespace march
 
             XMStoreFloat4x4(&shadowMatrix, XMMatrixMultiply(XMMatrixMultiply(vp, scale), trans)); // DirectX 用的行向量
 
-            float s = std::tanf(XMConvertToRadians(0.5f * m_Lights[0]->GetAngularDiameter()));
+            float s = std::tanf(XMConvertToRadians(0.5f * m_Lights[lightIndex]->GetAngularDiameter()));
             depth2RadialScale = s * std::abs(proj._11 / proj._33);
 
             cbShadowCamera = CreateCameraConstantBuffer("cbShadowCamera", view, proj);
@@ -508,9 +528,9 @@ namespace march
         {
             builder.In(cbShadowCamera);
             builder.SetDepthBias(
-                m_Lights[0]->GetShadowDepthBias(),
-                m_Lights[0]->GetShadowSlopeScaledDepthBias(),
-                m_Lights[0]->GetShadowDepthBiasClamp());
+                m_Lights[lightIndex]->GetShadowDepthBias(),
+                m_Lights[lightIndex]->GetShadowSlopeScaledDepthBias(),
+                m_Lights[lightIndex]->GetShadowDepthBiasClamp());
         }
 
         builder.UseDefaultVariables(false);
