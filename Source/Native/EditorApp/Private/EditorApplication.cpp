@@ -29,6 +29,11 @@ using namespace DirectX;
 namespace fs = std::filesystem;
 
 // Forward declare message handler from imgui_impl_win32.cpp
+// Win32 message handler
+// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace march
@@ -61,7 +66,7 @@ namespace march
         try
         {
             std::vector<std::string> fullArgs{};
-            fullArgs.push_back(programName); // argparse 要求第一个参数是程序名称，但是 windows 传给我们的参数列表没有程序名称
+            fullArgs.push_back(programName); // argparse 要求第一个参数是程序名称，但是 Windows 传给我们的参数列表没有程序名称
             fullArgs.insert(fullArgs.end(), args.begin(), args.end());
             program.parse_args(fullArgs);
         }
@@ -143,6 +148,7 @@ namespace march
 #endif
 
         SetWindowTitle(StringUtils::Format("March Engine <DX12> - {}", m_DataPath));
+        LOG_INFO("Welcome to March Engine!");
     }
 
     bool EditorApplication::IsEngineResourceEditable() const
@@ -171,22 +177,23 @@ namespace march
         ImGui::CreateContext();
 
         ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
         io.IniFilename = m_ImGuiIniFilename.c_str();
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.ConfigDockingAlwaysTabBar = true;
 
         ImGui_ImplWin32_Init(GetWindowHandle());
         ImGuiStyleManager::ApplyDefaultStyle();
-
         ReloadFonts();
 
         ImGui_ImplDX12_Init(GetGfxDevice(), "Engine/Shaders/DearImGui.shader");
 
-        ImGuizmo::GetStyle().RotationLineThickness = 3.0f;
-        ImGuizmo::GetStyle().RotationOuterLineThickness = 2.0f;
+        // Scene View Gizmo Style
+        ImGuizmo::Style& style = ImGuizmo::GetStyle();
+        style.RotationLineThickness = 3.0f;
+        style.RotationOuterLineThickness = 2.0f;
     }
 
     void EditorApplication::OnQuit()
@@ -219,11 +226,10 @@ namespace march
         if (EditorGUI::BeginMainViewportSideBar("##SingleLineToolbar", ImGuiDir_Up, ImGui::GetFrameHeight()))
         {
             // Frame Stats
-            CalculateFrameStats();
+            DrawFrameStats();
             ImGui::SameLine();
 
             // Center Buttons
-
             float width1 = EditorGUI::CalcButtonWidth(ICON_FA_PLAY) * 1.8f;
             float width2 = EditorGUI::CalcButtonWidth(ICON_FA_PAUSE) * 1.8f;
             float width3 = EditorGUI::CalcButtonWidth(ICON_FA_FORWARD_STEP) * 1.8f;
@@ -395,11 +401,6 @@ namespace march
         return LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDI_ICON_MARCH_7TH));
     }
 
-    // Win32 message handler
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
     LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
         LRESULT result;
@@ -416,11 +417,10 @@ namespace march
         return result;
     }
 
-    void EditorApplication::CalculateFrameStats()
+    void EditorApplication::DrawFrameStats()
     {
-        // Code computes the average frames per second, and also the 
-        // average time it takes to render one frame.  These stats 
-        // are appended to the window caption bar.
+        // Code computes the average frames per second, and also the average time it takes to render one frame.
+        // These stats are appended to the window caption bar.
 
         static int fps = 0;
         static int frameCnt = 0;
