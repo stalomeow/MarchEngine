@@ -243,8 +243,14 @@ namespace march
 
     void Application::ShowErrorMessageBox(const std::string& message)
     {
+        ShowErrorMessageBox("Error", message);
+    }
+
+    void Application::ShowErrorMessageBox(const std::string& title, const std::string& message)
+    {
+        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
         std::wstring wMessage = StringUtils::Utf8ToUtf16(message);
-        MessageBoxW(NULL, wMessage.c_str(), L"Error", MB_OK);
+        MessageBoxW(NULL, wMessage.c_str(), wTitle.c_str(), MB_OK);
     }
 
     LRESULT Application::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)

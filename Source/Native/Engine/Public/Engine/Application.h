@@ -36,6 +36,7 @@ namespace march
         uint64_t GetFrameCount() const;
 
         static void ShowErrorMessageBox(const std::string& message);
+        static void ShowErrorMessageBox(const std::string& title, const std::string& message);
 
         virtual const std::string& GetDataPath() const = 0;
         virtual const std::string& GetEngineResourcePath() const = 0;

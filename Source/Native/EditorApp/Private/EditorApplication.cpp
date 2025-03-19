@@ -21,8 +21,12 @@
 #include <imgui_impl_win32.h>
 #include <ImGuizmo.h>
 #include <algorithm>
+#include <stdexcept>
+#include <filesystem>
+#include <argparse/argparse.hpp>
 
 using namespace DirectX;
+namespace fs = std::filesystem;
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -40,66 +44,49 @@ namespace march
     {
     }
 
-    EditorApplication::~EditorApplication() {}
-
-    HICON EditorApplication::GetIcon()
-    {
-        return LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDI_ICON_MARCH_7TH));
-    }
-
-    // Win32 message handler
-    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
-    {
-        LRESULT result;
-
-        if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
-        {
-            result = true;
-        }
-        else
-        {
-            result = Application::HandleMessage(msg, wParam, lParam);
-        }
-
-        return result;
-    }
+    EditorApplication::~EditorApplication() = default;
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
-        InitPaths();
+        constexpr auto programName = "EditorApp";
+        argparse::ArgumentParser program(programName, "1.0", argparse::default_arguments::none);
 
-        auto it = std::find(args.begin(), args.end(), "-project-path");
+        program.add_argument("--project").metavar("PATH").help("Specify the project path").required();
 
-        if (it != args.end() && (it = std::next(it)) != args.end())
+        auto& gfx = program.add_mutually_exclusive_group();
+        gfx.add_argument("--renderdoc").help("Load RenderDoc plugin").flag();
+        gfx.add_argument("--pix").help("Load PIX plugin").flag();
+        gfx.add_argument("--d3d12-debug-layer").help("Enable D3D12 debug layer").flag();
+
+        try
         {
-            m_DataPath = *it;
+            std::vector<std::string> fullArgs{};
+            fullArgs.push_back(programName); // argparse 要求第一个参数是程序名称，但是 windows 传给我们的参数列表没有程序名称
+            fullArgs.insert(fullArgs.end(), args.begin(), args.end());
+            program.parse_args(fullArgs);
         }
-        else
+        catch (const std::exception& err)
         {
-            throw std::runtime_error("Project path not found in command line arguments.");
+            ShowErrorMessageBox(err.what(), program.help().str());
+            std::exit(1);
         }
+
+        InitProject(program.get("--project"));
 
         GfxDeviceDesc desc{};
 
-        if (std::count(args.begin(), args.end(), "-load-renderdoc") > 0)
+        if (program["--renderdoc"] == true)
         {
             FrameDebugger::LoadPlugin(FrameDebuggerPlugin::RenderDoc); // 越早越好
         }
-        else if (std::count(args.begin(), args.end(), "-load-pix") > 0)
+        else if (program["--pix"] == true)
         {
             FrameDebugger::LoadPlugin(FrameDebuggerPlugin::PIX); // 越早越好
         }
-        else if (std::count(args.begin(), args.end(), "-load-gfx-debug-layer") > 0)
+        else if (program["--d3d12-debug-layer"] == true)
         {
             desc.EnableDebugLayer = true;
         }
-
-        m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300);
-        DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
 
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] = 64;
@@ -107,13 +94,73 @@ namespace march
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_DSV] = 64;
         desc.OnlineViewDescriptorHeapSize = 10000;
         desc.OnlineSamplerDescriptorHeapSize = 2048;
+
+        DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
         GfxDevice* device = InitGfxDevice(desc);
-        SetWindowTitle(StringUtils::Format("March Engine <DX12> - {}", m_DataPath));
 
         m_SwapChain = std::make_unique<GfxSwapChain>(device, GetWindowHandle(), GetClientWidth(), GetClientHeight());
-        Display::CreateMainDisplay(10, 10); // dummy
+        m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300 /* ms */);
+
+        Display::CreateMainDisplay(10, 10); // dummy display
 
         InitImGui();
+    }
+
+    void EditorApplication::InitProject(const std::string& path)
+    {
+        if (fs::exists(path))
+        {
+            if (!fs::is_directory(path))
+            {
+                ShowErrorMessageBox("Project path is not a directory.");
+                std::exit(1);
+            }
+        }
+        else
+        {
+            fs::create_directories(path);
+        }
+
+        m_DataPath = path;
+
+        // Normalize path
+        std::replace(m_DataPath.begin(), m_DataPath.end(), '\\', '/');
+        while (!m_DataPath.empty() && m_DataPath.back() == '/')
+        {
+            m_DataPath.pop_back();
+        }
+
+#ifdef ENGINE_RESOURCE_UNIX_PATH
+        m_EngineResourcePath = ENGINE_RESOURCE_UNIX_PATH;
+#else
+        m_EngineResourcePath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Resources";
+#endif
+
+#ifdef ENGINE_SHADER_UNIX_PATH
+        m_EngineShaderPath = ENGINE_SHADER_UNIX_PATH;
+#else
+        m_EngineShaderPath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
+#endif
+
+        SetWindowTitle(StringUtils::Format("March Engine <DX12> - {}", m_DataPath));
+    }
+
+    bool EditorApplication::IsEngineResourceEditable() const
+    {
+#ifdef ENGINE_RESOURCE_UNIX_PATH
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    bool EditorApplication::IsEngineShaderEditable() const
+    {
+#ifdef ENGINE_SHADER_UNIX_PATH
+        return true;
+#else
+        return false;
+#endif
     }
 
     void EditorApplication::InitImGui()
@@ -187,11 +234,14 @@ namespace march
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3, 0));
 
+            ImGui::BeginDisabled();
             ImGui::Button(ICON_FA_PLAY, ImVec2(width1, ImGui::GetFrameHeight()));
             ImGui::SameLine();
             ImGui::Button(ICON_FA_PAUSE, ImVec2(width2, ImGui::GetFrameHeight()));
             ImGui::SameLine();
             ImGui::Button(ICON_FA_FORWARD_STEP, ImVec2(width3, ImGui::GetFrameHeight()));
+            ImGui::EndDisabled();
+
             ImGui::SameLine();
 
             if (FrameDebugger::IsCaptureAvailable() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
@@ -272,39 +322,6 @@ namespace march
         m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
     }
 
-    void EditorApplication::InitPaths()
-    {
-#ifdef ENGINE_RESOURCE_UNIX_PATH
-        m_EngineResourcePath = ENGINE_RESOURCE_UNIX_PATH;
-#else
-        m_EngineResourcePath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Resources";
-#endif
-
-#ifdef ENGINE_SHADER_UNIX_PATH
-        m_EngineShaderPath = ENGINE_SHADER_UNIX_PATH;
-#else
-        m_EngineShaderPath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
-#endif
-    }
-
-    bool EditorApplication::IsEngineResourceEditable() const
-    {
-#ifdef ENGINE_RESOURCE_UNIX_PATH
-        return true;
-#else
-        return false;
-#endif
-    }
-
-    bool EditorApplication::IsEngineShaderEditable() const
-    {
-#ifdef ENGINE_SHADER_UNIX_PATH
-        return true;
-#else
-        return false;
-#endif
-    }
-
     static std::string GetFontPath(Application* app, std::string fontName)
     {
         return app->GetEngineResourcePath() + "/Fonts/" + fontName;
@@ -317,6 +334,10 @@ namespace march
 
     void EditorApplication::ReloadFonts()
     {
+        constexpr float FontSizeLatin = 15.0f;
+        constexpr float FontSizeCJK = 19.0f;
+        constexpr float FontSizeIcon = 13.0f;
+
         const float dpiScale = GetDisplayScale();
 
         ImGuiIO& io = ImGui::GetIO();
@@ -325,7 +346,7 @@ namespace march
         // 英文字体
         ImFontConfig latinConfig{};
         latinConfig.PixelSnapH = true;
-        io.Fonts->AddFontFromFileTTF(GetFontPath(this, "Inter-Regular.otf").c_str(), m_FontSizeLatin * dpiScale,
+        io.Fonts->AddFontFromFileTTF(GetFontPath(this, "Inter-Regular.otf").c_str(), FontSizeLatin * dpiScale,
             &latinConfig, io.Fonts->GetGlyphRangesDefault());
 
         // 中文字体
@@ -333,11 +354,11 @@ namespace march
         cjkConfig.MergeMode = true;
         cjkConfig.PixelSnapH = true;
         cjkConfig.RasterizerDensity = 1.5f; // 稍微放大一点，更清晰
-        io.Fonts->AddFontFromFileTTF(GetFontPath(this, "NotoSansSC-Regular.ttf").c_str(), m_FontSizeCJK * dpiScale,
+        io.Fonts->AddFontFromFileTTF(GetFontPath(this, "NotoSansSC-Regular.ttf").c_str(), FontSizeCJK * dpiScale,
             &cjkConfig, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
         // Font Awesome 图标字体
-        float iconFontSizePixels = m_FontSizeIcon * dpiScale;
+        float iconFontSizePixels = FontSizeIcon * dpiScale;
         static const ImWchar faIconsRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
         static const ImWchar fabIconsRanges[] = { ICON_MIN_FAB, ICON_MAX_16_FAB, 0 };
 
@@ -367,6 +388,32 @@ namespace march
     void EditorApplication::OnPaint()
     {
         OnTick(false);
+    }
+
+    HICON EditorApplication::GetIcon()
+    {
+        return LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDI_ICON_MARCH_7TH));
+    }
+
+    // Win32 message handler
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
+    {
+        LRESULT result;
+
+        if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
+        {
+            result = true;
+        }
+        else
+        {
+            result = Application::HandleMessage(msg, wParam, lParam);
+        }
+
+        return result;
     }
 
     void EditorApplication::CalculateFrameStats()

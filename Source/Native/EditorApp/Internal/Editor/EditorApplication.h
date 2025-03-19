@@ -7,9 +7,8 @@
 
 namespace march
 {
-    class BusyProgressBar;
     class GfxSwapChain;
-    enum class ManagedMethod;
+    class BusyProgressBar;
 
     class EditorApplication : public Application
     {
@@ -35,11 +34,11 @@ namespace march
         HICON GetIcon() override;
 
     private:
+        void InitProject(const std::string& path);
         void InitImGui();
         void DrawBaseImGui();
         void CalculateFrameStats();
         void ReloadFonts();
-        void InitPaths();
 
         std::unique_ptr<GfxSwapChain> m_SwapChain;
         std::unique_ptr<BusyProgressBar> m_ProgressBar;
@@ -50,9 +49,5 @@ namespace march
         std::string m_ImGuiIniFilename;
 
         bool m_IsInitialized;
-
-        const float m_FontSizeLatin = 15.0f;
-        const float m_FontSizeCJK = 19.0f;
-        const float m_FontSizeIcon = 13.0f;
     };
 }

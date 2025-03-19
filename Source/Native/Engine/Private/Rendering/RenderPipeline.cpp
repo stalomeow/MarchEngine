@@ -116,6 +116,7 @@ namespace march
 
             if (display->GetEnableMSAA())
             {
+                LOG_WARNING("MSAA is not supported in current render pipeline implementation (because I am lazy).");
                 return;
             }
 
