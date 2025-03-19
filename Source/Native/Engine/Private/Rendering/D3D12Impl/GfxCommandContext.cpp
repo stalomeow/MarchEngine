@@ -914,6 +914,19 @@ namespace march
         }
     }
 
+    void GfxCommandContext::DispatchCompute(ComputeShader* shader, const std::string& kernelName, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
+    {
+        std::optional<size_t> kernelIndex = shader->FindKernel(kernelName);
+
+        if (!kernelIndex)
+        {
+            LOG_ERROR("Failed to dispatch compute '{}': kernel '{}' not found", shader->GetName(), kernelName);
+            return;
+        }
+
+        DispatchCompute(shader, *kernelIndex, threadGroupCountX, threadGroupCountY, threadGroupCountZ);
+    }
+
     void GfxCommandContext::DispatchCompute(ComputeShader* shader, size_t kernelIndex, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
     {
         SetComputePipelineParameters(shader->GetPSO(kernelIndex), shader, kernelIndex);
@@ -923,6 +936,19 @@ namespace march
             static_cast<UINT>(threadGroupCountX),
             static_cast<UINT>(threadGroupCountY),
             static_cast<UINT>(threadGroupCountZ));
+    }
+
+    void GfxCommandContext::DispatchComputeByThreadCount(ComputeShader* shader, const std::string& kernelName, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)
+    {
+        std::optional<size_t> kernelIndex = shader->FindKernel(kernelName);
+
+        if (!kernelIndex)
+        {
+            LOG_ERROR("Failed to dispatch compute '{}': kernel '{}' not found", shader->GetName(), kernelName);
+            return;
+        }
+
+        DispatchComputeByThreadCount(shader, *kernelIndex, threadCountX, threadCountY, threadCountZ);
     }
 
     void GfxCommandContext::DispatchComputeByThreadCount(ComputeShader* shader, size_t kernelIndex, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)

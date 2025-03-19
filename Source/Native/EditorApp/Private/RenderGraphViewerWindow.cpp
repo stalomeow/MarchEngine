@@ -68,13 +68,15 @@ namespace march
                 data.Status = PassStatus::Normal;
             }
 
-            for (size_t resourceIndex : pass.ResourcesIn)
+            for (const auto& kv : pass.ResourcesIn)
             {
+                size_t resourceIndex = kv.first;
                 m_Resources[resourceIndex].PassAccessFlags[passIndex] |= ResourceAccessFlags::Read;
             }
 
-            for (size_t resourceIndex : pass.ResourcesOut)
+            for (const auto& kv : pass.ResourcesOut)
             {
+                size_t resourceIndex = kv.first;
                 m_Resources[resourceIndex].PassAccessFlags[passIndex] |= ResourceAccessFlags::Write;
             }
         }

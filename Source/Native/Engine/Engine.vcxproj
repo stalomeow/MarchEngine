@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Internal\pch.h" />
+    <ClInclude Include="Public\Engine\InlineArray.h" />
     <ClInclude Include="Public\Engine\Memory\RefCounting.h" />
     <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
@@ -125,6 +126,7 @@
     <ClCompile Include="Private\Rendering\RenderPipeline.binding.cpp" />
     <ClCompile Include="Private\Rendering\RenderPipeline.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderUtils.cpp" />
+    <ClCompile Include="Private\Rendering\RenderPipelineResource.cpp" />
     <ClCompile Include="Private\Scripting\DotNetRuntime.cpp" />
     <ClCompile Include="Private\Scripting\InteropServices.binding.cpp" />
     <ClCompile Include="Private\Scripting\InteropServices.cpp" />

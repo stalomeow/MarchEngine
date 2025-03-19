@@ -253,6 +253,8 @@ namespace march
         GfxTexture* GetTexture();
         const GfxTextureDesc& GetTextureDesc() const;
 
+        void SetDefaultVariable(GfxCommandContext* cmd);
+
         RefCountPtr<GfxResource> GetUnderlyingResource();
 
         void RequestResource();
@@ -343,6 +345,8 @@ namespace march
 
         GfxTexture* GetTexture(size_t resourceIndex);
         const GfxTextureDesc& GetTextureDesc(size_t resourceIndex) const;
+
+        void SetDefaultVariable(size_t resourceIndex, GfxCommandContext* cmd);
 
         RefCountPtr<GfxResource> GetUnderlyingResource(size_t resourceIndex);
 

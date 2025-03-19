@@ -20,6 +20,31 @@ using namespace DirectX;
 
 namespace march
 {
+    struct CameraConstants
+    {
+        XMFLOAT4X4 ViewMatrix;
+        XMFLOAT4X4 ProjectionMatrix;
+        XMFLOAT4X4 ViewProjectionMatrix;
+        XMFLOAT4X4 InvViewMatrix;
+        XMFLOAT4X4 InvProjectionMatrix;
+        XMFLOAT4X4 InvViewProjectionMatrix;
+        XMFLOAT4X4 NonJitteredViewProjectionMatrix;
+        XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
+        XMFLOAT4 TAAParams; // x: TAAFrameIndex
+    };
+
+    struct LightConstants
+    {
+        XMINT4 NumLights;   // x: numDirectionalLights, y: numPunctualLights
+        XMINT4 NumClusters; // xyz: numClusters
+    };
+
+    struct ShadowConstants
+    {
+        XMFLOAT4X4 ShadowMatrix;
+        XMFLOAT4 ShadowParams; // x: depth2RadialScale
+    };
+
     RenderPipeline::RenderPipeline() {}
 
     RenderPipeline::~RenderPipeline() {}
@@ -94,6 +119,7 @@ namespace march
             m_Resource.EnvDiffuseSH9Coefs = m_RenderGraph->ImportBuffer("_EnvDiffuseSH9Coefs", m_EnvDiffuseSH9Coefs.get());
             m_Resource.EnvSpecularRadianceMap = m_RenderGraph->ImportTexture("_EnvSpecularRadianceMap", m_EnvSpecularRadianceMap.get());
             m_Resource.EnvSpecularBRDFLUT = m_RenderGraph->ImportTexture("_EnvSpecularBRDFLUT", m_EnvSpecularBRDFLUT.get());
+            m_Resource.RequestGBuffers(m_RenderGraph.get(), display->GetPixelWidth(), display->GetPixelHeight());
 
             ClearAndDrawObjects(camera->GetEnableWireframe());
 
@@ -186,26 +212,11 @@ namespace march
 
     void RenderPipeline::ClearAndDrawObjects(bool wireframe)
     {
-        GfxTextureDesc gBufferDesc = m_Resource.ColorTarget.GetDesc();
-
-        gBufferDesc.Format = GfxTextureFormat::R8G8B8A8_UNorm;
-        gBufferDesc.Flags = GfxTextureFlags::SRGB;
-        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer0", gBufferDesc));
-
-        gBufferDesc.Flags = GfxTextureFlags::None;
-        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer1", gBufferDesc));
-
-        gBufferDesc.Format = GfxTextureFormat::R8_UNorm;
-        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer2", gBufferDesc));
-
-        gBufferDesc.Format = GfxTextureFormat::R11G11B10_Float; // HDR
-        m_Resource.GBuffers.push_back(m_RenderGraph->RequestTexture("_GBuffer3", gBufferDesc));
-
         auto builder = m_RenderGraph->AddPass("DrawGBuffer");
 
         builder.In(m_Resource.CbCamera);
 
-        for (uint32_t i = 0; i < m_Resource.GBuffers.size(); i++)
+        for (uint32_t i = 0; i < m_Resource.NumGBuffers; i++)
         {
             builder.SetColorTarget(m_Resource.GBuffers[i], i, RenderTargetInitMode::Clear);
         }
@@ -215,7 +226,6 @@ namespace march
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
             context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "GBuffer");
         });
     }
@@ -304,29 +314,17 @@ namespace march
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
-            context.SetVariable(m_Resource.CbLight);
-            context.SetVariable(m_Resource.PunctualLights);
-            context.SetVariable(m_Resource.HiZTexture);
-            context.SetVariable(m_Resource.ClusterPunctualLightRanges);
-            context.SetVariable(m_Resource.ClusterPunctualLightIndices);
-            context.SetVariable(m_Resource.VisibleLightCounter);
-            context.SetVariable(m_Resource.MaxClusterZIds);
-
             // 每个 Buffer 元素对应一个线程
-            std::optional<size_t> resetKernelIndex = m_CullLightShader->FindKernel("ResetMain");
             uint32_t resetCount = std::max(m_Resource.MaxClusterZIds.GetDesc().Count, 1u);
-            context.DispatchComputeByThreadCount(m_CullLightShader.get(), *resetKernelIndex, resetCount, 1, 1);
+            context.DispatchComputeByThreadCount(m_CullLightShader.get(), "ResetMain", resetCount, 1, 1);
 
-            // 每个 GBuffer 像素对应一个线程
-            std::optional<size_t> cullClusterKernelIndex = m_CullLightShader->FindKernel("CullClusterMain");
-            uint32_t width = m_Resource.GBuffers[0].GetDesc().Width;
-            uint32_t height = m_Resource.GBuffers[0].GetDesc().Height;
-            context.DispatchComputeByThreadCount(m_CullLightShader.get(), *cullClusterKernelIndex, width, height, 1);
+            // 每个像素对应一个线程
+            uint32_t width = m_Resource.HiZTexture.GetDesc().Width;
+            uint32_t height = m_Resource.HiZTexture.GetDesc().Height;
+            context.DispatchComputeByThreadCount(m_CullLightShader.get(), "CullClusterMain", width, height, 1);
 
             // 每个 Cluster 对应一个线程
-            std::optional<size_t> cullLightKernelIndex = m_CullLightShader->FindKernel("CullLightMain");
-            context.DispatchComputeByThreadCount(m_CullLightShader.get(), *cullLightKernelIndex, NUM_CLUSTER_X, NUM_CLUSTER_Y, NUM_CLUSTER_Z);
+            context.DispatchComputeByThreadCount(m_CullLightShader.get(), "CullLightMain", NUM_CLUSTER_X, NUM_CLUSTER_Y, NUM_CLUSTER_Z);
         });
     }
 
@@ -347,11 +345,7 @@ namespace march
 
         auto builder = m_RenderGraph->AddPass("DeferredLighting");
 
-        for (const TextureHandle& tex : m_Resource.GBuffers)
-        {
-            builder.In(tex);
-        }
-
+        builder.In(m_Resource.GetGBuffers(GBufferElements::All));
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbLight);
         builder.In(m_Resource.DirectionalLights);
@@ -370,25 +364,6 @@ namespace march
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            for (const TextureHandle& tex : m_Resource.GBuffers)
-            {
-                context.SetVariable(tex);
-            }
-
-            context.SetVariable(m_Resource.CbCamera);
-            context.SetVariable(m_Resource.CbLight);
-            context.SetVariable(m_Resource.DirectionalLights);
-            context.SetVariable(m_Resource.PunctualLights);
-            context.SetVariable(m_Resource.ClusterPunctualLightRanges);
-            context.SetVariable(m_Resource.ClusterPunctualLightIndices);
-            context.SetVariable(m_Resource.SSAOMap);
-            context.SetVariable(m_Resource.CbShadow);
-            context.SetVariable(m_Resource.ShadowMap);
-            context.SetVariable(m_Resource.EnvDiffuseSH9Coefs);
-            context.SetVariable(m_Resource.EnvSpecularRadianceMap);
-            context.SetVariable(m_Resource.EnvSpecularBRDFLUT);
-            context.SetVariable(m_Resource.HiZTexture);
-
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_DeferredLitMaterial.get(), 0);
         });
     }
@@ -482,6 +457,8 @@ namespace march
                 m_Lights[0]->GetShadowDepthBiasClamp());
         }
 
+        builder.UseDefaultVariables(false);
+
         builder.SetDepthStencilTarget(m_Resource.ShadowMap, RenderTargetInitMode::Clear);
         builder.SetRenderFunc([this, drawShadow, cbShadowCamera](RenderGraphContext& context)
         {
@@ -507,7 +484,6 @@ namespace march
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
             context.DrawMesh(GfxMeshGeometry::Sphere, m_SkyboxMaterial, 0);
         });
     }
@@ -521,7 +497,6 @@ namespace march
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_SceneViewGridMaterial.get(), 0);
         });
     }
@@ -554,19 +529,19 @@ namespace march
         std::mt19937 gen(dev());  // Mersenne Twister 生成器
         std::uniform_real_distribution<float> dis(0.0, 1.0);
 
-        std::vector<DirectX::PackedVector::XMCOLOR> data(256 * 256);
+        std::vector<PackedVector::XMCOLOR> data(256 * 256);
 
         for (size_t i = 0; i < 256; ++i)
         {
             for (size_t j = 0; j < 256; ++j)
             {
                 // Random vector in [0,1].  We will decompress in shader to [-1,1].
-                data[i * 256 + j] = DirectX::PackedVector::XMCOLOR(dis(gen), dis(gen), dis(gen), 0.0f);
+                data[i * 256 + j] = PackedVector::XMCOLOR(dis(gen), dis(gen), dis(gen), 0.0f);
             }
         }
 
         m_SSAORandomVectorMap->LoadFromPixels("_SSAORandomVectorMap", desc,
-            data.data(), data.size() * sizeof(DirectX::PackedVector::XMCOLOR), 1);
+            data.data(), data.size() * sizeof(PackedVector::XMCOLOR), 1);
     }
 
     void RenderPipeline::SSAO()
@@ -590,8 +565,8 @@ namespace march
         ssaoMapDesc.Format = GfxTextureFormat::R8_UNorm;
         ssaoMapDesc.Flags = GfxTextureFlags::UnorderedAccess;
         ssaoMapDesc.Dimension = GfxTextureDimension::Tex2D;
-        ssaoMapDesc.Width = static_cast<uint32_t>(ceil(m_Resource.GBuffers[0].GetDesc().Width * 0.5f));
-        ssaoMapDesc.Height = static_cast<uint32_t>(ceil(m_Resource.GBuffers[0].GetDesc().Height * 0.5f));
+        ssaoMapDesc.Width = static_cast<uint32_t>(ceil(m_Resource.ColorTarget.GetDesc().Width * 0.5f));
+        ssaoMapDesc.Height = static_cast<uint32_t>(ceil(m_Resource.ColorTarget.GetDesc().Height * 0.5f));
         ssaoMapDesc.DepthOrArraySize = 1;
         ssaoMapDesc.MSAASamples = 1;
         ssaoMapDesc.Filter = GfxTextureFilterMode::Bilinear;
@@ -612,43 +587,23 @@ namespace march
 
         builder.In(m_Resource.CbCamera);
         builder.In(m_Resource.CbSSAO);
+        builder.In(m_Resource.GetGBuffers(GBufferElements::Normal));
         builder.In(m_Resource.SSAORandomVectorMap);
         builder.In(m_Resource.HiZTexture);
         builder.Out(m_Resource.SSAOMap);
         builder.Out(m_Resource.SSAOMapTemp);
 
-        for (const TextureHandle& tex : m_Resource.GBuffers)
-        {
-            builder.In(tex);
-        }
-
         builder.SetRenderFunc([this, w = ssaoMapDesc.Width, h = ssaoMapDesc.Height](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
-            context.SetVariable(m_Resource.CbSSAO);
-            context.SetVariable(m_Resource.SSAORandomVectorMap);
-            context.SetVariable(m_Resource.HiZTexture);
-            context.SetVariable(m_Resource.SSAOMap);
-
-            for (const TextureHandle& tex : m_Resource.GBuffers)
-            {
-                context.SetVariable(tex);
-            }
-
-            std::optional<size_t> kernelIndex = m_SSAOShader->FindKernel("SSAOMain");
-            context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
+            context.DispatchComputeByThreadCount(m_SSAOShader.get(), "SSAOMain", w, h, 1);
 
             context.SetVariable(m_Resource.SSAOMap, "_Input");
             context.SetVariable(m_Resource.SSAOMapTemp, "_Output");
-
-            kernelIndex = m_SSAOShader->FindKernel("HBlurMain");
-            context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
+            context.DispatchComputeByThreadCount(m_SSAOShader.get(), "HBlurMain", w, h, 1);
 
             context.SetVariable(m_Resource.SSAOMapTemp, "_Input");
             context.SetVariable(m_Resource.SSAOMap, "_Output");
-
-            kernelIndex = m_SSAOShader->FindKernel("VBlurMain");
-            context.DispatchComputeByThreadCount(m_SSAOShader.get(), *kernelIndex, w, h, 1);
+            context.DispatchComputeByThreadCount(m_SSAOShader.get(), "VBlurMain", w, h, 1);
         });
     }
 
@@ -743,8 +698,7 @@ namespace march
                 cb.SetData(&consts);
                 cmd->SetBuffer("cbSH9", &cb);
 
-                std::optional<size_t> sh9Kernel = m_DiffuseIrradianceShader->FindKernel("CalcSH9Main");
-                cmd->DispatchCompute(m_DiffuseIrradianceShader.get(), *sh9Kernel, 1, 1, 1);
+                cmd->DispatchCompute(m_DiffuseIrradianceShader.get(), "CalcSH9Main", 1, 1, 1);
             }
 
             cmd->UnsetTexturesAndBuffers();
@@ -753,7 +707,6 @@ namespace march
             {
                 cmd->SetTexture("_RadianceMap", radianceMap);
 
-                std::optional<size_t> prefilterKernel = m_SpecularIBLShader->FindKernel("PrefilterMain");
                 const GfxTextureDesc& outputDesc = m_EnvSpecularRadianceMap->GetDesc();
 
                 GfxBufferDesc cbDesc{};
@@ -781,7 +734,7 @@ namespace march
                         cb.SetData(&consts);
                         cmd->SetBuffer("cbPrefilter", &cb);
 
-                        cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *prefilterKernel, outputDesc.Width, outputDesc.Height, 1);
+                        cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), "PrefilterMain", outputDesc.Width, outputDesc.Height, 1);
                     }
                 }
             }
@@ -809,9 +762,8 @@ namespace march
         //    desc2.Wrap = GfxTextureWrapMode::Clamp;
         //    desc2.MipmapBias = 0;
         //    m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);
-        //    std::optional<size_t> kernelIndex2 = m_SpecularIBLShader->FindKernel("BRDFMain");
         //    cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
-        //    cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), *kernelIndex2, desc2.Width, desc2.Height, 1);
+        //    cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), "BRDFMain", desc2.Width, desc2.Height, 1);
         //}
         //cmd->EndEvent();
         //cmd->SubmitAndRelease();
@@ -842,7 +794,6 @@ namespace march
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_CameraMotionVectorMaterial.get(), 0);
             context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "MotionVector");
         });
@@ -858,13 +809,10 @@ namespace march
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.MotionVectorTexture);
-            context.SetVariable(m_Resource.HistoryColorTexture);
             context.SetVariable(m_Resource.ColorTarget, "_CurrentColorTexture");
 
             const GfxTextureDesc& desc = m_Resource.ColorTarget.GetDesc();
-            std::optional<size_t> kernel = m_TAAShader->FindKernel("CSMain");
-            context.DispatchComputeByThreadCount(m_TAAShader.get(), *kernel, desc.Width, desc.Height, 1);
+            context.DispatchComputeByThreadCount(m_TAAShader.get(), "CSMain", desc.Width, desc.Height, 1);
 
             context.CopyTexture(m_Resource.ColorTarget, 0, 0, m_Resource.HistoryColorTexture, 0, 0);
         });
@@ -874,6 +822,7 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("Postprocessing");
 
+        builder.UseDefaultVariables(false);
         builder.InOut(m_Resource.ColorTarget);
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
@@ -881,8 +830,7 @@ namespace march
             context.SetVariable(m_Resource.ColorTarget, "_ColorTexture");
 
             const GfxTextureDesc& desc = m_Resource.ColorTarget.GetDesc();
-            std::optional<size_t> kernel = m_PostprocessingShader->FindKernel("CSMain");
-            context.DispatchComputeByThreadCount(m_PostprocessingShader.get(), *kernel, desc.Width, desc.Height, 1);
+            context.DispatchComputeByThreadCount(m_PostprocessingShader.get(), "CSMain", desc.Width, desc.Height, 1);
         });
     }
 
@@ -907,12 +855,13 @@ namespace march
 
         builder.In(m_Resource.DepthStencilTarget);
         builder.Out(m_Resource.HiZTexture);
+        builder.UseDefaultVariables(false);
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.SetVariable(m_Resource.DepthStencilTarget, "_InputTexture", GfxTextureElement::Depth);
             context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, 0);
-            context.DispatchComputeByThreadCount(m_HizShader.get(), 0, m_Resource.DepthStencilTarget.GetDesc().Width, m_Resource.DepthStencilTarget.GetDesc().Height, 1);
+            context.DispatchComputeByThreadCount(m_HizShader.get(), "CopyDepthMain", m_Resource.DepthStencilTarget.GetDesc().Width, m_Resource.DepthStencilTarget.GetDesc().Height, 1);
 
             for (uint32_t mipLevel = 1; mipLevel < m_Resource.HiZTexture->GetMipLevels(); mipLevel++)
             {
@@ -921,7 +870,7 @@ namespace march
 
                 uint32_t width = std::max(m_Resource.HiZTexture->GetDesc().Width >> mipLevel, 1u);
                 uint32_t height = std::max(m_Resource.HiZTexture->GetDesc().Height >> mipLevel, 1u);
-                context.DispatchComputeByThreadCount(m_HizShader.get(), 1, width, height, 1);
+                context.DispatchComputeByThreadCount(m_HizShader.get(), "GenMipMain", width, height, 1);
             }
         });
     }
@@ -951,45 +900,29 @@ namespace march
         builder.In(m_Resource.HiZTexture);
         builder.In(m_Resource.ColorTarget);
         builder.In(m_Resource.DepthStencilTarget);
+        builder.In(m_Resource.GetGBuffers(GBufferElements::Normal | GBufferElements::BRDF));
         builder.Out(m_Resource.SSGITexture);
         builder.Out(m_Resource.SSGITextureTemp);
-
-        for (const TextureHandle& tex : m_Resource.GBuffers)
-        {
-            builder.In(tex);
-        }
 
         builder.AllowPassCulling(false);
 
         builder.SetRenderFunc([this, w = desc.Width, h = desc.Height](RenderGraphContext& context)
         {
-            context.SetVariable(m_Resource.CbCamera);
-            context.SetVariable(m_Resource.HiZTexture);
             context.SetVariable(m_Resource.ColorTarget, "_ColorTexture");
             context.SetVariable(m_Resource.DepthStencilTarget, "_StencilTexture", GfxTextureElement::Stencil);
             context.SetVariable(m_Resource.SSGITexture, "_OutputTexture");
 
-            for (const TextureHandle& tex : m_Resource.GBuffers)
-            {
-                context.SetVariable(tex);
-            }
-
-            std::optional<size_t> kernel = m_SSGIShader->FindKernel("DiffuseMain");
-            context.DispatchComputeByThreadCount(m_SSGIShader.get(), *kernel, w, h, 1);
+            context.DispatchComputeByThreadCount(m_SSGIShader.get(), "DiffuseMain", w, h, 1);
 
             for (int i = 0; i < 3; i++)
             {
                 context.SetVariable(m_Resource.SSGITexture, "_Input");
                 context.SetVariable(m_Resource.SSGITextureTemp, "_Output");
-
-                kernel = m_SSGIShader->FindKernel("HBlurMain");
-                context.DispatchComputeByThreadCount(m_SSGIShader.get(), *kernel, w, h, 1);
+                context.DispatchComputeByThreadCount(m_SSGIShader.get(), "HBlurMain", w, h, 1);
 
                 context.SetVariable(m_Resource.SSGITextureTemp, "_Input");
                 context.SetVariable(m_Resource.SSGITexture, "_Output");
-
-                kernel = m_SSGIShader->FindKernel("VBlurMain");
-                context.DispatchComputeByThreadCount(m_SSGIShader.get(), *kernel, w, h, 1);
+                context.DispatchComputeByThreadCount(m_SSGIShader.get(), "VBlurMain", w, h, 1);
             }
         });
     }

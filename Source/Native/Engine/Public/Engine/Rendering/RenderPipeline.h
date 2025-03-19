@@ -4,54 +4,71 @@
 #include "Engine/Rendering/RenderGraph.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/AssetManger.h"
+#include "Engine/InlineArray.h"
 #include "Engine/Ints.h"
 #include <vector>
 #include <memory>
 #include <stdint.h>
 #include <DirectXMath.h>
-#include <imgui.h>
 #include <string>
 
 namespace march
 {
-    class Camera;
-    class MeshRenderer;
-    class RenderGraph;
-    class GfxRenderTexture;
-
-    struct CameraConstants
+    enum class GBufferElements
     {
-        DirectX::XMFLOAT4X4 ViewMatrix;
-        DirectX::XMFLOAT4X4 ProjectionMatrix;
-        DirectX::XMFLOAT4X4 ViewProjectionMatrix;
-        DirectX::XMFLOAT4X4 InvViewMatrix;
-        DirectX::XMFLOAT4X4 InvProjectionMatrix;
-        DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
-        DirectX::XMFLOAT4X4 NonJitteredViewProjectionMatrix;
-        DirectX::XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
-        DirectX::XMFLOAT4 TAAParams; // x: TAAFrameIndex
+        None = 0,
+
+        Albedo = 1 << 0,
+        Metallic = 1 << 1,
+        Roughness = 1 << 2,
+        Normal = 1 << 3,
+        Emission = 1 << 4,
+        Occlusion = 1 << 5,
+
+        BRDF = Albedo | Metallic | Roughness,
+
+        GBuffer0 = Albedo | Metallic,
+        GBuffer1 = Normal | Roughness,
+        GBuffer2 = Occlusion,
+        GBuffer3 = Emission,
+
+        All = GBuffer0 | GBuffer1 | GBuffer2 | GBuffer3,
     };
 
-    struct LightConstants
-    {
-        DirectX::XMINT4 NumLights;   // x: numDirectionalLights, y: numPunctualLights
-        DirectX::XMINT4 NumClusters; // xyz: numClusters
-    };
-
-    struct ShadowConstants
-    {
-        DirectX::XMFLOAT4X4 ShadowMatrix;
-        DirectX::XMFLOAT4 ShadowParams; // x: depth2RadialScale
-    };
+    DEFINE_ENUM_FLAG_OPERATORS(GBufferElements);
 
     struct RenderPipelineResource
     {
+        static constexpr size_t NumGBuffers = 4;
+
+        static constexpr GBufferElements GBufferData[NumGBuffers] =
+        {
+            GBufferElements::GBuffer0,
+            GBufferElements::GBuffer1,
+            GBufferElements::GBuffer2,
+            GBufferElements::GBuffer3,
+        };
+
+        static constexpr GfxTextureFormat GBufferFormats[NumGBuffers] =
+        {
+            GfxTextureFormat::R8G8B8A8_UNorm,
+            GfxTextureFormat::R8G8B8A8_UNorm,
+            GfxTextureFormat::R8_UNorm,
+            GfxTextureFormat::R11G11B10_Float, // HDR
+        };
+
+        static constexpr GfxTextureFlags GBufferFlags[NumGBuffers] =
+        {
+            GfxTextureFlags::SRGB,
+            GfxTextureFlags::None,
+            GfxTextureFlags::None,
+            GfxTextureFlags::None,
+        };
+
         TextureHandle ColorTarget;
         TextureHandle DepthStencilTarget;
         TextureHandle HistoryColorTexture;
-
-        std::vector<TextureHandle> GBuffers;
-
+        TextureHandle GBuffers[NumGBuffers];
         TextureHandle MotionVectorTexture;
 
         BufferHandle CbCamera;
@@ -79,35 +96,12 @@ namespace march
         TextureHandle SSGITexture;
         TextureHandle SSGITextureTemp;
 
-        void Reset()
-        {
-            ColorTarget = {};
-            DepthStencilTarget = {};
-            HistoryColorTexture = {};
-            GBuffers.clear();
-            MotionVectorTexture = {};
-            CbCamera = {};
-            CbLight = {};
-            DirectionalLights = {};
-            PunctualLights = {};
-            ClusterPunctualLightRanges = {};
-            ClusterPunctualLightIndices = {};
-            VisibleLightCounter = {};
-            MaxClusterZIds = {};
-            EnvDiffuseSH9Coefs = {};
-            EnvSpecularRadianceMap = {};
-            EnvSpecularBRDFLUT = {};
-            CbSSAO = {};
-            SSAOMap = {};
-            SSAOMapTemp = {};
-            SSAORandomVectorMap = {};
-            CbShadow = {};
-            ShadowMap = {};
-            HiZTexture = {};
-            SSGITexture = {};
-            SSGITextureTemp = {};
-        }
+        void Reset();
+        void RequestGBuffers(RenderGraph* graph, uint32_t width, uint32_t height);
+        InlineArray<TextureHandle, NumGBuffers> GetGBuffers(GBufferElements elements) const;
     };
+
+    class Camera;
 
     class RenderPipeline
     {
@@ -174,6 +168,8 @@ namespace march
         void Hiz();
         void SSGI();
 
+    private:
+
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
         asset_ptr<Shader> m_SceneViewGridShader = nullptr;
@@ -203,7 +199,6 @@ namespace march
 
         RenderPipelineResource m_Resource{};
 
-    private:
         std::vector<MeshRenderer*> m_Renderers{};
         std::vector<Light*> m_Lights{};
         std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;

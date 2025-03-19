@@ -118,6 +118,18 @@ namespace march
         }, m_Resource);
     }
 
+    void RenderGraphResourceData::SetDefaultVariable(GfxCommandContext* cmd)
+    {
+        std::visit(overloaded{
+            [id = m_Id, cmd](RenderGraphResourceTempBuffer& b) -> void { cmd->SetBuffer(id, &b.Buffer); },
+            [id = m_Id, cmd](RenderGraphResourcePooledBuffer& b) -> void { cmd->SetBuffer(id, b.Buffer.get()); },
+            [id = m_Id, cmd](RenderGraphResourceExternalBuffer& b) -> void { cmd->SetBuffer(id, b.Buffer); },
+            [id = m_Id, cmd](RenderGraphResourcePooledTexture& t) -> void { cmd->SetTexture(id, t.Texture.get()); },
+            [id = m_Id, cmd](RenderGraphResourceExternalTexture& t) -> void { cmd->SetTexture(id, t.Texture); },
+            [](auto&&) -> void { throw std::runtime_error("Resource is not a buffer or texture"); },
+        }, m_Resource);
+    }
+
     RefCountPtr<GfxResource> RenderGraphResourceData::GetUnderlyingResource()
     {
         return std::visit(overloaded{
@@ -304,6 +316,11 @@ namespace march
     const GfxTextureDesc& RenderGraphResourceManager::GetTextureDesc(size_t resourceIndex) const
     {
         return m_Resources[resourceIndex].GetTextureDesc();
+    }
+
+    void RenderGraphResourceManager::SetDefaultVariable(size_t resourceIndex, GfxCommandContext* cmd)
+    {
+        m_Resources[resourceIndex].SetDefaultVariable(cmd);
     }
 
     RefCountPtr<GfxResource> RenderGraphResourceManager::GetUnderlyingResource(size_t resourceIndex)

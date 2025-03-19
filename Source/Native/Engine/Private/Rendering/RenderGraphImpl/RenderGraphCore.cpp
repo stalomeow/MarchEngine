@@ -11,11 +11,15 @@ namespace march
         return m_Graph->m_Passes[m_PassIndex];
     }
 
-    void RenderGraphBuilder::InResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex)
+    void RenderGraphBuilder::InResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex, RenderGraphPassResourceUsages usages)
     {
-        RenderGraphPass& pass = GetPass();
+        assert(usages != RenderGraphPassResourceUsages::None);
 
-        if (pass.ResourcesIn.insert(resourceIndex).second)
+        RenderGraphPass& pass = GetPass();
+        RenderGraphPassResourceUsages& lastUsages = pass.ResourcesIn[resourceIndex];
+
+        // 处理新的资源
+        if (lastUsages == RenderGraphPassResourceUsages::None)
         {
             std::optional<size_t> producerPassIndex = resourceManager->GetLastProducerBeforePassIndex(resourceIndex, m_PassIndex);
 
@@ -31,10 +35,14 @@ namespace march
                 LOG_WARNING("Failed to find producer pass for resource '{}' in pass '{}'", ShaderUtils::GetStringFromId(id), pass.Name);
             }
         }
+
+        lastUsages |= usages;
     }
 
-    void RenderGraphBuilder::OutResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex)
+    void RenderGraphBuilder::OutResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex, RenderGraphPassResourceUsages usages)
     {
+        assert(usages != RenderGraphPassResourceUsages::None);
+
         RenderGraphPass& pass = GetPass();
 
         if (!resourceManager->AllowGpuWritingResource(resourceIndex))
@@ -44,11 +52,16 @@ namespace march
             return;
         }
 
-        if (pass.ResourcesOut.insert(resourceIndex).second)
+        RenderGraphPassResourceUsages& lastUsages = pass.ResourcesOut[resourceIndex];
+
+        // 处理新的资源
+        if (lastUsages == RenderGraphPassResourceUsages::None)
         {
             pass.HasSideEffects |= resourceManager->IsExternalResource(resourceIndex);
             resourceManager->AddProducerPassIndex(resourceIndex, m_PassIndex);
         }
+
+        lastUsages |= usages;
     }
 
     void RenderGraphBuilder::AllowPassCulling(bool value)
@@ -61,18 +74,23 @@ namespace march
         GetPass().EnableAsyncCompute = value;
     }
 
+    void RenderGraphBuilder::UseDefaultVariables(bool value)
+    {
+        GetPass().UseDefaultVariables = value;
+    }
+
     void RenderGraphBuilder::In(const BufferHandle& buffer)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
         size_t resourceIndex = resourceManager->GetResourceIndex(buffer);
-        InResource(resourceManager, resourceIndex);
+        InResource(resourceManager, resourceIndex, RenderGraphPassResourceUsages::Variable);
     }
 
     void RenderGraphBuilder::Out(const BufferHandle& buffer)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
         size_t resourceIndex = resourceManager->GetResourceIndex(buffer);
-        OutResource(resourceManager, resourceIndex);
+        OutResource(resourceManager, resourceIndex, RenderGraphPassResourceUsages::Variable);
     }
 
     void RenderGraphBuilder::InOut(const BufferHandle& buffer)
@@ -85,14 +103,14 @@ namespace march
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
         size_t resourceIndex = resourceManager->GetResourceIndex(texture);
-        InResource(resourceManager, resourceIndex);
+        InResource(resourceManager, resourceIndex, RenderGraphPassResourceUsages::Variable);
     }
 
     void RenderGraphBuilder::Out(const TextureHandle& texture)
     {
         RenderGraphResourceManager* resourceManager = m_Graph->m_ResourceManager.get();
         size_t resourceIndex = resourceManager->GetResourceIndex(texture);
-        OutResource(resourceManager, resourceIndex);
+        OutResource(resourceManager, resourceIndex, RenderGraphPassResourceUsages::Variable);
     }
 
     void RenderGraphBuilder::InOut(const TextureHandle& texture)
@@ -136,10 +154,10 @@ namespace march
 
         if (initMode == RenderTargetInitMode::Load)
         {
-            InResource(resourceManager, target.ResourceIndex);
+            InResource(resourceManager, target.ResourceIndex, RenderGraphPassResourceUsages::RenderTarget);
         }
 
-        OutResource(resourceManager, target.ResourceIndex);
+        OutResource(resourceManager, target.ResourceIndex, RenderGraphPassResourceUsages::RenderTarget);
     }
 
     void RenderGraphBuilder::SetDepthStencilTarget(const TextureSliceHandle& texture, RenderTargetInitMode initMode, float depth, uint8_t stencil)
@@ -165,10 +183,10 @@ namespace march
 
         if (initMode == RenderTargetInitMode::Load)
         {
-            InResource(resourceManager, target.ResourceIndex);
+            InResource(resourceManager, target.ResourceIndex, RenderGraphPassResourceUsages::RenderTarget);
         }
 
-        OutResource(resourceManager, target.ResourceIndex);
+        OutResource(resourceManager, target.ResourceIndex, RenderGraphPassResourceUsages::RenderTarget);
     }
 
     void RenderGraphBuilder::SetViewport(float topLeftX, float topLeftY, float width, float height, float minDepth, float maxDepth)
@@ -285,8 +303,9 @@ namespace march
                 asyncComputeDeadlineIndexExclusive = asyncComputeDeadlineIndexExclusiveCopy;
             }
 
-            for (size_t resourceIndex : pass.ResourcesIn)
+            for (const auto& kv : pass.ResourcesIn)
             {
+                size_t resourceIndex = kv.first;
                 m_ResourceManager->SetAlive(resourceIndex, passIndex);
 
                 // async compute 需要延长资源的生命周期
@@ -296,8 +315,9 @@ namespace march
                 }
             }
 
-            for (size_t resourceIndex : pass.ResourcesOut)
+            for (const auto& kv : pass.ResourcesOut)
             {
+                size_t resourceIndex = kv.first;
                 m_ResourceManager->SetAlive(resourceIndex, passIndex);
 
                 // async compute 需要延长资源的生命周期
@@ -377,8 +397,10 @@ namespace march
                 lastNonAsyncComputePassIndex = i;
             }
 
-            for (size_t resourceIndex : pass.ResourcesIn)
+            for (const auto& kv : pass.ResourcesIn)
             {
+                size_t resourceIndex = kv.first;
+
                 // 在没有 resource barrier 时允许两个同时读
                 if (overlappedPass.ResourcesIn.count(resourceIndex) > 0)
                 {
@@ -399,8 +421,10 @@ namespace march
                 }
             }
 
-            for (size_t resourceIndex : pass.ResourcesOut)
+            for (const auto& kv : pass.ResourcesOut)
             {
+                size_t resourceIndex = kv.first;
+
                 // 禁止一个读一个写
                 if (overlappedPass.ResourcesIn.count(resourceIndex) > 0)
                 {
@@ -455,13 +479,15 @@ namespace march
                     // 合批后，Resource Barrier 会提前到第一个 async compute pass，资源的生命周期也要提前
                     size_t firstAsyncComputePassIndexValue = *firstAsyncComputePassIndex;
 
-                    for (size_t resourceIndex : pass.ResourcesIn)
+                    for (const auto& kv : pass.ResourcesIn)
                     {
+                        size_t resourceIndex = kv.first;
                         m_ResourceManager->SetAlive(resourceIndex, firstAsyncComputePassIndexValue);
                     }
 
-                    for (size_t resourceIndex : pass.ResourcesOut)
+                    for (const auto& kv : pass.ResourcesOut)
                     {
+                        size_t resourceIndex = kv.first;
                         m_ResourceManager->SetAlive(resourceIndex, firstAsyncComputePassIndexValue);
                     }
                 }
@@ -534,8 +560,10 @@ namespace march
                 break;
             }
 
-            for (size_t resourceIndex : pass.ResourcesIn)
+            for (const auto& kv : pass.ResourcesIn)
             {
+                size_t resourceIndex = kv.first;
+
                 // 如果既读又写，那么当作写，在下面一个循环中处理
                 if (pass.ResourcesOut.count(resourceIndex) > 0)
                 {
@@ -557,8 +585,9 @@ namespace march
                 }
             }
 
-            for (size_t resourceIndex : pass.ResourcesOut)
+            for (const auto& kv : pass.ResourcesOut)
             {
+                size_t resourceIndex = kv.first;
                 auto res = m_ResourceManager->GetUnderlyingResource(resourceIndex);
 
                 if (res->HasAnyStates(disallowedComputeStates))
@@ -729,6 +758,32 @@ namespace march
         }
     }
 
+    void RenderGraph::SetPassDefaultVariables(GfxCommandContext* cmd, const RenderGraphPass& pass)
+    {
+        if (!pass.UseDefaultVariables)
+        {
+            return;
+        }
+
+        auto fn = [this, cmd](size_t resourceIndex, RenderGraphPassResourceUsages usages)
+        {
+            if ((usages & RenderGraphPassResourceUsages::Variable) == RenderGraphPassResourceUsages::Variable)
+            {
+                m_ResourceManager->SetDefaultVariable(resourceIndex, cmd);
+            }
+        };
+
+        for (const auto& kv : pass.ResourcesIn)
+        {
+            fn(kv.first, kv.second);
+        }
+
+        for (const auto& kv : pass.ResourcesOut)
+        {
+            fn(kv.first, kv.second);
+        }
+    }
+
     void RenderGraph::ExecutePasses()
     {
         RenderGraphContext context{};
@@ -750,14 +805,14 @@ namespace march
                 cmd->BeginEvent(pass.Name);
                 {
                     SetPassRenderStates(cmd, pass);
+                    SetPassDefaultVariables(cmd, pass);
 
                     if (pass.RenderFunc)
                     {
                         pass.RenderFunc(context);
                     }
 
-                    cmd->UnsetBuffers();
-                    cmd->UnsetTextures();
+                    cmd->UnsetTexturesAndBuffers();
                 }
                 cmd->EndEvent();
 
@@ -958,5 +1013,10 @@ namespace march
     void RenderGraphContext::SetVariable(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element)
     {
         m_Cmd->SetBuffer(aliasId, buffer, element);
+    }
+
+    void RenderGraphContext::UnsetVariables()
+    {
+        m_Cmd->UnsetTexturesAndBuffers();
     }
 }

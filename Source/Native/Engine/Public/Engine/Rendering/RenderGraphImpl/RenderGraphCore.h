@@ -1,11 +1,13 @@
 #pragma once
 
 #include "Engine/Ints.h"
+#include "Engine/InlineArray.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderGraphImpl/RenderGraphResource.h"
 #include <directx/d3d12.h>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <optional>
@@ -47,6 +49,15 @@ namespace march
         uint8_t ClearStencilValue = 0;
     };
 
+    enum class RenderGraphPassResourceUsages
+    {
+        None = 0,
+        RenderTarget = 1 << 0,
+        Variable = 1 << 1,
+    };
+
+    DEFINE_ENUM_FLAG_OPERATORS(RenderGraphPassResourceUsages);
+
     struct RenderGraphPass final
     {
         // -----------------------
@@ -58,9 +69,10 @@ namespace march
         bool HasSideEffects = false; // 如果写入了 external resource，就有副作用
         bool AllowPassCulling = true;
         bool EnableAsyncCompute = false; // 只是一个建议，会根据实际情况决定是否启用 async-compute
+        bool UseDefaultVariables = true;
 
-        std::unordered_set<size_t> ResourcesIn{};  // 所有输入的资源，包括 render target
-        std::unordered_set<size_t> ResourcesOut{}; // 所有输出的资源，包括 render target
+        std::unordered_map<size_t, RenderGraphPassResourceUsages> ResourcesIn{};  // 所有输入的资源，包括 render target
+        std::unordered_map<size_t, RenderGraphPassResourceUsages> ResourcesOut{}; // 所有输出的资源，包括 render target
 
         uint32_t NumColorTargets = 0;
         RenderGraphPassColorTarget ColorTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
@@ -106,14 +118,15 @@ namespace march
 
         RenderGraphPass& GetPass() const;
 
-        void InResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex);
-        void OutResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex);
+        void InResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex, RenderGraphPassResourceUsages usages);
+        void OutResource(RenderGraphResourceManager* resourceManager, size_t resourceIndex, RenderGraphPassResourceUsages usages);
 
     public:
         RenderGraphBuilder(RenderGraph* graph, size_t passIndex) : m_Graph(graph), m_PassIndex(passIndex) {}
 
         void AllowPassCulling(bool value);
         void EnableAsyncCompute(bool value);
+        void UseDefaultVariables(bool value);
 
         // 表示需要读取前面 pass 写入 buffer 的数据
         void In(const BufferHandle& buffer);
@@ -146,6 +159,60 @@ namespace march
         void SetWireframe(bool value);
 
         void SetRenderFunc(const std::function<void(RenderGraphContext&)>& func);
+
+        template <size_t _Capacity>
+        void In(const InlineArray<BufferHandle, _Capacity>& buffers)
+        {
+            for (size_t i = 0; i < buffers.Num(); i++)
+            {
+                In(buffers[i]);
+            }
+        }
+
+        template <size_t _Capacity>
+        void Out(const InlineArray<BufferHandle, _Capacity>& buffers)
+        {
+            for (size_t i = 0; i < buffers.Num(); i++)
+            {
+                Out(buffers[i]);
+            }
+        }
+
+        template <size_t _Capacity>
+        void InOut(const InlineArray<BufferHandle, _Capacity>& buffers)
+        {
+            for (size_t i = 0; i < buffers.Num(); i++)
+            {
+                InOut(buffers[i]);
+            }
+        }
+
+        template <size_t _Capacity>
+        void In(const InlineArray<TextureHandle, _Capacity>& textures)
+        {
+            for (size_t i = 0; i < textures.Num(); i++)
+            {
+                In(textures[i]);
+            }
+        }
+
+        template <size_t _Capacity>
+        void Out(const InlineArray<TextureHandle, _Capacity>& textures)
+        {
+            for (size_t i = 0; i < textures.Num(); i++)
+            {
+                Out(textures[i]);
+            }
+        }
+
+        template <size_t _Capacity>
+        void InOut(const InlineArray<TextureHandle, _Capacity>& textures)
+        {
+            for (size_t i = 0; i < textures.Num(); i++)
+            {
+                InOut(textures[i]);
+            }
+        }
     };
 
     class IRenderGraphCompiledEventListener
@@ -174,6 +241,7 @@ namespace march
         GfxRenderTargetDesc ResolveRenderTarget(const RenderGraphPassRenderTarget& target);
         void SetPassRenderStates(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ReleasePassResources(const RenderGraphPass& pass);
+        void SetPassDefaultVariables(GfxCommandContext* cmd, const RenderGraphPass& pass);
         void ExecutePasses();
 
         class DeferredCleanup
@@ -236,6 +304,8 @@ namespace march
         void SetVariable(const BufferHandle& buffer, const std::string& aliasName, GfxBufferElement element = GfxBufferElement::StructuredData);
         void SetVariable(const BufferHandle& buffer, int32 aliasId, GfxBufferElement element = GfxBufferElement::StructuredData);
 
+        void UnsetVariables();
+
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex)
         {
             m_Cmd->DrawMesh(geometry, material, shaderPassIndex);
@@ -271,9 +341,19 @@ namespace march
             m_Cmd->DrawMeshRenderers(numRenderers, renderers, lightMode);
         }
 
+        void DispatchCompute(ComputeShader* shader, const std::string& kernelName, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
+        {
+            m_Cmd->DispatchCompute(shader, kernelName, threadGroupCountX, threadGroupCountY, threadGroupCountZ);
+        }
+
         void DispatchCompute(ComputeShader* shader, size_t kernelIndex, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
         {
             m_Cmd->DispatchCompute(shader, kernelIndex, threadGroupCountX, threadGroupCountY, threadGroupCountZ);
+        }
+
+        void DispatchComputeByThreadCount(ComputeShader* shader, const std::string& kernelName, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)
+        {
+            m_Cmd->DispatchComputeByThreadCount(shader, kernelName, threadCountX, threadCountY, threadCountZ);
         }
 
         void DispatchComputeByThreadCount(ComputeShader* shader, size_t kernelIndex, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)

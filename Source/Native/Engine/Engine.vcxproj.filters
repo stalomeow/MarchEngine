@@ -57,6 +57,7 @@
     <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
     <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
+    <ClInclude Include="Public\Engine\InlineArray.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />
@@ -118,5 +119,6 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\ShaderCompute.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
     <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
+    <ClCompile Include="Private\Rendering\RenderPipelineResource.cpp" />
   </ItemGroup>
 </Project>

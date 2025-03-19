@@ -19,7 +19,7 @@
     "Engine/Shaders/Includes/Common.hlsl": "2025-03-17T10:01:08.3446145Z",
     "Engine/Shaders/Includes/Depth.hlsl": "2025-03-18T09:53:52.5760282Z",
     "Engine/Shaders/Includes/GBuffer.hlsl": "2025-03-17T10:01:09.2447773Z",
-    "Engine/Shaders/Includes/Lighting.hlsl": "2025-03-17T10:36:55.0370129Z",
+    "Engine/Shaders/Includes/Lighting.hlsl": "2025-03-18T15:27:52.9748782Z",
     "Engine/Shaders/Includes/AmbientOcclusion.hlsl": "2025-03-06T07:59:08.6016278Z"
   }
 }
