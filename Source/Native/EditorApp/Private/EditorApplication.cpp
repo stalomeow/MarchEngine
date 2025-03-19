@@ -57,8 +57,6 @@ namespace march
     {
         LRESULT result;
 
-        m_ProgressBar->BeginDisabledScope();
-
         if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
         {
             result = true;
@@ -67,8 +65,6 @@ namespace march
         {
             result = Application::HandleMessage(msg, wParam, lParam);
         }
-
-        m_ProgressBar->EndDisabledScope();
 
         return result;
     }
@@ -327,6 +323,8 @@ namespace march
 
     void EditorApplication::OnTick(bool willQuit)
     {
+        BusyProgressBar::EnabledScope busyScope(m_ProgressBar.get());
+
         m_SwapChain->WaitForFrameLatency();
 
         // Start the Dear ImGui frame
@@ -578,17 +576,5 @@ namespace march
         }
 
         return "";
-    }
-
-    void EditorApplication::OnPause()
-    {
-        m_ProgressBar->BeginDisabledScope();
-        Application::OnPause();
-    }
-
-    void EditorApplication::OnResume()
-    {
-        Application::OnResume();
-        m_ProgressBar->EndDisabledScope();
     }
 }

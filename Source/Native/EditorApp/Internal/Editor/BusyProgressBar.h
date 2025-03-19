@@ -14,7 +14,7 @@ namespace march
         const std::wstring m_Title;
         const uint32_t m_CheckIntervalMilliseconds;
 
-        std::atomic_uint m_DisableCounter;
+        std::atomic_uint m_EnableCounter;
         std::atomic_bool m_IsUserAlive;
         std::atomic_bool m_ShouldQuit;
 
@@ -31,7 +31,15 @@ namespace march
         ~BusyProgressBar();
 
         void ReportAlive();
-        void BeginDisabledScope();
-        void EndDisabledScope();
+        void BeginEnabledScope();
+        void EndEnabledScope();
+
+        struct EnabledScope
+        {
+            BusyProgressBar* ProgressBar;
+
+            EnabledScope(BusyProgressBar* bar) : ProgressBar(bar) { ProgressBar->BeginEnabledScope(); }
+            ~EnabledScope() { ProgressBar->EndEnabledScope(); }
+        };
     };
 }

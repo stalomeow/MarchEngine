@@ -2,6 +2,7 @@
 #include "Editor/BusyProgressBar.h"
 #include "Engine/Misc/StringUtils.h"
 #include <commctrl.h>
+#include <processthreadsapi.h>
 
 namespace march
 {
@@ -70,7 +71,7 @@ namespace march
     BusyProgressBar::BusyProgressBar(const std::string& title, uint32_t checkIntervalMilliseconds)
         : m_Title(StringUtils::Utf8ToUtf16(title))
         , m_CheckIntervalMilliseconds(checkIntervalMilliseconds)
-        , m_DisableCounter(0)
+        , m_EnableCounter(0)
         , m_IsUserAlive(false)
         , m_ShouldQuit(false)
         , m_WindowHandle(NULL)
@@ -105,18 +106,20 @@ namespace march
         m_IsUserAlive = true;
     }
 
-    void BusyProgressBar::BeginDisabledScope()
+    void BusyProgressBar::BeginEnabledScope()
     {
-        ++m_DisableCounter;
+        ++m_EnableCounter;
     }
 
-    void BusyProgressBar::EndDisabledScope()
+    void BusyProgressBar::EndEnabledScope()
     {
-        --m_DisableCounter;
+        --m_EnableCounter;
     }
 
     void BusyProgressBar::ThreadProc()
     {
+        SetThreadDescription(GetCurrentThread(), L"BusyProgressBar");
+
         auto checkAlive = [this](std::chrono::steady_clock::time_point& lastTime, bool force)
         {
             auto currentTime = std::chrono::steady_clock::now();
@@ -124,7 +127,7 @@ namespace march
 
             if (force || duration.count() >= static_cast<std::chrono::milliseconds::rep>(m_CheckIntervalMilliseconds))
             {
-                if (m_DisableCounter == 0 && !m_IsUserAlive.exchange(false))
+                if (m_EnableCounter > 0 && !m_IsUserAlive.exchange(false))
                 {
                     Show(currentTime);
                 }

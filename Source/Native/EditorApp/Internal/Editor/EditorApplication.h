@@ -34,8 +34,6 @@ namespace march
         void OnResize() override;
         void OnDisplayScaleChange() override;
         void OnPaint() override;
-        void OnPause() override;
-        void OnResume() override;
         HICON GetIcon() override;
 
     private:
