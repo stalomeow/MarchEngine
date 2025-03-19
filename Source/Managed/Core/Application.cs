@@ -1,4 +1,5 @@
 using March.Core.Interop;
+using March.Core.Rendering;
 using System.Runtime.InteropServices;
 
 #pragma warning disable IDE0051 // Remove unused private members
@@ -68,6 +69,12 @@ namespace March.Core
 
         [UnmanagedCallersOnly]
         private static void Initialize() { }
+
+        [UnmanagedCallersOnly]
+        private static void PostInitialize()
+        {
+            RenderPipeline.Initialize();
+        }
 
         [UnmanagedCallersOnly]
         private static void Tick() => OnTick?.Invoke();

@@ -58,6 +58,7 @@
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
     <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
     <ClInclude Include="Public\Engine\InlineArray.h" />
+    <ClInclude Include="Public\Engine\ImGui\ImGuiStyleManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />
@@ -120,5 +121,6 @@
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
     <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
     <ClCompile Include="Private\Rendering\RenderPipelineResource.cpp" />
+    <ClCompile Include="Private\ImGui\ImGuiStyleManager.cpp" />
   </ItemGroup>
 </Project>

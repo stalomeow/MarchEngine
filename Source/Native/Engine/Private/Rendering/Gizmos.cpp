@@ -346,45 +346,39 @@ namespace march
         }
     }
 
-    void Gizmos::InitResources()
+    bool Gizmos::CanRender()
+    {
+        return g_LineListMaterial != nullptr;
+    }
+
+    void Gizmos::Render(RenderGraphContext& context)
+    {
+        FlushLineListIfNeeded(true);
+
+        // Visible part
+        for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
+        {
+            context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
+        }
+
+        // Invisible part
+        for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
+        {
+            context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
+        }
+    }
+
+    void GizmosManagedOnlyAPI::InitResources()
     {
         g_LineListMesh = std::make_unique<GfxBasicMesh<GizmosVertex>>(GfxBufferFlags::Dynamic);
         g_LineListShader.reset("Engine/Shaders/Gizmos.shader");
-        g_LineListMaterial = std::make_unique<Material>();
-        g_LineListMaterial->SetShader(g_LineListShader.get());
+        g_LineListMaterial = std::make_unique<Material>(g_LineListShader.get());
     }
 
-    void Gizmos::ReleaseResources()
+    void GizmosManagedOnlyAPI::ReleaseResources()
     {
         g_LineListMesh.reset();
         g_LineListMaterial.reset();
         g_LineListShader.reset();
-    }
-
-    void Gizmos::AddRenderGraphPass(RenderGraph* graph, const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget)
-    {
-        FlushLineListIfNeeded(true);
-
-        auto builder = graph->AddPass("Gizmos");
-
-        builder.In(cbCamera);
-        builder.SetColorTarget(colorTarget);
-        builder.SetDepthStencilTarget(depthStencilTarget);
-        builder.SetRenderFunc([cbCamera](RenderGraphContext& context)
-        {
-            context.SetVariable(cbCamera);
-
-            // Visible part
-            for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
-            {
-                context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
-            }
-
-            // Invisible part
-            for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
-            {
-                context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
-            }
-        });
     }
 }

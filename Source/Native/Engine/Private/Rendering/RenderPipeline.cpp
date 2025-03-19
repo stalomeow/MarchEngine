@@ -20,69 +20,71 @@ using namespace DirectX;
 
 namespace march
 {
-    struct CameraConstants
+    RenderPipeline::RenderPipeline()
     {
-        XMFLOAT4X4 ViewMatrix;
-        XMFLOAT4X4 ProjectionMatrix;
-        XMFLOAT4X4 ViewProjectionMatrix;
-        XMFLOAT4X4 InvViewMatrix;
-        XMFLOAT4X4 InvProjectionMatrix;
-        XMFLOAT4X4 InvViewProjectionMatrix;
-        XMFLOAT4X4 NonJitteredViewProjectionMatrix;
-        XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
-        XMFLOAT4 TAAParams; // x: TAAFrameIndex
-    };
-
-    struct LightConstants
-    {
-        XMINT4 NumLights;   // x: numDirectionalLights, y: numPunctualLights
-        XMINT4 NumClusters; // xyz: numClusters
-    };
-
-    struct ShadowConstants
-    {
-        XMFLOAT4X4 ShadowMatrix;
-        XMFLOAT4 ShadowParams; // x: depth2RadialScale
-    };
-
-    RenderPipeline::RenderPipeline() {}
-
-    RenderPipeline::~RenderPipeline() {}
-
-    void RenderPipeline::InitResourcesIfNot()
-    {
-        if (m_IsResourceLoaded)
-        {
-            return;
-        }
-
-        m_IsResourceLoaded = true;
+        m_RenderGraph = std::make_unique<RenderGraph>();
 
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>(m_DeferredLitShader.get());
+
         m_SceneViewGridShader.reset("Engine/Shaders/SceneViewGrid.shader");
         m_SceneViewGridMaterial = std::make_unique<Material>(m_SceneViewGridShader.get());
+
         m_CameraMotionVectorShader.reset("Engine/Shaders/CameraMotionVector.shader");
         m_CameraMotionVectorMaterial = std::make_unique<Material>(m_CameraMotionVectorShader.get());
+
         m_SSAOShader.reset("Engine/Shaders/ScreenSpaceAmbientOcclusion.compute");
         m_CullLightShader.reset("Engine/Shaders/CullLight.compute");
         m_DiffuseIrradianceShader.reset("Engine/Shaders/DiffuseIrradiance.compute");
         m_SpecularIBLShader.reset("Engine/Shaders/SpecularIBL.compute");
         m_TAAShader.reset("Engine/Shaders/TemporalAntialiasing.compute");
         m_PostprocessingShader.reset("Engine/Shaders/Postprocessing.compute");
-        m_HizShader.reset("Engine/Shaders/HierarchicalZ.compute");
+        m_HiZShader.reset("Engine/Shaders/HierarchicalZ.compute");
         m_SSGIShader.reset("Engine/Shaders/ScreenSpaceGlobalIllumination.compute");
 
-        GenerateSSAORandomVectorMap();
         CreateLightResources();
+        GenerateSSAORandomVectorMap();
         CreateEnvLightResources();
+    }
 
-        m_RenderGraph = std::make_unique<RenderGraph>();
+    void RenderPipeline::AddMeshRenderer(MeshRenderer* obj)
+    {
+        m_MeshRenderers.push_back(obj);
+    }
+
+    void RenderPipeline::RemoveMeshRenderer(MeshRenderer* obj)
+    {
+        auto it = std::find(m_MeshRenderers.begin(), m_MeshRenderers.end(), obj);
+
+        if (it != m_MeshRenderers.end())
+        {
+            m_MeshRenderers.erase(it);
+        }
+    }
+
+    void RenderPipeline::AddLight(Light* light)
+    {
+        m_Lights.push_back(light);
+    }
+
+    void RenderPipeline::RemoveLight(Light* light)
+    {
+        auto it = std::find(m_Lights.begin(), m_Lights.end(), light);
+
+        if (it != m_Lights.end())
+        {
+            m_Lights.erase(it);
+        }
+    }
+
+    void RenderPipeline::SetSkyboxMaterial(Material* material)
+    {
+        m_SkyboxMaterial = material;
     }
 
     void RenderPipeline::PrepareFrameData()
     {
-        for (MeshRenderer* renderer : m_Renderers)
+        for (MeshRenderer* renderer : m_MeshRenderers)
         {
             renderer->PrepareFrameData();
         }
@@ -90,6 +92,14 @@ namespace march
         for (Camera* camera : Camera::GetAllCameras())
         {
             camera->PrepareFrameData();
+        }
+    }
+
+    void RenderPipeline::Render()
+    {
+        for (Camera* camera : Camera::GetAllCameras())
+        {
+            RenderSingleCamera(camera);
         }
     }
 
@@ -109,8 +119,6 @@ namespace march
                 return;
             }
 
-            InitResourcesIfNot();
-
             m_Resource.Reset();
             m_Resource.ColorTarget = m_RenderGraph->ImportTexture("_CameraColorTarget", display->GetColorBuffer());
             m_Resource.DepthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
@@ -121,9 +129,9 @@ namespace march
             m_Resource.EnvSpecularBRDFLUT = m_RenderGraph->ImportTexture("_EnvSpecularBRDFLUT", m_EnvSpecularBRDFLUT.get());
             m_Resource.RequestGBuffers(m_RenderGraph.get(), display->GetPixelWidth(), display->GetPixelHeight());
 
-            ClearAndDrawObjects(camera->GetEnableWireframe());
+            ClearAndDrawGBuffers(camera->GetEnableWireframe());
 
-            Hiz();
+            HiZ();
             CullLights();
             SSAO();
 
@@ -132,7 +140,6 @@ namespace march
             XMFLOAT4X4 shadowMatrix{};
             float depth2RadialScale = 0;
             DrawShadowCasters(shadowMatrix, depth2RadialScale);
-
             DeferredLighting(shadowMatrix, depth2RadialScale);
             DrawSkybox();
 
@@ -141,7 +148,7 @@ namespace march
             if (camera->GetEnableGizmos())
             {
                 DrawSceneViewGrid();
-                Gizmos::AddRenderGraphPass(m_RenderGraph.get(), m_Resource.CbCamera, m_Resource.ColorTarget, m_Resource.DepthStencilTarget);
+                DrawGizmos();
             }
 
             TAA();
@@ -151,17 +158,22 @@ namespace march
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR("error: {}", e.what());
+            LOG_ERROR("RenderPipelineError: {}", e.what());
         }
     }
 
-    void RenderPipeline::Render()
+    struct CameraConstants
     {
-        for (Camera* camera : Camera::GetAllCameras())
-        {
-            RenderSingleCamera(camera);
-        }
-    }
+        XMFLOAT4X4 ViewMatrix;
+        XMFLOAT4X4 ProjectionMatrix;
+        XMFLOAT4X4 ViewProjectionMatrix;
+        XMFLOAT4X4 InvViewMatrix;
+        XMFLOAT4X4 InvProjectionMatrix;
+        XMFLOAT4X4 InvViewProjectionMatrix;
+        XMFLOAT4X4 NonJitteredViewProjectionMatrix;
+        XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
+        XMFLOAT4 TAAParams; // x: TAAFrameIndex
+    };
 
     BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& name, Camera* camera)
     {
@@ -210,7 +222,7 @@ namespace march
         return m_RenderGraph->RequestBufferWithContent(name, desc, &consts);
     }
 
-    void RenderPipeline::ClearAndDrawObjects(bool wireframe)
+    void RenderPipeline::ClearAndDrawGBuffers(bool wireframe)
     {
         auto builder = m_RenderGraph->AddPass("DrawGBuffer");
 
@@ -222,13 +234,50 @@ namespace march
         }
 
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget, RenderTargetInitMode::Clear);
-        builder.SetWireframe(wireframe);
 
+        builder.SetWireframe(wireframe);
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "GBuffer");
+            context.DrawMeshRenderers(m_MeshRenderers.size(), m_MeshRenderers.data(), "GBuffer");
         });
     }
+
+    void RenderPipeline::CreateLightResources()
+    {
+        GfxBufferDesc desc1{};
+        desc1.Stride = sizeof(XMINT2);
+        desc1.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z;
+        desc1.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
+        desc1.Flags = GfxBufferFlags::None;
+        m_ClusterPunctualLightRangesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightRanges", desc1);
+
+        GfxBufferDesc desc2{};
+        desc2.Stride = sizeof(int32);
+        desc2.Count = NUM_MAX_VISIBLE_LIGHT;
+        desc2.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
+        desc2.Flags = GfxBufferFlags::None;
+        m_ClusterPunctualLightIndicesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightIndices", desc2);
+
+        GfxBufferDesc desc3{};
+        desc3.Stride = sizeof(int32);
+        desc3.Count = 1;
+        desc3.Usages = GfxBufferUsages::RWStructured;
+        desc3.Flags = GfxBufferFlags::None;
+        m_VisibleLightCounterBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_VisibleLightCounter", desc3);
+
+        GfxBufferDesc desc4{};
+        desc4.Stride = sizeof(int32);
+        desc4.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y;
+        desc4.Usages = GfxBufferUsages::RWStructured;
+        desc4.Flags = GfxBufferFlags::None;
+        m_MaxClusterZIdsBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_MaxClusterZIds", desc4);
+    }
+
+    struct LightConstants
+    {
+        XMINT4 NumLights;   // x: numDirectionalLights, y: numPunctualLights
+        XMINT4 NumClusters; // xyz: numClusters
+    };
 
     void RenderPipeline::CullLights()
     {
@@ -328,6 +377,12 @@ namespace march
         });
     }
 
+    struct ShadowConstants
+    {
+        XMFLOAT4X4 ShadowMatrix;
+        XMFLOAT4 ShadowParams; // x: depth2RadialScale
+    };
+
     void RenderPipeline::DeferredLighting(const XMFLOAT4X4& shadowMatrix, float depth2RadialScale)
     {
         GfxBufferDesc bufDesc{};
@@ -386,7 +441,7 @@ namespace march
 
         bool drawShadow;
 
-        if (m_Lights.empty() || m_Renderers.empty())
+        if (m_Lights.empty() || m_MeshRenderers.empty())
         {
             drawShadow = false;
 
@@ -402,16 +457,16 @@ namespace march
 
             BoundingBox aabb{};
 
-            for (size_t i = 0; i < m_Renderers.size(); i++)
+            for (size_t i = 0; i < m_MeshRenderers.size(); i++)
             {
                 if (i == 0)
                 {
-                    aabb = m_Renderers[i]->GetBounds();
+                    aabb = m_MeshRenderers[i]->GetBounds();
                 }
                 else
                 {
                     BoundingBox temp{};
-                    BoundingBox::CreateMerged(temp, aabb, m_Renderers[i]->GetBounds());
+                    BoundingBox::CreateMerged(temp, aabb, m_MeshRenderers[i]->GetBounds());
                     aabb = temp;
                 }
             }
@@ -465,7 +520,7 @@ namespace march
             if (drawShadow)
             {
                 context.SetVariable(cbShadowCamera, "cbCamera");
-                context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "ShadowCaster");
+                context.DrawMeshRenderers(m_MeshRenderers.size(), m_MeshRenderers.data(), "ShadowCaster");
             }
         });
     }
@@ -486,6 +541,21 @@ namespace march
         {
             context.DrawMesh(GfxMeshGeometry::Sphere, m_SkyboxMaterial, 0);
         });
+    }
+
+    void RenderPipeline::DrawGizmos()
+    {
+        if (!Gizmos::CanRender())
+        {
+            return;
+        }
+
+        auto builder = m_RenderGraph->AddPass("Gizmos");
+
+        builder.In(m_Resource.CbCamera);
+        builder.SetColorTarget(m_Resource.ColorTarget);
+        builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
+        builder.SetRenderFunc(Gizmos::Render);
     }
 
     void RenderPipeline::DrawSceneViewGrid()
@@ -575,6 +645,7 @@ namespace march
 
         static int32 ssaoMapId = ShaderUtils::GetIdFromString("_SSAOMap");
         m_Resource.SSAOMap = m_RenderGraph->RequestTexture(ssaoMapId, ssaoMapDesc);
+
         static int32 ssaoMapTempId = ShaderUtils::GetIdFromString("_SSAOMapTemp");
         m_Resource.SSAOMapTemp = m_RenderGraph->RequestTexture(ssaoMapTempId, ssaoMapDesc);
 
@@ -607,37 +678,6 @@ namespace march
         });
     }
 
-    void RenderPipeline::CreateLightResources()
-    {
-        GfxBufferDesc desc1{};
-        desc1.Stride = sizeof(XMINT2);
-        desc1.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y * NUM_CLUSTER_Z;
-        desc1.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
-        desc1.Flags = GfxBufferFlags::None;
-        m_ClusterPunctualLightRangesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightRanges", desc1);
-
-        GfxBufferDesc desc2{};
-        desc2.Stride = sizeof(int32);
-        desc2.Count = NUM_MAX_VISIBLE_LIGHT;
-        desc2.Usages = GfxBufferUsages::RWStructured | GfxBufferUsages::Structured;
-        desc2.Flags = GfxBufferFlags::None;
-        m_ClusterPunctualLightIndicesBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_ClusterPunctualLightIndices", desc2);
-
-        GfxBufferDesc desc3{};
-        desc3.Stride = sizeof(int32);
-        desc3.Count = 1;
-        desc3.Usages = GfxBufferUsages::RWStructured;
-        desc3.Flags = GfxBufferFlags::None;
-        m_VisibleLightCounterBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_VisibleLightCounter", desc3);
-
-        GfxBufferDesc desc4{};
-        desc4.Stride = sizeof(int32);
-        desc4.Count = NUM_CLUSTER_X * NUM_CLUSTER_Y;
-        desc4.Usages = GfxBufferUsages::RWStructured;
-        desc4.Flags = GfxBufferFlags::None;
-        m_MaxClusterZIdsBuffer = std::make_unique<GfxBuffer>(GetGfxDevice(), "_MaxClusterZIds", desc4);
-    }
-
     void RenderPipeline::CreateEnvLightResources()
     {
         GfxBufferDesc sh9Desc{};
@@ -660,9 +700,37 @@ namespace march
         desc1.MipmapBias = 0;
         m_EnvSpecularRadianceMap = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularRadianceMap", desc1, GfxTextureAllocStrategy::DefaultHeapCommitted);
 
-        //GenerateEnvSpecularBRDFLUT();
+        // GenerateEnvSpecularBRDFLUT();
         // 现在不需要每次启动时都重新生成，可以直接加载
         m_EnvSpecularBRDFLUT.reset("Engine/Resources/Textures/EnvSpecularBRDFLUT.dds");
+    }
+
+    void RenderPipeline::GenerateEnvSpecularBRDFLUT()
+    {
+        //GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+
+        //cmd->BeginEvent("SpecularBRDFLUT");
+        //{
+        //    GfxTextureDesc desc{};
+        //    desc.Format = GfxTextureFormat::R16G16_Float;
+        //    desc.Flags = GfxTextureFlags::UnorderedAccess;
+        //    desc.Dimension = GfxTextureDimension::Tex2D;
+        //    desc.Width = 512;
+        //    desc.Height = 512;
+        //    desc.DepthOrArraySize = 1;
+        //    desc.MSAASamples = 1;
+        //    desc.Filter = GfxTextureFilterMode::Bilinear;
+        //    desc.Wrap = GfxTextureWrapMode::Clamp;
+        //    desc.MipmapBias = 0;
+
+        //    m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+
+        //    cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
+        //    cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), "BRDFMain", desc.Width, desc.Height, 1);
+        //}
+        //cmd->EndEvent();
+
+        //cmd->SubmitAndRelease();
     }
 
     struct DiffuseIrradianceSH9Consts
@@ -677,9 +745,8 @@ namespace march
 
     void RenderPipeline::BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier)
     {
-        InitResourcesIfNot();
-
         GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+
         cmd->BeginEvent("BakeEnvLight");
         {
             // Diffuse Irradiance
@@ -696,8 +763,8 @@ namespace march
                 DiffuseIrradianceSH9Consts consts{ std::clamp(diffuseIntensityMultiplier, 0.0f, 1.0f)};
                 GfxBuffer cb{ GetGfxDevice(), "cbSH9", cbDesc };
                 cb.SetData(&consts);
-                cmd->SetBuffer("cbSH9", &cb);
 
+                cmd->SetBuffer("cbSH9", &cb);
                 cmd->DispatchCompute(m_DiffuseIrradianceShader.get(), "CalcSH9Main", 1, 1, 1);
             }
 
@@ -732,41 +799,16 @@ namespace march
 
                         GfxBuffer cb{ GetGfxDevice(), "cbPrefilter", cbDesc };
                         cb.SetData(&consts);
-                        cmd->SetBuffer("cbPrefilter", &cb);
 
+                        cmd->SetBuffer("cbPrefilter", &cb);
                         cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), "PrefilterMain", outputDesc.Width, outputDesc.Height, 1);
                     }
                 }
             }
         }
         cmd->EndEvent();
+
         cmd->SubmitAndRelease();
-    }
-
-    void RenderPipeline::GenerateEnvSpecularBRDFLUT()
-    {
-        //InitResourcesIfNot();
-
-        //GfxCommandContext* cmd = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
-        //cmd->BeginEvent("SpecularBRDFLUT");
-        //{
-        //    GfxTextureDesc desc2{};
-        //    desc2.Format = GfxTextureFormat::R16G16_Float;
-        //    desc2.Flags = GfxTextureFlags::UnorderedAccess;
-        //    desc2.Dimension = GfxTextureDimension::Tex2D;
-        //    desc2.Width = 512;
-        //    desc2.Height = 512;
-        //    desc2.DepthOrArraySize = 1;
-        //    desc2.MSAASamples = 1;
-        //    desc2.Filter = GfxTextureFilterMode::Bilinear;
-        //    desc2.Wrap = GfxTextureWrapMode::Clamp;
-        //    desc2.MipmapBias = 0;
-        //    m_EnvSpecularBRDFLUT = std::make_unique<GfxRenderTexture>(GetGfxDevice(), "_EnvSpecularBRDFLUT", desc2, GfxTextureAllocStrategy::DefaultHeapCommitted);
-        //    cmd->SetTexture("_BRDFLUT", m_EnvSpecularBRDFLUT.get());
-        //    cmd->DispatchComputeByThreadCount(m_SpecularIBLShader.get(), "BRDFMain", desc2.Width, desc2.Height, 1);
-        //}
-        //cmd->EndEvent();
-        //cmd->SubmitAndRelease();
     }
 
     void RenderPipeline::DrawMotionVector()
@@ -791,11 +833,10 @@ namespace march
         builder.In(m_Resource.CbCamera);
         builder.SetColorTarget(m_Resource.MotionVectorTexture, RenderTargetInitMode::Clear);
         builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
-
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_CameraMotionVectorMaterial.get(), 0);
-            context.DrawMeshRenderers(m_Renderers.size(), m_Renderers.data(), "MotionVector");
+            context.DrawMeshRenderers(m_MeshRenderers.size(), m_MeshRenderers.data(), "MotionVector");
         });
     }
 
@@ -822,8 +863,8 @@ namespace march
     {
         auto builder = m_RenderGraph->AddPass("Postprocessing");
 
-        builder.UseDefaultVariables(false);
         builder.InOut(m_Resource.ColorTarget);
+        builder.UseDefaultVariables(false);
 
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
@@ -834,14 +875,14 @@ namespace march
         });
     }
 
-    void RenderPipeline::Hiz()
+    void RenderPipeline::HiZ()
     {
         GfxTextureDesc desc{};
         desc.Format = GfxTextureFormat::R32G32_Float;
         desc.Flags = GfxTextureFlags::Mipmaps | GfxTextureFlags::UnorderedAccess;
         desc.Dimension = GfxTextureDimension::Tex2D;
-        desc.Width = m_Resource.ColorTarget.GetDesc().Width;
-        desc.Height = m_Resource.ColorTarget.GetDesc().Height;
+        desc.Width = m_Resource.DepthStencilTarget.GetDesc().Width;
+        desc.Height = m_Resource.DepthStencilTarget.GetDesc().Height;
         desc.DepthOrArraySize = 1;
         desc.MSAASamples = 1;
         desc.Filter = GfxTextureFilterMode::Point;
@@ -857,20 +898,20 @@ namespace march
         builder.Out(m_Resource.HiZTexture);
         builder.UseDefaultVariables(false);
 
-        builder.SetRenderFunc([this](RenderGraphContext& context)
+        builder.SetRenderFunc([this, w = desc.Width, h = desc.Height](RenderGraphContext& context)
         {
             context.SetVariable(m_Resource.DepthStencilTarget, "_InputTexture", GfxTextureElement::Depth);
             context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, 0);
-            context.DispatchComputeByThreadCount(m_HizShader.get(), "CopyDepthMain", m_Resource.DepthStencilTarget.GetDesc().Width, m_Resource.DepthStencilTarget.GetDesc().Height, 1);
+            context.DispatchComputeByThreadCount(m_HiZShader.get(), "CopyDepthMain", w, h, 1);
 
             for (uint32_t mipLevel = 1; mipLevel < m_Resource.HiZTexture->GetMipLevels(); mipLevel++)
             {
                 context.SetVariable(m_Resource.HiZTexture, "_InputTexture", GfxTextureElement::Default, mipLevel - 1);
                 context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, mipLevel);
 
-                uint32_t width = std::max(m_Resource.HiZTexture->GetDesc().Width >> mipLevel, 1u);
-                uint32_t height = std::max(m_Resource.HiZTexture->GetDesc().Height >> mipLevel, 1u);
-                context.DispatchComputeByThreadCount(m_HizShader.get(), "GenMipMain", width, height, 1);
+                uint32_t width = std::max(w >> mipLevel, 1u);
+                uint32_t height = std::max(h >> mipLevel, 1u);
+                context.DispatchComputeByThreadCount(m_HiZShader.get(), "GenMipMain", width, height, 1);
             }
         });
     }
@@ -891,6 +932,7 @@ namespace march
 
         static int32 ssgiId = ShaderUtils::GetIdFromString("_SSGITexture");
         m_Resource.SSGITexture = m_RenderGraph->RequestTexture(ssgiId, desc);
+
         static int32 ssgiTempId = ShaderUtils::GetIdFromString("_SSGITextureTemp");
         m_Resource.SSGITextureTemp = m_RenderGraph->RequestTexture(ssgiTempId, desc);
 
@@ -911,7 +953,6 @@ namespace march
             context.SetVariable(m_Resource.ColorTarget, "_ColorTexture");
             context.SetVariable(m_Resource.DepthStencilTarget, "_StencilTexture", GfxTextureElement::Stencil);
             context.SetVariable(m_Resource.SSGITexture, "_OutputTexture");
-
             context.DispatchComputeByThreadCount(m_SSGIShader.get(), "DiffuseMain", w, h, 1);
 
             for (int i = 0; i < 3; i++)

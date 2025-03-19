@@ -107,83 +107,65 @@ namespace march
     {
     public:
         RenderPipeline();
-        ~RenderPipeline();
 
-        void InitResourcesIfNot();
+        void AddMeshRenderer(MeshRenderer* obj);
+        void RemoveMeshRenderer(MeshRenderer* obj);
+        void AddLight(Light* light);
+        void RemoveLight(Light* light);
 
-        void RenderSingleCamera(Camera* camera);
-        void Render();
-
-        void AddMeshRenderer(MeshRenderer* obj) { m_Renderers.push_back(obj); }
-
-        void RemoveMeshRenderer(MeshRenderer* obj)
-        {
-            auto it = std::find(m_Renderers.begin(), m_Renderers.end(), obj);
-
-            if (it != m_Renderers.end())
-            {
-                m_Renderers.erase(it);
-            }
-        }
-
-        void AddLight(Light* light) { m_Lights.push_back(light); }
-
-        void RemoveLight(Light* light)
-        {
-            auto it = std::find(m_Lights.begin(), m_Lights.end(), light);
-
-            if (it != m_Lights.end())
-            {
-                m_Lights.erase(it);
-            }
-        }
+        void SetSkyboxMaterial(Material* material);
+        void BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier);
 
         void PrepareFrameData();
+        void Render();
+        void RenderSingleCamera(Camera* camera);
 
-        void SetSkyboxMaterial(Material* material) { m_SkyboxMaterial = material; }
-
+    private:
         BufferHandle CreateCameraConstantBuffer(const std::string& name, Camera* camera);
         BufferHandle CreateCameraConstantBuffer(const std::string& name, const DirectX::XMFLOAT4X4& viewMatrix, const DirectX::XMFLOAT4X4& projectionMatrix);
 
+        void CreateLightResources();
         void CullLights();
         void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix, float depth2RadialScale);
         void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix, float& depth2RadialScale);
-        void ClearAndDrawObjects(bool wireframe);
+        void ClearAndDrawGBuffers(bool wireframe);
+        void DrawGizmos();
         void DrawSceneViewGrid();
         void DrawSkybox();
-
         void GenerateSSAORandomVectorMap();
         void SSAO();
-
-        void CreateLightResources();
         void CreateEnvLightResources();
-        void BakeEnvLight(GfxTexture* radianceMap, float diffuseIntensityMultiplier, float specularIntensityMultiplier);
         void GenerateEnvSpecularBRDFLUT();
-
         void DrawMotionVector();
         void TAA();
-
         void Postprocessing();
-
-        void Hiz();
+        void HiZ();
         void SSGI();
 
-    private:
+        std::vector<MeshRenderer*> m_MeshRenderers{};
+        std::vector<Light*> m_Lights{};
+        RenderPipelineResource m_Resource{};
+
+        std::unique_ptr<RenderGraph> m_RenderGraph;
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
+
         asset_ptr<Shader> m_SceneViewGridShader = nullptr;
         std::unique_ptr<Material> m_SceneViewGridMaterial = nullptr;
+
         asset_ptr<Shader> m_CameraMotionVectorShader = nullptr;
         std::unique_ptr<Material> m_CameraMotionVectorMaterial = nullptr;
+
         asset_ptr<ComputeShader> m_SSAOShader = nullptr;
         asset_ptr<ComputeShader> m_CullLightShader = nullptr;
         asset_ptr<ComputeShader> m_DiffuseIrradianceShader = nullptr;
         asset_ptr<ComputeShader> m_SpecularIBLShader = nullptr;
         asset_ptr<ComputeShader> m_TAAShader = nullptr;
         asset_ptr<ComputeShader> m_PostprocessingShader = nullptr;
-        asset_ptr<ComputeShader> m_HizShader = nullptr;
+        asset_ptr<ComputeShader> m_HiZShader = nullptr;
         asset_ptr<ComputeShader> m_SSGIShader = nullptr;
+
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 
         std::unique_ptr<GfxBuffer> m_ClusterPunctualLightRangesBuffer = nullptr;
@@ -191,17 +173,10 @@ namespace march
         std::unique_ptr<GfxBuffer> m_VisibleLightCounterBuffer = nullptr;
         std::unique_ptr<GfxBuffer> m_MaxClusterZIdsBuffer = nullptr;
 
+        Material* m_SkyboxMaterial = nullptr;
+
         std::unique_ptr<GfxBuffer> m_EnvDiffuseSH9Coefs = nullptr;
         std::unique_ptr<GfxTexture> m_EnvSpecularRadianceMap = nullptr;
         asset_ptr<GfxExternalTexture> m_EnvSpecularBRDFLUT = nullptr;
-
-        Material* m_SkyboxMaterial = nullptr;
-
-        RenderPipelineResource m_Resource{};
-
-        std::vector<MeshRenderer*> m_Renderers{};
-        std::vector<Light*> m_Lights{};
-        std::unique_ptr<RenderGraph> m_RenderGraph = nullptr;
-        bool m_IsResourceLoaded = false;
     };
 }

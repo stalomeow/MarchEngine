@@ -32,3 +32,13 @@ NATIVE_EXPORT_AUTO RenderPipeline_BakeEnvLight(cs<GfxTexture*> radianceMap, cs_f
 {
     GetApp()->GetRenderPipeline()->BakeEnvLight(radianceMap, diffuseIntensityMultiplier, specularIntensityMultiplier);
 }
+
+NATIVE_EXPORT_AUTO RenderPipeline_Initialize()
+{
+    ApplicationManagedOnlyAPI::InitRenderPipeline(GetApp());
+}
+
+NATIVE_EXPORT_AUTO RenderPipeline_Release()
+{
+    ApplicationManagedOnlyAPI::ReleaseRenderPipeline(GetApp());
+}

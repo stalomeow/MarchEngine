@@ -9,7 +9,6 @@ namespace march
 {
     class BusyProgressBar;
     class GfxSwapChain;
-    class RenderPipeline;
     enum class ManagedMethod;
 
     class EditorApplication : public Application
@@ -23,7 +22,6 @@ namespace march
         const std::string& GetEngineShaderPath() const override { return m_EngineShaderPath; }
         bool IsEngineResourceEditable() const override;
         bool IsEngineShaderEditable() const override;
-        RenderPipeline* GetRenderPipeline() const override { return m_RenderPipeline.get(); }
         std::string SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const;
 
     protected:
@@ -44,7 +42,6 @@ namespace march
         void InitPaths();
 
         std::unique_ptr<GfxSwapChain> m_SwapChain;
-        std::unique_ptr<RenderPipeline> m_RenderPipeline;
         std::unique_ptr<BusyProgressBar> m_ProgressBar;
 
         std::string m_DataPath;

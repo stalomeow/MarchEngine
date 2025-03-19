@@ -80,6 +80,18 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         public static partial void DrawText(Vector3 center, StringLike text);
+
+        internal static void Initialize()
+        {
+            InitResources();
+            Application.OnQuit += ReleaseResources;
+        }
+
+        [NativeMethod]
+        private static partial void InitResources();
+
+        [NativeMethod]
+        private static partial void ReleaseResources();
     }
 
     public static class GizmosUtility

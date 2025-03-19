@@ -18,10 +18,12 @@ namespace march
     const std::unordered_map<ManagedMethod, std::pair<LPCWSTR, LPCWSTR>> g_ManagedMethodConfig =
     {
         { ManagedMethod::Application_Initialize                   , { L"March.Core.Application,March.Core"           , L"Initialize"             } },
+        { ManagedMethod::Application_PostInitialize               , { L"March.Core.Application,March.Core"           , L"PostInitialize"         } },
         { ManagedMethod::Application_Tick                         , { L"March.Core.Application,March.Core"           , L"Tick"                   } },
         { ManagedMethod::Application_Quit                         , { L"March.Core.Application,March.Core"           , L"Quit"                   } },
         { ManagedMethod::Application_FullGC                       , { L"March.Core.Application,March.Core"           , L"FullGC"                 } },
         { ManagedMethod::EditorApplication_Initialize             , { L"March.Editor.EditorApplication,March.Editor" , L"Initialize"             } },
+        { ManagedMethod::EditorApplication_PostInitialize         , { L"March.Editor.EditorApplication,March.Editor" , L"PostInitialize"         } },
         { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { L"March.Editor.EditorApplication,March.Editor" , L"OpenConsoleWindowIfNot" } },
         { ManagedMethod::AssetManager_NativeLoadAsset             , { L"March.Core.AssetManager,March.Core"          , L"NativeLoadAsset"        } },
         { ManagedMethod::AssetManager_NativeUnloadAsset           , { L"March.Core.AssetManager,March.Core"          , L"NativeUnloadAsset"      } },

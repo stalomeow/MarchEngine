@@ -11,7 +11,6 @@
 
 namespace march
 {
-    class RenderGraph;
     class Camera;
 
     struct Gizmos final
@@ -36,8 +35,14 @@ namespace march
         static void DrawWireCube(const DirectX::XMFLOAT3& center, const DirectX::XMFLOAT3& size);
         static void DrawText(const DirectX::XMFLOAT3& center, const std::string& text);
 
+        static bool CanRender();
+        static void Render(RenderGraphContext& context);
+    };
+
+    // 给 C# 的接口
+    struct GizmosManagedOnlyAPI
+    {
         static void InitResources();
         static void ReleaseResources();
-        static void AddRenderGraphPass(RenderGraph* graph, const BufferHandle& cbCamera, const TextureHandle& colorTarget, const TextureHandle& depthStencilTarget);
     };
 }

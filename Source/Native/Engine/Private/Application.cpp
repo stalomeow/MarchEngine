@@ -2,6 +2,7 @@
 #include "Engine/Application.h"
 #include "Engine/EngineTimer.h"
 #include "Engine/Misc/StringUtils.h"
+#include "Engine/Rendering/RenderPipeline.h"
 #include <WindowsX.h>
 #include <stdexcept>
 #include <assert.h>
@@ -10,14 +11,16 @@ namespace march
 {
     static Application* g_Application = nullptr;
 
-    Application::Application() : m_IsStarted(false), m_InstanceHandle(nullptr), m_WindowHandle(nullptr)
+    Application::Application()
+        : m_IsStarted(false)
+        , m_InstanceHandle(NULL)
+        , m_WindowHandle(NULL)
     {
         m_Timer = std::make_unique<EngineTimer>();
+        m_RenderPipeline = nullptr;
     }
 
-    Application::~Application()
-    {
-    }
+    Application::~Application() = default;
 
     uint32_t Application::GetClientWidth() const
     {
@@ -44,6 +47,21 @@ namespace march
     {
         UINT dpi = GetDpiForWindow(m_WindowHandle);
         return static_cast<float>(dpi) / 96.0f;
+    }
+
+    RenderPipeline* Application::GetRenderPipeline() const
+    {
+        return m_RenderPipeline.get();
+    }
+
+    void ApplicationManagedOnlyAPI::InitRenderPipeline(Application* app)
+    {
+        app->m_RenderPipeline = std::make_unique<RenderPipeline>();
+    }
+
+    void ApplicationManagedOnlyAPI::ReleaseRenderPipeline(Application* app)
+    {
+        app->m_RenderPipeline.reset();
     }
 
     HINSTANCE Application::GetInstanceHandle() const

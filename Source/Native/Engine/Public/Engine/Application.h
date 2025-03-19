@@ -13,6 +13,8 @@ namespace march
 
     class Application
     {
+        friend struct ApplicationManagedOnlyAPI;
+
     public:
         virtual ~Application();
 
@@ -24,6 +26,7 @@ namespace march
         float GetClientAspectRatio() const;
         float GetDisplayScale() const;
 
+        RenderPipeline* GetRenderPipeline() const;
         HINSTANCE GetInstanceHandle() const;
         HWND GetWindowHandle() const;
         void SetWindowTitle(const std::string& title) const;
@@ -39,8 +42,6 @@ namespace march
         virtual const std::string& GetEngineShaderPath() const = 0;
         virtual bool IsEngineResourceEditable() const = 0;
         virtual bool IsEngineShaderEditable() const = 0;
-
-        virtual RenderPipeline* GetRenderPipeline() const = 0;
 
         Application(const Application&) = delete;
         Application& operator=(const Application&) = delete;
@@ -79,8 +80,16 @@ namespace march
 
         bool m_IsStarted;
         std::unique_ptr<EngineTimer> m_Timer;
+        std::unique_ptr<RenderPipeline> m_RenderPipeline;
         HINSTANCE m_InstanceHandle;
         HWND m_WindowHandle;
+    };
+
+    // 仅限 C# 调用
+    struct ApplicationManagedOnlyAPI
+    {
+        static void InitRenderPipeline(Application* app);
+        static void ReleaseRenderPipeline(Application* app);
     };
 
     Application* GetApp();

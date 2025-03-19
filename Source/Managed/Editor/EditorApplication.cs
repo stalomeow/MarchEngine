@@ -2,6 +2,7 @@ using March.Core;
 using March.Core.Diagnostics;
 using March.Core.Interop;
 using March.Core.Pool;
+using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline;
 using March.Editor.Windows;
@@ -32,8 +33,13 @@ namespace March.Editor
         private static void Initialize()
         {
             AssetDatabase.Initialize();
-            EditorSceneManager.Initialize();
+            Gizmos.Initialize();
+        }
 
+        [UnmanagedCallersOnly]
+        private static void PostInitialize()
+        {
+            EditorSceneManager.Initialize();
             LoadWindows();
 
             OnTick += () =>

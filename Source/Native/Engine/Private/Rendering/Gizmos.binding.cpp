@@ -66,3 +66,13 @@ NATIVE_EXPORT_AUTO Gizmos_DrawText(cs_vec3 center, cs_string text)
 {
     Gizmos::DrawText(center, text);
 }
+
+NATIVE_EXPORT_AUTO Gizmos_InitResources()
+{
+    GizmosManagedOnlyAPI::InitResources();
+}
+
+NATIVE_EXPORT_AUTO Gizmos_ReleaseResources()
+{
+    GizmosManagedOnlyAPI::ReleaseResources();
+}
