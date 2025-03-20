@@ -4,7 +4,7 @@
 #include "Includes/Sampling.hlsl"
 #include "Includes/SH9.hlsl"
 
-#define NUM_SAMPLES 4096
+#define NUM_SAMPLES 1024
 
 TextureCube _RadianceMap;
 SamplerState sampler_RadianceMap;
