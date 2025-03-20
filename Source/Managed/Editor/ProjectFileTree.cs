@@ -132,7 +132,10 @@ namespace March.Editor
             {
                 if (isFolder)
                 {
-                    node.Folders.Add(segments[^1], new FolderNode(path));
+                    if (!node.Folders.ContainsKey(segments[^1]))
+                    {
+                        node.Folders.Add(segments[^1], new FolderNode(path));
+                    }
                 }
                 else
                 {

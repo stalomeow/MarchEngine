@@ -6,6 +6,8 @@
 
 该项目还有很多地方不够完善，很多实现也未必最优，但我现在**准备找暑期实习（2026 年本科毕业）**，所以不得不公开这个仓库。
 
+~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
+
 ## 已实现的功能
 
 ### Scripting
@@ -21,7 +23,6 @@
 - 使用 [`FileSystemWatcher`](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher) 监听资产变动
 - 资产的内容发生变化，或者资产的依赖发生变化时，自动重新导入，实现资产热重载
 - 支持资产拖拽赋值，拖拽实例化
-- 默认支持 DDS、PNG、JPG、EXR、glTF 等资产
 
 下面是一段示例代码，用于导入项目中的 hlsl 资产，并正确设置依赖关系。
 
@@ -123,20 +124,29 @@ void RenderPipeline::HiZ()
 }
 ```
 
+#### Async Compute
+
+
 ### RenderPipeline
 
+- Linear Color Space Rendering
+- Reversed-Z Buffer
+- Octahedron Normal Encoding
+- Normal Mapping
 - Hierarchical Z-Buffer
 - Clustered Deferred Shading
-- Percentage-Closer Soft Shadows
+- Percentage-Closer Soft Shadow
 - Lambertian Diffuse + Microfacet BRDF
-- 基于 Spherical Harmonics 的 Diffuse 环境光，并且将时域卷积转换到频域，使得两次积分变成一次积分
-- 基于 Split-Sum Approximation 的 Specular IBL
-- 物理光源 Candela / Lux / Lumen / Correlated Color Temperature
-- 天空盒（Cubemap）
+- Directional / Point / Spot Light
+- Physical Light Units: Lux / Lumen / Candela
+- Correlated Color Temperature
 - Screen Space Ambient Occlusion
 - Motion Vector / Temporal Anti-aliasing
 - ACES Tonemapping
+- 天空盒（Cubemap）
 - Scene View 无限网格
+- 基于 Spherical Harmonics 的 Diffuse 环境光，并且将时域卷积转换为频域乘积，使得两次积分变成一次积分
+- 基于 Split-Sum Approximation 的 Specular IBL
 
 ### EditorGUI
 

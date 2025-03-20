@@ -14,7 +14,7 @@ namespace March.Core.Rendering
     {
         private static readonly Dictionary<MeshGeometry, Mesh> s_Geometries = new();
 
-        static Mesh()
+        internal static void InitializeGeometries()
         {
             Application.OnQuit += () =>
             {

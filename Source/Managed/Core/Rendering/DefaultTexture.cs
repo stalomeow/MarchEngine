@@ -20,7 +20,7 @@ namespace March.Core.Rendering
 
         private static readonly Dictionary<DefaultTexQuery, ExternalTexture> s_Textures = new();
 
-        static Texture()
+        internal static void InitializeDefaults()
         {
             Application.OnQuit += () =>
             {

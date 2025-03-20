@@ -266,7 +266,6 @@ namespace march
         EditorGUI::EndMainViewportSideBar();
 
         ConsoleWindow::DrawMainViewportSideBarConsole();
-        EditorWindow::DockSpaceOverMainViewport();
     }
 
     void EditorApplication::OnTick(bool willQuit)
@@ -281,6 +280,9 @@ namespace march
         ImGui::NewFrame();
 
         {
+            // C# 在第一次初始化 EditorWindow 时要用到 ImGui 的 DockSpace
+            EditorWindow::DockSpaceOverMainViewport();
+
             if (!m_IsInitialized)
             {
                 // Initialization

@@ -38,7 +38,14 @@ namespace March.Editor.AssetPipeline
 
         static AssetDatabase()
         {
-            s_ProjectAssetFileWatcher = new FileSystemWatcher(AssetLocation.GetBaseFullPath(AssetCategory.ProjectAsset)!);
+            string projectAssetPath = AssetLocation.GetBaseFullPath(AssetCategory.ProjectAsset)!;
+
+            if (!Directory.Exists(projectAssetPath))
+            {
+                Directory.CreateDirectory(projectAssetPath);
+            }
+
+            s_ProjectAssetFileWatcher = new FileSystemWatcher(projectAssetPath);
             s_EngineShaderWatcher = new FileSystemWatcher(AssetLocation.GetBaseFullPath(AssetCategory.EngineShader)!);
             s_EngineResourceWatcher = new FileSystemWatcher(AssetLocation.GetBaseFullPath(AssetCategory.EngineResource)!);
         }
@@ -379,10 +386,7 @@ namespace March.Editor.AssetPipeline
             if (oldImporter == null)
             {
                 // 可能是资产被创建后立即重命名，直接当成新创建的资产处理
-                if (GetAssetImporter(newLocation.AssetPath) != null)
-                {
-                    OnImported?.Invoke(newLocation);
-                }
+                OnAssetCreated(e.FullPath);
             }
             else
             {
@@ -400,19 +404,41 @@ namespace March.Editor.AssetPipeline
 
         private static void OnAssetCreated(FileSystemEventArgs e)
         {
-            //Debug.LogInfo("Created: " + e.FullPath);
+            OnAssetCreated(e.FullPath);
+        }
 
-            var location = AssetLocation.FromFullPath(e.FullPath);
-
-            if (location.Category == AssetCategory.Unknown)
+        private static void OnAssetCreated(string fullPath)
+        {
+            if (Directory.Exists(fullPath))
             {
-                Log.Message(LogLevel.Warning, "Attempting to create and import an asset whose path is unknown", $"{e.FullPath}");
-                return;
+                var root = new DirectoryInfo(fullPath);
+
+                foreach (FileSystemInfo info in root.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+                {
+                    OnSingleAssetCreated(info.FullName);
+                }
+            }
+            else
+            {
+                OnSingleAssetCreated(fullPath);
             }
 
-            if (GetAssetImporter(location.AssetPath) != null)
+            static void OnSingleAssetCreated(string fullPath)
             {
-                OnImported?.Invoke(location);
+                //Debug.LogInfo("Created: " + fullPath);
+
+                var location = AssetLocation.FromFullPath(fullPath);
+
+                if (location.Category == AssetCategory.Unknown)
+                {
+                    Log.Message(LogLevel.Warning, "Attempting to create and import an asset whose path is unknown", $"{fullPath}");
+                    return;
+                }
+
+                if (GetAssetImporter(location.AssetPath) != null)
+                {
+                    OnImported?.Invoke(location);
+                }
             }
         }
 
