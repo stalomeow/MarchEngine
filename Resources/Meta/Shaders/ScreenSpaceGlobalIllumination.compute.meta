@@ -1,0 +1,17 @@
+﻿{
+  "$id": "0",
+  "$type": "March.Editor.AssetPipeline.Importers.ComputeShaderImporter, March.Editor",
+  "m_UseReversedZBuffer": true,
+  "m_ColorSpace": 0,
+  "m_Warnings": [],
+  "m_Errors": [],
+  "m_SerializedVersion": 23,
+  "m_MainAssetGuid": "c80daf37c6fb40d28a602b0ff81436c6",
+  "m_GuidToAssetMap": {
+    "c80daf37c6fb40d28a602b0ff81436c6": {
+      "Name": "Main",
+      "NormalIcon": "",
+      "ExpandedIcon": ""
+    }
+  }
+}
