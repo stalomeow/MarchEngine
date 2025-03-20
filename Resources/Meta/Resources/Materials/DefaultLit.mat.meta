@@ -2,7 +2,7 @@
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.MaterialImporter, March.Editor",
   "m_SerializedVersion": 10,
-  "m_AssetLastWriteTimeUtc": "2025-03-20T05:51:57.2742686Z",
+  "m_AssetLastWriteTimeUtc": "2025-03-20T06:15:49.0446099Z",
   "m_MainAssetGuid": "f3076be70f5f485e9ee25298820c5f9c",
   "m_GuidToAssetMap": {
     "f3076be70f5f485e9ee25298820c5f9c": {

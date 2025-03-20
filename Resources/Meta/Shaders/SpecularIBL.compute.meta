@@ -18,6 +18,6 @@
   "m_DependentImporterLastWriteTimeUtc": {
     "Engine/Shaders/Includes/Common.hlsl": "2025-03-17T10:01:08.3446145Z",
     "Engine/Shaders/Includes/Sampling.hlsl": "2025-03-17T10:01:09.7381973Z",
-    "Engine/Shaders/Includes/BRDF.hlsl": "2025-03-17T10:01:08.9881177Z"
+    "Engine/Shaders/Includes/BRDF.hlsl": "2025-03-20T06:21:20.8015864Z"
   }
 }
