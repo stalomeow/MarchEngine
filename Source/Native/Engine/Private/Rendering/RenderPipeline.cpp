@@ -39,6 +39,7 @@ namespace march
         m_TAAShader.reset("Engine/Shaders/TemporalAntialiasing.compute");
         m_PostprocessingShader.reset("Engine/Shaders/Postprocessing.compute");
         m_HiZShader.reset("Engine/Shaders/HierarchicalZ.compute");
+        m_SSGIShader.reset("Engine/Shaders/ScreenSpaceGlobalIllumination.compute");
 
         CreateLightResources();
         GenerateSSAORandomVectorMap();
@@ -143,6 +144,8 @@ namespace march
             DrawShadowCasters(shadowMatrix, depth2RadialScale);
             DeferredLighting(shadowMatrix, depth2RadialScale);
             DrawSkybox();
+
+            SSGI();
 
             if (camera->GetEnableGizmos())
             {
@@ -932,6 +935,58 @@ namespace march
                 uint32_t width = std::max(w >> mipLevel, 1u);
                 uint32_t height = std::max(h >> mipLevel, 1u);
                 context.DispatchComputeByThreadCount(m_HiZShader.get(), "GenMipMain", width, height, 1);
+            }
+        });
+    }
+
+    void RenderPipeline::SSGI()
+    {
+        GfxTextureDesc desc{};
+        desc.Format = GfxTextureFormat::R16G16B16A16_Float;
+        desc.Flags = GfxTextureFlags::UnorderedAccess;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = m_Resource.ColorTarget.GetDesc().Width;
+        desc.Height = m_Resource.ColorTarget.GetDesc().Height;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
+        desc.Filter = GfxTextureFilterMode::Bilinear;
+        desc.Wrap = GfxTextureWrapMode::Clamp;
+        desc.MipmapBias = 0.0f;
+
+        static int32 ssgiId = ShaderUtils::GetIdFromString("_SSGITexture");
+        m_Resource.SSGITexture = m_RenderGraph->RequestTexture(ssgiId, desc);
+
+        static int32 ssgiTempId = ShaderUtils::GetIdFromString("_SSGITextureTemp");
+        m_Resource.SSGITextureTemp = m_RenderGraph->RequestTexture(ssgiTempId, desc);
+
+        auto builder = m_RenderGraph->AddPass("ScreenSpaceGlobalIllumination");
+
+        builder.In(m_Resource.CbCamera);
+        builder.In(m_Resource.HiZTexture);
+        builder.In(m_Resource.ColorTarget);
+        builder.In(m_Resource.DepthStencilTarget);
+        builder.In(m_Resource.GetGBuffers(GBufferElements::Normal | GBufferElements::BRDF));
+        builder.Out(m_Resource.SSGITexture);
+        builder.Out(m_Resource.SSGITextureTemp);
+
+        builder.AllowPassCulling(false);
+
+        builder.SetRenderFunc([this, w = desc.Width, h = desc.Height](RenderGraphContext& context)
+        {
+            context.SetVariable(m_Resource.ColorTarget, "_ColorTexture");
+            context.SetVariable(m_Resource.DepthStencilTarget, "_StencilTexture", GfxTextureElement::Stencil);
+            context.SetVariable(m_Resource.SSGITexture, "_OutputTexture");
+            context.DispatchComputeByThreadCount(m_SSGIShader.get(), "DiffuseMain", w, h, 1);
+
+            for (int i = 0; i < 3; i++)
+            {
+                context.SetVariable(m_Resource.SSGITexture, "_Input");
+                context.SetVariable(m_Resource.SSGITextureTemp, "_Output");
+                context.DispatchComputeByThreadCount(m_SSGIShader.get(), "HBlurMain", w, h, 1);
+
+                context.SetVariable(m_Resource.SSGITextureTemp, "_Input");
+                context.SetVariable(m_Resource.SSGITexture, "_Output");
+                context.DispatchComputeByThreadCount(m_SSGIShader.get(), "VBlurMain", w, h, 1);
             }
         });
     }
