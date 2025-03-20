@@ -6,10 +6,10 @@
   "m_Warnings": [],
   "m_Errors": [],
   "m_SerializedVersion": 22,
-  "m_AssetLastWriteTimeUtc": "2025-03-20T06:02:58.3098685Z",
-  "m_MainAssetGuid": "88229666ce78485693a856a991fba0e1",
+  "m_AssetLastWriteTimeUtc": "2025-03-20T06:10:25.623364Z",
+  "m_MainAssetGuid": "c80daf37c6fb40d28a602b0ff81436c6",
   "m_GuidToAssetMap": {
-    "88229666ce78485693a856a991fba0e1": {
+    "c80daf37c6fb40d28a602b0ff81436c6": {
       "Name": "Main",
       "NormalIcon": "",
       "ExpandedIcon": ""
@@ -17,6 +17,9 @@
   },
   "m_DependentImporterLastWriteTimeUtc": {
     "Engine/Shaders/Includes/Common.hlsl": "2025-03-17T10:01:08.3446145Z",
-    "Engine/Shaders/Includes/ColorSpace.hlsl": "2025-03-14T06:11:55.5851616Z"
+    "Engine/Shaders/Includes/Depth.hlsl": "2025-03-18T09:53:52.5760282Z",
+    "Engine/Shaders/Includes/GBuffer.hlsl": "2025-03-17T10:01:09.2447773Z",
+    "Engine/Shaders/Includes/Sampling.hlsl": "2025-03-17T10:01:09.7381973Z",
+    "Engine/Shaders/Includes/BRDF.hlsl": "2025-03-17T10:01:08.9881177Z"
   }
 }
