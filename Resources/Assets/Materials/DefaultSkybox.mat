@@ -1,0 +1,13 @@
+﻿{
+  "$id": "0",
+  "$type": "March.Core.Rendering.Material, March.Core",
+  "Shader": "8c14ca53a7594a88a203b3ceff1142e9",
+  "m_Ints": {},
+  "m_Floats": {},
+  "m_Vectors": {},
+  "m_Colors": {},
+  "m_Textures": {
+    "_Cubemap": "6b4f2da66b614742b4c75236e202c2fb"
+  },
+  "m_Keywords": []
+}

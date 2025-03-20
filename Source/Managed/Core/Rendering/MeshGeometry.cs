@@ -171,12 +171,15 @@ namespace March.Core.Rendering
                     float y = radius * MathF.Cos(phi);
                     float z = radius * MathF.Sin(phi) * MathF.Sin(theta);
 
-                    vertices.Value.Add(new MeshVertex(x, y, z, 0.0f, 0.0f));
+                    float u = theta / (2.0f * MathF.PI);
+                    float v = phi / MathF.PI;
+
+                    vertices.Value.Add(new MeshVertex(x, y, z, u, v));
                 }
             }
 
             // bottom
-            vertices.Value.Add(new MeshVertex(0.0f, -radius, 0.0f, 0.0f, 0.0f));
+            vertices.Value.Add(new MeshVertex(0.0f, -radius, 0.0f, 0.0f, 1.0f));
 
             //
             // Compute indices for top stack.  The top stack was written first to the vertex buffer

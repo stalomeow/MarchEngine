@@ -19,6 +19,8 @@ namespace March.Editor.Windows
                 var go = SceneManager.CurrentScene.CreateGameObject("Cube", Selection.Active as GameObject);
                 var renderer = go.AddComponent<MeshRenderer>();
                 renderer.Mesh = Mesh.GetGeometry(MeshGeometry.Cube);
+                renderer.Materials.Add(AssetManager.Load<Material>("Engine/Resources/Materials/DefaultLit.mat"));
+                renderer.SyncNativeMaterials();
 
                 Selection.Active = go;
             });
@@ -28,6 +30,8 @@ namespace March.Editor.Windows
                 var go = SceneManager.CurrentScene.CreateGameObject("Sphere", Selection.Active as GameObject);
                 var renderer = go.AddComponent<MeshRenderer>();
                 renderer.Mesh = Mesh.GetGeometry(MeshGeometry.Sphere);
+                renderer.Materials.Add(AssetManager.Load<Material>("Engine/Resources/Materials/DefaultLit.mat"));
+                renderer.SyncNativeMaterials();
 
                 Selection.Active = go;
             });

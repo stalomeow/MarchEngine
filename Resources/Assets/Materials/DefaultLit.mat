@@ -1,0 +1,38 @@
+﻿{
+  "$id": "0",
+  "$type": "March.Core.Rendering.Material, March.Core",
+  "Shader": "f22f5bb1fe3a4247bc749a7a76fb39e0",
+  "m_Ints": {
+    "_CullMode": 2
+  },
+  "m_Floats": {
+    "_Metallic": 0.0,
+    "_Roughness": 1.0,
+    "_Cutoff": 0.5,
+    "_BumpScale": 1.0,
+    "_OcclusionStrength": 1.0
+  },
+  "m_Vectors": {},
+  "m_Colors": {
+    "_BaseColor": {
+      "R": 1.0,
+      "G": 0.9999,
+      "B": 0.9999,
+      "A": 1.0
+    },
+    "_EmissionColor": {
+      "R": 0.0,
+      "G": 0.0,
+      "B": 0.0,
+      "A": 1.0
+    }
+  },
+  "m_Textures": {
+    "_OcclusionMap": null,
+    "_BaseMap": null,
+    "_MetallicRoughnessMap": null,
+    "_BumpMap": null,
+    "_EmissionMap": null
+  },
+  "m_Keywords": []
+}

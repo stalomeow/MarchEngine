@@ -117,6 +117,9 @@ namespace March.Editor
                 }
                 else
                 {
+                    Material skybox = AssetDatabase.Load<Material>("Engine/Resources/Materials/DefaultSkybox.mat")!;
+                    CurrentScene.SkyboxMaterial = skybox;
+                    CurrentScene.EnvironmentRadianceMap = skybox.MustGetTexture("_Cubemap");
                     AssetDatabase.Create(DefaultScenePath, CurrentScene);
                 }
             }
