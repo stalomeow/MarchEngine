@@ -140,7 +140,6 @@ namespace march
         void TAA();
         void Postprocessing();
         void HiZ();
-        void SSGI();
 
         std::vector<MeshRenderer*> m_MeshRenderers{};
         std::vector<Light*> m_Lights{};
@@ -164,7 +163,6 @@ namespace march
         asset_ptr<ComputeShader> m_TAAShader = nullptr;
         asset_ptr<ComputeShader> m_PostprocessingShader = nullptr;
         asset_ptr<ComputeShader> m_HiZShader = nullptr;
-        asset_ptr<ComputeShader> m_SSGIShader = nullptr;
 
         std::unique_ptr<GfxExternalTexture> m_SSAORandomVectorMap = nullptr;
 

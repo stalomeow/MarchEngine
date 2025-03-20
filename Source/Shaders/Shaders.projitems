@@ -32,7 +32,6 @@
     <None Include="$(MSBuildThisFileDirectory)public\includes\Shadow.hlsl" />
     <None Include="$(MSBuildThisFileDirectory)public\Postprocessing.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\ScreenSpaceAmbientOcclusion.compute" />
-    <None Include="$(MSBuildThisFileDirectory)public\ScreenSpaceGlobalIllumination.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\SpecularIBL.compute" />
     <None Include="$(MSBuildThisFileDirectory)public\TemporalAntialiasing.compute" />
     <None Include="$(MSBuildThisFileDirectory)Public\SceneViewGrid.shader" />
