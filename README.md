@@ -4,7 +4,7 @@
 
 ![Overview](Documentation/Attachments/overview.png)
 
-该项目还有很多地方不够完善，很多实现也未必最优，但现在 <span style="font-size:1.5rem">准备找暑期实习（2026 年本科毕业）</span>，所以不得不公开这个仓库。
+该项目还有很多地方不够完善，很多实现也未必最优，但我现在**准备找暑期实习（2026 年本科毕业）**，所以不得不公开这个仓库。
 
 ## 已实现的功能
 
@@ -15,7 +15,7 @@
 - 使用 C++ 模板实现了自定义的 Marshal 机制
 - 利用 C# 实现部分 C++ 类型的反射
 
-### Asset Pipeline
+### AssetPipeline
 
 - 类似 Unity 的 `AssetImporter` 和 `AssetDatabase`
 - 使用 [`FileSystemWatcher`](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher) 监听资产变动
@@ -45,27 +45,117 @@ public class ShaderIncludeImporter : AssetImporter
 }
 ```
 
-### D3D12RHI
+### D3D12
 
 - 实现了一套类似 Unity SRP 的 D3D12RHI，屏蔽了 Descriptor / View / PipelineState / RootSignature 等底层细节
+- 自动处理并合批 Resource Transition Barrier，支持 Subresource 级别的状态管理
+- 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
 ### Shader
+
+- 基于 [ANTLR](https://www.antlr.org/) 实现了 Unity 的 ShaderLab
+- 支持 `#pragma multi_compile` 创建 Shader 变体
+- 每个 Shader 最多 128 个 Keyword
+- Shader 也支持热重载，IDE 里修改后，回到引擎立即生效
+
+### RenderGraph
+
+- 自动计算资源的生命周期
+- 内置资源对象池，可以复用资源
+- 自动计算资源的 Read Write Hazard
+- 自动剔除没用的 Pass
+- `builder.EnableAsyncCompute(true)` 支持 Async Compute
+- 类似 Unity 的 RenderGraph 可视化
+
+![RenderGraphViewer](Documentation/Attachments/render-graph-viewer.png)
+
+上图中，红色表示写，绿色表示读，灰色表示资源存活但 Pass 对它没有操作。
+
+|Pass 名称下面的图标|含义|
+|:-|:-|
+|单箭头|普通 Pass|
+|双箭头|Async Compute Pass|
+|沙漏|某个 Async Compute Pass 的 Deadline|
+|叉|Pass 被剔除|
+
+把光标放在图标上，可以显示详细信息。
+
+``` cpp
+void RenderPipeline::HiZ()
+{
+    GfxTextureDesc desc{};
+    desc.Format = GfxTextureFormat::R32G32_Float;
+    desc.Flags = GfxTextureFlags::Mipmaps | GfxTextureFlags::UnorderedAccess;
+    desc.Dimension = GfxTextureDimension::Tex2D;
+    desc.Width = m_Resource.DepthStencilTarget.GetDesc().Width;
+    desc.Height = m_Resource.DepthStencilTarget.GetDesc().Height;
+    desc.DepthOrArraySize = 1;
+    desc.MSAASamples = 1;
+    desc.Filter = GfxTextureFilterMode::Point;
+    desc.Wrap = GfxTextureWrapMode::Clamp;
+    desc.MipmapBias = 0.0f;
+
+    static int32 hizId = ShaderUtils::GetIdFromString("_HiZTexture");
+    m_Resource.HiZTexture = m_RenderGraph->RequestTexture(hizId, desc);
+
+    auto builder = m_RenderGraph->AddPass("HierarchicalZ");
+
+    builder.In(m_Resource.DepthStencilTarget);
+    builder.Out(m_Resource.HiZTexture);
+    builder.UseDefaultVariables(false);
+
+    builder.SetRenderFunc([this, w = desc.Width, h = desc.Height](RenderGraphContext& context)
+    {
+        context.SetVariable(m_Resource.DepthStencilTarget, "_InputTexture", GfxTextureElement::Depth);
+        context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, 0);
+        context.DispatchComputeByThreadCount(m_HiZShader.get(), "CopyDepthMain", w, h, 1);
+
+        for (uint32_t mipLevel = 1; mipLevel < m_Resource.HiZTexture->GetMipLevels(); mipLevel++)
+        {
+            context.SetVariable(m_Resource.HiZTexture, "_InputTexture", GfxTextureElement::Default, mipLevel - 1);
+            context.SetVariable(m_Resource.HiZTexture, "_OutputTexture", GfxTextureElement::Default, mipLevel);
+
+            uint32_t width = std::max(w >> mipLevel, 1u);
+            uint32_t height = std::max(h >> mipLevel, 1u);
+            context.DispatchComputeByThreadCount(m_HiZShader.get(), "GenMipMain", width, height, 1);
+        }
+    });
+}
+```
+
+### RenderPipeline
+
+- Hierarchical Z-Buffer
+- Clustered Deferred Shading
+- Percentage-Closer Soft Shadows
+- Lambertian Diffuse + Microfacet BRDF
+- 基于 Spherical Harmonics 的 Diffuse 环境光，并且将时域卷积转换到频域，使得两次积分变成一次积分
+- 基于 Split-Sum Approximation 的 Specular IBL
+- 物理光源 Candela / Lux / Lumen / Correlated Color Temperature
+- 天空盒（Cubemap）
+- Screen Space Ambient Occlusion
+- Motion Vector / Temporal Anti-aliasing
+- ACES Tonemapping
+- Scene View 无限网格
 
 ### EditorGUI
 
 - 使用 [Dear ImGui](https://github.com/ocornut/imgui) 和 C# 反射实现了编辑器 UI
 - 使用自己封装的 D3D12RHI 重写了 ImGui 的 D3D12 Backend，解决了官方实现中只能使用一个 DescriptorHeap 的问题和无法在 Linear Color Space 渲染的问题
 - 封装了类似 Unity 的 `EditorWindow`
-- 支持绘制自定义的 Gizmos
+- 支持绘制自定义的 Gizmos，例如点光源的 Gizmos
 
-### RenderGraph
+    ``` csharp
+    protected override void OnDrawGizmos(bool isSelected)
+    {
+        base.OnDrawGizmos(isSelected);
 
-### RenderPipeline
-
-- PBR
-- Physical Lights
-- Hierarchical Z Buffer
-- Clustered Deferred Shading
-- SSAO
-- TAA
-- ACES Tonemapping
+        if (isSelected)
+        {
+            using (new Gizmos.ColorScope(Color))
+            {
+                Gizmos.DrawWireSphere(transform.Position, AttenuationRadius);
+            }
+        }
+    }
+    ```
