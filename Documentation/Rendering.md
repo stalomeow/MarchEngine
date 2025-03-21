@@ -1,6 +1,8 @@
-# Shader
+# Rendering
 
-## 预定义宏
+## Shader
+
+### 预定义宏
 
 |宏|描述|
 |:-|:-|
@@ -15,7 +17,7 @@
 |`SHADER_STAGE_GEOMETRY`|当前处于 Geometry Shader Stage|
 |`SHADER_STAGE_COMPUTE`|当前处于 Compute Shader Stage|
 
-## Properties
+### Properties
 
 Shader Properties 不需要在 HLSL 中定义就能直接使用，但这样代码提示会失效，可以用下面的方式解决
 
@@ -39,3 +41,4 @@ Shader Properties 不需要在 HLSL 中定义就能直接使用，但这样代�
 ```
 
 `MARCH_SHADER_PROPERTIES` 仅在编译时定义。
+

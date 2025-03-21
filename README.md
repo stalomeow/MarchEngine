@@ -8,7 +8,15 @@
 
 ~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
 
+## 文档
+
+- [Build](Documentation/Build.md)
+- [Conventions](Documentation/Conventions.md)
+- [Rendering](Documentation/Rendering.md)
+
 ## 已实现的功能
+
+暂时不接受 pull requests。
 
 ### Scripting
 
@@ -24,7 +32,7 @@
 - 资产的内容发生变化，或者资产的依赖发生变化时，自动重新导入，实现资产热重载
 - 支持资产拖拽赋值，拖拽实例化
 
-下面是一段示例代码，用于导入项目中的 hlsl 资产，并正确设置依赖关系。
+下面是一段示例代码，用于导入项目中的 hlsl 资产，并正确设置依赖关系
 
 ``` csharp
 [CustomAssetImporter("Shader Include Asset", ".hlsl", Version = 2)]
@@ -49,24 +57,19 @@ public class ShaderIncludeImporter : AssetImporter
 ### D3D12
 
 - 实现了一套类似 Unity SRP 的 D3D12RHI，屏蔽了 Descriptor / View / PipelineState / RootSignature 等底层细节
-- 自动处理并合批 Resource Transition Barrier，支持 Subresource 级别的状态管理
-- 多种资源分配方式
-- 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
-
-### Shader
-
-- 基于 [ANTLR](https://www.antlr.org/) 实现了 Unity 的 ShaderLab
+- 自动处理并合批 Resource Barrier，支持 Subresource 级别的状态管理
+- 实现了 Linear Allocator 和 Buddy Allocator，并支持多种资源分配方式 Committed / Placed / Suballocation
+- 基于 [ANTLR](https://www.antlr.org/) 实现了 Unity 的 ShaderLab 并利用 Shader 的反射数据自动绑定资源
 - 支持 `#pragma multi_compile` 创建 Shader 变体
 - 每个 Shader 最多 128 个 Keyword
 - Shader 也支持热重载，IDE 里修改后，回到引擎立即生效
+- 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
 ### RenderGraph
 
-- 自动计算资源的生命周期
-- 内置资源对象池，可以复用资源
-- 自动计算资源的 Read Write Hazard
+- 自动计算资源的生命周期，并尽可能地复用资源
 - 自动剔除没用的 Pass
-- `builder.EnableAsyncCompute(true)` 支持 Async Compute
+- 支持 Async Compute
 - 类似 Unity 的 RenderGraph 可视化
 
 ![RenderGraphViewer](Documentation/Attachments/render-graph-viewer.png)
@@ -81,6 +84,10 @@ public class ShaderIncludeImporter : AssetImporter
 |叉|Pass 被剔除|
 
 把光标放在图标上，可以显示详细信息。
+
+![RenderGraphViewerHover](Documentation/Attachments/render-graph-viewer-hover.png)
+
+#### Example
 
 ``` cpp
 void RenderPipeline::HiZ()
@@ -125,8 +132,23 @@ void RenderPipeline::HiZ()
 }
 ```
 
+<p align="center">
+    <del>斯巴拉西，这真是太优雅了！</del>
+</p>
+
+<p align="center">
+    <img src="Documentation/Attachments/elegant.png">
+</p>
+
 #### Async Compute
 
+调用下面的方法就能将 Pass 标记为 Async Compute，但这只是一个建议
+
+``` cpp
+builder.EnableAsyncCompute(true);
+```
+
+RenderGraph 会该 Pass 计算 Read Write Hazard 和并行程度，最后综合决定是否启用 Async Compute。
 
 ### RenderPipeline
 
@@ -170,3 +192,7 @@ void RenderPipeline::HiZ()
         }
     }
     ```
+
+### Misc
+
+- 基于线程池的简易 JobSystem
