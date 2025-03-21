@@ -1,6 +1,7 @@
 using March.Core;
 using March.Core.Interop;
 using March.Core.Pool;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -14,6 +15,7 @@ namespace March.Editor.AssetPipeline
         EngineResource,
     }
 
+    [DebuggerDisplay("{AssetPath}")]
     public readonly struct AssetLocation
     {
         private const string k_ImporterPathSuffix = ".meta";

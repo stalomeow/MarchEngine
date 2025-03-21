@@ -347,8 +347,16 @@ namespace March.Editor
             }
             else
             {
-                AssetImporter importer = AssetDatabase.GetAssetImporter(asset)!;
-                label2.Value.AppendAssetPath(importer, asset.PersistentGuid);
+                AssetImporter? importer = AssetDatabase.GetAssetImporter(asset);
+
+                if (importer != null)
+                {
+                    label2.Value.AppendAssetPath(importer, asset.PersistentGuid);
+                }
+                else
+                {
+                    label2.Value.Append("Missing (").Append(assetType.Name).Append(')');
+                }
             }
 
             LabelField(label, tooltip, label2);

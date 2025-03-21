@@ -12,8 +12,8 @@
 
 ### Scripting
 
-- 使用 .NET 9 CoreCLR 以及 C# 13 实现上层逻辑
-- 使用 Source Generators 自动生成 C# Binding
+- 使用 .NET 9 CoreCLR 以及 C# 13 实现部分上层逻辑
+- 使用 Source Generators 自动生成 C# 侧的 Binding
 - 使用 C++ 模板实现了自定义的 Marshal 机制
 - 利用 C# 实现部分 C++ 类型的反射
 
@@ -50,6 +50,7 @@ public class ShaderIncludeImporter : AssetImporter
 
 - 实现了一套类似 Unity SRP 的 D3D12RHI，屏蔽了 Descriptor / View / PipelineState / RootSignature 等底层细节
 - 自动处理并合批 Resource Transition Barrier，支持 Subresource 级别的状态管理
+- 多种资源分配方式
 - 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
 ### Shader
@@ -143,7 +144,7 @@ void RenderPipeline::HiZ()
 - Screen Space Ambient Occlusion
 - Motion Vector / Temporal Anti-aliasing
 - ACES Tonemapping
-- 天空盒（Cubemap）
+- Skybox（Cubemap）
 - Scene View 无限网格
 - 基于 Spherical Harmonics 的 Diffuse 环境光，并且将时域卷积转换为频域乘积，使得两次积分变成一次积分
 - 基于 Split-Sum Approximation 的 Specular IBL

@@ -1,4 +1,3 @@
-using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
@@ -23,11 +22,12 @@ namespace March.Editor.Windows
             base.OnOpen();
 
             using var locations = ListPool<AssetLocation>.Get();
-            AssetDatabase.GetAllAssetLocations(locations);
+            using var isFolders = ListPool<bool>.Get();
+            AssetDatabase.GetAllAssetLocations(locations, isFolders);
 
-            foreach (AssetLocation location in locations.Value)
+            for (int i = 0; i < locations.Value.Count; i++)
             {
-                AddPath(location);
+                AddPath(locations.Value[i], isFolders.Value[i]);
             }
 
             AssetDatabase.OnImported += AddPath;
@@ -52,34 +52,34 @@ namespace March.Editor.Windows
             s_ContextMenu.ShowAsWindowContext();
         }
 
-        private void AddPath(AssetLocation location)
+        private void AddPath(AssetLocation location, bool isFolder)
         {
             if (location.Category == AssetCategory.ProjectAsset)
             {
-                m_ProjectTree.Add(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
+                m_ProjectTree.Add(location.AssetPath, isFolder);
             }
             else if (location.IsEngineBuiltIn)
             {
-                m_EngineFileTree.Add(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
+                m_EngineFileTree.Add(location.AssetPath, isFolder);
             }
         }
 
-        private void RemovePath(AssetLocation location)
+        private void RemovePath(AssetLocation location, bool isFolder)
         {
             if (location.Category == AssetCategory.ProjectAsset)
             {
-                m_ProjectTree.Remove(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
+                m_ProjectTree.Remove(location.AssetPath, isFolder);
             }
             else if (location.IsEngineBuiltIn)
             {
-                m_EngineFileTree.Remove(location.AssetPath, AssetDatabase.IsFolder(location.AssetPath));
+                m_EngineFileTree.Remove(location.AssetPath, isFolder);
             }
         }
 
-        private void OnAssetRenamed(AssetLocation oldLocation, AssetLocation newLocation)
+        private void OnAssetRenamed(AssetLocation oldLocation, AssetLocation newLocation, bool isFolder)
         {
-            RemovePath(oldLocation);
-            AddPath(newLocation);
+            RemovePath(oldLocation, isFolder);
+            AddPath(newLocation, isFolder);
         }
 
         private static readonly GenericMenu s_ContextMenu = new("ProjectWindowContextMenu");

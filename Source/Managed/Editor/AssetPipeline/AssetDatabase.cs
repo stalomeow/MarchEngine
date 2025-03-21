@@ -31,10 +31,10 @@ namespace March.Editor.AssetPipeline
         private static readonly FileSystemWatcher s_EngineResourceWatcher;
         private static readonly ConcurrentQueue<FileSystemEventArgs> s_FileSystemEvents = new();
 
-        public static event Action<AssetLocation>? OnChanged;
-        public static event Action<AssetLocation>? OnImported;
-        public static event Action<AssetLocation>? OnRemoved;
-        public static event Action<AssetLocation, AssetLocation>? OnRenamed;
+        public static event Action<AssetLocation, bool>? OnChanged;                // bool 表示是否是文件夹
+        public static event Action<AssetLocation, bool>? OnImported;               // bool 表示是否是文件夹
+        public static event Action<AssetLocation, bool>? OnRemoved;                // bool 表示是否是文件夹
+        public static event Action<AssetLocation, AssetLocation, bool>? OnRenamed; // bool 表示是否是文件夹
 
         static AssetDatabase()
         {
@@ -254,11 +254,12 @@ namespace March.Editor.AssetPipeline
             return importer?.GetAsset(guid) as T;
         }
 
-        public static void GetAllAssetLocations(List<AssetLocation> locations)
+        public static void GetAllAssetLocations(List<AssetLocation> locations, List<bool>? isFolders = null)
         {
             foreach (KeyValuePair<string, AssetImporter> kv in s_Path2Importers)
             {
                 locations.Add(kv.Value.Location);
+                isFolders?.Add(IsFolder(kv.Value));
             }
         }
 
@@ -314,8 +315,6 @@ namespace March.Editor.AssetPipeline
 
         private static void OnAssetChanged(FileSystemEventArgs e)
         {
-            //Debug.LogInfo("Changed: " + e.FullPath);
-
             var location = AssetLocation.FromFullPath(e.FullPath);
 
             if (location.Category == AssetCategory.Unknown)
@@ -328,7 +327,8 @@ namespace March.Editor.AssetPipeline
 
             if (importer != null && importer.ReimportAndSave(AssetReimportMode.FullCheck))
             {
-                OnChanged?.Invoke(location);
+                Log.Message(LogLevel.Info, "Asset is changed", $"{e.FullPath}");
+                OnChanged?.Invoke(location, IsFolder(importer));
             }
         }
 
@@ -365,8 +365,6 @@ namespace March.Editor.AssetPipeline
                 return;
             }
 
-            //Debug.LogInfo($"Renamed: {e.OldFullPath} -> {e.FullPath}");
-
             var oldLocation = AssetLocation.FromFullPath(e.OldFullPath);
             var newLocation = AssetLocation.FromFullPath(e.FullPath);
 
@@ -394,11 +392,86 @@ namespace March.Editor.AssetPipeline
                 {
                     Log.Message(LogLevel.Warning, "Asset already exists at new path. It will be deleted");
                     DeleteImporter(newImporter);
-                    OnRemoved?.Invoke(newLocation);
                 }
 
-                oldImporter.MoveLocation(in newLocation);
-                OnRenamed?.Invoke(oldLocation, newLocation);
+                using var dirtyImporters = ListPool<AssetImporter>.Get();
+
+                if (IsFolder(oldImporter))
+                {
+                    const StringComparison cmp = StringComparison.CurrentCultureIgnoreCase;
+
+                    // 找到文件夹下的所有 importer，之后全部重命名
+                    foreach (var kv in s_Path2Importers)
+                    {
+                        if (!kv.Key.Equals(oldLocation.AssetPath, cmp) && kv.Key.StartsWith(oldLocation.AssetPath, cmp))
+                        {
+                            dirtyImporters.Value.Add(kv.Value);
+                        }
+                    }
+
+                    foreach (AssetImporter child in dirtyImporters.Value)
+                    {
+                        string childNewPath = child.Location.AssetPath.Replace(oldLocation.AssetPath, newLocation.AssetPath, cmp);
+                        AssetLocation childNewLocation = AssetLocation.FromPath(childNewPath);
+                        RenameSingleImporter(child, in childNewLocation);
+                    }
+
+                    // 文件夹本身放在最后重命名
+                }
+
+                dirtyImporters.Value.Add(oldImporter);
+                RenameSingleImporter(oldImporter, in newLocation);
+
+                foreach (AssetImporter dirty in dirtyImporters.Value)
+                {
+                    dirty.ReimportAndSave(AssetReimportMode.Force);
+                    ReimportDependers(dirty, AssetReimportMode.Force);
+                }
+            }
+
+            static void RenameSingleImporter(AssetImporter importer, in AssetLocation newLocation)
+            {
+                AssetLocation oldLocation = importer.Location;
+                importer.MoveLocation(in newLocation);
+
+                // 更新路径
+                s_Path2Importers.Remove(oldLocation.AssetPath);
+                s_Path2Importers.Add(newLocation.AssetPath, importer);
+
+                using var guids = ListPool<string>.Get();
+                importer.GetAssetGuids(guids);
+
+                // 更新 guid 表
+                foreach (string guid in guids.Value)
+                {
+                    s_Guid2PathMap[guid] = importer.Location.AssetPath;
+                }
+
+                using var dependencies = ListPool<string>.Get();
+                importer.GetDependencies(dependencies);
+
+                // 更新依赖表
+                foreach (string d in dependencies.Value)
+                {
+                    if (!s_Path2Dependers.TryGetValue(d, out HashSet<string>? dependers))
+                    {
+                        dependers = new HashSet<string>();
+                        s_Path2Dependers.Add(d, dependers);
+                    }
+
+                    dependers.Remove(oldLocation.AssetPath);
+                    dependers.Add(newLocation.AssetPath);
+                }
+
+                // 更新依赖该资产的资产表
+                if (s_Path2Dependers.TryGetValue(oldLocation.AssetPath, out HashSet<string>? myDependers))
+                {
+                    s_Path2Dependers.Remove(oldLocation.AssetPath);
+                    s_Path2Dependers.Add(newLocation.AssetPath, myDependers);
+                }
+
+                Log.Message(LogLevel.Info, "Asset is renamed", $"{oldLocation.AssetFullPath}{newLocation.AssetFullPath}");
+                OnRenamed?.Invoke(oldLocation, newLocation, IsFolder(importer));
             }
         }
 
@@ -425,8 +498,6 @@ namespace March.Editor.AssetPipeline
 
             static void OnSingleAssetCreated(string fullPath)
             {
-                //Debug.LogInfo("Created: " + fullPath);
-
                 var location = AssetLocation.FromFullPath(fullPath);
 
                 if (location.Category == AssetCategory.Unknown)
@@ -435,17 +506,18 @@ namespace March.Editor.AssetPipeline
                     return;
                 }
 
-                if (GetAssetImporter(location.AssetPath) != null)
+                AssetImporter? importer = GetAssetImporter(location.AssetPath);
+
+                if (importer != null)
                 {
-                    OnImported?.Invoke(location);
+                    Log.Message(LogLevel.Info, "Asset is created", $"{fullPath}");
+                    OnImported?.Invoke(location, IsFolder(importer));
                 }
             }
         }
 
         private static void OnAssetDeleted(FileSystemEventArgs e)
         {
-            //Debug.LogInfo("Deleted: " + e.FullPath);
-
             var location = AssetLocation.FromFullPath(e.FullPath);
 
             if (location.Category == AssetCategory.Unknown)
@@ -459,25 +531,52 @@ namespace March.Editor.AssetPipeline
             if (importer != null)
             {
                 DeleteImporter(importer);
-                OnRemoved?.Invoke(location);
             }
         }
 
         private static void DeleteImporter(AssetImporter importer)
         {
-            importer.DeleteAssetCaches();
-            importer.DeleteImporterFile();
-            RemoveImporterEventHandlers(importer);
-            UnregisterAssetImporterData(importer);
-            s_Path2Importers.Remove(importer.Location.AssetPath);
-            s_Path2Dependers.Remove(importer.Location.AssetPath);
+            if (IsFolder(importer))
+            {
+                using var childImporters = ListPool<AssetImporter>.Get();
+                const StringComparison cmp = StringComparison.CurrentCultureIgnoreCase;
+
+                // 找到文件夹下的所有 importer，之后全部删除
+                foreach (var kv in s_Path2Importers)
+                {
+                    if (!kv.Key.Equals(importer.Location.AssetPath, cmp) && kv.Key.StartsWith(importer.Location.AssetPath, cmp))
+                    {
+                        childImporters.Value.Add(kv.Value);
+                    }
+                }
+
+                foreach (AssetImporter child in childImporters.Value)
+                {
+                    DeleteSingleImporter(child);
+                }
+
+                // 文件夹本身放在最后删除
+            }
+
+            DeleteSingleImporter(importer);
+
+            static void DeleteSingleImporter(AssetImporter importer)
+            {
+                AssetLocation location = importer.Location;
+
+                importer.DeleteAssetCaches();
+                importer.DeleteImporterFile();
+                RemoveImporterEventHandlers(importer);
+                UnregisterAssetImporterData(importer);
+                s_Path2Importers.Remove(location.AssetPath);
+                s_Path2Dependers.Remove(location.AssetPath);
+
+                Log.Message(LogLevel.Info, "Asset is deleted", $"{location.AssetFullPath}");
+                OnRemoved?.Invoke(location, IsFolder(importer));
+            }
         }
 
-        public static bool IsFolder(string path) => IsFolder(GetAssetImporter(path));
-
         public static bool IsFolder([NotNullWhen(true)] AssetImporter? importer) => importer is FolderImporter;
-
-        public static bool IsAsset(string path) => GetAssetImporter(path) != null;
 
         public static AssetImporter? GetAssetImporter(MarchObject asset, AssetReimportMode mode = AssetReimportMode.FastCheck)
         {
@@ -582,7 +681,16 @@ namespace March.Editor.AssetPipeline
                 dependers.Add(importer.Location.AssetPath);
             }
 
-            // 重新导入依赖该资产的资产
+            ReimportDependers(importer, mode);
+        }
+
+        /// <summary>
+        /// 重新导入依赖该资产的资产
+        /// </summary>
+        /// <param name="importer"></param>
+        /// <param name="mode"></param>
+        private static void ReimportDependers(AssetImporter importer, AssetReimportMode mode)
+        {
             if (s_Path2Dependers.TryGetValue(importer.Location.AssetPath, out HashSet<string>? myDependers))
             {
                 using var myDependerList = ListPool<string>.Get();
