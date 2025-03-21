@@ -39,9 +39,11 @@ RenderGraph 是利用资源的读写关系构建出一张有向无环图，为�
 - 如果 Pass 需要读取前面 Pass 向资源 A 写入的内容，则使用 `builder.In(A)` 来标记资源
 - 如果 Pass 需要写入资源 A，则使用 `builder.Out(A)` 来标记资源
 
-`builder.InOut(A)` 就是既 In 又 Out 的简写。把一个 Pass 想象成一个函数就比较容易理解了，In 就是参数，Out 就是返回值。
+`builder.InOut(A)` 就是既 In 又 Out 的简写。把一个 Pass 想象成一个函数就容易理解了，In 就是参数，Out 就是返回值。
 
 ## Shader
+
+可以使用 [HLSL Tools for Visual Studio](https://marketplace.visualstudio.com/items?itemName=TimGJones.HLSLToolsforVisualStudio) 扩展编写 Shader。如果有更好的扩展，请推荐给我！
 
 ### 预定义宏
 
@@ -50,7 +52,7 @@ RenderGraph 是利用资源的读写关系构建出一张有向无环图，为�
 |`MARCH_REVERSED_Z`|在开启 Reversed-Z Buffer 时定义|
 |`MARCH_NEAR_CLIP_VALUE`|近裁剪平面的深度（NDC）|
 |`MARCH_FAR_CLIP_VALUE`|远裁剪平面的深度（NDC）|
-|`MARCH_COLORSPACE_GAMMA`|在使用 Gamma 颜色空间时定义，此时不会自动执行 sRGB 的 OETF/EOTF|
+|`MARCH_COLORSPACE_GAMMA`|在使用 Gamma 颜色空间时定义，此时不会自动执行 sRGB 的 OETF / EOTF|
 |`SHADER_STAGE_VERTEX`|当前处于 Vertex Shader Stage|
 |`SHADER_STAGE_PIXEL`|当前处于 Pixel Shader Stage|
 |`SHADER_STAGE_DOMAIN`|当前处于 Domain Shader Stage|

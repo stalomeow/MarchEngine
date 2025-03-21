@@ -4,7 +4,7 @@
 
 <p align="center"><img src="Documentation/Attachments/overview.png"></p>
 
-现在还有很多地方不够完善，很多实现也未必最优，但我现在**准备找暑期实习（2026 年本科毕业）**，所以不得不公开这个仓库。
+这是我根据自己使用 Unity 的经验写的，花了非常多时间，Commit History 都是公开且真实的。项目还有一些地方不够完善，一些实现也未必最优，但我现在<b>准备找暑期实习（2026 年本科毕业，计算机科学与技术专业）</b>，所以不得不公开这个仓库。
 
 ~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
 
@@ -62,7 +62,7 @@ public class ShaderIncludeImporter : AssetImporter
 - 实现了 Linear Allocator 和 Buddy Allocator，并支持多种资源分配方式 Committed / Placed / Suballocation
 - 基于 [ANTLR](https://www.antlr.org/) 实现了 Unity 的 ShaderLab 并利用 Shader 的反射数据自动绑定资源
 - 支持 `#pragma multi_compile` 创建 Shader 变体
-- 每个 Shader 最多 128 个 Keyword
+- 每个 Shader 最多 128 个 Keyword，这也是 [Unity 推荐的上限](https://docs.unity3d.com/6000.0/Documentation/Manual/shader-keywords.html)
 - Shader 也支持热重载，IDE 里修改后，回到引擎立即生效
 - 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
