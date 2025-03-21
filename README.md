@@ -2,9 +2,9 @@
 
 基于 Direct3D 12、C++17 和 .NET 9 的游戏引擎，用于学习引擎和图形技术，目前只支持 Windows x64。
 
-![Overview](Documentation/Attachments/overview.png)
+<p align="center"><img src="Documentation/Attachments/overview.png"></p>
 
-该项目还有很多地方不够完善，很多实现也未必最优，但我现在**准备找暑期实习（2026 年本科毕业）**，所以不得不公开这个仓库。
+现在还有很多地方不够完善，很多实现也未必最优，但我现在**准备找暑期实习（2026 年本科毕业）**，所以不得不公开这个仓库。
 
 ~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
 
@@ -12,6 +12,7 @@
 
 - [Build](Documentation/Build.md)
 - [Conventions](Documentation/Conventions.md)
+- [Asset Pipeline](Documentation/AssetPipeline.md)
 - [Rendering](Documentation/Rendering.md)
 
 ## 已实现的功能
@@ -32,7 +33,7 @@
 - 资产的内容发生变化，或者资产的依赖发生变化时，自动重新导入，实现资产热重载
 - 支持资产拖拽赋值，拖拽实例化
 
-下面是一段示例代码，用于导入项目中的 hlsl 资产，并正确设置依赖关系
+下面是一段示例代码，用于导入项目中的 HLSL 资产，并正确设置依赖关系
 
 ``` csharp
 [CustomAssetImporter("Shader Include Asset", ".hlsl", Version = 2)]
@@ -72,22 +73,28 @@ public class ShaderIncludeImporter : AssetImporter
 - 支持 Async Compute
 - 类似 Unity 的 RenderGraph 可视化
 
-![RenderGraphViewer](Documentation/Attachments/render-graph-viewer.png)
+<p align="center"><img src="Documentation/Attachments/render-graph-viewer.png"></p>
 
-上图中，红色表示写，绿色表示读，灰色表示资源存活但 Pass 对它没有操作。
+上图中的方块表示 Pass 对资源的读写情况
 
-|Pass 名称下面的图标|含义|
-|:-|:-|
-|单箭头|普通 Pass|
-|双箭头|Async Compute Pass|
-|沙漏|某个 Async Compute Pass 的 Deadline|
-|叉|Pass 被剔除|
+- 红色：Pass 会写入该资源
+- 绿色：Pass 会读取该资源
+- 灰色：该资源存活但 Pass 对它没有操作
 
-把光标放在图标上，可以显示详细信息。
+Pass 名称下面的图标表示该 Pass 的类别
 
-![RenderGraphViewerHover](Documentation/Attachments/render-graph-viewer-hover.png)
+- 单箭头：普通 Pass
+- 双箭头：Async Compute Pass
+- 沙漏：某个 Async Compute Pass 的 Deadline
+- 叉：Pass 被剔除
+
+把光标放在图标上，可以显示详细信息
+
+<p align="center"><img src="Documentation/Attachments/render-graph-viewer-hover.png"></p>
 
 #### Example
+
+下面是一段示例代码，用于生成 Hierarchical Z-Buffer
 
 ``` cpp
 void RenderPipeline::HiZ()
@@ -132,13 +139,8 @@ void RenderPipeline::HiZ()
 }
 ```
 
-<p align="center">
-    <del>斯巴拉西，这真是太优雅了！</del>
-</p>
-
-<p align="center">
-    <img src="Documentation/Attachments/elegant.png">
-</p>
+<p align="center"><del>斯巴拉西，真是太优雅了！</del></p>
+<p align="center"><img src="Documentation/Attachments/elegant.png"></p>
 
 #### Async Compute
 
@@ -148,7 +150,13 @@ void RenderPipeline::HiZ()
 builder.EnableAsyncCompute(true);
 ```
 
-RenderGraph 会该 Pass 计算 Read Write Hazard 和并行程度，最后综合决定是否启用 Async Compute。
+RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后综合决定是否启用 Async Compute。
+
+下面是 PIX GPU Capture 和 Timing Capture 的结果
+
+<p align="center"><img src="Documentation/Attachments/async-compute-pix-gpu.png"></p>
+
+<p align="center"><img src="Documentation/Attachments/async-compute-pix-timing.png"></p>
 
 ### RenderPipeline
 
@@ -195,4 +203,5 @@ RenderGraph 会该 Pass 计算 Read Write Hazard 和并行程度，最后综合�
 
 ### Misc
 
-- 基于线程池的简易 JobSystem
+- 基于线程池的简易 JobSystem，但暂时还没使用过（本来有个功能要用的，后来被砍了）
+- 主线程繁忙时，自动显示进度条，避免用户认为引擎卡死

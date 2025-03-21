@@ -21,9 +21,9 @@ namespace march
 
     enum class RenderTargetInitMode
     {
-        Load,
-        Discard,
-        Clear,
+        Load,    // 需要使用之前的内容
+        Discard, // 不需要使用之前的内容
+        Clear,   // 清除之前的内容
     };
 
     struct RenderGraphPassRenderTarget
