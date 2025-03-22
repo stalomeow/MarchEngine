@@ -128,7 +128,8 @@ xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\A
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\glTFLoader.dll" "$(TargetDir)Managed\"
 robocopy "$(SolutionDir)Resources" "$(TargetDir)Resources" /MIR
 robocopy "$(SolutionDir)Source\Shaders\Public" "$(TargetDir)Shaders" /MIR
-robocopy "$(SolutionDir)Runtime\Win64" "$(TargetDir)Runtime" /MIR</Command>
+robocopy "$(SolutionDir)Runtime\Win64" "$(TargetDir)Runtime" /MIR
+exit 0</Command>
       <Outputs>$(TargetDir)dummy_output;%(Outputs)</Outputs>
     </CustomBuildStep>
     <Manifest>
@@ -169,7 +170,8 @@ xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\A
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Editor\$(Configuration)\net9.0\glTFLoader.dll" "$(TargetDir)Managed\"
 robocopy "$(SolutionDir)Resources" "$(TargetDir)Resources" /MIR
 robocopy "$(SolutionDir)Source\Shaders\Public" "$(TargetDir)Shaders" /MIR
-robocopy "$(SolutionDir)Runtime\Win64" "$(TargetDir)Runtime" /MIR</Command>
+robocopy "$(SolutionDir)Runtime\Win64" "$(TargetDir)Runtime" /MIR
+exit 0</Command>
       <Outputs>$(TargetDir)dummy_output;%(Outputs)</Outputs>
     </CustomBuildStep>
     <Manifest>

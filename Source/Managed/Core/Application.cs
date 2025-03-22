@@ -68,7 +68,11 @@ namespace March.Core
         internal static partial bool IsEngineShaderEditable { get; }
 
         [UnmanagedCallersOnly]
-        private static void Initialize() { }
+        private static void Initialize()
+        {
+            Texture.InitializeDefaults();
+            Mesh.InitializeGeometries();
+        }
 
         [UnmanagedCallersOnly]
         private static void PostInitialize()

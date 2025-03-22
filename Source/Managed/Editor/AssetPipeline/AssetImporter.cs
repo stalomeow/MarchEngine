@@ -55,7 +55,6 @@ namespace March.Editor.AssetPipeline
         {
             DeleteImporterFile();
             InitLocation(location);
-            ReimportAndSave(AssetReimportMode.Force);
         }
 
         internal void DeleteImporterFile()
