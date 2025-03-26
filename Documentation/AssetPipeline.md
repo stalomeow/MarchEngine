@@ -21,3 +21,9 @@
 在 C# 中，可以使用 `AssetManager`。如果是 Editor 代码，还可以使用 `AssetDatabase`。
 
 在 C++ 中，使用 `asset_ptr`，使用方法和 `std::unique_ptr` 差不多，可以看 `RenderPipeline` 里是怎么使用的。
+
+## 导入方法
+
+如果要导入资产，现在只能在 Windows 文件资源管理器中将资产移动进项目的 `Assets/` 文件夹中。
+
+以后有机会再改进，这个优先级比较低（）。

@@ -7,7 +7,7 @@
 - Windows x64
 - Windows SDK 10.0
 - [Visual Studio 2022](https://visualstudio.microsoft.com/zh-hans/vs/)
-- [vcpkg](https://github.com/microsoft/vcpkg)
+- vcpkg，参考微软文档中 [Set up vcpkg](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started-msbuild?pivots=shell-powershell#1---set-up-vcpkg) 部分来配置，里面几个步骤都要做
 
 ## 项目结构
 
