@@ -4,7 +4,7 @@
 
 <p align="center"><img src="Documentation/Attachments/overview.png"></p>
 
-这是我根据自己使用 Unity 的经验写的，花了非常多时间，Commit History 都是公开且真实的。项目还有一些地方不够完善，一些实现也未必最优，但我现在<b>准备找暑期实习（2026 年本科毕业，计算机科学与技术专业，希望 base 上海）</b>，所以不得不公开这个仓库。
+这是我根据自己使用 Unity 的经验写的，花了非常多时间，之后还会慢慢完善。<b>现在准备找暑期实习（2026 年本科毕业，计算机科学与技术专业，希望 base 上海）。</b>
 
 ~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
 
@@ -28,7 +28,7 @@
 
 ### AssetPipeline
 
-- 类似 Unity 的 `AssetImporter` 和 `AssetDatabase`
+- 类似 Unity 的 `AssetImporter` 和 `AssetDatabase`，`AssetImporter` 内部记录资产的弱引用，可以减少无用资产的内存占用
 - 使用 [`FileSystemWatcher`](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher) 监听资产变动
 - 资产的内容发生变化，或者资产的依赖发生变化时，自动重新导入，实现资产热重载
 - 支持资产拖拽赋值，拖拽实例化
@@ -177,7 +177,7 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 - ACES Tonemapping
 - Skybox（Cubemap）
 - Scene View 无限网格
-- 基于 Spherical Harmonics 的 Diffuse 环境光，并且将时域卷积转换为频域乘积，使得两次积分变成一次积分
+- 基于 Spherical Harmonics 的 Diffuse 环境光，利用卷积的性质，只用一次积分就算出球谐系数
 - 基于 Split-Sum Approximation 的 Specular IBL
 
 ### EditorGUI
@@ -206,3 +206,4 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 
 - 基于线程池的简易 JobSystem，但暂时还没使用过（本来有个功能要用的，后来被砍了）
 - 主线程繁忙时，自动显示进度条，避免用户认为引擎卡死
+- 使用对象池和 `StringBuilder` 减少 GC 分配
