@@ -89,7 +89,7 @@ namespace march
         colors[ImGuiCol_TabDimmedSelectedOverline] = panelColor;
         colors[ImGuiCol_TabSelectedOverline] = panelActiveColor;
 
-        style.WindowMenuButtonPosition = ImGuiDir_None;
+        //style.WindowMenuButtonPosition = ImGuiDir_None;
         style.WindowRounding = 3.0f;
         style.ChildRounding = 3.0f;
         style.FrameRounding = 3.0f;
@@ -97,7 +97,8 @@ namespace march
         style.ScrollbarRounding = 3.0f;
         style.GrabRounding = 3.0f;
         style.TabRounding = 3.0f;
-        style.TabBarBorderSize = 2.0f;
+        style.TabBarBorderSize = 1.0f;
         style.TabBarOverlineSize = 2.0f;
+        style.DockingSeparatorSize = 1.0f;
     }
 }
