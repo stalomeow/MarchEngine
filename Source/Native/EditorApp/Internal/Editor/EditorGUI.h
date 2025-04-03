@@ -23,6 +23,7 @@ namespace march
         static bool FloatSliderField(const std::string& label, const std::string& tooltip, float v[1], float min, float max);
 
         static bool CollapsingHeader(const std::string& label, bool defaultOpen = false);
+        static bool CollapsingHeader(const std::string& label, bool* pVisible, bool defaultOpen = false);
         static bool Combo(const std::string& label, const std::string& tooltip, int* currentItem, const std::string& itemsSeparatedByZeros);
         static bool CenterButton(const std::string& label, float width = 0.0f);
         static void CenterText(const std::string& text);

@@ -6,6 +6,7 @@ using March.Core.Serialization;
 using March.Editor.AssetPipeline;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace March.Editor
@@ -62,6 +63,9 @@ namespace March.Editor
 
         [NativeMethod]
         public static partial bool CollapsingHeader(StringLike label, bool defaultOpen = false);
+
+        [NativeMethod("CollapsingHeaderClosable")]
+        public static partial bool CollapsingHeader(StringLike label, ref bool visible, bool defaultOpen = false);
 
         #region Enum
 

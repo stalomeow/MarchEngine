@@ -1,5 +1,6 @@
 using March.Core;
 using March.Core.Diagnostics;
+using March.Core.Pool;
 using March.Core.Serialization;
 using Newtonsoft.Json.Serialization;
 using System.Reflection;
@@ -32,11 +33,25 @@ namespace March.Editor.Drawers
             changed |= EditorGUI.PropertyField("##GameObjectName", string.Empty, contract.GetEditorProperty(Target, "m_Name"));
 
             EditorGUI.SeparatorText("Components");
-            changed |= DrawComponent(0, Target.transform);
+            changed |= DrawComponent(0, Target.transform, out _);
+
+            using var componentsToRemove = ListPool<Component>.Get();
 
             for (int i = 0; i < Target.m_Components.Count; i++)
             {
-                changed |= DrawComponent(i + 1, Target.m_Components[i]);
+                var component = Target.m_Components[i];
+                changed |= DrawComponent(i + 1, component, out bool shouldRemove);
+
+                if (shouldRemove)
+                {
+                    componentsToRemove.Value.Add(component);
+                }
+            }
+
+            foreach (var component in componentsToRemove.Value)
+            {
+                Target.DestroyAndRemoveComponent(component);
+                changed = true;
             }
 
             EditorGUI.Space();
@@ -59,13 +74,14 @@ namespace March.Editor.Drawers
             }
         }
 
-        private static bool DrawComponent(int index, Component component)
+        private static bool DrawComponent(int index, Component component, out bool shouldRemove)
         {
             Type componentType = component.GetType();
 
             if (PersistentManager.ResolveJsonContract(componentType) is not JsonObjectContract componentContract)
             {
                 Log.Message(LogLevel.Error, "Failed to resolve json object contract", $"{componentType}");
+                shouldRemove = true;
                 return false;
             }
 
@@ -73,10 +89,11 @@ namespace March.Editor.Drawers
             {
                 bool isChanged = false;
                 bool isEnabled = component.IsEnabled;
+                var attr = componentType.GetCustomAttribute<CustomComponentAttribute>();
 
                 EditorGUI.CursorPosX -= EditorGUI.CollapsingHeaderOuterExtend;
 
-                using (new EditorGUI.DisabledScope(componentType.GetCustomAttribute<DisableComponentEnabledCheckboxAttribute>() != null))
+                using (new EditorGUI.DisabledScope(attr?.DisableCheckbox ?? false))
                 {
                     if (EditorGUI.Checkbox("##ComponentEnabled", string.Empty, ref isEnabled))
                     {
@@ -87,7 +104,21 @@ namespace March.Editor.Drawers
 
                 EditorGUI.SameLine();
 
-                if (EditorGUI.CollapsingHeader(componentType.Name, defaultOpen: true))
+                bool open;
+
+                if (attr?.HideRemoveButton ?? false)
+                {
+                    open = EditorGUI.CollapsingHeader(componentType.Name, defaultOpen: true);
+                    shouldRemove = false;
+                }
+                else
+                {
+                    bool visible = true;
+                    open = EditorGUI.CollapsingHeader(componentType.Name, ref visible, defaultOpen: true);
+                    shouldRemove = !visible;
+                }
+
+                if (open)
                 {
                     if (s_ComponentDrawerCache.TryGetSharedInstance(componentType, out IComponentDrawer? drawer))
                     {

@@ -237,7 +237,12 @@ namespace march
 
     bool EditorGUI::CollapsingHeader(const std::string& label, bool defaultOpen)
     {
-        return ImGui::CollapsingHeader(label.c_str(), defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+        return CollapsingHeader(label, nullptr, defaultOpen);
+    }
+
+    bool EditorGUI::CollapsingHeader(const std::string& label, bool* pVisible, bool defaultOpen)
+    {
+        return ImGui::CollapsingHeader(label.c_str(), pVisible, defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0);
     }
 
     bool EditorGUI::Combo(const std::string& label, const std::string& tooltip, int* currentItem, const std::string& itemsSeparatedByZeros)

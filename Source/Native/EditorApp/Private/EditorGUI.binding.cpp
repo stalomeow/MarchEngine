@@ -47,6 +47,14 @@ NATIVE_EXPORT_AUTO EditorGUI_CollapsingHeader(cs_string label, cs_bool defaultOp
     retcs EditorGUI::CollapsingHeader(label, defaultOpen);
 }
 
+NATIVE_EXPORT_AUTO EditorGUI_CollapsingHeaderClosable(cs_string label, cs_ptr<cs_bool> pVisible, cs_bool defaultOpen)
+{
+    bool visible = *pVisible;
+    bool ret = EditorGUI::CollapsingHeader(label, &visible, defaultOpen);
+    pVisible->assign(visible);
+    retcs ret;
+}
+
 NATIVE_EXPORT_AUTO EditorGUI_Combo(cs_string label, cs_string tooltip, cs<cs_int_t*> currentItem, cs_string itemsSeparatedByZeros)
 {
     retcs EditorGUI::Combo(label, tooltip, reinterpret_cast<int*>(currentItem.data), itemsSeparatedByZeros);

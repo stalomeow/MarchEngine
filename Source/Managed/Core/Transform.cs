@@ -7,7 +7,7 @@ using System.Runtime.Serialization;
 
 namespace March.Core
 {
-    [DisableComponentEnabledCheckbox]
+    [CustomComponent(DisableCheckbox = true, HideRemoveButton = true)]
     public partial class Transform : Component
     {
         [JsonProperty]
