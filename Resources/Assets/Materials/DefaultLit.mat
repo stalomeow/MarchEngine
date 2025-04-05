@@ -6,11 +6,11 @@
     "_CullMode": 2
   },
   "m_Floats": {
-    "_Metallic": 0.0,
-    "_Roughness": 1.0,
-    "_Cutoff": 0.5,
     "_BumpScale": 1.0,
-    "_OcclusionStrength": 1.0
+    "_Cutoff": 0.5,
+    "_Metallic": 0.0,
+    "_OcclusionStrength": 1.0,
+    "_Roughness": 1.0
   },
   "m_Vectors": {},
   "m_Colors": {
@@ -28,11 +28,11 @@
     }
   },
   "m_Textures": {
-    "_OcclusionMap": null,
     "_BaseMap": null,
-    "_MetallicRoughnessMap": null,
     "_BumpMap": null,
-    "_EmissionMap": null
+    "_EmissionMap": null,
+    "_MetallicRoughnessMap": null,
+    "_OcclusionMap": null
   },
   "m_Keywords": []
 }

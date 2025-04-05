@@ -168,12 +168,12 @@ namespace March.Core.Rendering
         }
 
         [JsonProperty("m_Ints")]
-        private Dictionary<string, int> IntProperties
+        private SortedDictionary<string, int> IntProperties
         {
             get
             {
                 using var props = (NativeArray<NativeProperty<int>>)GetAllInts();
-                var result = new Dictionary<string, int>();
+                var result = new SortedDictionary<string, int>();
 
                 for (int i = 0; i < props.Length; i++)
                 {
@@ -194,12 +194,12 @@ namespace March.Core.Rendering
         }
 
         [JsonProperty("m_Floats")]
-        private Dictionary<string, float> FloatProperties
+        private SortedDictionary<string, float> FloatProperties
         {
             get
             {
                 using var props = (NativeArray<NativeProperty<float>>)GetAllFloats();
-                var result = new Dictionary<string, float>();
+                var result = new SortedDictionary<string, float>();
 
                 for (int i = 0; i < props.Length; i++)
                 {
@@ -220,12 +220,12 @@ namespace March.Core.Rendering
         }
 
         [JsonProperty("m_Vectors")]
-        private Dictionary<string, Vector4> VectorProperties
+        private SortedDictionary<string, Vector4> VectorProperties
         {
             get
             {
                 using var props = (NativeArray<NativeProperty<Vector4>>)GetAllVectors();
-                var result = new Dictionary<string, Vector4>();
+                var result = new SortedDictionary<string, Vector4>();
 
                 for (int i = 0; i < props.Length; i++)
                 {
@@ -246,12 +246,12 @@ namespace March.Core.Rendering
         }
 
         [JsonProperty("m_Colors")]
-        private Dictionary<string, Color> ColorProperties
+        private SortedDictionary<string, Color> ColorProperties
         {
             get
             {
                 using var props = (NativeArray<NativeProperty<Color>>)GetAllColors();
-                var result = new Dictionary<string, Color>();
+                var result = new SortedDictionary<string, Color>();
 
                 for (int i = 0; i < props.Length; i++)
                 {
@@ -272,12 +272,12 @@ namespace March.Core.Rendering
         }
 
         [JsonProperty("m_Textures")]
-        private Dictionary<string, Texture?> TextureProperties
+        private SortedDictionary<string, Texture?> TextureProperties
         {
             get
             {
                 using var props = (NativeArray<NativeProperty<nint>>)GetAllTextures();
-                var result = new Dictionary<string, Texture?>();
+                var result = new SortedDictionary<string, Texture?>();
 
                 for (int i = 0; i < props.Length; i++)
                 {
