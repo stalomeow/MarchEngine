@@ -12,7 +12,7 @@ namespace March.Editor.AssetPipeline
         private readonly PooledObject<Dictionary<string, AssetData>> m_DataPool; // 使用 name 作为 key
         private readonly PooledObject<List<string>> m_Dependencies;
 
-        internal AssetImportContext(Dictionary<string, AssetData> oldGuidToAssetMap)
+        internal AssetImportContext(IReadOnlyDictionary<string, AssetData> oldGuidToAssetMap)
         {
             m_MainAssetName = null;
             m_ImportedAssets = ListPool<MarchObject>.Get();
@@ -38,7 +38,7 @@ namespace March.Editor.AssetPipeline
             }
         }
 
-        internal readonly void GetResults(out string mainAssetGuid, Dictionary<string, AssetData> guidToAssetMap)
+        internal readonly void GetResults(out string mainAssetGuid, IDictionary<string, AssetData> guidToAssetMap)
         {
             if (m_MainAssetName == null)
             {

@@ -21,7 +21,7 @@ namespace March.Editor.AssetPipeline
     {
         [JsonProperty, HideInInspector] private int m_SerializedVersion; // 序列化时使用的 AssetImporter 代码版本号
         [JsonProperty, HideInInspector] private string m_MainAssetGuid = string.Empty;
-        [JsonProperty, HideInInspector] private Dictionary<string, AssetData> m_GuidToAssetMap = [];
+        [JsonProperty, HideInInspector] private SortedDictionary<string, AssetData> m_GuidToAssetMap = [];
 
         protected AssetImporter()
         {
@@ -256,7 +256,7 @@ namespace March.Editor.AssetPipeline
 
         public string DisplayName => GetCustomAttribute().DisplayName;
 
-        private int Version => GetCustomAttribute().Version + 9;
+        private int Version => GetCustomAttribute().Version + 10;
 
         /// <summary>
         /// 

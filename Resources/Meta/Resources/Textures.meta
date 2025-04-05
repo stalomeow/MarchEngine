@@ -1,7 +1,7 @@
 ﻿{
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.FolderImporter, March.Editor",
-  "m_SerializedVersion": 10,
+  "m_SerializedVersion": 11,
   "m_MainAssetGuid": "533fc03bc52740aca49ff6d2b8349f50",
   "m_GuidToAssetMap": {
     "533fc03bc52740aca49ff6d2b8349f50": {
