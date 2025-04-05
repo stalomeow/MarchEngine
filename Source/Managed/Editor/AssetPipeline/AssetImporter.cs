@@ -20,10 +20,8 @@ namespace March.Editor.AssetPipeline
     public abstract class AssetImporter : MarchObject
     {
         [JsonProperty, HideInInspector] private int m_SerializedVersion; // 序列化时使用的 AssetImporter 代码版本号
-        [JsonProperty, HideInInspector] private DateTime? m_AssetLastWriteTimeUtc; // 资产最后写入时间，用于判断是否需要重新导入
         [JsonProperty, HideInInspector] private string m_MainAssetGuid = string.Empty;
         [JsonProperty, HideInInspector] private Dictionary<string, AssetData> m_GuidToAssetMap = [];
-        [JsonProperty, HideInInspector] private Dictionary<string, DateTime> m_DependentImporterLastWriteTimeUtc = [];
 
         protected AssetImporter()
         {
@@ -41,6 +39,7 @@ namespace March.Editor.AssetPipeline
         }
 
         private AssetLocation m_Location;
+        private AssetModificationDetector? m_ModificationDetector;
         public event Action<AssetImporter>? OnWillReimport;
         public event Action<AssetImporter>? OnDidReimport;
 
@@ -107,13 +106,6 @@ namespace March.Editor.AssetPipeline
                 OnImportAssets(ref context);
                 context.GetResults(out m_MainAssetGuid, m_GuidToAssetMap);
 
-                m_DependentImporterLastWriteTimeUtc.Clear();
-                foreach (string dependency in context.Dependencies)
-                {
-                    AssetImporter importer = AssetDatabase.GetAssetImporter(dependency, AssetReimportMode.Dont)!;
-                    m_DependentImporterLastWriteTimeUtc.Add(dependency, File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath));
-                }
-
                 foreach (MarchObject asset in context.ImportedAssets)
                 {
                     SaveAssetToCache(asset);
@@ -129,7 +121,7 @@ namespace March.Editor.AssetPipeline
                 // 保存 Importer，放在最后面的原因：
                 // 1. 如果导入失败，不会保存 Importer，下次重新导入时会再次尝试
                 // 2. 导入过程中可能写入原始资产文件，这里可以记录到最后一次的写入时间，避免再触发一次导入
-                ForceSaveImporter();
+                ForceSaveImporter(context.Dependencies, updateDependencies: true);
                 return true;
             }
             finally
@@ -152,11 +144,17 @@ namespace March.Editor.AssetPipeline
             }
         }
 
+        private void ForceSaveImporter(ReadOnlySpan<string> dependencies, bool updateDependencies)
+        {
+            SaveModificationDetector(dependencies, updateDependencies);
+
+            m_SerializedVersion = Version;
+            PersistentManager.Save(this, Location.ImporterFullPath);
+        }
+
         protected void ForceSaveImporter()
         {
-            m_SerializedVersion = Version;
-            m_AssetLastWriteTimeUtc = File.GetLastWriteTimeUtc(Location.AssetFullPath);
-            PersistentManager.Save(this, Location.ImporterFullPath);
+            ForceSaveImporter([], updateDependencies: false);
         }
 
         public string MainAssetGuid => m_MainAssetGuid;
@@ -252,15 +250,13 @@ namespace March.Editor.AssetPipeline
 
         public void GetDependencies(List<string> dependencies)
         {
-            foreach (KeyValuePair<string, DateTime> kv in m_DependentImporterLastWriteTimeUtc)
-            {
-                dependencies.Add(kv.Key);
-            }
+            TryLoadModificationDetectorIfNot();
+            m_ModificationDetector?.GetDependencies(dependencies);
         }
 
         public string DisplayName => GetCustomAttribute().DisplayName;
 
-        private int Version => GetCustomAttribute().Version + 8;
+        private int Version => GetCustomAttribute().Version + 9;
 
         /// <summary>
         /// 
@@ -281,31 +277,13 @@ namespace March.Editor.AssetPipeline
 
             if (fullCheck)
             {
-                // 部分系统调用的速度比较慢，所以只在 fullCheck 模式下检查
+                // 这里涉及大量文件相关的系统调用，速度比较慢，只在 fullCheck 时检查
 
-                if (m_AssetLastWriteTimeUtc != File.GetLastWriteTimeUtc(Location.AssetFullPath))
+                TryLoadModificationDetectorIfNot();
+
+                if (m_ModificationDetector == null || m_ModificationDetector.IsModified(in Location))
                 {
                     return true;
-                }
-            }
-
-            foreach (KeyValuePair<string, DateTime> kv in m_DependentImporterLastWriteTimeUtc)
-            {
-                AssetImporter? importer = AssetDatabase.GetAssetImporter(kv.Key, AssetReimportMode.Dont);
-
-                if (importer == null || importer.CheckNeedReimport(fullCheck))
-                {
-                    return true;
-                }
-
-                if (fullCheck)
-                {
-                    // 部分系统调用的速度比较慢，所以只在 fullCheck 模式下检查
-
-                    if (kv.Value != File.GetLastWriteTimeUtc(importer.Location.ImporterFullPath))
-                    {
-                        return true;
-                    }
                 }
             }
 
@@ -342,6 +320,55 @@ namespace March.Editor.AssetPipeline
             {
                 File.Delete(cacheFullPath);
             }
+        }
+
+        private void TryLoadModificationDetectorIfNot()
+        {
+            if (m_ModificationDetector != null)
+            {
+                return;
+            }
+
+            string path = GetModificationDetectorFileFullPath();
+
+            if (File.Exists(path))
+            {
+                m_ModificationDetector = PersistentManager.Load<AssetModificationDetector>(path);
+            }
+        }
+
+        private void SaveModificationDetector(ReadOnlySpan<string> dependencies, bool updateDependencies)
+        {
+            string path = GetModificationDetectorFileFullPath();
+
+            if (!updateDependencies && m_ModificationDetector == null && File.Exists(path))
+            {
+                // 必须保留旧的依赖关系
+                m_ModificationDetector = PersistentManager.Load<AssetModificationDetector>(path);
+            }
+
+            m_ModificationDetector ??= new AssetModificationDetector();
+            m_ModificationDetector.SyncAsset(in Location);
+
+            if (updateDependencies)
+            {
+                m_ModificationDetector.UpdateDependencies(dependencies);
+            }
+
+            PersistentManager.Save(m_ModificationDetector, path);
+        }
+
+        private string GetModificationDetectorFileFullPath()
+        {
+            if (string.IsNullOrEmpty(m_MainAssetGuid))
+            {
+                throw new InvalidOperationException("Main asset is not set");
+            }
+
+            string guid = m_MainAssetGuid;
+            using var folder = StringBuilderPool.Get();
+            folder.Value.Append(guid[0]).Append(guid[1]);
+            return AssetLocationUtility.CombinePath(Application.DataPath, "Library", "Modifications", folder, guid);
         }
 
         protected static string GetAssetCacheFileFullPath(string guid)

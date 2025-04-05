@@ -7,23 +7,23 @@
   },
   "m_Floats": {
     "_Metallic": 0.0,
-    "_Cutoff": 0.5,
     "_Roughness": 1.0,
+    "_Cutoff": 0.5,
     "_BumpScale": 1.0,
     "_OcclusionStrength": 1.0
   },
   "m_Vectors": {},
   "m_Colors": {
-    "_EmissionColor": {
-      "R": 0.0,
-      "G": 0.0,
-      "B": 0.0,
-      "A": 1.0
-    },
     "_BaseColor": {
       "R": 1.0,
       "G": 0.9999,
       "B": 0.9999,
+      "A": 1.0
+    },
+    "_EmissionColor": {
+      "R": 0.0,
+      "G": 0.0,
+      "B": 0.0,
       "A": 1.0
     }
   },

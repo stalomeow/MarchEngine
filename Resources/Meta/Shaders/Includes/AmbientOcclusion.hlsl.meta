@@ -1,8 +1,7 @@
 ﻿{
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.ShaderIncludeImporter, March.Editor",
-  "m_SerializedVersion": 10,
-  "m_AssetLastWriteTimeUtc": "2025-02-28T14:03:10.7930295Z",
+  "m_SerializedVersion": 11,
   "m_MainAssetGuid": "a1d78121833d43f58d7d26473912a225",
   "m_GuidToAssetMap": {
     "a1d78121833d43f58d7d26473912a225": {
@@ -10,6 +9,5 @@
       "NormalIcon": "",
       "ExpandedIcon": ""
     }
-  },
-  "m_DependentImporterLastWriteTimeUtc": {}
+  }
 }

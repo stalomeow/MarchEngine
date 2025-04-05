@@ -5,8 +5,7 @@
   "m_ColorSpace": 0,
   "m_Warnings": [],
   "m_Errors": [],
-  "m_SerializedVersion": 22,
-  "m_AssetLastWriteTimeUtc": "2025-03-18T09:50:29.3504914Z",
+  "m_SerializedVersion": 23,
   "m_MainAssetGuid": "e5e7a3165c0b4431899dadb78ea3215c",
   "m_GuidToAssetMap": {
     "e5e7a3165c0b4431899dadb78ea3215c": {
@@ -14,8 +13,5 @@
       "NormalIcon": "",
       "ExpandedIcon": ""
     }
-  },
-  "m_DependentImporterLastWriteTimeUtc": {
-    "Engine/Shaders/Includes/Common.hlsl": "2025-03-21T06:42:55.0465428Z"
   }
 }

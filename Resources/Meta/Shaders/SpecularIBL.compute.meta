@@ -5,8 +5,7 @@
   "m_ColorSpace": 0,
   "m_Warnings": [],
   "m_Errors": [],
-  "m_SerializedVersion": 22,
-  "m_AssetLastWriteTimeUtc": "2025-03-15T14:17:26.9715567Z",
+  "m_SerializedVersion": 23,
   "m_MainAssetGuid": "f4722de9071b4a0bbb606105b76a1a30",
   "m_GuidToAssetMap": {
     "f4722de9071b4a0bbb606105b76a1a30": {
@@ -14,10 +13,5 @@
       "NormalIcon": "",
       "ExpandedIcon": ""
     }
-  },
-  "m_DependentImporterLastWriteTimeUtc": {
-    "Engine/Shaders/Includes/Common.hlsl": "2025-03-21T06:42:55.0465428Z",
-    "Engine/Shaders/Includes/Sampling.hlsl": "2025-03-22T06:50:22.7015857Z",
-    "Engine/Shaders/Includes/BRDF.hlsl": "2025-03-22T06:50:22.7000828Z"
   }
 }

@@ -5,8 +5,7 @@
   "m_ColorSpace": 0,
   "m_Warnings": [],
   "m_Errors": [],
-  "m_SerializedVersion": 22,
-  "m_AssetLastWriteTimeUtc": "2025-02-09T09:26:48.8027886Z",
+  "m_SerializedVersion": 23,
   "m_MainAssetGuid": "deb209ab8ae447c6b945524b64abbd88",
   "m_GuidToAssetMap": {
     "deb209ab8ae447c6b945524b64abbd88": {
@@ -14,6 +13,5 @@
       "NormalIcon": "",
       "ExpandedIcon": ""
     }
-  },
-  "m_DependentImporterLastWriteTimeUtc": {}
+  }
 }

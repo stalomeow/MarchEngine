@@ -1,8 +1,7 @@
 ﻿{
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.TextureImporter, March.Editor",
-  "m_SerializedVersion": 26,
-  "m_AssetLastWriteTimeUtc": "2025-03-15T14:17:26.9579815Z",
+  "m_SerializedVersion": 27,
   "m_MainAssetGuid": "7e6486b6e688454bab779d64fd231625",
   "m_GuidToAssetMap": {
     "7e6486b6e688454bab779d64fd231625": {
@@ -11,7 +10,6 @@
       "ExpandedIcon": ""
     }
   },
-  "m_DependentImporterLastWriteTimeUtc": {},
   "IsSRGB": false,
   "GenerateMipmaps": false,
   "Compression": 3,

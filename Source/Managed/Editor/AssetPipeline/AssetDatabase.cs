@@ -327,7 +327,7 @@ namespace March.Editor.AssetPipeline
 
             if (importer != null && importer.ReimportAndSave(AssetReimportMode.FullCheck))
             {
-                Log.Message(LogLevel.Info, "Asset is changed", $"{e.FullPath}");
+                //Log.Message(LogLevel.Info, "Asset is changed", $"{e.FullPath}");
                 OnChanged?.Invoke(location, IsFolder(importer));
             }
         }
@@ -470,7 +470,7 @@ namespace March.Editor.AssetPipeline
                     s_Path2Dependers.Add(newLocation.AssetPath, myDependers);
                 }
 
-                Log.Message(LogLevel.Info, "Asset is renamed", $"{oldLocation.AssetFullPath}{newLocation.AssetFullPath}");
+                //Log.Message(LogLevel.Info, "Asset is renamed", $"{oldLocation.AssetFullPath}{newLocation.AssetFullPath}");
                 OnRenamed?.Invoke(oldLocation, newLocation, IsFolder(importer));
             }
         }
@@ -510,7 +510,7 @@ namespace March.Editor.AssetPipeline
 
                 if (importer != null)
                 {
-                    Log.Message(LogLevel.Info, "Asset is created", $"{fullPath}");
+                    //Log.Message(LogLevel.Info, "Asset is created", $"{fullPath}");
                     OnImported?.Invoke(location, IsFolder(importer));
                 }
             }
@@ -571,7 +571,7 @@ namespace March.Editor.AssetPipeline
                 s_Path2Importers.Remove(location.AssetPath);
                 s_Path2Dependers.Remove(location.AssetPath);
 
-                Log.Message(LogLevel.Info, "Asset is deleted", $"{location.AssetFullPath}");
+                //Log.Message(LogLevel.Info, "Asset is deleted", $"{location.AssetFullPath}");
                 OnRemoved?.Invoke(location, IsFolder(importer));
             }
         }
