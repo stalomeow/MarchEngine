@@ -112,9 +112,12 @@ namespace March.Editor.AssetPipeline.Importers
                 Target.LogImportMessages();
             }
 
-            EditorGUI.Space();
-            EditorGUI.Separator();
-            EditorGUI.Space();
+            return isChanged;
+        }
+
+        protected override void DrawAdditional()
+        {
+            base.DrawAdditional();
 
             if (EditorGUI.Foldout("Kernels", string.Empty, defaultOpen: true))
             {
@@ -128,8 +131,6 @@ namespace March.Editor.AssetPipeline.Importers
                     }
                 }
             }
-
-            return isChanged;
         }
     }
 }

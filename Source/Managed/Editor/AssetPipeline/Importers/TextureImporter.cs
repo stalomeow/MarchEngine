@@ -75,10 +75,6 @@ namespace March.Editor.AssetPipeline.Importers
         {
             base.DrawAdditional();
 
-            EditorGUI.Space();
-            EditorGUI.Separator();
-            EditorGUI.Space();
-
             if (EditorGUI.Foldout("Preview", string.Empty, defaultOpen: true))
             {
                 var texture = (ExternalTexture)Target.MainAsset;

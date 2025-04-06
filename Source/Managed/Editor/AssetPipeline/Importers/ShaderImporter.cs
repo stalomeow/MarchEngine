@@ -241,9 +241,12 @@ Shader ""ErrorShader""
                 Target.LogImportMessages();
             }
 
-            EditorGUI.Space();
-            EditorGUI.Separator();
-            EditorGUI.Space();
+            return isChanged;
+        }
+
+        protected override void DrawAdditional()
+        {
+            base.DrawAdditional();
 
             if (EditorGUI.Foldout("Properties", string.Empty, defaultOpen: true))
             {
@@ -278,8 +281,6 @@ Shader ""ErrorShader""
                     }
                 }
             }
-
-            return isChanged;
         }
     }
 }

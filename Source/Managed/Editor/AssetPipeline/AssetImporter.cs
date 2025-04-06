@@ -254,6 +254,12 @@ namespace March.Editor.AssetPipeline
             m_ModificationDetector?.GetDependencies(dependencies);
         }
 
+        public void GetDependencies(List<AssetImporter> dependencies)
+        {
+            TryLoadModificationDetectorIfNot();
+            m_ModificationDetector?.GetDependencies(dependencies);
+        }
+
         public string DisplayName => GetCustomAttribute().DisplayName;
 
         private int Version => GetCustomAttribute().Version + 10;
@@ -519,46 +525,56 @@ namespace March.Editor.AssetPipeline
 
         public sealed override void Draw()
         {
-            using var label = EditorGUIUtility.BuildAssetPath(Target, useCompleteAssetPath: false);
-            label.Value.Append(' ').Append('(').Append(' ').Append(Target.DisplayName).Append(' ').Append(')');
-
-            EditorGUI.SeparatorText(label);
-            EditorGUI.Space();
+            DrawHeader();
 
             using (new EditorGUI.DisabledScope(!Target.Location.IsEditable))
             {
+                EditorGUI.Space();
                 m_IsChanged |= DrawProperties(out bool showApplyRevertButtons);
 
                 if (showApplyRevertButtons)
                 {
                     EditorGUI.Space();
+                    DrawApplyRevertButtons();
+                }
+            }
 
-                    ReadOnlySpan<float> widths = [
-                        EditorGUI.CalcButtonWidth("Apply"),
-                        EditorGUI.CalcButtonWidth("Revert"),
-                    ];
-                    float totalWidth = widths.Sum() + (widths.Length - 1) * EditorGUI.ItemSpacing.X;
-                    EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
+            EditorGUI.Space();
+            DrawAdditional();
+        }
 
-                    using (new EditorGUI.DisabledScope(!m_IsChanged))
-                    {
-                        if (EditorGUI.Button("Apply"))
-                        {
-                            ApplyChanges();
-                            m_IsChanged = false;
-                        }
+        private void DrawHeader()
+        {
+            using var label = EditorGUIUtility.BuildAssetPath(Target, useCompleteAssetPath: false);
+            label.Value.Append(' ').Append('(').Append(' ').Append(Target.DisplayName).Append(' ').Append(')');
+            EditorGUI.SeparatorText(label);
+        }
 
-                        EditorGUI.SameLine();
+        private void DrawApplyRevertButtons()
+        {
+            ReadOnlySpan<float> widths = [
+                EditorGUI.CalcButtonWidth("Apply"),
+                EditorGUI.CalcButtonWidth("Revert"),
+            ];
 
-                        if (EditorGUI.Button("Revert"))
-                        {
-                            RevertChanges();
-                            m_IsChanged = false;
-                        }
-                    }
+            float totalWidth = widths.Sum() + (widths.Length - 1) * EditorGUI.ItemSpacing.X;
+            EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
+
+            using (new EditorGUI.DisabledScope(!m_IsChanged))
+            {
+                if (EditorGUI.Button("Apply"))
+                {
+                    ApplyChanges();
+                    m_IsChanged = false;
                 }
 
-                DrawAdditional();
+                EditorGUI.SameLine();
+
+                if (EditorGUI.Button("Revert"))
+                {
+                    RevertChanges();
+                    m_IsChanged = false;
+                }
             }
         }
 
@@ -574,7 +590,26 @@ namespace March.Editor.AssetPipeline
             return isChanged;
         }
 
-        protected virtual void DrawAdditional() { }
+        protected virtual void DrawAdditional()
+        {
+            EditorGUI.Separator();
+            EditorGUI.Space();
+
+            if (EditorGUI.Foldout("Dependencies", ""))
+            {
+                using var dependencies = ListPool<AssetImporter>.Get();
+                Target.GetDependencies(dependencies);
+
+                using (new EditorGUI.IndentedScope())
+                {
+                    foreach (AssetImporter dep in dependencies.Value)
+                    {
+                        using var depLabel = EditorGUIUtility.BuildAssetPath(dep);
+                        EditorGUI.BulletLabel(depLabel, "");
+                    }
+                }
+            }
+        }
 
         protected virtual void ApplyChanges()
         {

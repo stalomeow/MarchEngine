@@ -64,6 +64,19 @@ namespace March.Editor.AssetPipeline
             }
         }
 
+        public void GetDependencies(List<AssetImporter> dependencies)
+        {
+            foreach (AssetDependency dep in m_Dependencies)
+            {
+                AssetImporter? importer = AssetDatabase.GetAssetImporter(dep.Path, AssetReimportMode.Dont);
+
+                if (importer != null)
+                {
+                    dependencies.Add(importer);
+                }
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static DateTime GetLastWriteTimeUtc(string path) => File.GetLastWriteTimeUtc(path);
     }
