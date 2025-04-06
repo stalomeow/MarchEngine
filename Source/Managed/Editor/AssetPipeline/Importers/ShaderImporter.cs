@@ -254,11 +254,11 @@ Shader ""ErrorShader""
                     foreach (ShaderProperty prop in shader.Properties)
                     {
                         using var label = StringBuilderPool.Get();
-                        label.Value.Append(prop.Name).Append(':').Append(' ').Append(prop.Type.ToString());
+                        label.Value.Append(prop.Name).Append(' ').Append(':').Append(' ').Append(prop.Type.ToString());
 
                         if (prop.Type == ShaderPropertyType.Texture)
                         {
-                            label.Value.Append(' ').Append('(').Append(prop.TexDimension.ToInspectorEnumName()).Append(')');
+                            label.Value.Append(' ').Append('(').Append(' ').Append(prop.TexDimension.ToInspectorEnumName()).Append(' ').Append(')');
                         }
 
                         EditorGUI.BulletLabel(label, "");
