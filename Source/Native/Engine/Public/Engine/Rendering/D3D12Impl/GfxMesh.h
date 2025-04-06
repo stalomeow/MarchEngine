@@ -98,7 +98,7 @@ namespace march
             };
         }
 
-        const GfxInputDesc& GetInputDesc() const { return TVertex::GetInputDesc(); }
+        static const GfxInputDesc& GetInputDesc() { return TVertex::GetInputDesc(); }
         uint32_t GetSubMeshCount() const { return static_cast<uint32_t>(m_SubMeshes.size()); }
         const GfxSubMesh& GetSubMesh(uint32_t index) const { return m_SubMeshes[index]; }
 

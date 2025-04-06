@@ -4,7 +4,6 @@
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxMesh.h"
 #include "Engine/Rendering/D3D12Impl/Material.h"
-#include "Engine/Rendering/D3D12Impl/MeshRenderer.h"
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
 #include "Engine/Misc/MathUtils.h"
 #include "Engine/Debug.h"
@@ -603,6 +602,8 @@ namespace march
         return nullptr;
     }
 
+    static int32_t g_InstanceBufferId = ShaderUtils::GetIdFromString("_InstanceBuffer");
+
     GfxBuffer* GfxCommandContext::FindGraphicsBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement)
     {
         if (isConstantBuffer)
@@ -615,9 +616,7 @@ namespace march
         }
         else
         {
-            static int32_t instanceBufferId = ShaderUtils::GetIdFromString("_InstanceBuffer");
-
-            if (id == instanceBufferId)
+            if (id == g_InstanceBufferId)
             {
                 *pOutElement = GfxBufferElement::StructuredData;
                 return &m_InstanceBuffer;
@@ -627,14 +626,19 @@ namespace march
         return FindComputeBuffer(id, isConstantBuffer, pOutElement);
     }
 
-    void GfxCommandContext::SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex)
+    void GfxCommandContext::SetInstanceBufferData(uint32_t numInstances, const MeshRendererBatch::InstanceData* instances)
     {
-        if (m_CurrentPipelineState != pso)
-        {
-            m_CurrentPipelineState = pso;
-            m_CommandList->SetPipelineState(pso);
-        }
+        GfxBufferDesc desc{};
+        desc.Stride = sizeof(MeshRendererBatch::InstanceData);
+        desc.Count = numInstances;
+        desc.Usages = GfxBufferUsages::Structured;
+        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
+        m_InstanceBuffer.SetData(desc, instances);
+    }
+
+    void GfxCommandContext::SetGraphicsPipelineParameters(Material* material, size_t passIndex)
+    {
         ShaderPass* pass = material->GetShader()->GetPass(passIndex);
 
         m_GraphicsViewCache.SetRootSignature(pass->GetRootSignature(material->GetKeywords()));
@@ -659,6 +663,23 @@ namespace march
             return FindTexture(tex.Id, material, pOutElement, pOutMipSlice);
         });
 
+        SetResolvedRenderState(material->GetResolvedRenderState(passIndex));
+    }
+
+    void GfxCommandContext::UpdateGraphicsPipelineInstanceDataParameter(uint32_t numInstances, const MeshRendererBatch::InstanceData* instances)
+    {
+        SetInstanceBufferData(numInstances, instances);
+        m_GraphicsViewCache.UpdateSrvCbvBuffer(g_InstanceBufferId, &m_InstanceBuffer, GfxBufferElement::StructuredData);
+    }
+
+    void GfxCommandContext::ApplyGraphicsPipelineParameters(ID3D12PipelineState* pso)
+    {
+        if (m_CurrentPipelineState != pso)
+        {
+            m_CurrentPipelineState = pso;
+            m_CommandList->SetPipelineState(pso);
+        }
+
         m_GraphicsViewCache.TransitionResources([this](auto resource, auto subresourceIndex, auto state) -> void
         {
             if (subresourceIndex == -1)
@@ -672,11 +693,9 @@ namespace march
         });
 
         m_GraphicsViewCache.Apply(m_CommandList.Get(), &m_ViewHeap, &m_SamplerHeap);
-
-        SetResolvedRenderState(material->GetResolvedRenderState(passIndex));
     }
 
-    void GfxCommandContext::SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex)
+    void GfxCommandContext::SetAndApplyComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex)
     {
         if (m_CurrentPipelineState != pso)
         {
@@ -777,17 +796,6 @@ namespace march
         }
     }
 
-    void GfxCommandContext::SetInstanceBufferData(uint32_t numInstances, const InstanceData* instances)
-    {
-        GfxBufferDesc desc{};
-        desc.Stride = sizeof(InstanceData);
-        desc.Count = numInstances;
-        desc.Usages = GfxBufferUsages::Structured;
-        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
-
-        m_InstanceBuffer.SetData(desc, instances);
-    }
-
     void GfxCommandContext::DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount)
     {
         SetPrimitiveTopology(subMesh.InputDesc.GetPrimitiveTopology());
@@ -831,87 +839,71 @@ namespace march
     void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
         // TODO 允许设置上一帧的矩阵
-        SetInstanceBufferData(1, &CreateInstanceData(matrix, matrix));
-
-        ID3D12PipelineState* pso = material->GetPSO(shaderPassIndex, subMesh.InputDesc, m_OutputDesc);
-        SetGraphicsPipelineParameters(pso, material, shaderPassIndex);
+        SetInstanceBufferData(1, &MeshRendererBatch::InstanceData::Create(matrix, matrix));
+        SetGraphicsPipelineParameters(material, shaderPassIndex);
+        ApplyGraphicsPipelineParameters(material->GetPSO(shaderPassIndex, subMesh.InputDesc, m_OutputDesc));
 
         DrawSubMesh(subMesh, 1);
     }
 
-    // 相同的可以合批，使用 GPU instancing 绘制
-    struct DrawCall
+    void GfxCommandContext::DrawMeshRenderers(const MeshRendererBatch& batch, const std::string& lightMode)
     {
-        GfxMesh* Mesh;
-        uint32_t SubMeshIndex;
-        Material* Mat;
-        size_t ShaderPassIndex;
-
-        bool operator==(const DrawCall& other) const
-        {
-            return memcmp(this, &other, sizeof(DrawCall)) == 0;
-        }
-
-        struct Hash
-        {
-            size_t operator()(const DrawCall& drawCall) const
-            {
-                return std::hash<GfxMesh*>{}(drawCall.Mesh)
-                    ^ std::hash<uint32_t>{}(drawCall.SubMeshIndex)
-                    ^ std::hash<Material*>{}(drawCall.Mat)
-                    ^ std::hash<size_t>{}(drawCall.ShaderPassIndex);
-            };
-        };
-    };
-
-    void GfxCommandContext::DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode)
-    {
-        if (numRenderers == 0)
+        if (batch.GetData().empty())
         {
             return;
         }
 
-        std::unordered_map<ID3D12PipelineState*,
-            std::unordered_map<DrawCall, std::vector<InstanceData>, DrawCall::Hash>> psoMap{}; // 优化 pso 切换
+        // 优化 pso 切换，vector 中的元素是 Material 和 ShaderPassIndex
+        static std::unordered_map<ID3D12PipelineState*, std::vector<std::pair<Material*, size_t>>> psoMap{};
+        psoMap.clear();
 
-        for (size_t i = 0; i < numRenderers; i++)
+        for (auto& [material, drawCalls] : batch.GetData())
         {
-            MeshRenderer* renderer = renderers[i];
-            if (!renderer->GetIsActiveAndEnabled() || renderer->Mesh == nullptr || renderer->Materials.empty())
+            Shader* shader = material->GetShader();
+            std::optional<size_t> passIndex = shader->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+
+            if (passIndex)
             {
-                continue;
-            }
-
-            for (uint32_t j = 0; j < renderer->Mesh->GetSubMeshCount(); j++)
-            {
-                Material* mat = j < renderer->Materials.size() ? renderer->Materials[j] : renderer->Materials.back();
-                if (mat == nullptr || mat->GetShader() == nullptr)
-                {
-                    continue;
-                }
-
-                std::optional<size_t> shaderPassIndex = mat->GetShader()->GetFirstPassIndexWithTagValue("LightMode", lightMode);
-                if (!shaderPassIndex)
-                {
-                    continue;
-                }
-
-                ID3D12PipelineState* pso = mat->GetPSO(*shaderPassIndex, renderer->Mesh->GetInputDesc(), m_OutputDesc);
-                DrawCall dc{ renderer->Mesh, j, mat, *shaderPassIndex };
-                psoMap[pso][dc].emplace_back(CreateInstanceData(renderer->GetTransform()->GetLocalToWorldMatrix(), renderer->GetPrevLocalToWorldMatrix()));
+                size_t passIndexValue = *passIndex;
+                ID3D12PipelineState* pso = material->GetPSO(passIndexValue, batch.GetMeshInputDesc(), m_OutputDesc);
+                psoMap[pso].emplace_back(material, passIndexValue);
             }
         }
 
-        for (auto& [pso, drawCalls] : psoMap)
+        BeginEvent("DrawMeshRenderers");
+
+        for (auto& [pso, materials] : psoMap)
         {
-            for (auto& [dc, instances] : drawCalls)
+            for (auto& [material, passIndex] : materials)
             {
-                uint32_t instanceCount = static_cast<uint32_t>(instances.size());
-                SetInstanceBufferData(instanceCount, instances.data());
-                SetGraphicsPipelineParameters(pso, dc.Mat, dc.ShaderPassIndex);
-                DrawSubMesh(dc.Mesh->GetSubMeshDesc(dc.SubMeshIndex), instanceCount);
+                BeginEvent("MaterialBatch");
+
+                bool isFirst = true;
+
+                for (const auto& [drawCall, instances] : batch.GetData().at(material))
+                {
+                    uint32_t instanceCount = static_cast<uint32_t>(instances.size());
+
+                    if (isFirst)
+                    {
+                        SetInstanceBufferData(instanceCount, instances.data());
+                        SetGraphicsPipelineParameters(material, passIndex);
+                        isFirst = false;
+                    }
+                    else
+                    {
+                        UpdateGraphicsPipelineInstanceDataParameter(instanceCount, instances.data());
+                    }
+
+                    ApplyGraphicsPipelineParameters(pso);
+                    DrawSubMesh(drawCall.Mesh->GetSubMeshDesc(drawCall.SubMeshIndex), instanceCount);
+                }
+
+                EndEvent();
             }
         }
+
+        EndEvent();
     }
 
     void GfxCommandContext::DispatchCompute(ComputeShader* shader, const std::string& kernelName, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
@@ -929,7 +921,7 @@ namespace march
 
     void GfxCommandContext::DispatchCompute(ComputeShader* shader, size_t kernelIndex, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)
     {
-        SetComputePipelineParameters(shader->GetPSO(kernelIndex), shader, kernelIndex);
+        SetAndApplyComputePipelineParameters(shader->GetPSO(kernelIndex), shader, kernelIndex);
         FlushResourceBarriers();
 
         m_CommandList->Dispatch(
@@ -961,13 +953,6 @@ namespace march
         uint32_t groupCountZ = static_cast<uint32_t>(std::ceil(threadCountZ / static_cast<float>(groupSizeZ)));
 
         DispatchCompute(shader, kernelIndex, groupCountX, groupCountY, groupCountZ);
-    }
-
-    GfxCommandContext::InstanceData GfxCommandContext::CreateInstanceData(const XMFLOAT4X4& currMatrix, const XMFLOAT4X4& prevMatrix)
-    {
-        XMFLOAT4X4 currMatrixIT{};
-        XMStoreFloat4x4(&currMatrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&currMatrix))));
-        return InstanceData{ currMatrix, currMatrixIT, prevMatrix };
     }
 
     void GfxCommandContext::ResolveTexture(GfxTexture* source, GfxTexture* destination)

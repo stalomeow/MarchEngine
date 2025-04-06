@@ -145,6 +145,9 @@ namespace march
         std::vector<Light*> m_Lights{};
         RenderPipelineResource m_Resource{};
 
+        MeshRendererBatch m_MeshRendererBatch{};
+        MeshRendererBatch m_MeshRendererBatchShadow{};
+
         std::unique_ptr<RenderGraph> m_RenderGraph;
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;

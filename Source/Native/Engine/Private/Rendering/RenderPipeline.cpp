@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Engine/Rendering/RenderPipeline.h"
-#include "Engine/Rendering/Camera.h"
 #include "Engine/Rendering/Display.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
@@ -119,6 +118,8 @@ namespace march
                 return;
             }
 
+            m_MeshRendererBatch.Rebuild(camera->GetFrustum(), m_MeshRenderers.size(), m_MeshRenderers.data());
+
             m_Resource.Reset();
             m_Resource.ColorTarget = m_RenderGraph->ImportTexture("_CameraColorTarget", display->GetColorBuffer());
             m_Resource.DepthStencilTarget = m_RenderGraph->ImportTexture("_CameraDepthStencilTarget", display->GetDepthStencilBuffer());
@@ -236,7 +237,7 @@ namespace march
         builder.SetWireframe(wireframe);
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
-            context.DrawMeshRenderers(m_MeshRenderers.size(), m_MeshRenderers.data(), "GBuffer");
+            context.DrawMeshRenderers(m_MeshRendererBatch, "GBuffer");
         });
     }
 
@@ -514,6 +515,7 @@ namespace march
             depth2RadialScale = s * std::abs(proj._11 / proj._33);
 
             cbShadowCamera = CreateCameraConstantBuffer("cbShadowCamera", view, proj);
+            m_MeshRendererBatchShadow.Rebuild(sphere, m_MeshRenderers.size(), m_MeshRenderers.data());
         }
 
         static int32 shadowMapId = ShaderUtils::GetIdFromString("_ShadowMap");
@@ -538,7 +540,7 @@ namespace march
             if (drawShadow)
             {
                 context.SetVariable(cbShadowCamera, "cbCamera");
-                context.DrawMeshRenderers(m_MeshRenderers.size(), m_MeshRenderers.data(), "ShadowCaster");
+                context.DrawMeshRenderers(m_MeshRendererBatchShadow, "ShadowCaster");
             }
         });
     }
@@ -854,7 +856,7 @@ namespace march
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_CameraMotionVectorMaterial.get(), 0);
-            context.DrawMeshRenderers(m_MeshRenderers.size(), m_MeshRenderers.data(), "MotionVector");
+            context.DrawMeshRenderers(m_MeshRendererBatch, "MotionVector");
         });
     }
 

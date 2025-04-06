@@ -24,7 +24,7 @@
     <ClInclude Include="Public\Engine\Scripting\DotNetRuntime.h" />
     <ClInclude Include="Public\Engine\Scripting\DotNetTypeTraits.h" />
     <ClInclude Include="Public\Engine\Scripting\InteropServices.h" />
-    <ClInclude Include="Public\Engine\Rendering\Camera.h" />
+    <ClInclude Include="Public\Engine\Rendering\D3D12Impl\Camera.h" />
     <ClInclude Include="Public\Engine\Rendering\Light.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraphImpl\RenderGraphCore.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraphImpl\RenderGraphResource.h" />
@@ -79,8 +79,8 @@
     <ClCompile Include="Private\Scripting\DotNetRuntime.cpp" />
     <ClCompile Include="Private\Scripting\InteropServices.binding.cpp" />
     <ClCompile Include="Private\Scripting\InteropServices.cpp" />
-    <ClCompile Include="Private\Rendering\Camera.binding.cpp" />
-    <ClCompile Include="Private\Rendering\Camera.cpp" />
+    <ClCompile Include="Private\Rendering\D3D12Impl\Camera.binding.cpp" />
+    <ClCompile Include="Private\Rendering\D3D12Impl\Camera.cpp" />
     <ClCompile Include="Private\Rendering\Light.binding.cpp" />
     <ClCompile Include="Private\Rendering\Light.cpp" />
     <ClCompile Include="Private\Rendering\RenderGraphImpl\RenderGraphCore.cpp" />

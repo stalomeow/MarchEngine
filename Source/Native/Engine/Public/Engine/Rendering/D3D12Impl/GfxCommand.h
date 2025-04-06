@@ -8,6 +8,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
 #include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
+#include "Engine/Rendering/D3D12Impl/MeshRenderer.h"
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
@@ -237,7 +238,7 @@ namespace march
         void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex);
         void DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
 
-        void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode);
+        void DrawMeshRenderers(const MeshRendererBatch& batch, const std::string& lightMode);
 
         void DispatchCompute(ComputeShader* shader, const std::string& kernelName, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
         void DispatchCompute(ComputeShader* shader, size_t kernelIndex, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ);
@@ -311,13 +312,6 @@ namespace march
         std::unordered_map<int32_t, GlobalTextureData> m_GlobalTextures;
         std::unordered_map<int32_t, GlobalBufferData> m_GlobalBuffers;
 
-        struct InstanceData
-        {
-            DirectX::XMFLOAT4X4 Matrix;
-            DirectX::XMFLOAT4X4 MatrixIT; // 逆转置，用于法线变换
-            DirectX::XMFLOAT4X4 MatrixPrev; // 上一帧的矩阵
-        };
-
         GfxBuffer m_InstanceBuffer;
 
         void SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets, const GfxRenderTargetDesc* depthStencilTarget);
@@ -329,8 +323,12 @@ namespace march
         GfxBuffer* FindComputeBuffer(int32_t id, bool isConstantBuffer, GfxBufferElement* pOutElement);
         GfxBuffer* FindGraphicsBuffer(int32_t id, bool isConstantBuffer, Material* material, size_t passIndex, GfxBufferElement* pOutElement);
 
-        void SetGraphicsPipelineParameters(ID3D12PipelineState* pso, Material* material, size_t passIndex);
-        void SetComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex);
+        void SetInstanceBufferData(uint32_t numInstances, const MeshRendererBatch::InstanceData* instances);
+
+        void SetGraphicsPipelineParameters(Material* material, size_t passIndex);
+        void UpdateGraphicsPipelineInstanceDataParameter(uint32_t numInstances, const MeshRendererBatch::InstanceData* instances);
+        void ApplyGraphicsPipelineParameters(ID3D12PipelineState* pso);
+        void SetAndApplyComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex);
 
         void SetResolvedRenderState(const ShaderPassRenderState& state);
         void SetStencilRef(uint8_t value);
@@ -338,9 +336,6 @@ namespace march
         void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value);
         void SetVertexBuffer(GfxBuffer* buffer);
         void SetIndexBuffer(GfxBuffer* buffer);
-        void SetInstanceBufferData(uint32_t numInstances, const InstanceData* instances);
         void DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount);
-
-        static InstanceData CreateInstanceData(const DirectX::XMFLOAT4X4& currMatrix, const DirectX::XMFLOAT4X4& prevMatrix);
     };
 }

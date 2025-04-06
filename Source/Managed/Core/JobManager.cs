@@ -252,9 +252,9 @@ namespace March.Core
         }
 
         [UnmanagedCallersOnly]
-        private static JobHandle NativeSchedule(ulong totalSize, ulong batchSize, nint job)
+        private static unsafe void NativeSchedule(JobHandle* handle, ulong totalSize, ulong batchSize, nint job)
         {
-            return ScheduleInternal(totalSize, batchSize, null, job);
+            *handle = ScheduleInternal(totalSize, batchSize, null, job);
         }
 
         [UnmanagedCallersOnly]

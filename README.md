@@ -59,7 +59,7 @@ public class ShaderIncludeImporter : AssetImporter
 
 - 实现了一套类似 Unity SRP 的 D3D12RHI，屏蔽了 Descriptor / View / PipelineState / RootSignature 等底层细节
 - 自动处理并合批 Resource Barrier，支持 Subresource 级别的状态管理
-- 自动 GPU Instancing
+- 视锥体剔除 / 材质合批（类似 Unity SRP Batcher）/ 自动 GPU Instancing
 - 实现了 Linear Allocator 和 Buddy Allocator，并支持多种资源分配方式 Committed / Placed / Suballocation
 - 基于 [ANTLR](https://www.antlr.org/) 实现了 Unity 的 ShaderLab 并利用 Shader 的反射数据自动绑定资源
 - 支持 `#pragma multi_compile` 创建 Shader 变体
@@ -204,6 +204,6 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 
 ### Misc
 
-- 基于线程池的简易 JobSystem，但暂时还没使用过（本来有个功能要用的，后来被砍了）
+- 基于线程池的简易 JobSystem
 - 主线程繁忙时，自动显示进度条，避免用户认为引擎卡死
 - 使用对象池和 `StringBuilder` 减少 GC 分配

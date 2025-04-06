@@ -336,9 +336,9 @@ namespace march
             m_Cmd->DrawMesh(subMesh, material, shaderPassIndex, matrix);
         }
 
-        void DrawMeshRenderers(size_t numRenderers, MeshRenderer* const* renderers, const std::string& lightMode)
+        void DrawMeshRenderers(const MeshRendererBatch& batch, const std::string& lightMode)
         {
-            m_Cmd->DrawMeshRenderers(numRenderers, renderers, lightMode);
+            m_Cmd->DrawMeshRenderers(batch, lightMode);
         }
 
         void DispatchCompute(ComputeShader* shader, const std::string& kernelName, uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ)

@@ -4,7 +4,6 @@
 #include "Engine/Application.h"
 #include "Engine/Rendering/Display.h"
 #include "Engine/Rendering/D3D12.h"
-#include "Engine/Rendering/Camera.h"
 #include "Engine/Rendering/Gizmos.h"
 #include "Engine/ImGui/IconsFontAwesome6.h"
 #include "Engine/Debug.h"

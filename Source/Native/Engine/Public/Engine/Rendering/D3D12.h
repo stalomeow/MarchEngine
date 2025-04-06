@@ -3,6 +3,7 @@
 #include <directx/d3dx12.h>
 #include <wrl.h>
 
+#include "Engine/Rendering/D3D12Impl/Camera.h"
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
 #include "Engine/Rendering/D3D12Impl/GfxCommand.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"

@@ -3,6 +3,7 @@
 #include "Engine/Ints.h"
 #include "Engine/Component.h"
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <stdint.h>
 #include <vector>
 
@@ -46,6 +47,14 @@ namespace march
         DirectX::XMMATRIX LoadNonJitteredProjectionMatrix() const;
         DirectX::XMMATRIX LoadNonJitteredViewProjectionMatrix() const;
         DirectX::XMMATRIX LoadPrevNonJitteredViewProjectionMatrix() const;
+
+        static DirectX::BoundingFrustum XM_CALLCONV CreateWorldFrustum(DirectX::FXMMATRIX viewMatrix, DirectX::CXMMATRIX projectionMatrix);
+
+        // 获取世界空间的视锥体
+        DirectX::BoundingFrustum GetFrustum() const;
+
+        // 获取世界空间的视锥体
+        DirectX::BoundingFrustum GetNonJitteredFrustum() const;
 
         void PrepareFrameData();
 

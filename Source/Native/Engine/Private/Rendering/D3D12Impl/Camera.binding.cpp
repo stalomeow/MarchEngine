@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Rendering/Camera.h"
+#include "Engine/Rendering/D3D12Impl/Camera.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO Camera_New()

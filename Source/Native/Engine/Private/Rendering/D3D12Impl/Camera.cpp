@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Engine/Rendering/Camera.h"
+#include "Engine/Rendering/D3D12Impl/Camera.h"
 #include "Engine/Rendering/Display.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Misc/SequenceUtils.h"
@@ -210,6 +210,30 @@ namespace march
     XMMATRIX Camera::LoadPrevNonJitteredViewProjectionMatrix() const
     {
         return XMLoadFloat4x4(&m_PrevNonJitteredViewProjectionMatrix);
+    }
+
+    BoundingFrustum XM_CALLCONV Camera::CreateWorldFrustum(FXMMATRIX viewMatrix, CXMMATRIX projectionMatrix)
+    {
+        BoundingFrustum frustumVS = BoundingFrustum(projectionMatrix);
+
+        if constexpr (GfxSettings::UseReversedZBuffer)
+        {
+            std::swap(frustumVS.Near, frustumVS.Far);
+        }
+
+        BoundingFrustum frustumWS{};
+        frustumVS.Transform(frustumWS, XMMatrixInverse(nullptr, viewMatrix));
+        return frustumWS;
+    }
+
+    BoundingFrustum Camera::GetFrustum() const
+    {
+        return CreateWorldFrustum(LoadViewMatrix(), LoadProjectionMatrix());
+    }
+
+    BoundingFrustum Camera::GetNonJitteredFrustum() const
+    {
+        return CreateWorldFrustum(LoadViewMatrix(), LoadNonJitteredProjectionMatrix());
     }
 
     void Camera::PrepareFrameData()

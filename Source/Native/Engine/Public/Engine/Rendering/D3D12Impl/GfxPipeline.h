@@ -492,6 +492,22 @@ namespace march
             }
         }
 
+        void UpdateSrvCbvBuffer(int32_t id, GfxBuffer* buffer, GfxBufferElement element)
+        {
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                for (const auto& buf : m_RootSignature->GetSrvCbvBuffers(i))
+                {
+                    if (buf.Id != id)
+                    {
+                        continue;
+                    }
+
+                    SetSrvCbvBuffer(i, buf.RootParameterIndex, buffer, element, buf.IsConstantBuffer);
+                }
+            }
+        }
+
         template <typename FindTextureFunc>
         void SetSrvTexturesAndSamplers(FindTextureFunc fn)
         {

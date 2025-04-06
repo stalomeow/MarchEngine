@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Engine/Rendering/Gizmos.h"
 #include "Engine/Rendering/D3D12.h"
-#include "Engine/Rendering/Camera.h"
 #include "Engine/Debug.h"
 #include "Engine/AssetManger.h"
 #include "Engine/Application.h"

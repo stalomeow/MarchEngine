@@ -47,7 +47,7 @@
     <ClInclude Include="Public\Engine\Ints.h" />
     <ClInclude Include="Public\Engine\Misc\MathUtils.h" />
     <ClInclude Include="Public\Engine\Misc\PathUtils.h" />
-    <ClInclude Include="Public\Engine\Rendering\Camera.h" />
+    <ClInclude Include="Public\Engine\Rendering\D3D12Impl\Camera.h" />
     <ClInclude Include="Public\Engine\Rendering\Light.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraph.h" />
     <ClInclude Include="Public\Engine\Rendering\RenderGraphImpl\RenderGraphCore.h" />
@@ -119,8 +119,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Private\Object.binding.cpp" />
-    <ClCompile Include="Private\Rendering\Camera.binding.cpp" />
-    <ClCompile Include="Private\Rendering\Camera.cpp" />
+    <ClCompile Include="Private\Rendering\D3D12Impl\Camera.binding.cpp" />
+    <ClCompile Include="Private\Rendering\D3D12Impl\Camera.cpp" />
     <ClCompile Include="Private\Rendering\Light.binding.cpp" />
     <ClCompile Include="Private\Rendering\Light.cpp" />
     <ClCompile Include="Private\Rendering\RenderGraphImpl\RenderGraphCore.cpp" />
