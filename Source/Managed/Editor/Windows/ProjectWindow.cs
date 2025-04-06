@@ -1,3 +1,4 @@
+using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
@@ -106,6 +107,17 @@ namespace March.Editor.Windows
                     AssetDatabase.Create(path, new Material());
                 }
             });
+
+            s_ContextMenu.AddMenuItem("Reimport", (ref object? arg) =>
+            {
+                if (Selection.Active is not AssetImporter importer)
+                {
+                    return;
+                }
+
+                importer.ReimportAndSave(AssetReimportMode.Force);
+
+            }, enabled: (ref object? arg) => Selection.Active is AssetImporter);
         }
     }
 }

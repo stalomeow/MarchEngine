@@ -7,20 +7,36 @@ namespace March.Editor
 {
     public static class EditorGUIUtility
     {
-        public static PooledObject<StringBuilder> BuildAssetPath(AssetImporter importer, string? assetGuid = null)
+        public static PooledObject<StringBuilder> BuildAssetPath(AssetImporter importer, string? assetGuid = null, bool useCompleteAssetPath = true)
         {
             PooledObject<StringBuilder> builder = StringBuilderPool.Get();
-            builder.Value.AppendAssetPath(importer, assetGuid);
+            builder.Value.AppendAssetPath(importer, assetGuid, useCompleteAssetPath);
             return builder;
         }
 
-        public static StringBuilder AppendAssetPath(this StringBuilder builder, AssetImporter importer, string? assetGuid = null)
+        public static StringBuilder AppendAssetPath(this StringBuilder builder, AssetImporter importer, string? assetGuid = null, bool useCompleteAssetPath = true)
         {
-            builder.Append(importer.Location.AssetPath);
+            string? icon = importer.GetAssetNormalIcon(assetGuid ?? importer.MainAssetGuid);
+
+            if (icon != null)
+            {
+                builder.Append(icon).Append(' ');
+            }
+
+            if (useCompleteAssetPath)
+            {
+                builder.Append(importer.Location.AssetPath);
+            }
+            else
+            {
+                ReadOnlySpan<char> completePath = importer.Location.AssetPath.AsSpan();
+                int startIndex = completePath.LastIndexOf('/') + 1;
+                builder.Append(completePath[startIndex..]);
+            }
 
             if (assetGuid != null && assetGuid != importer.MainAssetGuid)
             {
-                builder.Append(" [").Append(importer.GetAssetName(assetGuid)).Append(']');
+                builder.Append(' ').Append('[').Append(importer.GetAssetName(assetGuid)).Append(']');
             }
 
             return builder;

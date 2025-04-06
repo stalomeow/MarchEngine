@@ -253,24 +253,18 @@ Shader ""ErrorShader""
                 {
                     foreach (ShaderProperty prop in shader.Properties)
                     {
+                        using var label = StringBuilderPool.Get();
+                        label.Value.Append(prop.Name).Append(':').Append(' ').Append(prop.Type.ToString());
+
                         if (prop.Type == ShaderPropertyType.Texture)
                         {
-                            using var label = StringBuilderPool.Get();
-                            label.Value.Append(prop.Type.ToString()).Append(' ');
-                            label.Value.Append('(').Append(prop.TexDimension.ToInspectorEnumName()).Append(')');
-                            EditorGUI.LabelField(prop.Name, string.Empty, label);
+                            label.Value.Append(' ').Append('(').Append(prop.TexDimension.ToInspectorEnumName()).Append(')');
                         }
-                        else
-                        {
-                            EditorGUI.LabelField(prop.Name, string.Empty, prop.Type.ToString());
-                        }
+
+                        EditorGUI.BulletLabel(label, "");
                     }
                 }
             }
-
-            EditorGUI.Space();
-            EditorGUI.Separator();
-            EditorGUI.Space();
 
             if (EditorGUI.Foldout("Passes", string.Empty, defaultOpen: true))
             {

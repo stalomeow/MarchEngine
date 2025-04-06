@@ -519,12 +519,11 @@ namespace March.Editor.AssetPipeline
 
         public sealed override void Draw()
         {
-            EditorGUI.SeparatorText(Target.DisplayName);
+            using var label = EditorGUIUtility.BuildAssetPath(Target, useCompleteAssetPath: false);
+            label.Value.Append(' ').Append('(').Append(' ').Append(Target.DisplayName).Append(' ').Append(')');
 
-            using (new EditorGUI.DisabledScope())
-            {
-                EditorGUI.LabelField("Path", string.Empty, Target.Location.AssetPath);
-            }
+            EditorGUI.SeparatorText(label);
+            EditorGUI.Space();
 
             using (new EditorGUI.DisabledScope(!Target.Location.IsEditable))
             {
@@ -534,9 +533,11 @@ namespace March.Editor.AssetPipeline
                 {
                     EditorGUI.Space();
 
-                    float applyButtonWidth = EditorGUI.CalcButtonWidth("Apply");
-                    float revertButtonWidth = EditorGUI.CalcButtonWidth("Revert");
-                    float totalWidth = applyButtonWidth + EditorGUI.ItemSpacing.X + revertButtonWidth;
+                    ReadOnlySpan<float> widths = [
+                        EditorGUI.CalcButtonWidth("Apply"),
+                        EditorGUI.CalcButtonWidth("Revert"),
+                    ];
+                    float totalWidth = widths.Sum() + (widths.Length - 1) * EditorGUI.ItemSpacing.X;
                     EditorGUI.CursorPosX += EditorGUI.ContentRegionAvailable.X - totalWidth;
 
                     using (new EditorGUI.DisabledScope(!m_IsChanged))

@@ -92,7 +92,7 @@ namespace march
             results[count++] = const_cast<MeshRenderer*>(renderer);
         };
 
-        constexpr size_t jobBatchSize = 1;
+        constexpr size_t jobBatchSize = 4;
 
         if (numRenderers > jobBatchSize)
         {
