@@ -368,12 +368,19 @@ namespace march
             }
         }
 
-        inline static bool CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+        inline static bool CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs_string[]> pragmas, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
         {
+            std::vector<std::string> pragmasVec{};
+
+            for (int32_t i = 0; i < pragmas.size(); i++)
+            {
+                pragmasVec.push_back(pragmas[i]);
+            }
+
             std::vector<std::string> warningBuffer{};
             std::string errorBuffer{};
 
-            bool ret = pShader->CompilePass(static_cast<size_t>(passIndex.data), filename, source, warningBuffer, errorBuffer);
+            bool ret = pShader->CompilePass(static_cast<size_t>(passIndex.data), filename, source, pragmasVec, warningBuffer, errorBuffer);
 
             if (!warningBuffer.empty())
             {
@@ -619,9 +626,9 @@ NATIVE_EXPORT_AUTO Shader_SetPropertyLocations(cs<Shader*> pShader, cs<CSharpSha
     ShaderBinding::SetPropertyLocations(pShader, locations);
 }
 
-NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+NATIVE_EXPORT_AUTO Shader_CompilePass(cs<Shader*> pShader, cs_int passIndex, cs_string filename, cs_string source, cs<cs_string[]> pragmas, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
 {
-    retcs ShaderBinding::CompilePass(pShader, passIndex, filename, source, warnings, error);
+    retcs ShaderBinding::CompilePass(pShader, passIndex, filename, source, pragmas, warnings, error);
 }
 
 NATIVE_EXPORT_AUTO Shader_GetMaterialConstantBufferId()
@@ -849,12 +856,19 @@ namespace march
             }
         }
 
-        static bool Compile(cs<ComputeShader*> s, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+        static bool Compile(cs<ComputeShader*> s, cs_string filename, cs_string source, cs<cs_string[]> pragmas, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
         {
+            std::vector<std::string> pragmasVec{};
+
+            for (int32_t i = 0; i < pragmas.size(); i++)
+            {
+                pragmasVec.push_back(pragmas[i]);
+            }
+
             std::vector<std::string> warningBuffer{};
             std::string errorBuffer{};
 
-            bool ret = s->Compile(filename, source, warningBuffer, errorBuffer);
+            bool ret = s->Compile(filename, source, pragmasVec, warningBuffer, errorBuffer);
 
             if (!warningBuffer.empty())
             {
@@ -901,7 +915,7 @@ NATIVE_EXPORT_AUTO ComputeShader_SetKernels(cs<ComputeShader*> s, cs<CSharpCompu
     ComputeShaderBinding::SetKernels(s, kernels);
 }
 
-NATIVE_EXPORT_AUTO ComputeShader_Compile(cs<ComputeShader*> s, cs_string filename, cs_string source, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
+NATIVE_EXPORT_AUTO ComputeShader_Compile(cs<ComputeShader*> s, cs_string filename, cs_string source, cs<cs_string[]> pragmas, cs<cs<cs_string[]>*> warnings, cs<cs_string*> error)
 {
-    retcs ComputeShaderBinding::Compile(s, filename, source, warnings, error);
+    retcs ComputeShaderBinding::Compile(s, filename, source, pragmas, warnings, error);
 }

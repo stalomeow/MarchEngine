@@ -19,7 +19,7 @@
 // Ambiguous reference in cref attribute
 #pragma warning disable 419
 
-namespace March.Editor.ShaderLab.Internal {
+namespace March.ShaderLab.Internal {
 using System;
 using System.IO;
 using System.Text;
@@ -153,6 +153,7 @@ public partial class ShaderLabParser : Parser {
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode StringLiteral() { return GetToken(ShaderLabParser.StringLiteral, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode LeftBrace() { return GetToken(ShaderLabParser.LeftBrace, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode RightBrace() { return GetToken(ShaderLabParser.RightBrace, 0); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Eof() { return GetToken(ShaderLabParser.Eof, 0); }
 		[System.Diagnostics.DebuggerNonUserCode] public ShaderDeclarationContext[] shaderDeclaration() {
 			return GetRuleContexts<ShaderDeclarationContext>();
 		}
@@ -202,6 +203,8 @@ public partial class ShaderLabParser : Parser {
 			}
 			State = 105;
 			Match(RightBrace);
+			State = 106;
+			Match(Eof);
 			}
 		}
 		catch (RecognitionException re) {
@@ -249,20 +252,20 @@ public partial class ShaderLabParser : Parser {
 		ShaderDeclarationContext _localctx = new ShaderDeclarationContext(Context, State);
 		EnterRule(_localctx, 2, RULE_shaderDeclaration);
 		try {
-			State = 112;
+			State = 113;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 107;
+				State = 108;
 				propertiesBlock();
 				}
 				break;
 			case T__7:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 108;
+				State = 109;
 				tagsBlock();
 				}
 				break;
@@ -275,21 +278,21 @@ public partial class ShaderLabParser : Parser {
 			case T__14:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 109;
+				State = 110;
 				renderStateDeclaration();
 				}
 				break;
 			case HlslInclude:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 110;
+				State = 111;
 				hlslIncludeDeclaration();
 				}
 				break;
 			case T__2:
 				EnterOuterAlt(_localctx, 5);
 				{
-				State = 111;
+				State = 112;
 				passBlock();
 				}
 				break;
@@ -338,25 +341,25 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 114;
-			Match(T__1);
 			State = 115;
+			Match(T__1);
+			State = 116;
 			Match(LeftBrace);
-			State = 119;
+			State = 120;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==BracketLiteral || _la==Identifier) {
 				{
 				{
-				State = 116;
+				State = 117;
 				propertyDeclaration();
 				}
 				}
-				State = 121;
+				State = 122;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 122;
+			State = 123;
 			Match(RightBrace);
 			}
 		}
@@ -401,25 +404,25 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 124;
-			Match(T__2);
 			State = 125;
+			Match(T__2);
+			State = 126;
 			Match(LeftBrace);
-			State = 129;
+			State = 130;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 2147549056L) != 0)) {
 				{
 				{
-				State = 126;
+				State = 127;
 				passDeclaration();
 				}
 				}
-				State = 131;
+				State = 132;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 132;
+			State = 133;
 			Match(RightBrace);
 			}
 		}
@@ -465,20 +468,20 @@ public partial class ShaderLabParser : Parser {
 		PassDeclarationContext _localctx = new PassDeclarationContext(Context, State);
 		EnterRule(_localctx, 8, RULE_passDeclaration);
 		try {
-			State = 138;
+			State = 139;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__6:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 134;
+				State = 135;
 				nameDeclaration();
 				}
 				break;
 			case T__7:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 135;
+				State = 136;
 				tagsBlock();
 				}
 				break;
@@ -491,14 +494,14 @@ public partial class ShaderLabParser : Parser {
 			case T__14:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 136;
+				State = 137;
 				renderStateDeclaration();
 				}
 				break;
 			case HlslProgram:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 137;
+				State = 138;
 				hlslProgramDeclaration();
 				}
 				break;
@@ -539,7 +542,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 140;
+			State = 141;
 			Match(BracketLiteral);
 			}
 		}
@@ -578,7 +581,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 142;
+			State = 143;
 			_la = TokenStream.LA(1);
 			if ( !(_la==IntegerLiteral || _la==FloatLiteral) ) {
 			ErrorHandler.RecoverInline(this);
@@ -627,23 +630,23 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 144;
-			Match(T__3);
 			State = 145;
-			numberLiteralExpression();
+			Match(T__3);
 			State = 146;
-			Match(T__4);
+			numberLiteralExpression();
 			State = 147;
-			numberLiteralExpression();
+			Match(T__4);
 			State = 148;
-			Match(T__4);
+			numberLiteralExpression();
 			State = 149;
-			numberLiteralExpression();
-			State = 150;
 			Match(T__4);
-			State = 151;
+			State = 150;
 			numberLiteralExpression();
+			State = 151;
+			Match(T__4);
 			State = 152;
+			numberLiteralExpression();
+			State = 153;
 			Match(T__5);
 			}
 		}
@@ -682,11 +685,11 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 154;
-			Match(StringLiteral);
 			State = 155;
-			Match(LeftBrace);
+			Match(StringLiteral);
 			State = 156;
+			Match(LeftBrace);
+			State = 157;
 			Match(RightBrace);
 			}
 		}
@@ -729,28 +732,28 @@ public partial class ShaderLabParser : Parser {
 		PropertyDefaultValueExpressionContext _localctx = new PropertyDefaultValueExpressionContext(Context, State);
 		EnterRule(_localctx, 18, RULE_propertyDefaultValueExpression);
 		try {
-			State = 161;
+			State = 162;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case IntegerLiteral:
 			case FloatLiteral:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 158;
+				State = 159;
 				numberLiteralExpression();
 				}
 				break;
 			case T__3:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 159;
+				State = 160;
 				vectorLiteralExpression();
 				}
 				break;
 			case StringLiteral:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 160;
+				State = 161;
 				textureLiteralExpression();
 				}
 				break;
@@ -800,7 +803,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 163;
+			State = 164;
 			_la = TokenStream.LA(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 280925220896768L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -859,35 +862,35 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 168;
+			State = 169;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==BracketLiteral) {
 				{
 				{
-				State = 165;
+				State = 166;
 				attributeDeclaration();
 				}
 				}
-				State = 170;
+				State = 171;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 171;
-			Match(Identifier);
 			State = 172;
-			Match(T__3);
+			Match(Identifier);
 			State = 173;
-			Match(StringLiteral);
+			Match(T__3);
 			State = 174;
-			Match(T__4);
+			Match(StringLiteral);
 			State = 175;
-			propertyTypeDeclaration();
+			Match(T__4);
 			State = 176;
-			Match(T__5);
+			propertyTypeDeclaration();
 			State = 177;
-			Match(Assign);
+			Match(T__5);
 			State = 178;
+			Match(Assign);
+			State = 179;
 			propertyDefaultValueExpression();
 			}
 		}
@@ -924,9 +927,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 180;
-			Match(T__6);
 			State = 181;
+			Match(T__6);
+			State = 182;
 			Match(StringLiteral);
 			}
 		}
@@ -981,55 +984,55 @@ public partial class ShaderLabParser : Parser {
 		RenderStateDeclarationContext _localctx = new RenderStateDeclarationContext(Context, State);
 		EnterRule(_localctx, 26, RULE_renderStateDeclaration);
 		try {
-			State = 190;
+			State = 191;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__8:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 183;
+				State = 184;
 				cullDeclaration();
 				}
 				break;
 			case T__9:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 184;
+				State = 185;
 				zTestDeclaration();
 				}
 				break;
 			case T__10:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 185;
+				State = 186;
 				zWriteDeclaration();
 				}
 				break;
 			case T__11:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 186;
+				State = 187;
 				blendDeclaration();
 				}
 				break;
 			case T__12:
 				EnterOuterAlt(_localctx, 5);
 				{
-				State = 187;
+				State = 188;
 				blendOpDeclaration();
 				}
 				break;
 			case T__13:
 				EnterOuterAlt(_localctx, 6);
 				{
-				State = 188;
+				State = 189;
 				colorMaskDeclaration();
 				}
 				break;
 			case T__14:
 				EnterOuterAlt(_localctx, 7);
 				{
-				State = 189;
+				State = 190;
 				stencilBlock();
 				}
 				break;
@@ -1078,25 +1081,25 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 192;
-			Match(T__7);
 			State = 193;
+			Match(T__7);
+			State = 194;
 			Match(LeftBrace);
-			State = 197;
+			State = 198;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==StringLiteral) {
 				{
 				{
-				State = 194;
+				State = 195;
 				tagDeclaration();
 				}
 				}
-				State = 199;
+				State = 200;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 200;
+			State = 201;
 			Match(RightBrace);
 			}
 		}
@@ -1137,11 +1140,11 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 202;
-			Match(StringLiteral);
 			State = 203;
-			Match(Assign);
+			Match(StringLiteral);
 			State = 204;
+			Match(Assign);
+			State = 205;
 			Match(StringLiteral);
 			}
 		}
@@ -1181,22 +1184,22 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 206;
+			State = 207;
 			Match(T__8);
-			State = 209;
+			State = 210;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Off:
 			case Front:
 			case Back:
 				{
-				State = 207;
+				State = 208;
 				cullModeValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 208;
+				State = 209;
 				Match(BracketLiteral);
 				}
 				break;
@@ -1242,14 +1245,14 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 211;
+			State = 212;
 			Match(T__9);
-			State = 215;
+			State = 216;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Disabled:
 				{
-				State = 212;
+				State = 213;
 				Match(Disabled);
 				}
 				break;
@@ -1262,13 +1265,13 @@ public partial class ShaderLabParser : Parser {
 			case GEqual:
 			case Always:
 				{
-				State = 213;
+				State = 214;
 				compareFuncValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 214;
+				State = 215;
 				Match(BracketLiteral);
 				}
 				break;
@@ -1313,9 +1316,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 217;
-			Match(T__10);
 			State = 218;
+			Match(T__10);
+			State = 219;
 			_la = TokenStream.LA(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 844493649608704L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -1367,24 +1370,24 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 220;
+			State = 221;
 			Match(T__11);
-			State = 222;
+			State = 223;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==IntegerLiteral) {
 				{
-				State = 221;
+				State = 222;
 				Match(IntegerLiteral);
 				}
 			}
 
-			State = 233;
+			State = 234;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Off:
 				{
-				State = 224;
+				State = 225;
 				Match(Off);
 				}
 				break;
@@ -1402,20 +1405,20 @@ public partial class ShaderLabParser : Parser {
 			case SrcAlphaSaturate:
 				{
 				{
-				State = 225;
-				blendFactorValueOrBracketLiteral();
 				State = 226;
 				blendFactorValueOrBracketLiteral();
-				State = 231;
+				State = 227;
+				blendFactorValueOrBracketLiteral();
+				State = 232;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==T__4) {
 					{
-					State = 227;
-					Match(T__4);
 					State = 228;
-					blendFactorValueOrBracketLiteral();
+					Match(T__4);
 					State = 229;
+					blendFactorValueOrBracketLiteral();
+					State = 230;
 					blendFactorValueOrBracketLiteral();
 					}
 				}
@@ -1468,28 +1471,28 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 235;
+			State = 236;
 			Match(T__12);
-			State = 237;
+			State = 238;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==IntegerLiteral) {
 				{
-				State = 236;
+				State = 237;
 				Match(IntegerLiteral);
 				}
 			}
 
-			State = 239;
+			State = 240;
 			blendOpValueOrBracketLiteral();
-			State = 242;
+			State = 243;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			if (_la==T__4) {
 				{
-				State = 240;
-				Match(T__4);
 				State = 241;
+				Match(T__4);
+				State = 242;
 				blendOpValueOrBracketLiteral();
 				}
 			}
@@ -1571,16 +1574,16 @@ public partial class ShaderLabParser : Parser {
 		EnterRule(_localctx, 42, RULE_colorMaskDeclaration);
 		int _la;
 		try {
-			State = 259;
+			State = 260;
 			ErrorHandler.Sync(this);
 			switch ( Interpreter.AdaptivePredict(TokenStream,18,Context) ) {
 			case 1:
 				_localctx = new ColorMaskInt1DeclarationContext(_localctx);
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 244;
-				Match(T__13);
 				State = 245;
+				Match(T__13);
+				State = 246;
 				Match(IntegerLiteral);
 				}
 				break;
@@ -1588,11 +1591,11 @@ public partial class ShaderLabParser : Parser {
 				_localctx = new ColorMaskInt2DeclarationContext(_localctx);
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 246;
-				Match(T__13);
 				State = 247;
-				Match(IntegerLiteral);
+				Match(T__13);
 				State = 248;
+				Match(IntegerLiteral);
+				State = 249;
 				Match(IntegerLiteral);
 				}
 				break;
@@ -1600,19 +1603,19 @@ public partial class ShaderLabParser : Parser {
 				_localctx = new ColorMaskIdentifierDeclarationContext(_localctx);
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 249;
+				State = 250;
 				Match(T__13);
-				State = 251;
+				State = 252;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==IntegerLiteral) {
 					{
-					State = 250;
+					State = 251;
 					Match(IntegerLiteral);
 					}
 				}
 
-				State = 253;
+				State = 254;
 				Match(Identifier);
 				}
 				break;
@@ -1620,19 +1623,19 @@ public partial class ShaderLabParser : Parser {
 				_localctx = new ColorMaskBracketLiteralDeclarationContext(_localctx);
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 254;
+				State = 255;
 				Match(T__13);
-				State = 256;
+				State = 257;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==IntegerLiteral) {
 					{
-					State = 255;
+					State = 256;
 					Match(IntegerLiteral);
 					}
 				}
 
-				State = 258;
+				State = 259;
 				Match(BracketLiteral);
 				}
 				break;
@@ -1679,25 +1682,25 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 261;
-			Match(T__14);
 			State = 262;
+			Match(T__14);
+			State = 263;
 			Match(LeftBrace);
-			State = 266;
+			State = 267;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 1073676296L) != 0)) {
 				{
 				{
-				State = 263;
+				State = 264;
 				stencilDeclaration();
 				}
 				}
-				State = 268;
+				State = 269;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 269;
+			State = 270;
 			Match(RightBrace);
 			}
 		}
@@ -1776,111 +1779,111 @@ public partial class ShaderLabParser : Parser {
 		StencilDeclarationContext _localctx = new StencilDeclarationContext(Context, State);
 		EnterRule(_localctx, 46, RULE_stencilDeclaration);
 		try {
-			State = 286;
+			State = 287;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case T__15:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 271;
+				State = 272;
 				stencilRefDeclaration();
 				}
 				break;
 			case T__16:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 272;
+				State = 273;
 				stencilReadMaskDeclaration();
 				}
 				break;
 			case T__17:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 273;
+				State = 274;
 				stencilWriteMaskDeclaration();
 				}
 				break;
 			case T__18:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 274;
+				State = 275;
 				stencilCompDeclaration();
 				}
 				break;
 			case T__2:
 				EnterOuterAlt(_localctx, 5);
 				{
-				State = 275;
+				State = 276;
 				stencilPassDeclaration();
 				}
 				break;
 			case T__19:
 				EnterOuterAlt(_localctx, 6);
 				{
-				State = 276;
+				State = 277;
 				stencilFailDeclaration();
 				}
 				break;
 			case T__20:
 				EnterOuterAlt(_localctx, 7);
 				{
-				State = 277;
+				State = 278;
 				stencilZFailDeclaration();
 				}
 				break;
 			case T__21:
 				EnterOuterAlt(_localctx, 8);
 				{
-				State = 278;
+				State = 279;
 				stencilCompFrontDeclaration();
 				}
 				break;
 			case T__22:
 				EnterOuterAlt(_localctx, 9);
 				{
-				State = 279;
+				State = 280;
 				stencilPassFrontDeclaration();
 				}
 				break;
 			case T__23:
 				EnterOuterAlt(_localctx, 10);
 				{
-				State = 280;
+				State = 281;
 				stencilFailFrontDeclaration();
 				}
 				break;
 			case T__24:
 				EnterOuterAlt(_localctx, 11);
 				{
-				State = 281;
+				State = 282;
 				stencilZFailFrontDeclaration();
 				}
 				break;
 			case T__25:
 				EnterOuterAlt(_localctx, 12);
 				{
-				State = 282;
+				State = 283;
 				stencilCompBackDeclaration();
 				}
 				break;
 			case T__26:
 				EnterOuterAlt(_localctx, 13);
 				{
-				State = 283;
+				State = 284;
 				stencilPassBackDeclaration();
 				}
 				break;
 			case T__27:
 				EnterOuterAlt(_localctx, 14);
 				{
-				State = 284;
+				State = 285;
 				stencilFailBackDeclaration();
 				}
 				break;
 			case T__28:
 				EnterOuterAlt(_localctx, 15);
 				{
-				State = 285;
+				State = 286;
 				stencilZFailBackDeclaration();
 				}
 				break;
@@ -1923,9 +1926,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 288;
-			Match(T__15);
 			State = 289;
+			Match(T__15);
+			State = 290;
 			_la = TokenStream.LA(1);
 			if ( !(_la==BracketLiteral || _la==IntegerLiteral) ) {
 			ErrorHandler.RecoverInline(this);
@@ -1971,9 +1974,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 291;
-			Match(T__16);
 			State = 292;
+			Match(T__16);
+			State = 293;
 			_la = TokenStream.LA(1);
 			if ( !(_la==BracketLiteral || _la==IntegerLiteral) ) {
 			ErrorHandler.RecoverInline(this);
@@ -2019,9 +2022,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 294;
-			Match(T__17);
 			State = 295;
+			Match(T__17);
+			State = 296;
 			_la = TokenStream.LA(1);
 			if ( !(_la==BracketLiteral || _la==IntegerLiteral) ) {
 			ErrorHandler.RecoverInline(this);
@@ -2068,9 +2071,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 297;
+			State = 298;
 			Match(T__18);
-			State = 300;
+			State = 301;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Never:
@@ -2082,13 +2085,13 @@ public partial class ShaderLabParser : Parser {
 			case GEqual:
 			case Always:
 				{
-				State = 298;
+				State = 299;
 				compareFuncValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 299;
+				State = 300;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2133,9 +2136,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 302;
+			State = 303;
 			Match(T__2);
-			State = 305;
+			State = 306;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2147,13 +2150,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 303;
+				State = 304;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 304;
+				State = 305;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2198,9 +2201,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 307;
+			State = 308;
 			Match(T__19);
-			State = 310;
+			State = 311;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2212,13 +2215,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 308;
+				State = 309;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 309;
+				State = 310;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2263,9 +2266,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 312;
+			State = 313;
 			Match(T__20);
-			State = 315;
+			State = 316;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2277,13 +2280,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 313;
+				State = 314;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 314;
+				State = 315;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2328,9 +2331,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 317;
+			State = 318;
 			Match(T__21);
-			State = 320;
+			State = 321;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Never:
@@ -2342,13 +2345,13 @@ public partial class ShaderLabParser : Parser {
 			case GEqual:
 			case Always:
 				{
-				State = 318;
+				State = 319;
 				compareFuncValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 319;
+				State = 320;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2393,9 +2396,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 322;
+			State = 323;
 			Match(T__22);
-			State = 325;
+			State = 326;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2407,13 +2410,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 323;
+				State = 324;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 324;
+				State = 325;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2458,9 +2461,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 327;
+			State = 328;
 			Match(T__23);
-			State = 330;
+			State = 331;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2472,13 +2475,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 328;
+				State = 329;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 329;
+				State = 330;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2523,9 +2526,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 332;
+			State = 333;
 			Match(T__24);
-			State = 335;
+			State = 336;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2537,13 +2540,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 333;
+				State = 334;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 334;
+				State = 335;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2588,9 +2591,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 337;
+			State = 338;
 			Match(T__25);
-			State = 340;
+			State = 341;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Never:
@@ -2602,13 +2605,13 @@ public partial class ShaderLabParser : Parser {
 			case GEqual:
 			case Always:
 				{
-				State = 338;
+				State = 339;
 				compareFuncValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 339;
+				State = 340;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2653,9 +2656,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 342;
+			State = 343;
 			Match(T__26);
-			State = 345;
+			State = 346;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2667,13 +2670,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 343;
+				State = 344;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 344;
+				State = 345;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2718,9 +2721,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 347;
+			State = 348;
 			Match(T__27);
-			State = 350;
+			State = 351;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2732,13 +2735,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 348;
+				State = 349;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 349;
+				State = 350;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2783,9 +2786,9 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 352;
+			State = 353;
 			Match(T__28);
-			State = 355;
+			State = 356;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -2797,13 +2800,13 @@ public partial class ShaderLabParser : Parser {
 			case IncrWrap:
 			case DecrWrap:
 				{
-				State = 353;
+				State = 354;
 				stencilOpValue();
 				}
 				break;
 			case BracketLiteral:
 				{
-				State = 354;
+				State = 355;
 				Match(BracketLiteral);
 				}
 				break;
@@ -2845,7 +2848,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 357;
+			State = 358;
 			Match(HlslInclude);
 			}
 		}
@@ -2882,7 +2885,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 359;
+			State = 360;
 			Match(HlslProgram);
 			}
 		}
@@ -2922,7 +2925,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 361;
+			State = 362;
 			_la = TokenStream.LA(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 7318349394477056L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -2977,7 +2980,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 363;
+			State = 364;
 			_la = TokenStream.LA(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & -9007199254740992L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -3022,7 +3025,7 @@ public partial class ShaderLabParser : Parser {
 		BlendFactorValueOrBracketLiteralContext _localctx = new BlendFactorValueOrBracketLiteralContext(Context, State);
 		EnterRule(_localctx, 86, RULE_blendFactorValueOrBracketLiteral);
 		try {
-			State = 367;
+			State = 368;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Zero:
@@ -3038,14 +3041,14 @@ public partial class ShaderLabParser : Parser {
 			case SrcAlphaSaturate:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 365;
+				State = 366;
 				blendFactorValue();
 				}
 				break;
 			case BracketLiteral:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 366;
+				State = 367;
 				Match(BracketLiteral);
 				}
 				break;
@@ -3091,7 +3094,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 369;
+			State = 370;
 			_la = TokenStream.LA(1);
 			if ( !(((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & 31L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -3136,7 +3139,7 @@ public partial class ShaderLabParser : Parser {
 		BlendOpValueOrBracketLiteralContext _localctx = new BlendOpValueOrBracketLiteralContext(Context, State);
 		EnterRule(_localctx, 90, RULE_blendOpValueOrBracketLiteral);
 		try {
-			State = 373;
+			State = 374;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Add:
@@ -3146,14 +3149,14 @@ public partial class ShaderLabParser : Parser {
 			case Max:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 371;
+				State = 372;
 				blendOpValue();
 				}
 				break;
 			case BracketLiteral:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 372;
+				State = 373;
 				Match(BracketLiteral);
 				}
 				break;
@@ -3202,7 +3205,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 375;
+			State = 376;
 			_la = TokenStream.LA(1);
 			if ( !(((((_la - 69)) & ~0x3f) == 0 && ((1L << (_la - 69)) & 255L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -3254,7 +3257,7 @@ public partial class ShaderLabParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 377;
+			State = 378;
 			_la = TokenStream.LA(1);
 			if ( !(((((_la - 53)) & ~0x3f) == 0 && ((1L << (_la - 53)) & 2130706433L) != 0)) ) {
 			ErrorHandler.RecoverInline(this);
@@ -3277,130 +3280,130 @@ public partial class ShaderLabParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,88,380,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+		4,1,88,381,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
 		7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,2,14,7,14,
 		2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,7,20,2,21,7,21,
 		2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,2,27,7,27,2,28,7,28,
 		2,29,7,29,2,30,7,30,2,31,7,31,2,32,7,32,2,33,7,33,2,34,7,34,2,35,7,35,
 		2,36,7,36,2,37,7,37,2,38,7,38,2,39,7,39,2,40,7,40,2,41,7,41,2,42,7,42,
 		2,43,7,43,2,44,7,44,2,45,7,45,2,46,7,46,2,47,7,47,1,0,1,0,1,0,1,0,5,0,
-		101,8,0,10,0,12,0,104,9,0,1,0,1,0,1,1,1,1,1,1,1,1,1,1,3,1,113,8,1,1,2,
-		1,2,1,2,5,2,118,8,2,10,2,12,2,121,9,2,1,2,1,2,1,3,1,3,1,3,5,3,128,8,3,
-		10,3,12,3,131,9,3,1,3,1,3,1,4,1,4,1,4,1,4,3,4,139,8,4,1,5,1,5,1,6,1,6,
-		1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,8,1,8,1,8,1,8,1,9,1,9,1,9,3,
-		9,162,8,9,1,10,1,10,1,11,5,11,167,8,11,10,11,12,11,170,9,11,1,11,1,11,
-		1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,12,1,12,1,12,1,13,1,13,1,13,1,13,
-		1,13,1,13,1,13,3,13,191,8,13,1,14,1,14,1,14,5,14,196,8,14,10,14,12,14,
-		199,9,14,1,14,1,14,1,15,1,15,1,15,1,15,1,16,1,16,1,16,3,16,210,8,16,1,
-		17,1,17,1,17,1,17,3,17,216,8,17,1,18,1,18,1,18,1,19,1,19,3,19,223,8,19,
-		1,19,1,19,1,19,1,19,1,19,1,19,1,19,3,19,232,8,19,3,19,234,8,19,1,20,1,
-		20,3,20,238,8,20,1,20,1,20,1,20,3,20,243,8,20,1,21,1,21,1,21,1,21,1,21,
-		1,21,1,21,3,21,252,8,21,1,21,1,21,1,21,3,21,257,8,21,1,21,3,21,260,8,21,
-		1,22,1,22,1,22,5,22,265,8,22,10,22,12,22,268,9,22,1,22,1,22,1,23,1,23,
-		1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,3,23,
-		287,8,23,1,24,1,24,1,24,1,25,1,25,1,25,1,26,1,26,1,26,1,27,1,27,1,27,3,
-		27,301,8,27,1,28,1,28,1,28,3,28,306,8,28,1,29,1,29,1,29,3,29,311,8,29,
-		1,30,1,30,1,30,3,30,316,8,30,1,31,1,31,1,31,3,31,321,8,31,1,32,1,32,1,
-		32,3,32,326,8,32,1,33,1,33,1,33,3,33,331,8,33,1,34,1,34,1,34,3,34,336,
-		8,34,1,35,1,35,1,35,3,35,341,8,35,1,36,1,36,1,36,3,36,346,8,36,1,37,1,
-		37,1,37,3,37,351,8,37,1,38,1,38,1,38,3,38,356,8,38,1,39,1,39,1,40,1,40,
-		1,41,1,41,1,42,1,42,1,43,1,43,3,43,368,8,43,1,44,1,44,1,45,1,45,3,45,374,
-		8,45,1,46,1,46,1,47,1,47,1,47,0,0,48,0,2,4,6,8,10,12,14,16,18,20,22,24,
-		26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,
-		74,76,78,80,82,84,86,88,90,92,94,0,9,1,0,37,38,1,0,39,47,2,0,36,36,48,
-		49,1,0,36,37,2,0,49,49,51,52,1,0,53,63,1,0,64,68,1,0,69,76,2,0,53,53,77,
-		83,393,0,96,1,0,0,0,2,112,1,0,0,0,4,114,1,0,0,0,6,124,1,0,0,0,8,138,1,
-		0,0,0,10,140,1,0,0,0,12,142,1,0,0,0,14,144,1,0,0,0,16,154,1,0,0,0,18,161,
-		1,0,0,0,20,163,1,0,0,0,22,168,1,0,0,0,24,180,1,0,0,0,26,190,1,0,0,0,28,
-		192,1,0,0,0,30,202,1,0,0,0,32,206,1,0,0,0,34,211,1,0,0,0,36,217,1,0,0,
-		0,38,220,1,0,0,0,40,235,1,0,0,0,42,259,1,0,0,0,44,261,1,0,0,0,46,286,1,
-		0,0,0,48,288,1,0,0,0,50,291,1,0,0,0,52,294,1,0,0,0,54,297,1,0,0,0,56,302,
-		1,0,0,0,58,307,1,0,0,0,60,312,1,0,0,0,62,317,1,0,0,0,64,322,1,0,0,0,66,
-		327,1,0,0,0,68,332,1,0,0,0,70,337,1,0,0,0,72,342,1,0,0,0,74,347,1,0,0,
-		0,76,352,1,0,0,0,78,357,1,0,0,0,80,359,1,0,0,0,82,361,1,0,0,0,84,363,1,
-		0,0,0,86,367,1,0,0,0,88,369,1,0,0,0,90,373,1,0,0,0,92,375,1,0,0,0,94,377,
-		1,0,0,0,96,97,5,1,0,0,97,98,5,35,0,0,98,102,5,33,0,0,99,101,3,2,1,0,100,
-		99,1,0,0,0,101,104,1,0,0,0,102,100,1,0,0,0,102,103,1,0,0,0,103,105,1,0,
-		0,0,104,102,1,0,0,0,105,106,5,34,0,0,106,1,1,0,0,0,107,113,3,4,2,0,108,
-		113,3,28,14,0,109,113,3,26,13,0,110,113,3,78,39,0,111,113,3,6,3,0,112,
-		107,1,0,0,0,112,108,1,0,0,0,112,109,1,0,0,0,112,110,1,0,0,0,112,111,1,
-		0,0,0,113,3,1,0,0,0,114,115,5,2,0,0,115,119,5,33,0,0,116,118,3,22,11,0,
-		117,116,1,0,0,0,118,121,1,0,0,0,119,117,1,0,0,0,119,120,1,0,0,0,120,122,
-		1,0,0,0,121,119,1,0,0,0,122,123,5,34,0,0,123,5,1,0,0,0,124,125,5,3,0,0,
-		125,129,5,33,0,0,126,128,3,8,4,0,127,126,1,0,0,0,128,131,1,0,0,0,129,127,
-		1,0,0,0,129,130,1,0,0,0,130,132,1,0,0,0,131,129,1,0,0,0,132,133,5,34,0,
-		0,133,7,1,0,0,0,134,139,3,24,12,0,135,139,3,28,14,0,136,139,3,26,13,0,
-		137,139,3,80,40,0,138,134,1,0,0,0,138,135,1,0,0,0,138,136,1,0,0,0,138,
-		137,1,0,0,0,139,9,1,0,0,0,140,141,5,36,0,0,141,11,1,0,0,0,142,143,7,0,
-		0,0,143,13,1,0,0,0,144,145,5,4,0,0,145,146,3,12,6,0,146,147,5,5,0,0,147,
-		148,3,12,6,0,148,149,5,5,0,0,149,150,3,12,6,0,150,151,5,5,0,0,151,152,
-		3,12,6,0,152,153,5,6,0,0,153,15,1,0,0,0,154,155,5,35,0,0,155,156,5,33,
-		0,0,156,157,5,34,0,0,157,17,1,0,0,0,158,162,3,12,6,0,159,162,3,14,7,0,
-		160,162,3,16,8,0,161,158,1,0,0,0,161,159,1,0,0,0,161,160,1,0,0,0,162,19,
-		1,0,0,0,163,164,7,1,0,0,164,21,1,0,0,0,165,167,3,10,5,0,166,165,1,0,0,
-		0,167,170,1,0,0,0,168,166,1,0,0,0,168,169,1,0,0,0,169,171,1,0,0,0,170,
-		168,1,0,0,0,171,172,5,84,0,0,172,173,5,4,0,0,173,174,5,35,0,0,174,175,
-		5,5,0,0,175,176,3,20,10,0,176,177,5,6,0,0,177,178,5,32,0,0,178,179,3,18,
-		9,0,179,23,1,0,0,0,180,181,5,7,0,0,181,182,5,35,0,0,182,25,1,0,0,0,183,
-		191,3,32,16,0,184,191,3,34,17,0,185,191,3,36,18,0,186,191,3,38,19,0,187,
-		191,3,40,20,0,188,191,3,42,21,0,189,191,3,44,22,0,190,183,1,0,0,0,190,
-		184,1,0,0,0,190,185,1,0,0,0,190,186,1,0,0,0,190,187,1,0,0,0,190,188,1,
-		0,0,0,190,189,1,0,0,0,191,27,1,0,0,0,192,193,5,8,0,0,193,197,5,33,0,0,
-		194,196,3,30,15,0,195,194,1,0,0,0,196,199,1,0,0,0,197,195,1,0,0,0,197,
-		198,1,0,0,0,198,200,1,0,0,0,199,197,1,0,0,0,200,201,5,34,0,0,201,29,1,
-		0,0,0,202,203,5,35,0,0,203,204,5,32,0,0,204,205,5,35,0,0,205,31,1,0,0,
-		0,206,209,5,9,0,0,207,210,3,82,41,0,208,210,5,36,0,0,209,207,1,0,0,0,209,
-		208,1,0,0,0,210,33,1,0,0,0,211,215,5,10,0,0,212,216,5,50,0,0,213,216,3,
-		92,46,0,214,216,5,36,0,0,215,212,1,0,0,0,215,213,1,0,0,0,215,214,1,0,0,
-		0,216,35,1,0,0,0,217,218,5,11,0,0,218,219,7,2,0,0,219,37,1,0,0,0,220,222,
-		5,12,0,0,221,223,5,37,0,0,222,221,1,0,0,0,222,223,1,0,0,0,223,233,1,0,
-		0,0,224,234,5,49,0,0,225,226,3,86,43,0,226,231,3,86,43,0,227,228,5,5,0,
-		0,228,229,3,86,43,0,229,230,3,86,43,0,230,232,1,0,0,0,231,227,1,0,0,0,
-		231,232,1,0,0,0,232,234,1,0,0,0,233,224,1,0,0,0,233,225,1,0,0,0,234,39,
-		1,0,0,0,235,237,5,13,0,0,236,238,5,37,0,0,237,236,1,0,0,0,237,238,1,0,
-		0,0,238,239,1,0,0,0,239,242,3,90,45,0,240,241,5,5,0,0,241,243,3,90,45,
-		0,242,240,1,0,0,0,242,243,1,0,0,0,243,41,1,0,0,0,244,245,5,14,0,0,245,
-		260,5,37,0,0,246,247,5,14,0,0,247,248,5,37,0,0,248,260,5,37,0,0,249,251,
-		5,14,0,0,250,252,5,37,0,0,251,250,1,0,0,0,251,252,1,0,0,0,252,253,1,0,
-		0,0,253,260,5,84,0,0,254,256,5,14,0,0,255,257,5,37,0,0,256,255,1,0,0,0,
-		256,257,1,0,0,0,257,258,1,0,0,0,258,260,5,36,0,0,259,244,1,0,0,0,259,246,
-		1,0,0,0,259,249,1,0,0,0,259,254,1,0,0,0,260,43,1,0,0,0,261,262,5,15,0,
-		0,262,266,5,33,0,0,263,265,3,46,23,0,264,263,1,0,0,0,265,268,1,0,0,0,266,
-		264,1,0,0,0,266,267,1,0,0,0,267,269,1,0,0,0,268,266,1,0,0,0,269,270,5,
-		34,0,0,270,45,1,0,0,0,271,287,3,48,24,0,272,287,3,50,25,0,273,287,3,52,
-		26,0,274,287,3,54,27,0,275,287,3,56,28,0,276,287,3,58,29,0,277,287,3,60,
-		30,0,278,287,3,62,31,0,279,287,3,64,32,0,280,287,3,66,33,0,281,287,3,68,
-		34,0,282,287,3,70,35,0,283,287,3,72,36,0,284,287,3,74,37,0,285,287,3,76,
-		38,0,286,271,1,0,0,0,286,272,1,0,0,0,286,273,1,0,0,0,286,274,1,0,0,0,286,
-		275,1,0,0,0,286,276,1,0,0,0,286,277,1,0,0,0,286,278,1,0,0,0,286,279,1,
-		0,0,0,286,280,1,0,0,0,286,281,1,0,0,0,286,282,1,0,0,0,286,283,1,0,0,0,
-		286,284,1,0,0,0,286,285,1,0,0,0,287,47,1,0,0,0,288,289,5,16,0,0,289,290,
-		7,3,0,0,290,49,1,0,0,0,291,292,5,17,0,0,292,293,7,3,0,0,293,51,1,0,0,0,
-		294,295,5,18,0,0,295,296,7,3,0,0,296,53,1,0,0,0,297,300,5,19,0,0,298,301,
-		3,92,46,0,299,301,5,36,0,0,300,298,1,0,0,0,300,299,1,0,0,0,301,55,1,0,
-		0,0,302,305,5,3,0,0,303,306,3,94,47,0,304,306,5,36,0,0,305,303,1,0,0,0,
-		305,304,1,0,0,0,306,57,1,0,0,0,307,310,5,20,0,0,308,311,3,94,47,0,309,
-		311,5,36,0,0,310,308,1,0,0,0,310,309,1,0,0,0,311,59,1,0,0,0,312,315,5,
-		21,0,0,313,316,3,94,47,0,314,316,5,36,0,0,315,313,1,0,0,0,315,314,1,0,
-		0,0,316,61,1,0,0,0,317,320,5,22,0,0,318,321,3,92,46,0,319,321,5,36,0,0,
-		320,318,1,0,0,0,320,319,1,0,0,0,321,63,1,0,0,0,322,325,5,23,0,0,323,326,
-		3,94,47,0,324,326,5,36,0,0,325,323,1,0,0,0,325,324,1,0,0,0,326,65,1,0,
-		0,0,327,330,5,24,0,0,328,331,3,94,47,0,329,331,5,36,0,0,330,328,1,0,0,
-		0,330,329,1,0,0,0,331,67,1,0,0,0,332,335,5,25,0,0,333,336,3,94,47,0,334,
-		336,5,36,0,0,335,333,1,0,0,0,335,334,1,0,0,0,336,69,1,0,0,0,337,340,5,
-		26,0,0,338,341,3,92,46,0,339,341,5,36,0,0,340,338,1,0,0,0,340,339,1,0,
-		0,0,341,71,1,0,0,0,342,345,5,27,0,0,343,346,3,94,47,0,344,346,5,36,0,0,
-		345,343,1,0,0,0,345,344,1,0,0,0,346,73,1,0,0,0,347,350,5,28,0,0,348,351,
-		3,94,47,0,349,351,5,36,0,0,350,348,1,0,0,0,350,349,1,0,0,0,351,75,1,0,
-		0,0,352,355,5,29,0,0,353,356,3,94,47,0,354,356,5,36,0,0,355,353,1,0,0,
-		0,355,354,1,0,0,0,356,77,1,0,0,0,357,358,5,30,0,0,358,79,1,0,0,0,359,360,
-		5,31,0,0,360,81,1,0,0,0,361,362,7,4,0,0,362,83,1,0,0,0,363,364,7,5,0,0,
-		364,85,1,0,0,0,365,368,3,84,42,0,366,368,5,36,0,0,367,365,1,0,0,0,367,
-		366,1,0,0,0,368,87,1,0,0,0,369,370,7,6,0,0,370,89,1,0,0,0,371,374,3,88,
-		44,0,372,374,5,36,0,0,373,371,1,0,0,0,373,372,1,0,0,0,374,91,1,0,0,0,375,
-		376,7,7,0,0,376,93,1,0,0,0,377,378,7,8,0,0,378,95,1,0,0,0,35,102,112,119,
-		129,138,161,168,190,197,209,215,222,231,233,237,242,251,256,259,266,286,
-		300,305,310,315,320,325,330,335,340,345,350,355,367,373
+		101,8,0,10,0,12,0,104,9,0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1,1,3,1,114,8,1,
+		1,2,1,2,1,2,5,2,119,8,2,10,2,12,2,122,9,2,1,2,1,2,1,3,1,3,1,3,5,3,129,
+		8,3,10,3,12,3,132,9,3,1,3,1,3,1,4,1,4,1,4,1,4,3,4,140,8,4,1,5,1,5,1,6,
+		1,6,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,7,1,8,1,8,1,8,1,8,1,9,1,9,1,
+		9,3,9,163,8,9,1,10,1,10,1,11,5,11,168,8,11,10,11,12,11,171,9,11,1,11,1,
+		11,1,11,1,11,1,11,1,11,1,11,1,11,1,11,1,12,1,12,1,12,1,13,1,13,1,13,1,
+		13,1,13,1,13,1,13,3,13,192,8,13,1,14,1,14,1,14,5,14,197,8,14,10,14,12,
+		14,200,9,14,1,14,1,14,1,15,1,15,1,15,1,15,1,16,1,16,1,16,3,16,211,8,16,
+		1,17,1,17,1,17,1,17,3,17,217,8,17,1,18,1,18,1,18,1,19,1,19,3,19,224,8,
+		19,1,19,1,19,1,19,1,19,1,19,1,19,1,19,3,19,233,8,19,3,19,235,8,19,1,20,
+		1,20,3,20,239,8,20,1,20,1,20,1,20,3,20,244,8,20,1,21,1,21,1,21,1,21,1,
+		21,1,21,1,21,3,21,253,8,21,1,21,1,21,1,21,3,21,258,8,21,1,21,3,21,261,
+		8,21,1,22,1,22,1,22,5,22,266,8,22,10,22,12,22,269,9,22,1,22,1,22,1,23,
+		1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,1,23,
+		3,23,288,8,23,1,24,1,24,1,24,1,25,1,25,1,25,1,26,1,26,1,26,1,27,1,27,1,
+		27,3,27,302,8,27,1,28,1,28,1,28,3,28,307,8,28,1,29,1,29,1,29,3,29,312,
+		8,29,1,30,1,30,1,30,3,30,317,8,30,1,31,1,31,1,31,3,31,322,8,31,1,32,1,
+		32,1,32,3,32,327,8,32,1,33,1,33,1,33,3,33,332,8,33,1,34,1,34,1,34,3,34,
+		337,8,34,1,35,1,35,1,35,3,35,342,8,35,1,36,1,36,1,36,3,36,347,8,36,1,37,
+		1,37,1,37,3,37,352,8,37,1,38,1,38,1,38,3,38,357,8,38,1,39,1,39,1,40,1,
+		40,1,41,1,41,1,42,1,42,1,43,1,43,3,43,369,8,43,1,44,1,44,1,45,1,45,3,45,
+		375,8,45,1,46,1,46,1,47,1,47,1,47,0,0,48,0,2,4,6,8,10,12,14,16,18,20,22,
+		24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,
+		72,74,76,78,80,82,84,86,88,90,92,94,0,9,1,0,37,38,1,0,39,47,2,0,36,36,
+		48,49,1,0,36,37,2,0,49,49,51,52,1,0,53,63,1,0,64,68,1,0,69,76,2,0,53,53,
+		77,83,394,0,96,1,0,0,0,2,113,1,0,0,0,4,115,1,0,0,0,6,125,1,0,0,0,8,139,
+		1,0,0,0,10,141,1,0,0,0,12,143,1,0,0,0,14,145,1,0,0,0,16,155,1,0,0,0,18,
+		162,1,0,0,0,20,164,1,0,0,0,22,169,1,0,0,0,24,181,1,0,0,0,26,191,1,0,0,
+		0,28,193,1,0,0,0,30,203,1,0,0,0,32,207,1,0,0,0,34,212,1,0,0,0,36,218,1,
+		0,0,0,38,221,1,0,0,0,40,236,1,0,0,0,42,260,1,0,0,0,44,262,1,0,0,0,46,287,
+		1,0,0,0,48,289,1,0,0,0,50,292,1,0,0,0,52,295,1,0,0,0,54,298,1,0,0,0,56,
+		303,1,0,0,0,58,308,1,0,0,0,60,313,1,0,0,0,62,318,1,0,0,0,64,323,1,0,0,
+		0,66,328,1,0,0,0,68,333,1,0,0,0,70,338,1,0,0,0,72,343,1,0,0,0,74,348,1,
+		0,0,0,76,353,1,0,0,0,78,358,1,0,0,0,80,360,1,0,0,0,82,362,1,0,0,0,84,364,
+		1,0,0,0,86,368,1,0,0,0,88,370,1,0,0,0,90,374,1,0,0,0,92,376,1,0,0,0,94,
+		378,1,0,0,0,96,97,5,1,0,0,97,98,5,35,0,0,98,102,5,33,0,0,99,101,3,2,1,
+		0,100,99,1,0,0,0,101,104,1,0,0,0,102,100,1,0,0,0,102,103,1,0,0,0,103,105,
+		1,0,0,0,104,102,1,0,0,0,105,106,5,34,0,0,106,107,5,0,0,1,107,1,1,0,0,0,
+		108,114,3,4,2,0,109,114,3,28,14,0,110,114,3,26,13,0,111,114,3,78,39,0,
+		112,114,3,6,3,0,113,108,1,0,0,0,113,109,1,0,0,0,113,110,1,0,0,0,113,111,
+		1,0,0,0,113,112,1,0,0,0,114,3,1,0,0,0,115,116,5,2,0,0,116,120,5,33,0,0,
+		117,119,3,22,11,0,118,117,1,0,0,0,119,122,1,0,0,0,120,118,1,0,0,0,120,
+		121,1,0,0,0,121,123,1,0,0,0,122,120,1,0,0,0,123,124,5,34,0,0,124,5,1,0,
+		0,0,125,126,5,3,0,0,126,130,5,33,0,0,127,129,3,8,4,0,128,127,1,0,0,0,129,
+		132,1,0,0,0,130,128,1,0,0,0,130,131,1,0,0,0,131,133,1,0,0,0,132,130,1,
+		0,0,0,133,134,5,34,0,0,134,7,1,0,0,0,135,140,3,24,12,0,136,140,3,28,14,
+		0,137,140,3,26,13,0,138,140,3,80,40,0,139,135,1,0,0,0,139,136,1,0,0,0,
+		139,137,1,0,0,0,139,138,1,0,0,0,140,9,1,0,0,0,141,142,5,36,0,0,142,11,
+		1,0,0,0,143,144,7,0,0,0,144,13,1,0,0,0,145,146,5,4,0,0,146,147,3,12,6,
+		0,147,148,5,5,0,0,148,149,3,12,6,0,149,150,5,5,0,0,150,151,3,12,6,0,151,
+		152,5,5,0,0,152,153,3,12,6,0,153,154,5,6,0,0,154,15,1,0,0,0,155,156,5,
+		35,0,0,156,157,5,33,0,0,157,158,5,34,0,0,158,17,1,0,0,0,159,163,3,12,6,
+		0,160,163,3,14,7,0,161,163,3,16,8,0,162,159,1,0,0,0,162,160,1,0,0,0,162,
+		161,1,0,0,0,163,19,1,0,0,0,164,165,7,1,0,0,165,21,1,0,0,0,166,168,3,10,
+		5,0,167,166,1,0,0,0,168,171,1,0,0,0,169,167,1,0,0,0,169,170,1,0,0,0,170,
+		172,1,0,0,0,171,169,1,0,0,0,172,173,5,84,0,0,173,174,5,4,0,0,174,175,5,
+		35,0,0,175,176,5,5,0,0,176,177,3,20,10,0,177,178,5,6,0,0,178,179,5,32,
+		0,0,179,180,3,18,9,0,180,23,1,0,0,0,181,182,5,7,0,0,182,183,5,35,0,0,183,
+		25,1,0,0,0,184,192,3,32,16,0,185,192,3,34,17,0,186,192,3,36,18,0,187,192,
+		3,38,19,0,188,192,3,40,20,0,189,192,3,42,21,0,190,192,3,44,22,0,191,184,
+		1,0,0,0,191,185,1,0,0,0,191,186,1,0,0,0,191,187,1,0,0,0,191,188,1,0,0,
+		0,191,189,1,0,0,0,191,190,1,0,0,0,192,27,1,0,0,0,193,194,5,8,0,0,194,198,
+		5,33,0,0,195,197,3,30,15,0,196,195,1,0,0,0,197,200,1,0,0,0,198,196,1,0,
+		0,0,198,199,1,0,0,0,199,201,1,0,0,0,200,198,1,0,0,0,201,202,5,34,0,0,202,
+		29,1,0,0,0,203,204,5,35,0,0,204,205,5,32,0,0,205,206,5,35,0,0,206,31,1,
+		0,0,0,207,210,5,9,0,0,208,211,3,82,41,0,209,211,5,36,0,0,210,208,1,0,0,
+		0,210,209,1,0,0,0,211,33,1,0,0,0,212,216,5,10,0,0,213,217,5,50,0,0,214,
+		217,3,92,46,0,215,217,5,36,0,0,216,213,1,0,0,0,216,214,1,0,0,0,216,215,
+		1,0,0,0,217,35,1,0,0,0,218,219,5,11,0,0,219,220,7,2,0,0,220,37,1,0,0,0,
+		221,223,5,12,0,0,222,224,5,37,0,0,223,222,1,0,0,0,223,224,1,0,0,0,224,
+		234,1,0,0,0,225,235,5,49,0,0,226,227,3,86,43,0,227,232,3,86,43,0,228,229,
+		5,5,0,0,229,230,3,86,43,0,230,231,3,86,43,0,231,233,1,0,0,0,232,228,1,
+		0,0,0,232,233,1,0,0,0,233,235,1,0,0,0,234,225,1,0,0,0,234,226,1,0,0,0,
+		235,39,1,0,0,0,236,238,5,13,0,0,237,239,5,37,0,0,238,237,1,0,0,0,238,239,
+		1,0,0,0,239,240,1,0,0,0,240,243,3,90,45,0,241,242,5,5,0,0,242,244,3,90,
+		45,0,243,241,1,0,0,0,243,244,1,0,0,0,244,41,1,0,0,0,245,246,5,14,0,0,246,
+		261,5,37,0,0,247,248,5,14,0,0,248,249,5,37,0,0,249,261,5,37,0,0,250,252,
+		5,14,0,0,251,253,5,37,0,0,252,251,1,0,0,0,252,253,1,0,0,0,253,254,1,0,
+		0,0,254,261,5,84,0,0,255,257,5,14,0,0,256,258,5,37,0,0,257,256,1,0,0,0,
+		257,258,1,0,0,0,258,259,1,0,0,0,259,261,5,36,0,0,260,245,1,0,0,0,260,247,
+		1,0,0,0,260,250,1,0,0,0,260,255,1,0,0,0,261,43,1,0,0,0,262,263,5,15,0,
+		0,263,267,5,33,0,0,264,266,3,46,23,0,265,264,1,0,0,0,266,269,1,0,0,0,267,
+		265,1,0,0,0,267,268,1,0,0,0,268,270,1,0,0,0,269,267,1,0,0,0,270,271,5,
+		34,0,0,271,45,1,0,0,0,272,288,3,48,24,0,273,288,3,50,25,0,274,288,3,52,
+		26,0,275,288,3,54,27,0,276,288,3,56,28,0,277,288,3,58,29,0,278,288,3,60,
+		30,0,279,288,3,62,31,0,280,288,3,64,32,0,281,288,3,66,33,0,282,288,3,68,
+		34,0,283,288,3,70,35,0,284,288,3,72,36,0,285,288,3,74,37,0,286,288,3,76,
+		38,0,287,272,1,0,0,0,287,273,1,0,0,0,287,274,1,0,0,0,287,275,1,0,0,0,287,
+		276,1,0,0,0,287,277,1,0,0,0,287,278,1,0,0,0,287,279,1,0,0,0,287,280,1,
+		0,0,0,287,281,1,0,0,0,287,282,1,0,0,0,287,283,1,0,0,0,287,284,1,0,0,0,
+		287,285,1,0,0,0,287,286,1,0,0,0,288,47,1,0,0,0,289,290,5,16,0,0,290,291,
+		7,3,0,0,291,49,1,0,0,0,292,293,5,17,0,0,293,294,7,3,0,0,294,51,1,0,0,0,
+		295,296,5,18,0,0,296,297,7,3,0,0,297,53,1,0,0,0,298,301,5,19,0,0,299,302,
+		3,92,46,0,300,302,5,36,0,0,301,299,1,0,0,0,301,300,1,0,0,0,302,55,1,0,
+		0,0,303,306,5,3,0,0,304,307,3,94,47,0,305,307,5,36,0,0,306,304,1,0,0,0,
+		306,305,1,0,0,0,307,57,1,0,0,0,308,311,5,20,0,0,309,312,3,94,47,0,310,
+		312,5,36,0,0,311,309,1,0,0,0,311,310,1,0,0,0,312,59,1,0,0,0,313,316,5,
+		21,0,0,314,317,3,94,47,0,315,317,5,36,0,0,316,314,1,0,0,0,316,315,1,0,
+		0,0,317,61,1,0,0,0,318,321,5,22,0,0,319,322,3,92,46,0,320,322,5,36,0,0,
+		321,319,1,0,0,0,321,320,1,0,0,0,322,63,1,0,0,0,323,326,5,23,0,0,324,327,
+		3,94,47,0,325,327,5,36,0,0,326,324,1,0,0,0,326,325,1,0,0,0,327,65,1,0,
+		0,0,328,331,5,24,0,0,329,332,3,94,47,0,330,332,5,36,0,0,331,329,1,0,0,
+		0,331,330,1,0,0,0,332,67,1,0,0,0,333,336,5,25,0,0,334,337,3,94,47,0,335,
+		337,5,36,0,0,336,334,1,0,0,0,336,335,1,0,0,0,337,69,1,0,0,0,338,341,5,
+		26,0,0,339,342,3,92,46,0,340,342,5,36,0,0,341,339,1,0,0,0,341,340,1,0,
+		0,0,342,71,1,0,0,0,343,346,5,27,0,0,344,347,3,94,47,0,345,347,5,36,0,0,
+		346,344,1,0,0,0,346,345,1,0,0,0,347,73,1,0,0,0,348,351,5,28,0,0,349,352,
+		3,94,47,0,350,352,5,36,0,0,351,349,1,0,0,0,351,350,1,0,0,0,352,75,1,0,
+		0,0,353,356,5,29,0,0,354,357,3,94,47,0,355,357,5,36,0,0,356,354,1,0,0,
+		0,356,355,1,0,0,0,357,77,1,0,0,0,358,359,5,30,0,0,359,79,1,0,0,0,360,361,
+		5,31,0,0,361,81,1,0,0,0,362,363,7,4,0,0,363,83,1,0,0,0,364,365,7,5,0,0,
+		365,85,1,0,0,0,366,369,3,84,42,0,367,369,5,36,0,0,368,366,1,0,0,0,368,
+		367,1,0,0,0,369,87,1,0,0,0,370,371,7,6,0,0,371,89,1,0,0,0,372,375,3,88,
+		44,0,373,375,5,36,0,0,374,372,1,0,0,0,374,373,1,0,0,0,375,91,1,0,0,0,376,
+		377,7,7,0,0,377,93,1,0,0,0,378,379,7,8,0,0,379,95,1,0,0,0,35,102,113,120,
+		130,139,162,169,191,198,210,216,223,232,234,238,243,252,257,260,267,287,
+		301,306,311,316,321,326,331,336,341,346,351,356,368,374
 	};
 
 	public static readonly ATN _ATN =
@@ -3408,4 +3411,4 @@ public partial class ShaderLabParser : Parser {
 
 
 }
-} // namespace March.Editor.ShaderLab.Internal
+} // namespace March.ShaderLab.Internal

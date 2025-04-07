@@ -19,7 +19,7 @@
 // Ambiguous reference in cref attribute
 #pragma warning disable 419
 
-namespace March.Editor.ShaderLab.Internal {
+namespace March.ShaderLab.Internal {
 using Antlr4.Runtime.Misc;
 using Antlr4.Runtime.Tree;
 using IToken = Antlr4.Runtime.IToken;
@@ -343,4 +343,4 @@ public interface IShaderLabVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitStencilOpValue([NotNull] ShaderLabParser.StencilOpValueContext context);
 }
-} // namespace March.Editor.ShaderLab.Internal
+} // namespace March.ShaderLab.Internal

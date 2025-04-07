@@ -74,6 +74,6 @@ namespace march
         ID3D12PipelineState* GetPSO(size_t kernelIndex) const;
 
     private:
-        bool Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
+        bool Compile(const std::string& filename, const std::string& source, const std::vector<std::string>& pragmas, std::vector<std::string>& warnings, std::string& error);
     };
 }

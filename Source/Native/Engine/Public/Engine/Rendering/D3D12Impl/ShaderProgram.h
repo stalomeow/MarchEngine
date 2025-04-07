@@ -318,7 +318,7 @@ namespace march
             }
         };
 
-        bool PreprocessAndGetCompilationConfig(const std::string& source, CompilationConfig& config, std::string& error);
+        bool PreprocessAndGetCompilationConfig(const std::vector<std::string>& pragmas, CompilationConfig& config, std::string& error);
         bool CompileRecursive(CompilationContext& context);
         Microsoft::WRL::ComPtr<IDxcResult> CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile, size_t programType);
 
@@ -327,6 +327,7 @@ namespace march
             ShaderKeywordSpace* keywordSpace,
             const std::string& filename,
             const std::string& source,
+            const std::vector<std::string>& pragmas,
             std::vector<std::string>& warnings,
             std::string& error,
             const std::function<void(ID3D12ShaderReflectionConstantBuffer*)>& recordConstantBufferCallback)
@@ -342,7 +343,7 @@ namespace march
             CHECK_HR(context.Utils->CreateDefaultIncludeHandler(&pIncludeHandler));
             context.IncludeHandler = pIncludeHandler.Get();
 
-            if (!PreprocessAndGetCompilationConfig(source, context.Config, error))
+            if (!PreprocessAndGetCompilationConfig(pragmas, context.Config, error))
             {
                 return false;
             }
@@ -492,7 +493,7 @@ namespace march
 
     struct ShaderCompilationInternalUtils
     {
-        static bool EnumeratePragmas(const std::string& source, const std::function<bool(const std::vector<std::string>&)>& fn);
+        static bool EnumeratePragmaArgs(const std::vector<std::string>& pragmas, const std::function<bool(const std::vector<std::string>&)>& fn);
         static void AppendEngineMacros(std::vector<std::wstring>& m);
         static void SaveCompilationResults(
             IDxcUtils* utils,
@@ -502,9 +503,9 @@ namespace march
     };
 
     template <size_t _NumProgramTypes>
-    bool ShaderProgramGroup<_NumProgramTypes>::PreprocessAndGetCompilationConfig(const std::string& source, CompilationConfig& config, std::string& error)
+    bool ShaderProgramGroup<_NumProgramTypes>::PreprocessAndGetCompilationConfig(const std::vector<std::string>& pragmas, CompilationConfig& config, std::string& error)
     {
-        return ShaderCompilationInternalUtils::EnumeratePragmas(source, [&](const std::vector<std::string>& args) -> bool
+        return ShaderCompilationInternalUtils::EnumeratePragmaArgs(pragmas, [&](const std::vector<std::string>& args) -> bool
         {
             if (args.size() > 1 && args[0] == "multi_compile")
             {

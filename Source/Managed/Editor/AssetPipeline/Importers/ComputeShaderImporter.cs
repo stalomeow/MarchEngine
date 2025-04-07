@@ -3,13 +3,13 @@ using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
-using March.Editor.ShaderLab;
+using March.ShaderLab;
 using Newtonsoft.Json;
 using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Compute Shader Asset", ".compute", Version = 14)]
+    [CustomAssetImporter("Compute Shader Asset", ".compute", Version = 16)]
     public class ComputeShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -51,8 +51,9 @@ namespace March.Editor.AssetPipeline.Importers
 
             shader.Name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);
 
-            AddDependency(ref context, content);
-            shader.Compile(Location.AssetFullPath, content, m_Warnings, m_Errors);
+            ShaderCompiler.GetHLSLIncludesAndPragmas(content, out List<string> includes, out List<string> pragmas);
+            AddDependency(ref context, includes);
+            shader.Compile(Location.AssetFullPath, content, pragmas, m_Warnings, m_Errors);
 
             if (m_Warnings.Count > 0)
             {
@@ -84,12 +85,12 @@ namespace March.Editor.AssetPipeline.Importers
             }
         }
 
-        private void AddDependency(ref AssetImportContext context, string source)
+        private void AddDependency(ref AssetImportContext context, List<string> includes)
         {
-            using var includes = ListPool<AssetLocation>.Get();
-            ShaderProgramUtility.GetIncludeFiles(Location.AssetFullPath, source, includes);
+            using var locations = ListPool<AssetLocation>.Get();
+            ShaderProgramUtility.GetHLSLIncludeLocations(Location.AssetFullPath, includes, locations);
 
-            foreach (AssetLocation location in includes.Value)
+            foreach (AssetLocation location in locations.Value)
             {
                 context.RequireOtherAsset<ShaderIncludeAsset>(location.AssetPath, dependsOn: true);
             }

@@ -1,23 +1,19 @@
 using March.Core;
 using March.Core.Pool;
-using March.Editor.AssetPipeline;
-using System.Text.RegularExpressions;
 
-namespace March.Editor.ShaderLab
+namespace March.Editor.AssetPipeline
 {
-    internal static partial class ShaderProgramUtility
+    internal static class ShaderProgramUtility
     {
-        public static void GetIncludeFiles(string fileFullPath, string source, List<AssetLocation> locations)
+        public static void GetHLSLIncludeLocations(string fileFullPath, List<string> includePaths, List<AssetLocation> locations)
         {
             using var basePaths = ListPool<string>.Get();
             GetTestBasePaths(fileFullPath, basePaths);
 
             using var processedPaths = HashSetPool<string>.Get();
 
-            foreach (Match match in IncludeRegex().Matches(source))
+            foreach (string path in includePaths)
             {
-                string path = match.Groups[1].Value.Trim().ValidatePath();
-
                 if (!processedPaths.Value.Add(path))
                 {
                     continue;
@@ -68,8 +64,5 @@ namespace March.Editor.ShaderLab
 
             return null;
         }
-
-        [GeneratedRegex("^\\s*#\\s*include\\s*\"(.*)\"", RegexOptions.Multiline | RegexOptions.ECMAScript)]
-        private static partial Regex IncludeRegex();
     }
 }

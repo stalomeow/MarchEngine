@@ -4,11 +4,11 @@ using March.Core;
 using March.Core.Interop;
 using March.Core.Pool;
 using March.Core.Rendering;
-using March.Editor.ShaderLab.Internal;
+using March.ShaderLab.Internal;
 using System.Numerics;
 using System.Text.RegularExpressions;
 
-namespace March.Editor.ShaderLab
+namespace March.ShaderLab
 {
     internal struct ParsedBlend
     {

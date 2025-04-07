@@ -227,7 +227,7 @@ namespace march
 
         std::vector<std::unique_ptr<ShaderPass>> m_Passes{};
 
-        bool CompilePass(size_t passIndex, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error);
+        bool CompilePass(size_t passIndex, const std::string& filename, const std::string& source, const std::vector<std::string>& pragmas, std::vector<std::string>& warnings, std::string& error);
 
     public:
         uint32_t GetVersion() const { return m_Version; }

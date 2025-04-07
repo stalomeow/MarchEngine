@@ -695,11 +695,18 @@ namespace March.Core.Rendering
 
         public Shader() : base(New()) { }
 
-        internal bool CompilePass(int passIndex, string filename, string source, List<string> outWarnings, List<string> outErrors)
+        internal bool CompilePass(int passIndex, string filename, string source, IReadOnlyList<string> pragmas, List<string> outWarnings, List<string> outErrors)
         {
+            using var pragmaArray = new NativeArray<nint>(pragmas.Count);
+
+            for (int i = 0; i < pragmas.Count; i++)
+            {
+                pragmaArray[i] = NativeString.New(pragmas[i]);
+            }
+
             nint nativeWarnings = nint.Zero;
             nint nativeError = nint.Zero;
-            bool success = CompilePass(passIndex, filename, source, &nativeWarnings, &nativeError);
+            bool success = CompilePass(passIndex, filename, source, pragmaArray.Data, &nativeWarnings, &nativeError);
 
             if (nativeWarnings != nint.Zero)
             {
@@ -714,6 +721,11 @@ namespace March.Core.Rendering
             if (nativeError != nint.Zero)
             {
                 outErrors.Add(NativeString.GetAndFree(nativeError));
+            }
+
+            for (int i = 0; i < pragmas.Count; i++)
+            {
+                NativeString.Free(pragmaArray[i]);
             }
 
             return success;
@@ -744,7 +756,7 @@ namespace March.Core.Rendering
         private partial void SetPropertyLocations(NativeArrayMarshal<ShaderPropertyLocation> locations);
 
         [NativeMethod]
-        private partial bool CompilePass(int passIndex, string filename, string source, nint* warnings, nint* error);
+        private partial bool CompilePass(int passIndex, string filename, string source, nint pragmas, nint* warnings, nint* error);
     }
 
     internal class ComputeShaderKernel : INativeMarshal<ComputeShaderKernel, ComputeShaderKernel.Native>
@@ -802,11 +814,18 @@ namespace March.Core.Rendering
 
         public ComputeShader() : base(New()) { }
 
-        internal bool Compile(string filename, string source, List<string> outWarnings, List<string> outErrors)
+        internal bool Compile(string filename, string source, IReadOnlyList<string> pragmas, List<string> outWarnings, List<string> outErrors)
         {
+            using var pragmaArray = new NativeArray<nint>(pragmas.Count);
+
+            for (int i = 0; i < pragmas.Count; i++)
+            {
+                pragmaArray[i] = NativeString.New(pragmas[i]);
+            }
+
             nint nativeWarnings = nint.Zero;
             nint nativeError = nint.Zero;
-            bool success = Compile(filename, source, &nativeWarnings, &nativeError);
+            bool success = Compile(filename, source, pragmaArray.Data, &nativeWarnings, &nativeError);
 
             if (nativeWarnings != nint.Zero)
             {
@@ -823,6 +842,11 @@ namespace March.Core.Rendering
                 outErrors.Add(NativeString.GetAndFree(nativeError));
             }
 
+            for (int i = 0; i < pragmas.Count; i++)
+            {
+                NativeString.Free(pragmaArray[i]);
+            }
+
             return success;
         }
 
@@ -836,6 +860,6 @@ namespace March.Core.Rendering
         private partial void SetKernels(NativeArrayMarshal<ComputeShaderKernel> passes);
 
         [NativeMethod]
-        private partial bool Compile(string filename, string source, nint* warnings, nint* error);
+        private partial bool Compile(string filename, string source, nint pragmas, nint* warnings, nint* error);
     }
 }

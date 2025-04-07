@@ -74,7 +74,7 @@ namespace march
         }
     }
 
-    bool Shader::CompilePass(size_t passIndex, const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
+    bool Shader::CompilePass(size_t passIndex, const std::string& filename, const std::string& source, const std::vector<std::string>& pragmas, std::vector<std::string>& warnings, std::string& error)
     {
         auto recordConstantBufferCallback = [this](ID3D12ShaderReflectionConstantBuffer* cbuffer) -> void
         {
@@ -101,7 +101,7 @@ namespace march
 
         m_Version++;
         ShaderPass* pass = GetPass(passIndex);
-        return pass->Compile(m_KeywordSpace.get(), filename, source, warnings, error, recordConstantBufferCallback);
+        return pass->Compile(m_KeywordSpace.get(), filename, source, pragmas, warnings, error, recordConstantBufferCallback);
     }
 
     std::optional<size_t> Shader::GetFirstPassIndexWithTagValue(const std::string& tag, const std::string& value) const

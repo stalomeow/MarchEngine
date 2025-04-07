@@ -1,7 +1,7 @@
 grammar ShaderLab;
 
 shader
-    : 'Shader' StringLiteral LeftBrace shaderDeclaration* RightBrace
+    : 'Shader' StringLiteral LeftBrace shaderDeclaration* RightBrace EOF
     ;
 
 shaderDeclaration
@@ -496,7 +496,7 @@ Identifier
     ;
 
 Whitespace
-    : [ \t]+ -> channel(HIDDEN)
+    : [ \t]+ -> skip
     ;
 
 Newline
@@ -504,9 +504,9 @@ Newline
     ;
 
 BlockComment
-    : '/*' .*? '*/' -> channel(HIDDEN)
+    : '/*' .*? '*/' -> skip
     ;
 
 LineComment
-    : '//' ~[\r\n]* -> channel(HIDDEN)
+    : '//' ~[\r\n]* -> skip
     ;

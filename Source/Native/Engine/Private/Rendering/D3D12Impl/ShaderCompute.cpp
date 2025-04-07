@@ -112,12 +112,12 @@ namespace march
         return result.Get();
     }
 
-    bool ComputeShader::Compile(const std::string& filename, const std::string& source, std::vector<std::string>& warnings, std::string& error)
+    bool ComputeShader::Compile(const std::string& filename, const std::string& source, const std::vector<std::string>& pragmas, std::vector<std::string>& warnings, std::string& error)
     {
         m_KeywordSpace->Clear();
         m_Kernels.clear();
 
-        ShaderCompilationInternalUtils::EnumeratePragmas(source, [this](const std::vector<std::string>& args) -> bool
+        ShaderCompilationInternalUtils::EnumeratePragmaArgs(pragmas, [this](const std::vector<std::string>& args) -> bool
         {
             if (args.size() > 1 && args[0] == "kernel")
             {
@@ -132,7 +132,7 @@ namespace march
 
         for (std::unique_ptr<ComputeShaderKernel>& kernel : m_Kernels)
         {
-            if (!kernel->Compile(m_KeywordSpace.get(), filename, source, warnings, error, [](auto) {}))
+            if (!kernel->Compile(m_KeywordSpace.get(), filename, source, pragmas, warnings, error, [](auto) {}))
             {
                 m_KeywordSpace->Clear();
                 m_Kernels.clear();

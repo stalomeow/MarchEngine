@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>$(SolutionDir)Build\Output\Managed\Editor\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(SolutionDir)Build\Intermediate\Managed\Editor\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(SolutionDir)Build\Output\Managed\ShaderLab\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Build\Intermediate\Managed\ShaderLab\</BaseIntermediateOutputPath>
     <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
@@ -12,18 +12,23 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <AssemblyName>March.Editor</AssemblyName>
-    <RootNamespace>March.Editor</RootNamespace>
+    <AssemblyName>March.ShaderLab</AssemblyName>
+    <RootNamespace>March.ShaderLab</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;3021</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1701;1702;3021</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Binding\Binding.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\ShaderLab\ShaderLab.csproj" />
-    <PackageReference Include="glTF2Loader" Version="1.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <PackageReference Include="System.Collections.Immutable" Version="9.0.3" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
   </ItemGroup>
 

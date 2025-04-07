@@ -1,7 +1,7 @@
 using Antlr4.Runtime;
 using System.Collections.Immutable;
 
-namespace March.Editor.ShaderLab
+namespace March.ShaderLab
 {
     internal sealed class ShaderLabErrorListener(string file) : IAntlrErrorListener<int>, IAntlrErrorListener<IToken>
     {

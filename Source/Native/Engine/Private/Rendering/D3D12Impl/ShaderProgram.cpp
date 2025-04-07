@@ -135,17 +135,14 @@ namespace march
         return result;
     }
 
-    bool ShaderCompilationInternalUtils::EnumeratePragmas(const std::string& source, const std::function<bool(const std::vector<std::string>&)>& fn)
+    bool ShaderCompilationInternalUtils::EnumeratePragmaArgs(const std::vector<std::string>& pragmas, const std::function<bool(const std::vector<std::string>&)>& fn)
     {
-        std::regex re(R"(^\s*#\s*pragma\s+(.*))", std::regex::ECMAScript);
-        auto itEnd = std::sregex_iterator();
-
         std::vector<std::string> args{};
 
-        for (auto it = std::sregex_iterator(source.begin(), source.end(), re); it != itEnd; ++it)
+        for (const std::string& pragma : pragmas)
         {
             args.clear();
-            std::istringstream iss((*it)[1]);
+            std::istringstream iss(pragma);
 
             std::string temp{};
             while (iss >> temp)

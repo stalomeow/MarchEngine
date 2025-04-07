@@ -1,8 +1,8 @@
 * text=auto
 
-Source/Managed/Editor/ShaderLab/Internal/** linguist-generated
-Runtime/**                                  linguist-vendored
-Resources/Meta/**                           linguist-generated
+Source/Managed/ShaderLab/Internal/** linguist-generated
+Runtime/**                           linguist-vendored
+Resources/Meta/**                    linguist-generated
 
 *.h       linguist-language=cpp
 *.hpp     linguist-language=cpp
@@ -17,8 +17,6 @@ vcpkg.json                                                     text eol=lf
 vcpkg-configuration.json                                       text eol=lf
 Resources/FontAwesome/LICENSE.txt                              text eol=lf
 Resources/Fonts/Inter-LICENSE.txt                              text eol=lf
-Source/Managed/Editor/ShaderLab/Internal/ShaderLab.interp      text eol=lf
-Source/Managed/Editor/ShaderLab/Internal/ShaderLabLexer.interp text eol=lf
 
 # https://github.com/gitattributes/gitattributes/blob/master/Global/VisualStudio.gitattributes
 

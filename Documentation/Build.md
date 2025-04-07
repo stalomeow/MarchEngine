@@ -19,6 +19,7 @@
     - Binding：C# Binding 生成器
     - Core：引擎核心的 C# 代码
     - Editor：编辑器的 C# 代码
+    - ShaderLab：ShaderLab 编译器
   - Native
     - EditorApp：编辑器 App
     - Engine：引擎核心的 C++ 代码
