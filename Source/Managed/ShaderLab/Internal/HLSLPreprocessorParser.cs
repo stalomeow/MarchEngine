@@ -40,11 +40,11 @@ public partial class HLSLPreprocessorParser : Parser {
 		Sharp=1, BlockComment=2, LineComment=3, Code=4, Include=5, Pragma=6, DirectiveWhitespace=7, 
 		DirectiveBlockComment=8, DirectiveLineComment=9, DirectiveNewline=10, 
 		Newline=11, DirectiveTextNewline=12, DirectiveTextBlockComment=13, DirectiveTextLineComment=14, 
-		Text=15, Slash=16;
+		DirectiveText=15, Slash=16;
 	public const int
-		RULE_program = 0, RULE_text = 1, RULE_directive = 2, RULE_directiveText = 3;
+		RULE_program = 0, RULE_text = 1, RULE_code = 2, RULE_directive = 3, RULE_directiveText = 4;
 	public static readonly string[] ruleNames = {
-		"program", "text", "directive", "directiveText"
+		"program", "text", "code", "directive", "directiveText"
 	};
 
 	private static readonly string[] _LiteralNames = {
@@ -54,7 +54,7 @@ public partial class HLSLPreprocessorParser : Parser {
 		null, "Sharp", "BlockComment", "LineComment", "Code", "Include", "Pragma", 
 		"DirectiveWhitespace", "DirectiveBlockComment", "DirectiveLineComment", 
 		"DirectiveNewline", "Newline", "DirectiveTextNewline", "DirectiveTextBlockComment", 
-		"DirectiveTextLineComment", "Text", "Slash"
+		"DirectiveTextLineComment", "DirectiveText", "Slash"
 	};
 	public static readonly IVocabulary DefaultVocabulary = new Vocabulary(_LiteralNames, _SymbolicNames);
 
@@ -117,21 +117,21 @@ public partial class HLSLPreprocessorParser : Parser {
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 11;
+			State = 13;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			while (_la==Sharp || _la==Code) {
 				{
 				{
-				State = 8;
+				State = 10;
 				text();
 				}
 				}
-				State = 13;
+				State = 15;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 			}
-			State = 14;
+			State = 16;
 			Match(Eof);
 			}
 		}
@@ -153,9 +153,8 @@ public partial class HLSLPreprocessorParser : Parser {
 			return GetRuleContext<DirectiveContext>(0);
 		}
 		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Eof() { return GetToken(HLSLPreprocessorParser.Eof, 0); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] Code() { return GetTokens(HLSLPreprocessorParser.Code); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Code(int i) {
-			return GetToken(HLSLPreprocessorParser.Code, i);
+		[System.Diagnostics.DebuggerNonUserCode] public CodeContext code() {
+			return GetRuleContext<CodeContext>(0);
 		}
 		public TextContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
@@ -176,100 +175,122 @@ public partial class HLSLPreprocessorParser : Parser {
 		EnterRule(_localctx, 2, RULE_text);
 		int _la;
 		try {
-			int _alt;
-			State = 37;
+			State = 31;
 			ErrorHandler.Sync(this);
-			switch ( Interpreter.AdaptivePredict(TokenStream,5,Context) ) {
+			switch ( Interpreter.AdaptivePredict(TokenStream,3,Context) ) {
 			case 1:
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 16;
-				Match(Sharp);
 				State = 18;
+				Match(Sharp);
+				State = 20;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==Include || _la==Pragma) {
 					{
-					State = 17;
+					State = 19;
 					directive();
 					}
 				}
 
-				State = 20;
+				State = 22;
 				Match(Newline);
 				}
 				break;
 			case 2:
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 21;
-				Match(Sharp);
 				State = 23;
+				Match(Sharp);
+				State = 25;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
 				if (_la==Include || _la==Pragma) {
 					{
-					State = 22;
+					State = 24;
 					directive();
 					}
 				}
 
-				State = 25;
+				State = 27;
 				Match(Eof);
 				}
 				break;
 			case 3:
 				EnterOuterAlt(_localctx, 3);
 				{
-				State = 26;
-				Match(Sharp);
 				State = 28;
-				ErrorHandler.Sync(this);
-				_alt = 1;
-				do {
-					switch (_alt) {
-					case 1:
-						{
-						{
-						State = 27;
-						Match(Code);
-						}
-						}
-						break;
-					default:
-						throw new NoViableAltException(this);
-					}
-					State = 30;
-					ErrorHandler.Sync(this);
-					_alt = Interpreter.AdaptivePredict(TokenStream,3,Context);
-				} while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER );
+				Match(Sharp);
+				State = 29;
+				code();
 				}
 				break;
 			case 4:
 				EnterOuterAlt(_localctx, 4);
 				{
-				State = 33;
-				ErrorHandler.Sync(this);
-				_alt = 1;
-				do {
-					switch (_alt) {
-					case 1:
-						{
-						{
-						State = 32;
-						Match(Code);
-						}
-						}
-						break;
-					default:
-						throw new NoViableAltException(this);
-					}
-					State = 35;
-					ErrorHandler.Sync(this);
-					_alt = Interpreter.AdaptivePredict(TokenStream,4,Context);
-				} while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER );
+				State = 30;
+				code();
 				}
 				break;
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			ErrorHandler.ReportError(this, re);
+			ErrorHandler.Recover(this, re);
+		}
+		finally {
+			ExitRule();
+		}
+		return _localctx;
+	}
+
+	public partial class CodeContext : ParserRuleContext {
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] Code() { return GetTokens(HLSLPreprocessorParser.Code); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Code(int i) {
+			return GetToken(HLSLPreprocessorParser.Code, i);
+		}
+		public CodeContext(ParserRuleContext parent, int invokingState)
+			: base(parent, invokingState)
+		{
+		}
+		public override int RuleIndex { get { return RULE_code; } }
+		[System.Diagnostics.DebuggerNonUserCode]
+		public override TResult Accept<TResult>(IParseTreeVisitor<TResult> visitor) {
+			IHLSLPreprocessorParserVisitor<TResult> typedVisitor = visitor as IHLSLPreprocessorParserVisitor<TResult>;
+			if (typedVisitor != null) return typedVisitor.VisitCode(this);
+			else return visitor.VisitChildren(this);
+		}
+	}
+
+	[RuleVersion(0)]
+	public CodeContext code() {
+		CodeContext _localctx = new CodeContext(Context, State);
+		EnterRule(_localctx, 4, RULE_code);
+		try {
+			int _alt;
+			EnterOuterAlt(_localctx, 1);
+			{
+			State = 34;
+			ErrorHandler.Sync(this);
+			_alt = 1;
+			do {
+				switch (_alt) {
+				case 1:
+					{
+					{
+					State = 33;
+					Match(Code);
+					}
+					}
+					break;
+				default:
+					throw new NoViableAltException(this);
+				}
+				State = 36;
+				ErrorHandler.Sync(this);
+				_alt = Interpreter.AdaptivePredict(TokenStream,4,Context);
+			} while ( _alt!=2 && _alt!=global::Antlr4.Runtime.Atn.ATN.INVALID_ALT_NUMBER );
 			}
 		}
 		catch (RecognitionException re) {
@@ -325,24 +346,24 @@ public partial class HLSLPreprocessorParser : Parser {
 	[RuleVersion(0)]
 	public DirectiveContext directive() {
 		DirectiveContext _localctx = new DirectiveContext(Context, State);
-		EnterRule(_localctx, 4, RULE_directive);
+		EnterRule(_localctx, 6, RULE_directive);
 		int _la;
 		try {
-			State = 47;
+			State = 46;
 			ErrorHandler.Sync(this);
 			switch (TokenStream.LA(1)) {
 			case Include:
 				_localctx = new PreprocessorIncludeContext(_localctx);
 				EnterOuterAlt(_localctx, 1);
 				{
-				State = 39;
+				State = 38;
 				Match(Include);
-				State = 41;
+				State = 40;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if (_la==Text) {
+				if (_la==DirectiveText) {
 					{
-					State = 40;
+					State = 39;
 					directiveText();
 					}
 				}
@@ -353,14 +374,14 @@ public partial class HLSLPreprocessorParser : Parser {
 				_localctx = new PreprocessorPragmaContext(_localctx);
 				EnterOuterAlt(_localctx, 2);
 				{
-				State = 43;
+				State = 42;
 				Match(Pragma);
-				State = 45;
+				State = 44;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-				if (_la==Text) {
+				if (_la==DirectiveText) {
 					{
-					State = 44;
+					State = 43;
 					directiveText();
 					}
 				}
@@ -383,9 +404,9 @@ public partial class HLSLPreprocessorParser : Parser {
 	}
 
 	public partial class DirectiveTextContext : ParserRuleContext {
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] Text() { return GetTokens(HLSLPreprocessorParser.Text); }
-		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode Text(int i) {
-			return GetToken(HLSLPreprocessorParser.Text, i);
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode[] DirectiveText() { return GetTokens(HLSLPreprocessorParser.DirectiveText); }
+		[System.Diagnostics.DebuggerNonUserCode] public ITerminalNode DirectiveText(int i) {
+			return GetToken(HLSLPreprocessorParser.DirectiveText, i);
 		}
 		public DirectiveTextContext(ParserRuleContext parent, int invokingState)
 			: base(parent, invokingState)
@@ -403,25 +424,25 @@ public partial class HLSLPreprocessorParser : Parser {
 	[RuleVersion(0)]
 	public DirectiveTextContext directiveText() {
 		DirectiveTextContext _localctx = new DirectiveTextContext(Context, State);
-		EnterRule(_localctx, 6, RULE_directiveText);
+		EnterRule(_localctx, 8, RULE_directiveText);
 		int _la;
 		try {
 			EnterOuterAlt(_localctx, 1);
 			{
-			State = 50;
+			State = 49;
 			ErrorHandler.Sync(this);
 			_la = TokenStream.LA(1);
 			do {
 				{
 				{
-				State = 49;
-				Match(Text);
+				State = 48;
+				Match(DirectiveText);
 				}
 				}
-				State = 52;
+				State = 51;
 				ErrorHandler.Sync(this);
 				_la = TokenStream.LA(1);
-			} while ( _la==Text );
+			} while ( _la==DirectiveText );
 			}
 		}
 		catch (RecognitionException re) {
@@ -436,23 +457,23 @@ public partial class HLSLPreprocessorParser : Parser {
 	}
 
 	private static int[] _serializedATN = {
-		4,1,16,55,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,1,0,5,0,10,8,0,10,0,12,0,13,
-		9,0,1,0,1,0,1,1,1,1,3,1,19,8,1,1,1,1,1,1,1,3,1,24,8,1,1,1,1,1,1,1,4,1,
-		29,8,1,11,1,12,1,30,1,1,4,1,34,8,1,11,1,12,1,35,3,1,38,8,1,1,2,1,2,3,2,
-		42,8,2,1,2,1,2,3,2,46,8,2,3,2,48,8,2,1,3,4,3,51,8,3,11,3,12,3,52,1,3,0,
-		0,4,0,2,4,6,0,0,62,0,11,1,0,0,0,2,37,1,0,0,0,4,47,1,0,0,0,6,50,1,0,0,0,
-		8,10,3,2,1,0,9,8,1,0,0,0,10,13,1,0,0,0,11,9,1,0,0,0,11,12,1,0,0,0,12,14,
-		1,0,0,0,13,11,1,0,0,0,14,15,5,0,0,1,15,1,1,0,0,0,16,18,5,1,0,0,17,19,3,
-		4,2,0,18,17,1,0,0,0,18,19,1,0,0,0,19,20,1,0,0,0,20,38,5,11,0,0,21,23,5,
-		1,0,0,22,24,3,4,2,0,23,22,1,0,0,0,23,24,1,0,0,0,24,25,1,0,0,0,25,38,5,
-		0,0,1,26,28,5,1,0,0,27,29,5,4,0,0,28,27,1,0,0,0,29,30,1,0,0,0,30,28,1,
-		0,0,0,30,31,1,0,0,0,31,38,1,0,0,0,32,34,5,4,0,0,33,32,1,0,0,0,34,35,1,
-		0,0,0,35,33,1,0,0,0,35,36,1,0,0,0,36,38,1,0,0,0,37,16,1,0,0,0,37,21,1,
-		0,0,0,37,26,1,0,0,0,37,33,1,0,0,0,38,3,1,0,0,0,39,41,5,5,0,0,40,42,3,6,
-		3,0,41,40,1,0,0,0,41,42,1,0,0,0,42,48,1,0,0,0,43,45,5,6,0,0,44,46,3,6,
-		3,0,45,44,1,0,0,0,45,46,1,0,0,0,46,48,1,0,0,0,47,39,1,0,0,0,47,43,1,0,
-		0,0,48,5,1,0,0,0,49,51,5,15,0,0,50,49,1,0,0,0,51,52,1,0,0,0,52,50,1,0,
-		0,0,52,53,1,0,0,0,53,7,1,0,0,0,10,11,18,23,30,35,37,41,45,47,52
+		4,1,16,54,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,1,0,5,0,12,8,0,10,0,
+		12,0,15,9,0,1,0,1,0,1,1,1,1,3,1,21,8,1,1,1,1,1,1,1,3,1,26,8,1,1,1,1,1,
+		1,1,1,1,3,1,32,8,1,1,2,4,2,35,8,2,11,2,12,2,36,1,3,1,3,3,3,41,8,3,1,3,
+		1,3,3,3,45,8,3,3,3,47,8,3,1,4,4,4,50,8,4,11,4,12,4,51,1,4,0,0,5,0,2,4,
+		6,8,0,0,59,0,13,1,0,0,0,2,31,1,0,0,0,4,34,1,0,0,0,6,46,1,0,0,0,8,49,1,
+		0,0,0,10,12,3,2,1,0,11,10,1,0,0,0,12,15,1,0,0,0,13,11,1,0,0,0,13,14,1,
+		0,0,0,14,16,1,0,0,0,15,13,1,0,0,0,16,17,5,0,0,1,17,1,1,0,0,0,18,20,5,1,
+		0,0,19,21,3,6,3,0,20,19,1,0,0,0,20,21,1,0,0,0,21,22,1,0,0,0,22,32,5,11,
+		0,0,23,25,5,1,0,0,24,26,3,6,3,0,25,24,1,0,0,0,25,26,1,0,0,0,26,27,1,0,
+		0,0,27,32,5,0,0,1,28,29,5,1,0,0,29,32,3,4,2,0,30,32,3,4,2,0,31,18,1,0,
+		0,0,31,23,1,0,0,0,31,28,1,0,0,0,31,30,1,0,0,0,32,3,1,0,0,0,33,35,5,4,0,
+		0,34,33,1,0,0,0,35,36,1,0,0,0,36,34,1,0,0,0,36,37,1,0,0,0,37,5,1,0,0,0,
+		38,40,5,5,0,0,39,41,3,8,4,0,40,39,1,0,0,0,40,41,1,0,0,0,41,47,1,0,0,0,
+		42,44,5,6,0,0,43,45,3,8,4,0,44,43,1,0,0,0,44,45,1,0,0,0,45,47,1,0,0,0,
+		46,38,1,0,0,0,46,42,1,0,0,0,47,7,1,0,0,0,48,50,5,15,0,0,49,48,1,0,0,0,
+		50,51,1,0,0,0,51,49,1,0,0,0,51,52,1,0,0,0,52,9,1,0,0,0,9,13,20,25,31,36,
+		40,44,46,51
 	};
 
 	public static readonly ATN _ATN =

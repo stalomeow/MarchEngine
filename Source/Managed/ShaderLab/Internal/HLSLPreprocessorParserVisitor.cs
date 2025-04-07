@@ -45,6 +45,12 @@ public interface IHLSLPreprocessorParserVisitor<Result> : IParseTreeVisitor<Resu
 	/// <return>The visitor result.</return>
 	Result VisitText([NotNull] HLSLPreprocessorParser.TextContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="HLSLPreprocessorParser.code"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitCode([NotNull] HLSLPreprocessorParser.CodeContext context);
+	/// <summary>
 	/// Visit a parse tree produced by the <c>preprocessorInclude</c>
 	/// labeled alternative in <see cref="HLSLPreprocessorParser.directive"/>.
 	/// </summary>

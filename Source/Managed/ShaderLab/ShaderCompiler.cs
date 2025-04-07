@@ -8,6 +8,8 @@ namespace March.ShaderLab
 {
     public static class ShaderCompiler
     {
+        public const int Version = 1;
+
         public static void CompileShaderLab(Shader shader, string fullPath, string content, List<string> outPassSourceCodes, List<string> outErrors)
         {
             ParsedShaderData result = ParseShaderLabWithFallback(fullPath, content, outErrors);

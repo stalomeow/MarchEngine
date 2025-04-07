@@ -1,5 +1,8 @@
 parser grammar HLSLPreprocessorParser;
 
+// 参考 Objective-C 2.0 grammars 示例中的 Two-step processing
+// https://github.com/antlr/grammars-v4/tree/master/objc#two-step-processing
+
 options {
     tokenVocab = HLSLPreprocessorLexer;
 }
@@ -25,5 +28,5 @@ directive
     ;
 
 directiveText
-    : Text+
+    : DirectiveText+
     ;

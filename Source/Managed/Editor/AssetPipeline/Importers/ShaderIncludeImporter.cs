@@ -1,11 +1,12 @@
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
+using March.ShaderLab;
 using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Include Asset", ".hlsl", Version = 5)]
+    [CustomAssetImporter("Shader Include Asset", ".hlsl", Version = ShaderCompiler.Version + 5)]
     public class ShaderIncludeImporter : AssetImporter
     {
         protected override void OnImportAssets(ref AssetImportContext context)

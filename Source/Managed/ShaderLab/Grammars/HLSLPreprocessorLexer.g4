@@ -1,5 +1,8 @@
 lexer grammar HLSLPreprocessorLexer;
 
+// 参考 Objective-C 2.0 grammars 示例中的 Two-step processing
+// https://github.com/antlr/grammars-v4/tree/master/objc#two-step-processing
+
 Sharp
     : '#' -> mode(DIRECTIVE_MODE)
     ;
@@ -71,7 +74,7 @@ DirectiveTextNewline
     ;
 
 BackSlashEscape
-    : '\\' . -> type(Text)
+    : '\\' . -> type(DirectiveText)
     ;
 
 TextNewline
@@ -87,9 +90,9 @@ DirectiveTextLineComment
     ;
 
 DirectiveTextSlash
-    : '/' -> type(Text)
+    : '/' -> type(DirectiveText)
     ;
 
-Text
+DirectiveText
     : ~[\r\n\\/]+
     ;

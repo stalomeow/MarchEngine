@@ -9,7 +9,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = 81)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = ShaderCompiler.Version + 81)]
     public class ShaderImporter : AssetImporter
     {
         [JsonProperty]
