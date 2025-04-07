@@ -1,19 +1,28 @@
 using March.Core;
 using March.Core.Pool;
+using March.ShaderLab;
 
 namespace March.Editor.AssetPipeline
 {
-    internal static class ShaderProgramUtility
+    public static class ShaderProgramUtility
     {
-        public static void GetHLSLIncludeLocations(string fileFullPath, List<string> includePaths, List<AssetLocation> locations)
+        public static void GetHLSLIncludeFileLocations(string fileFullPath, string source, List<AssetLocation> locations)
+        {
+            ShaderCompiler.GetHLSLIncludesAndPragmas(source, out List<string> includes, out _);
+            GetHLSLIncludeFileLocations(fileFullPath, includes, locations);
+        }
+
+        public static void GetHLSLIncludeFileLocations(string fileFullPath, List<string> includePaths, List<AssetLocation> locations)
         {
             using var basePaths = ListPool<string>.Get();
             GetTestBasePaths(fileFullPath, basePaths);
 
             using var processedPaths = HashSetPool<string>.Get();
 
-            foreach (string path in includePaths)
+            foreach (string incPath in includePaths)
             {
+                string path = incPath.ValidatePath();
+
                 if (!processedPaths.Value.Add(path))
                 {
                     continue;

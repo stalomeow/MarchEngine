@@ -36,7 +36,7 @@
 下面是一段示例代码，用于导入项目中的 HLSL 资产，并正确设置依赖关系
 
 ``` csharp
-[CustomAssetImporter("Shader Include Asset", ".hlsl", Version = 2)]
+[CustomAssetImporter("Shader Include Asset", ".hlsl", Version = 4)]
 public class ShaderIncludeImporter : AssetImporter
 {
     protected override void OnImportAssets(ref AssetImportContext context)
@@ -45,7 +45,7 @@ public class ShaderIncludeImporter : AssetImporter
         asset.Text = File.ReadAllText(Location.AssetFullPath, Encoding.UTF8);
 
         using var includes = ListPool<AssetLocation>.Get();
-        ShaderProgramUtility.GetIncludeFiles(Location.AssetFullPath, asset.Text, includes);
+        ShaderProgramUtility.GetHLSLIncludeFileLocations(Location.AssetFullPath, asset.Text, includes);
 
         foreach (AssetLocation location in includes.Value)
         {
@@ -61,7 +61,7 @@ public class ShaderIncludeImporter : AssetImporter
 - 自动处理并合批 Resource Barrier，支持 Subresource 级别的状态管理
 - 视锥体剔除 / 材质合批（类似 Unity SRP Batcher）/ 自动 GPU Instancing
 - 实现了 Linear Allocator 和 Buddy Allocator，并支持多种资源分配方式 Committed / Placed / Suballocation
-- 基于 [ANTLR](https://www.antlr.org/) 实现了 Unity 的 ShaderLab 并利用 Shader 的反射数据自动绑定资源
+- 基于 [ANTLR4](https://www.antlr.org/) 实现了 Unity 的 ShaderLab 并利用 Shader 的反射数据自动绑定资源
 - 支持 `#pragma multi_compile` 创建 Shader 变体
 - 每个 Shader 最多 128 个 Keyword，这也是 [Unity 推荐的上限](https://docs.unity3d.com/6000.0/Documentation/Manual/shader-keywords.html)
 - Shader 也支持热重载，IDE 里修改后，回到引擎立即生效

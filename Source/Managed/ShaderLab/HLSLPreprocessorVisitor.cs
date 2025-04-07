@@ -15,7 +15,12 @@ namespace March.ShaderLab
         {
             if (context.directiveText() != null)
             {
-                Includes.Add(context.directiveText().GetText().Trim()[1..^1]); // Remove the quotes
+                string path = context.directiveText().GetText().Trim();
+
+                if (path.Length >= 2)
+                {
+                    Includes.Add(path[1..^1]); // Remove the quotes
+                }
             }
 
             return base.VisitPreprocessorInclude(context);
