@@ -96,13 +96,7 @@ Shader "Lit"
                 clip(albedo.a - _Cutoff);
             #endif
 
-            float3 normalTS = _BumpMap.Sample(sampler_BumpMap, input.uv).xyz * 2.0 - 1.0;
-            normalTS.xy *= _BumpScale;
-            normalTS = normalize(normalTS);
-            float3 N = normalize(input.normalWS);
-            float3 T = normalize(input.tangentWS.xyz - dot(input.tangentWS.xyz, N) * N);
-            float3 B = cross(N, T) * input.tangentWS.w;
-            float3 bumpedNomalWS = normalize(mul(normalTS, float3x3(T, B, N))); // float3x3() 是行主序矩阵
+            float3 bumpedNormalWS = BumpNormal(_BumpMap, sampler_BumpMap, input.uv, _BumpScale, input.normalWS, input.tangentWS);
 
             float4 metallicRoughness = _MetallicRoughnessMap.Sample(sampler_MetallicRoughnessMap, input.uv);
             float metallic = metallicRoughness.b * _Metallic;
@@ -117,7 +111,7 @@ Shader "Lit"
             data.albedo = albedo.rgb;
             data.metallic = metallic;
             data.roughness = roughness;
-            data.normalWS = bumpedNomalWS;
+            data.normalWS = bumpedNormalWS;
             data.emission = emission.rgb;
             data.occlusion = occlusion;
             return PackGBufferData(data);

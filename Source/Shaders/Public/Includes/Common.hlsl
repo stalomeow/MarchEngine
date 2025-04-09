@@ -18,7 +18,7 @@ struct InstanceData
     float4x4 _MatrixWorld;
     float4x4 _MatrixWorldIT; // 逆转置
     float4x4 _MatrixPrevWorld; // 上一帧的矩阵
-    float4 _InstanceParams; // x: OddNegativeScale
+    float4 _Params; // x: OddNegativeScale
 };
 
 StructuredBuffer<InstanceData> _InstanceBuffer;
@@ -58,7 +58,7 @@ float4x4 GetObjectToWorldMatrixLastFrame(uint instanceID)
 
 float GetOddNegativeScale(uint instanceID)
 {
-    return _InstanceBuffer[instanceID]._InstanceParams.x;
+    return _InstanceBuffer[instanceID]._Params.x;
 }
 
 float3 TransformObjectToWorld(uint instanceID, float3 positionOS)
@@ -284,6 +284,21 @@ float GetFarthestDepth(float lhs, float rhs)
 uint GetTAAFrameIndex()
 {
     return uint(_TAAParams.x);
+}
+
+// tangent.w 记得要乘上 OddNegativeScale
+float3 BumpNormal(Texture2D bumpMap, SamplerState samplerBumpMap, float2 uv, float bumpScale, float3 normal, float4 tangent)
+{
+    float3 normalTS = bumpMap.Sample(samplerBumpMap, uv).xyz * 2.0 - 1.0;
+    normalTS.xy *= bumpScale;
+    normalTS = normalize(normalTS);
+
+    float3 N = normalize(normal);
+    float3 T = normalize(tangent.xyz - dot(tangent.xyz, N) * N);
+    float3 B = cross(N, T) * tangent.w;
+
+    // float3x3() 是行主序矩阵，所以要左乘向量
+    return normalize(mul(normalTS, float3x3(T, B, N)));
 }
 
 float Min3(float x, float y, float z)
