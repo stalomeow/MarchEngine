@@ -45,6 +45,22 @@ namespace march
         m_PrevLocalToWorldMatrix = GetTransform()->GetLocalToWorldMatrix();
     }
 
+    bool MeshRendererBatch::DrawCall::operator<(const DrawCall& other) const
+    {
+        Shader* shader1 = Mat->GetShader();
+        Shader* shader2 = other.Mat->GetShader();
+
+        // 按 Shader / Material / Mesh / HasOddNegativeScaling / SubMeshIndex 排序
+
+        if (shader1 != shader2) return shader1 < shader2;
+        if (Mat != other.Mat) return Mat < other.Mat;
+        if (Mesh != other.Mesh) return Mesh < other.Mesh;
+        if (HasOddNegativeScaling != other.HasOddNegativeScaling) return HasOddNegativeScaling < other.HasOddNegativeScaling;
+        if (SubMeshIndex != other.SubMeshIndex) return SubMeshIndex < other.SubMeshIndex;
+
+        return false;
+    }
+
     MeshRendererBatch::InstanceData MeshRendererBatch::InstanceData::Create(const MeshRenderer* renderer)
     {
         XMFLOAT4X4 currMatrix = renderer->GetTransform()->GetLocalToWorldMatrix();
@@ -55,8 +71,13 @@ namespace march
     MeshRendererBatch::InstanceData MeshRendererBatch::InstanceData::Create(const XMFLOAT4X4& currMatrix, const XMFLOAT4X4& prevMatrix)
     {
         XMFLOAT4X4 currMatrixIT{};
-        XMStoreFloat4x4(&currMatrixIT, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&currMatrix))));
-        return MeshRendererBatch::InstanceData{ currMatrix, currMatrixIT, prevMatrix };
+        XMVECTOR det{};
+        XMStoreFloat4x4(&currMatrixIT, XMMatrixTranspose(XMMatrixInverse(&det, XMLoadFloat4x4(&currMatrix))));
+
+        XMFLOAT4 params{};
+        params.x = std::copysignf(1.0f, XMVectorGetX(det)); // det < 0 时，x = -1.0f，否则 x = 1.0f
+
+        return MeshRendererBatch::InstanceData{ currMatrix, currMatrixIT, prevMatrix, params };
     }
 
     static void CullMeshRenderers(std::vector<MeshRenderer*>& results, const MeshRendererBatch::FrustumType& frustum, size_t numRenderers, MeshRenderer* const* renderers)
@@ -111,7 +132,7 @@ namespace march
 
     void MeshRendererBatch::Rebuild(const FrustumType& frustum, size_t numRenderers, MeshRenderer* const* renderers)
     {
-        m_Data.clear();
+        m_DrawCalls.clear();
 
         static std::vector<MeshRenderer*> visibleRenderers{};
         CullMeshRenderers(visibleRenderers, frustum, numRenderers, renderers);
@@ -128,8 +149,9 @@ namespace march
                     continue;
                 }
 
-                DrawCall drawCall{ renderer->Mesh, subMesh };
-                m_Data[material][drawCall].push_back(InstanceData::Create(renderer));
+                InstanceData instanceData = InstanceData::Create(renderer);
+                DrawCall drawCall{ material, renderer->Mesh, subMesh, instanceData.HasOddNegativeScaling() };
+                m_DrawCalls[drawCall].push_back(instanceData);
             }
         }
     }

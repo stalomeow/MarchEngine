@@ -83,7 +83,7 @@ Shader "Lit"
             output.positionCS = TransformWorldToHClip(positionWS);
             output.normalWS = TransformObjectToWorldNormal(input.instanceID, input.normalOS);
             output.tangentWS.xyz = TransformObjectToWorldDir(input.instanceID, input.tangentOS.xyz);
-            output.tangentWS.w = input.tangentOS.w;
+            output.tangentWS.w = input.tangentOS.w  * GetOddNegativeScale(input.instanceID);
             output.uv = input.uv;
             return output;
         }

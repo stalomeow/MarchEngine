@@ -18,6 +18,7 @@ struct InstanceData
     float4x4 _MatrixWorld;
     float4x4 _MatrixWorldIT; // 逆转置
     float4x4 _MatrixPrevWorld; // 上一帧的矩阵
+    float4 _InstanceParams; // x: OddNegativeScale
 };
 
 StructuredBuffer<InstanceData> _InstanceBuffer;
@@ -53,6 +54,11 @@ float4x4 GetObjectToWorldMatrixIT(uint instanceID)
 float4x4 GetObjectToWorldMatrixLastFrame(uint instanceID)
 {
     return _InstanceBuffer[instanceID]._MatrixPrevWorld;
+}
+
+float GetOddNegativeScale(uint instanceID)
+{
+    return _InstanceBuffer[instanceID]._InstanceParams.x;
 }
 
 float3 TransformObjectToWorld(uint instanceID, float3 positionOS)

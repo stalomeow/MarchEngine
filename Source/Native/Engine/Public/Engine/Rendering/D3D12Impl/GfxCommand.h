@@ -336,6 +336,5 @@ namespace march
         void SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY value);
         void SetVertexBuffer(GfxBuffer* buffer);
         void SetIndexBuffer(GfxBuffer* buffer);
-        void DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount);
     };
 }

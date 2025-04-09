@@ -93,7 +93,7 @@ namespace march
 
         GfxBuffer* GetConstantBuffer(size_t passIndex);
         const ShaderPassRenderState& GetResolvedRenderState(size_t passIndex, size_t* outHash = nullptr);
-        ID3D12PipelineState* GetPSO(size_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc);
+        ID3D12PipelineState* GetPSO(size_t passIndex, bool hasOddNegativeScaling, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc);
     };
 
     struct MaterialInternalUtility

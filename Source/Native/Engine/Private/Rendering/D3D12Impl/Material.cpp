@@ -555,7 +555,7 @@ namespace march
         }
     }
 
-    ID3D12PipelineState* Material::GetPSO(size_t passIndex, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc)
+    ID3D12PipelineState* Material::GetPSO(size_t passIndex, bool hasOddNegativeScaling, const GfxInputDesc& inputDesc, const GfxOutputDesc& outputDesc)
     {
         if (m_Shader == nullptr)
         {
@@ -571,6 +571,7 @@ namespace march
         DefaultHash hash{};
         hash.Append(renderStateHash);
         hash.Append(pass->GetProgramMatch(keywords).Hash);
+        hash.Append(hasOddNegativeScaling);
         hash.Append(inputDesc.GetHash());
         hash.Append(outputDesc.GetHash());
 
@@ -625,6 +626,7 @@ namespace march
             psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
             psoDesc.RasterizerState.CullMode = static_cast<D3D12_CULL_MODE>(static_cast<int>(rs.Cull.Value) + 1);
             psoDesc.RasterizerState.FillMode = outputDesc.Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
+            psoDesc.RasterizerState.FrontCounterClockwise = hasOddNegativeScaling ? TRUE : FALSE; // 默认是顺时针 FALSE
             psoDesc.RasterizerState.DepthBias = static_cast<INT>(outputDesc.DepthBias);
             psoDesc.RasterizerState.DepthBiasClamp = outputDesc.DepthBiasClamp;
             psoDesc.RasterizerState.SlopeScaledDepthBias = outputDesc.SlopeScaledDepthBias;

@@ -796,21 +796,6 @@ namespace march
         }
     }
 
-    void GfxCommandContext::DrawSubMesh(const GfxSubMeshDesc& subMesh, uint32_t instanceCount)
-    {
-        SetPrimitiveTopology(subMesh.InputDesc.GetPrimitiveTopology());
-        SetVertexBuffer(subMesh.VertexBuffer);
-        SetIndexBuffer(subMesh.IndexBuffer);
-        FlushResourceBarriers();
-
-        m_CommandList->DrawIndexedInstanced(
-            static_cast<UINT>(subMesh.SubMesh.IndexCount),
-            static_cast<UINT>(instanceCount),
-            static_cast<UINT>(subMesh.SubMesh.StartIndexLocation),
-            static_cast<INT>(subMesh.SubMesh.BaseVertexLocation),
-            0);
-    }
-
     void GfxCommandContext::DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex)
     {
         DrawMesh(geometry, material, shaderPassIndex, MathUtils::Identity4x4());
@@ -839,70 +824,123 @@ namespace march
     void GfxCommandContext::DrawMesh(const GfxSubMeshDesc& subMesh, Material* material, size_t shaderPassIndex, const XMFLOAT4X4& matrix)
     {
         // TODO 允许设置上一帧的矩阵
-        SetInstanceBufferData(1, &MeshRendererBatch::InstanceData::Create(matrix, matrix));
-        SetGraphicsPipelineParameters(material, shaderPassIndex);
-        ApplyGraphicsPipelineParameters(material->GetPSO(shaderPassIndex, subMesh.InputDesc, m_OutputDesc));
+        auto instanceData = MeshRendererBatch::InstanceData::Create(matrix, matrix);
 
-        DrawSubMesh(subMesh, 1);
+        SetInstanceBufferData(1, &instanceData);
+        SetGraphicsPipelineParameters(material, shaderPassIndex);
+        ApplyGraphicsPipelineParameters(material->GetPSO(shaderPassIndex, instanceData.HasOddNegativeScaling(), subMesh.InputDesc, m_OutputDesc));
+
+        SetPrimitiveTopology(subMesh.InputDesc.GetPrimitiveTopology());
+        SetVertexBuffer(subMesh.VertexBuffer);
+        SetIndexBuffer(subMesh.IndexBuffer);
+        FlushResourceBarriers();
+
+        m_CommandList->DrawIndexedInstanced(
+            static_cast<UINT>(subMesh.SubMesh.IndexCount),
+            static_cast<UINT>(1),
+            static_cast<UINT>(subMesh.SubMesh.StartIndexLocation),
+            static_cast<INT>(subMesh.SubMesh.BaseVertexLocation),
+            0);
     }
 
     void GfxCommandContext::DrawMeshRenderers(const MeshRendererBatch& batch, const std::string& lightMode)
     {
-        if (batch.GetData().empty())
+        if (batch.GetDrawCalls().empty())
         {
             return;
         }
 
-        // 优化 pso 切换，vector 中的元素是 Material 和 ShaderPassIndex
-        static std::unordered_map<ID3D12PipelineState*, std::vector<std::pair<Material*, size_t>>> psoMap{};
-        psoMap.clear();
-
-        for (auto& [material, drawCalls] : batch.GetData())
-        {
-            Shader* shader = material->GetShader();
-            std::optional<size_t> passIndex = shader->GetFirstPassIndexWithTagValue("LightMode", lightMode);
-
-            if (passIndex)
-            {
-                size_t passIndexValue = *passIndex;
-                ID3D12PipelineState* pso = material->GetPSO(passIndexValue, batch.GetMeshInputDesc(), m_OutputDesc);
-                psoMap[pso].emplace_back(material, passIndexValue);
-            }
-        }
-
         BeginEvent("DrawMeshRenderers");
 
-        for (auto& [pso, materials] : psoMap)
+        Shader* shader = nullptr;
+        std::optional<size_t> passIndex = std::nullopt;
+
+        Material* material = nullptr;
+        GfxMesh* mesh = nullptr;
+        std::optional<bool> hasOddNegativeScaling = std::nullopt;
+
+        // TODO 看看能不能进一步减少 PSO 的切换
+        ID3D12PipelineState* pso = nullptr;
+
+        // Primitive Topology 所有人都一样，只需要设置一次
+        const GfxInputDesc& inputDesc = batch.GetMeshInputDesc();
+        SetPrimitiveTopology(inputDesc.GetPrimitiveTopology());
+
+        for (const auto& [drawCall, instances] : batch.GetDrawCalls())
         {
-            for (auto& [material, passIndex] : materials)
+            // Shader Break
+            if (Shader* s = drawCall.Mat->GetShader(); shader != s)
             {
+                shader = s;
+                passIndex = s->GetFirstPassIndexWithTagValue("LightMode", lightMode);
+                pso = nullptr; // Break PSO
+            }
+
+            if (!passIndex)
+            {
+                continue;
+            }
+
+            uint32_t instanceCount = static_cast<uint32_t>(instances.size());
+
+            // Material Break
+            if (material != drawCall.Mat)
+            {
+                // Debug Labels
+                if (material != nullptr) EndEvent();
                 BeginEvent("MaterialBatch");
 
-                bool isFirst = true;
+                material = drawCall.Mat;
+                pso = nullptr; // Break PSO
 
-                for (const auto& [drawCall, instances] : batch.GetData().at(material))
-                {
-                    uint32_t instanceCount = static_cast<uint32_t>(instances.size());
-
-                    if (isFirst)
-                    {
-                        SetInstanceBufferData(instanceCount, instances.data());
-                        SetGraphicsPipelineParameters(material, passIndex);
-                        isFirst = false;
-                    }
-                    else
-                    {
-                        UpdateGraphicsPipelineInstanceDataParameter(instanceCount, instances.data());
-                    }
-
-                    ApplyGraphicsPipelineParameters(pso);
-                    DrawSubMesh(drawCall.Mesh->GetSubMeshDesc(drawCall.SubMeshIndex), instanceCount);
-                }
-
-                EndEvent();
+                SetInstanceBufferData(instanceCount, instances.data());
+                SetGraphicsPipelineParameters(material, *passIndex);
             }
+            else
+            {
+                // Material 相同的话，只需要修改 InstanceBuffer，其他参数都和之前一样
+                UpdateGraphicsPipelineInstanceDataParameter(instanceCount, instances.data());
+            }
+
+            // Mesh Break
+            if (mesh != drawCall.Mesh)
+            {
+                mesh = drawCall.Mesh;
+
+                GfxBuffer* vertexBuffer = nullptr;
+                GfxBuffer* indexBuffer = nullptr;
+                mesh->GetBuffers(&vertexBuffer, &indexBuffer);
+
+                SetVertexBuffer(vertexBuffer);
+                SetIndexBuffer(indexBuffer);
+            }
+
+            // OddNegativeScaling Break
+            if (hasOddNegativeScaling != drawCall.HasOddNegativeScaling)
+            {
+                hasOddNegativeScaling = drawCall.HasOddNegativeScaling;
+                pso = nullptr; // Break PSO
+            }
+
+            // PSO Break
+            if (pso == nullptr)
+            {
+                pso = material->GetPSO(*passIndex, drawCall.HasOddNegativeScaling, inputDesc, m_OutputDesc);
+            }
+
+            ApplyGraphicsPipelineParameters(pso);
+            FlushResourceBarriers();
+
+            const GfxSubMesh& subMesh = drawCall.Mesh->GetSubMesh(drawCall.SubMeshIndex);
+            m_CommandList->DrawIndexedInstanced(
+                static_cast<UINT>(subMesh.IndexCount),
+                static_cast<UINT>(instanceCount),
+                static_cast<UINT>(subMesh.StartIndexLocation),
+                static_cast<INT>(subMesh.BaseVertexLocation),
+                0);
         }
 
+        if (material != nullptr) EndEvent();
         EndEvent();
     }
 
