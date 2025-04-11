@@ -235,7 +235,7 @@ namespace march
         buffer.SetData(desc, &constants);
     }
 
-    void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxRenderTexture* target)
+    void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxCommandContext* context, GfxRenderTexture* target)
     {
         // Avoid rendering when minimized
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
@@ -280,8 +280,6 @@ namespace march
 
         static int32_t cbufferId = ShaderUtils::GetIdFromString("ImGuiConstants");
         static int32_t textureId = ShaderUtils::GetIdFromString("_Texture");
-
-        GfxCommandContext* context = bd->GetDevice()->RequestContext(GfxCommandType::Direct);
         SetConstantBufferData(cbuffer, drawData);
 
         context->BeginEvent("DrawImGui");
@@ -355,7 +353,5 @@ namespace march
             context->DrawMesh(GfxMeshGeometry::FullScreenTriangle, bd->GetMaterial(), 1);
         }
         context->EndEvent();
-
-        context->SubmitAndRelease();
     }
 }

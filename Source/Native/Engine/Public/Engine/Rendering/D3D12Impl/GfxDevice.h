@@ -37,8 +37,7 @@ namespace march
         IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
 
-        void EndFrame();
-        void WaitForGpuIdle(bool releaseUnusedObjects = true);
+        void CleanupResources();
 
         GfxCommandManager* GetCommandManager() const { return m_CommandManager.get(); }
         GfxCommandContext* RequestContext(GfxCommandType type);
@@ -85,7 +84,6 @@ namespace march
 
         std::queue<std::pair<uint64_t, RefCountPtr<ThreadSafeRefCountedObject>>> m_ReleaseQueue;
 
-        void RefreshCompletedFrameFenceAndProcessReleaseQueue();
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);
         void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
     };

@@ -150,40 +150,22 @@ namespace march
 
     GfxDevice::~GfxDevice()
     {
-        WaitForGpuIdle(true);
+        m_CommandManager->SignalNextFrameFence(/* waitForGpuIdle */ true);
+        CleanupResources();
+        assert(m_ReleaseQueue.empty());
     }
 
-    void GfxDevice::EndFrame()
+    void GfxDevice::CleanupResources()
     {
-        RefreshCompletedFrameFenceAndProcessReleaseQueue();
+        while (!m_ReleaseQueue.empty() && m_CommandManager->IsFrameFenceCompleted(m_ReleaseQueue.front().first))
+        {
+            m_ReleaseQueue.pop();
+        }
 
         m_OnlineViewAllocator->CleanUpAllocations();
         m_OnlineSamplerAllocator->CleanUpAllocations();
         m_UploadHeapBufferSubAllocator->CleanUpAllocations();
         m_UploadHeapBufferSubAllocatorFastOneFrame->CleanUpAllocations();
-
-        m_CommandManager->SignalNextFrameFence();
-    }
-
-    void GfxDevice::WaitForGpuIdle(bool releaseUnusedObjects)
-    {
-        m_CommandManager->WaitForGpuIdle();
-
-        if (releaseUnusedObjects)
-        {
-            RefreshCompletedFrameFenceAndProcessReleaseQueue();
-            assert(m_ReleaseQueue.empty());
-        }
-    }
-
-    void GfxDevice::RefreshCompletedFrameFenceAndProcessReleaseQueue()
-    {
-        m_CommandManager->RefreshCompletedFrameFence();
-
-        while (!m_ReleaseQueue.empty() && m_CommandManager->IsFrameFenceCompleted(m_ReleaseQueue.front().first))
-        {
-            m_ReleaseQueue.pop();
-        }
     }
 
     GfxCommandContext* GfxDevice::RequestContext(GfxCommandType type)

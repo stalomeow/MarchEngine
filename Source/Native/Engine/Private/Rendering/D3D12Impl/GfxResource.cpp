@@ -102,6 +102,24 @@ namespace march
         return m_AllStatesSame ? m_State : m_SubresourceStates[subresource];
     }
 
+    bool GfxResource::AreAllStatesEqualTo(D3D12_RESOURCE_STATES states) const
+    {
+        if (m_AllStatesSame)
+        {
+            return m_State == states;
+        }
+
+        for (uint32_t i = 0; i < m_SubresourceCount; i++)
+        {
+            if (m_SubresourceStates[i] != states)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     bool GfxResource::HasAllStates(D3D12_RESOURCE_STATES states) const
     {
         if (m_AllStatesSame)

@@ -43,6 +43,7 @@ namespace march
 
         void LockState(bool lock);
         D3D12_RESOURCE_STATES GetState(uint32_t subresource) const;
+        bool AreAllStatesEqualTo(D3D12_RESOURCE_STATES states) const;
         bool HasAllStates(D3D12_RESOURCE_STATES states) const;
         bool HasAnyStates(D3D12_RESOURCE_STATES states) const;
         void SetState(D3D12_RESOURCE_STATES state);

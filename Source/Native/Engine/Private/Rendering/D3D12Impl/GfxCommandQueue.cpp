@@ -73,13 +73,13 @@ namespace march
     GfxCommandManager::GfxCommandManager(GfxDevice* device)
         : m_Device(device)
         , m_ContextStore{}
-        , m_CompletedFence(0)
+        , m_CompletedFrameFence(0)
     {
         GfxCommandQueueDesc queueDesc{};
         queueDesc.Priority = 0;
         queueDesc.DisableGpuTimeout = false;
 
-        for (size_t i = 0; i < std::size(m_Commands); i++)
+        for (size_t i = 0; i < std::size(m_QueueData); i++)
         {
             std::string queueName;
 
@@ -101,20 +101,20 @@ namespace march
                 throw std::runtime_error("Unsupported command type");
             }
 
-            m_Commands[i].Queue = std::make_unique<GfxCommandQueue>(device, queueName, queueDesc);
-            m_Commands[i].FrameFence = std::make_unique<GfxFence>(device, queueName + "FrameFence", m_CompletedFence);
-            m_Commands[i].FreeContexts = {};
+            m_QueueData[i].Queue = std::make_unique<GfxCommandQueue>(device, queueName, queueDesc);
+            m_QueueData[i].FrameFence = std::make_unique<GfxFence>(device, queueName + "FrameFence", m_CompletedFrameFence);
+            m_QueueData[i].FreeContexts = {};
         }
     }
 
     GfxCommandQueue* GfxCommandManager::GetQueue(GfxCommandType type) const
     {
-        return m_Commands[static_cast<size_t>(type)].Queue.get();
+        return m_QueueData[static_cast<size_t>(type)].Queue.get();
     }
 
     GfxCommandContext* GfxCommandManager::RequestAndOpenContext(GfxCommandType type)
     {
-        std::queue<GfxCommandContext*>& q = m_Commands[static_cast<size_t>(type)].FreeContexts;
+        std::queue<GfxCommandContext*>& q = m_QueueData[static_cast<size_t>(type)].FreeContexts;
         GfxCommandContext* result;
 
         if (!q.empty())
@@ -134,22 +134,12 @@ namespace march
 
     void GfxCommandManager::RecycleContext(GfxCommandContext* context)
     {
-        m_Commands[static_cast<size_t>(context->GetType())].FreeContexts.push(context);
-    }
-
-    void GfxCommandManager::RefreshCompletedFrameFence()
-    {
-        m_CompletedFence = std::numeric_limits<uint64_t>::max();
-
-        for (auto& c : m_Commands)
-        {
-            m_CompletedFence = std::min(m_CompletedFence, c.FrameFence->GetCompletedValue());
-        }
+        m_QueueData[static_cast<size_t>(context->GetType())].FreeContexts.push(context);
     }
 
     uint64_t GfxCommandManager::GetCompletedFrameFence() const
     {
-        return m_CompletedFence;
+        return m_CompletedFrameFence;
     }
 
     bool GfxCommandManager::IsFrameFenceCompleted(uint64_t fence) const
@@ -160,34 +150,33 @@ namespace march
     uint64_t GfxCommandManager::GetNextFrameFence() const
     {
         // All queues should have the same value
-        return m_Commands[0].FrameFence->GetNextValue();
+        return m_QueueData[0].FrameFence->GetNextValue();
     }
 
-    uint64_t GfxCommandManager::SignalNextFence()
+    void GfxCommandManager::SignalNextFrameFence(bool waitForGpuIdle)
     {
-        uint64_t value;
+        uint64_t fence;
 
-        for (auto& c : m_Commands)
+        for (auto& data : m_QueueData)
         {
             // All queues should have the same value
-            value = c.FrameFence->SignalNextValueOnGpu(c.Queue->GetQueue());
+            fence = data.FrameFence->SignalNextValueOnGpu(data.Queue->GetQueue());
         }
 
-        return value;
-    }
-
-    void GfxCommandManager::SignalNextFrameFence()
-    {
-        SignalNextFence();
-    }
-
-    void GfxCommandManager::WaitForGpuIdle()
-    {
-        uint64_t fence = SignalNextFence();
-
-        for (auto& c : m_Commands)
+        if (waitForGpuIdle)
         {
-            c.FrameFence->WaitOnCpu(fence);
+            for (auto& data : m_QueueData)
+            {
+                data.FrameFence->WaitOnCpu(fence);
+            }
+        }
+
+        // Refresh the completed frame fence
+        m_CompletedFrameFence = std::numeric_limits<uint64_t>::max();
+
+        for (auto& data : m_QueueData)
+        {
+            m_CompletedFrameFence = std::min(m_CompletedFrameFence, data.FrameFence->GetCompletedValue());
         }
     }
 }

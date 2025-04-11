@@ -3,6 +3,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxCommand.h"
 #include "Engine/Rendering/D3D12Impl/GfxTexture.h"
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
+#include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 
 using namespace Microsoft::WRL;
@@ -61,26 +62,75 @@ namespace march
         CloseHandle(m_FrameLatencyHandle);
     }
 
-    void GfxSwapChain::Resize(uint32_t width, uint32_t height)
+    uint32_t GfxSwapChain::GetPixelWidth() const
     {
-        // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
-        // You can't resize a swap chain unless you release all outstanding references to its back buffers.
-        // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
-        for (uint32_t i = 0; i < BackBufferCount; i++)
+        return m_BackBuffers[0]->GetDesc().Width;
+    }
+
+    uint32_t GfxSwapChain::GetPixelHeight() const
+    {
+        return m_BackBuffers[0]->GetDesc().Height;
+    }
+
+    void GfxSwapChain::NewFrame(uint32_t width, uint32_t height, bool willQuit)
+    {
+        bool needResize;
+
+        if (willQuit)
         {
-            m_BackBuffers[i].reset();
+            needResize = false;
+        }
+        else
+        {
+            if (width == GetPixelWidth() && height == GetPixelHeight())
+            {
+                needResize = false;
+            }
+            else
+            {
+                needResize = true;
+
+                // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
+                // You can't resize a swap chain unless you release all outstanding references to its back buffers.
+                // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
+                for (uint32_t i = 0; i < BackBufferCount; i++)
+                {
+                    m_BackBuffers[i].reset();
+                }
+            }
+
+            // Wait for frame latency
+            WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
         }
 
-        m_Device->WaitForGpuIdle(/* releaseUnusedObjects */ true);
+        // 如果要 Resize，则必须等待旧的 Back Buffer 使用完毕
+        m_Device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ needResize);
+        m_Device->CleanupResources();
 
-        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-        CHECK_HR(m_SwapChain->GetDesc1(&swapChainDesc));
-        CHECK_HR(m_SwapChain->ResizeBuffers(swapChainDesc.BufferCount,
-            static_cast<UINT>(width), static_cast<UINT>(height),
-            swapChainDesc.Format, swapChainDesc.Flags));
+        if (needResize)
+        {
+            DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+            CHECK_HR(m_SwapChain->GetDesc1(&swapChainDesc));
+            CHECK_HR(m_SwapChain->ResizeBuffers(swapChainDesc.BufferCount,
+                static_cast<UINT>(width), static_cast<UINT>(height), swapChainDesc.Format, swapChainDesc.Flags));
 
-        m_CurrentBackBufferIndex = 0;
-        CreateBackBuffers();
+            m_CurrentBackBufferIndex = 0;
+            CreateBackBuffers();
+        }
+    }
+
+    void GfxSwapChain::Present(bool willQuit)
+    {
+        if (willQuit)
+        {
+            return;
+        }
+
+        // 需要外部保证当前的 back buffer 是在 D3D12_RESOURCE_STATE_PRESENT 状态
+        assert(GetBackBuffer()->GetUnderlyingResource()->AreAllStatesEqualTo(D3D12_RESOURCE_STATE_PRESENT));
+
+        CHECK_HR(m_SwapChain->Present(0, 0)); // No vsync
+        m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }
 
     void GfxSwapChain::CreateBackBuffers()
@@ -97,23 +147,9 @@ namespace march
         {
             ComPtr<ID3D12Resource> backBuffer = nullptr;
             CHECK_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
+            GfxUtils::SetName(backBuffer.Get(), "BackBuffer" + std::to_string(i));
 
             m_BackBuffers[i] = std::make_unique<GfxRenderTexture>(m_Device, backBuffer, desc);
         }
-    }
-
-    void GfxSwapChain::WaitForFrameLatency() const
-    {
-        WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
-    }
-
-    void GfxSwapChain::Present()
-    {
-        GfxCommandContext* context = m_Device->RequestContext(CommandType);
-        context->TransitionResource(GetBackBuffer()->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PRESENT);
-        context->SubmitAndRelease();
-
-        CHECK_HR(m_SwapChain->Present(0, 0)); // No vsync
-        m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }
 }

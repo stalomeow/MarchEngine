@@ -133,29 +133,26 @@ namespace march
         GfxCommandContext* RequestAndOpenContext(GfxCommandType type);
         void RecycleContext(GfxCommandContext* context);
 
-        void RefreshCompletedFrameFence();
         uint64_t GetCompletedFrameFence() const;
         bool IsFrameFenceCompleted(uint64_t fence) const;
         uint64_t GetNextFrameFence() const;
-
-        void SignalNextFrameFence();
-        void WaitForGpuIdle();
+        void SignalNextFrameFence(bool waitForGpuIdle);
 
         GfxDevice* GetDevice() const { return m_Device; }
 
     private:
-        struct
+        struct QueueData
         {
             std::unique_ptr<GfxCommandQueue> Queue;
             std::unique_ptr<GfxFence> FrameFence;
             std::queue<GfxCommandContext*> FreeContexts;
-        } m_Commands[static_cast<size_t>(GfxCommandType::NumTypes)];
+        };
+
+        QueueData m_QueueData[static_cast<size_t>(GfxCommandType::NumTypes)];
 
         GfxDevice* m_Device;
         std::vector<std::unique_ptr<GfxCommandContext>> m_ContextStore; // 保存所有分配的 command context，用于释放资源
-        uint64_t m_CompletedFence; // cache
-
-        uint64_t SignalNextFence();
+        uint64_t m_CompletedFrameFence; // cache
     };
 
     enum class GfxClearFlags
@@ -253,6 +250,8 @@ namespace march
         void CopyTexture(GfxTexture* sourceTexture, GfxTextureElement sourceElement, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxTextureElement destinationElement, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
         void CopyTexture(GfxTexture* sourceTexture, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
         void CopyTexture(GfxTexture* sourceTexture, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
+
+        void PrepareForPresent(GfxRenderTexture* texture);
 
         GfxDevice* GetDevice() const { return m_Device; }
         GfxCommandType GetType() const { return m_Type; }

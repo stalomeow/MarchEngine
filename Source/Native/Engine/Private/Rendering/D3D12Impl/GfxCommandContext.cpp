@@ -1136,4 +1136,9 @@ namespace march
     {
         CopyTexture(sourceTexture, GfxTextureElement::Default, sourceFace, sourceArraySlice, sourceMipSlice, destinationTexture, GfxTextureElement::Default, destinationFace, destinationArraySlice, destinationMipSlice);
     }
+
+    void GfxCommandContext::PrepareForPresent(GfxRenderTexture* texture)
+    {
+        TransitionResource(texture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PRESENT);
+    }
 }

@@ -18,9 +18,11 @@ namespace march
         GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height);
         ~GfxSwapChain();
 
-        void Resize(uint32_t width, uint32_t height);
-        void WaitForFrameLatency() const;
-        void Present();
+        uint32_t GetPixelWidth() const;
+        uint32_t GetPixelHeight() const;
+
+        void NewFrame(uint32_t width, uint32_t height, bool willQuit);
+        void Present(bool willQuit);
 
         GfxRenderTexture* GetBackBuffer() const { return m_BackBuffers[m_CurrentBackBufferIndex].get(); }
 

@@ -51,7 +51,7 @@ namespace march
         return m_ColorBuffer->GetDesc().Height;
     }
 
-    void Display::Resize(uint32_t width, uint32_t height)
+    void Display::EnsureSize(uint32_t width, uint32_t height)
     {
         if (width == GetPixelWidth() && height == GetPixelHeight())
         {

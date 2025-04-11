@@ -113,9 +113,9 @@ namespace march
             m_Display = std::make_unique<Display>("EditorSceneView", width, height);
             m_Display->SetEnableMSAA(m_EnableMSAA);
         }
-        else if (m_Display->GetPixelWidth() != width || m_Display->GetPixelHeight() != height)
+        else
         {
-            m_Display->Resize(width, height);
+            m_Display->EnsureSize(width, height);
         }
 
         return m_Display.get();

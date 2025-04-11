@@ -272,7 +272,7 @@ namespace march
     {
         BusyProgressBar::EnabledScope busyScope(m_ProgressBar.get());
 
-        m_SwapChain->WaitForFrameLatency();
+        m_SwapChain->NewFrame(GetClientWidth(), GetClientHeight(), willQuit);
 
         // Start the Dear ImGui frame
         ImGui_ImplDX12_NewFrame();
@@ -309,25 +309,21 @@ namespace march
                 DrawBaseImGui();
 
                 DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
-                rp->Render();
 
+                rp->Render();
                 ImGui::Render();
-                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_SwapChain->GetBackBuffer());
+
+                // Render ImGui to the back buffer and prepare for present
+                GfxCommandContext* context = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+                GfxRenderTexture* backBuffer = m_SwapChain->GetBackBuffer();
+                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context, backBuffer);
+                context->PrepareForPresent(backBuffer);
+                context->SubmitAndRelease();
             }
         }
 
         ImGui::EndFrame();
-        GetGfxDevice()->EndFrame();
-
-        if (!willQuit)
-        {
-            m_SwapChain->Present();
-        }
-    }
-
-    void EditorApplication::OnResize()
-    {
-        m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
+        m_SwapChain->Present(willQuit);
     }
 
     static std::string GetFontPath(Application* app, std::string fontName)
