@@ -153,9 +153,13 @@ builder.EnableAsyncCompute(true);
 
 RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后综合决定是否启用 Async Compute。
 
-下面是 PIX GPU Capture 和 Timing Capture 的结果
+下面是 PIX GPU Capture 的结果
 
 <p align="center"><img src="Documentation/Attachments/async-compute-pix-gpu.png"></p>
+
+> Note that PIX on Windows does not currently overlap GPU work on different queues while analyzing timing in GPU Captures. Consider taking a Timing Capture if you want to see overlapping async compute timing data. In GPU Captures, if a game uses async compute to execute rendering and compute work simultaneously, then PIX will instead measure first one and then the other.  This may result in shorter reported durations for each part of the work compared to how it would execute inside the original game (due to reduced contention on the GPU) but a longer total time (due to reduced parallelization). [^1]
+
+下面是 PIX Timing Capture 的结果
 
 <p align="center"><img src="Documentation/Attachments/async-compute-pix-timing.png"></p>
 
@@ -207,3 +211,5 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 - 基于线程池的简易 JobSystem
 - 主线程繁忙时，自动显示进度条，避免用户认为引擎卡死
 - 使用对象池和 `StringBuilder` 减少 GC 分配
+
+[^1]: https://devblogs.microsoft.com/pix/gpu-captures/
