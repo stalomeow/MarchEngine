@@ -109,7 +109,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib;comctl32.lib;GFSDK_Aftermath_Lib.$(Platform).lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\</AdditionalLibraryDirectories>
       <AdditionalOptions>/WHOLEARCHIVE:Engine.lib %(AdditionalOptions)</AdditionalOptions>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
@@ -152,8 +152,8 @@ exit 0</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib;comctl32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib;comctl32.lib;GFSDK_Aftermath_Lib.$(Platform).lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\</AdditionalLibraryDirectories>
       <AdditionalOptions>/WHOLEARCHIVE:Engine.lib %(AdditionalOptions)</AdditionalOptions>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
@@ -174,7 +174,7 @@ xcopy /y /d "$(SolutionDir)Build\Output\Managed\ShaderLab\$(Configuration)\net9.
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\ShaderLab\$(Configuration)\net9.0\Antlr4.Runtime.Standard.dll" "$(TargetDir)Managed\"
 robocopy "$(SolutionDir)Resources" "$(TargetDir)Resources" /MIR
 robocopy "$(SolutionDir)Source\Shaders\Public" "$(TargetDir)Shaders" /MIR
-robocopy "$(SolutionDir)Runtime\Win64" "$(TargetDir)Runtime" /MIR
+robocopy "$(SolutionDir)Binaries\Runtime\Win64" "$(TargetDir)Runtime" /MIR
 exit 0</Command>
       <Outputs>$(TargetDir)dummy_output;%(Outputs)</Outputs>
     </CustomBuildStep>
