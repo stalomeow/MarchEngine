@@ -60,6 +60,10 @@
     <ClInclude Include="Public\Engine\InlineArray.h" />
     <ClInclude Include="Public\Engine\ImGui\ImGuiStyleManager.h" />
     <ClInclude Include="Public\Engine\Misc\DeferFunc.h" />
+    <ClInclude Include="ThirdParty\GFSDK_Aftermath.h" />
+    <ClInclude Include="ThirdParty\GFSDK_Aftermath_Defines.h" />
+    <ClInclude Include="ThirdParty\GFSDK_Aftermath_GpuCrashDump.h" />
+    <ClInclude Include="ThirdParty\GFSDK_Aftermath_GpuCrashDumpDecoding.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />

@@ -11,9 +11,11 @@
 
 ## 项目结构
 
+- Binaries
+  - NsightAftermath：[NVIDIA Nsight Aftermath SDK](https://developer.nvidia.com/nsight-aftermath)
+  - Runtime：[.NET Runtime](https://dotnet.microsoft.com/en-us/download)
 - Documentation：文档
 - Resources：内置资源
-- Runtime：存放 .NET Runtime
 - Source
   - Managed
     - Binding：C# Binding 生成器

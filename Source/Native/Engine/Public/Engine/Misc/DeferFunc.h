@@ -21,8 +21,8 @@ namespace march::DeferFuncPrivate
         DeferFunc(const DeferFunc&) = delete;
         DeferFunc& operator=(const DeferFunc&) = delete;
 
-        DeferFunc(DeferFunc&&) = default;
-        DeferFunc& operator=(DeferFunc&&) = default;
+        DeferFunc(DeferFunc&&) = delete;
+        DeferFunc& operator=(DeferFunc&&) = delete;
 
     private:
         FuncType m_Func;
