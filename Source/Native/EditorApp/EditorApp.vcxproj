@@ -109,7 +109,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib;comctl32.lib;GFSDK_Aftermath_Lib.$(Platform).lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/WHOLEARCHIVE:Engine.lib %(AdditionalOptions)</AdditionalOptions>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
@@ -153,7 +153,7 @@ exit 0</Command>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;comdlg32.lib;comctl32.lib;GFSDK_Aftermath_Lib.$(Platform).lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)Build\Output\Native\Engine\$(Configuration)\$(Platform)\;$(SolutionDir)Binaries\NsightAftermath\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/WHOLEARCHIVE:Engine.lib %(AdditionalOptions)</AdditionalOptions>
       <DelayLoadDLLs>
       </DelayLoadDLLs>
