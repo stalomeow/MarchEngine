@@ -74,6 +74,40 @@ namespace march
         }
     }
 
+    D3D12_ROOT_SIGNATURE_FLAGS ShaderPass::GetRootSignatureFlags(const ProgramMatch& m)
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_root_signature_flags
+        // The value in denying access to shader stages is a minor optimization on some hardware.
+        // If, for example, the D3D12_SHADER_VISIBILITY_ALL flag has been set to broadcast the root signature to all shader stages,
+        // then denying access can overrule this and save the hardware some work.
+        // Alternatively if the shader is so simple that no root signature resources are needed,
+        // then denying access could be used here too.
+
+        constexpr D3D12_ROOT_SIGNATURE_FLAGS denyAccessFlags[] =
+        {
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS,
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS,
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS,
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS,
+            D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS,
+        };
+
+        D3D12_ROOT_SIGNATURE_FLAGS flags
+            = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+
+        for (size_t i = 0; i < NumProgramTypes; i++)
+        {
+            if (!m.Indices[i])
+            {
+                flags |= denyAccessFlags[i];
+            }
+        }
+
+        return flags;
+    }
+
     bool Shader::CompilePass(size_t passIndex, const std::string& filename, const std::string& source, const std::vector<std::string>& pragmas, std::vector<std::string>& warnings, std::string& error)
     {
         auto recordConstantBufferCallback = [this](ID3D12ShaderReflectionConstantBuffer* cbuffer) -> void

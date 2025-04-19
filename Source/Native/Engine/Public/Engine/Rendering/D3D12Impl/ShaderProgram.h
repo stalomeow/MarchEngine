@@ -269,6 +269,7 @@ namespace march
         virtual std::string GetTargetProfile(const std::string& shaderModel, size_t programType) = 0;
         virtual std::string GetProgramTypePreprocessorMacro(size_t programType) = 0;
         virtual void RecordEntrypointCallback(size_t programType, std::string& entrypoint) = 0;
+        virtual D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureFlags(const ProgramMatch& m) = 0;
 
     private:
         struct CompilationConfig
@@ -485,7 +486,7 @@ namespace march
         CD3DX12_ROOT_SIGNATURE_DESC desc(
             static_cast<UINT>(params.size()), params.data(),
             static_cast<UINT>(staticSamplers.size()), staticSamplers.data(),
-            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+            GetRootSignatureFlags(m));
 
         result->m_RootSignature = ShaderRootSignatureInternalUtils::CreateRootSignature(desc);
         return (m_RootSignatures[m.Hash] = std::move(result)).get();

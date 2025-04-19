@@ -205,6 +205,7 @@ namespace march
         std::string GetTargetProfile(const std::string& shaderModel, size_t programType) override;
         std::string GetProgramTypePreprocessorMacro(size_t programType) override;
         void RecordEntrypointCallback(size_t programType, std::string& entrypoint) override {}
+        D3D12_ROOT_SIGNATURE_FLAGS GetRootSignatureFlags(const ProgramMatch& m) override;
     };
 
     class Shader : public MarchObject

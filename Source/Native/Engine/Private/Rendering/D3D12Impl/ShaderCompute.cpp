@@ -41,6 +41,31 @@ namespace march
         entrypoint = GetName();
     }
 
+    D3D12_ROOT_SIGNATURE_FLAGS ComputeShaderKernel::GetRootSignatureFlags(const ProgramMatch& m)
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_root_signature_flags
+        // The value in denying access to shader stages is a minor optimization on some hardware.
+        // If, for example, the D3D12_SHADER_VISIBILITY_ALL flag has been set to broadcast the root signature to all shader stages,
+        // then denying access can overrule this and save the hardware some work.
+        // Alternatively if the shader is so simple that no root signature resources are needed,
+        // then denying access could be used here too.
+
+        // D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
+        // The app is opting in to using the Input Assembler (requiring an input layout that defines a set of vertex buffer bindings).
+        // Omitting this flag can result in one root argument space being saved on some hardware.
+        // Omit this flag if the Input Assembler is not required, though the optimization is minor.
+
+        constexpr D3D12_ROOT_SIGNATURE_FLAGS flags
+            = D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS
+            | D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+        return flags;
+    }
+
     std::optional<size_t> ComputeShader::FindKernel(const std::string& name) const
     {
         for (size_t i = 0; i < m_Kernels.size(); i++)
