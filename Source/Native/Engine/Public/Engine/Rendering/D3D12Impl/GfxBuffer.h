@@ -37,6 +37,11 @@ namespace march
         AppendStructured = 1 << 8,
         ConsumeStructured = 1 << 9,
         RWByteAddress = 1 << 10,
+
+        IndirectArgument = 1 << 11,
+
+        Query = Copy,                   // 用于 ResolveQueryData
+        Predication = IndirectArgument, // 用于 SetPredication
     };
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxBufferUsages);

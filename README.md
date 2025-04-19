@@ -57,7 +57,7 @@ public class ShaderIncludeImporter : AssetImporter
 
 ### D3D12
 
-- 实现了一套类似 Unity SRP 的 D3D12RHI，屏蔽了 Descriptor / View / PipelineState / RootSignature 等底层细节
+- 实现了一套类似 Unity 的 D3D12RHI，屏蔽了 Descriptor / View / PipelineState / RootSignature 等底层细节
 - 自动处理并合批 Resource Barrier，支持 Subresource 级别的状态管理
 - 视锥体剔除 / 材质合批（类似 Unity SRP Batcher）/ 自动 GPU Instancing / 支持 Odd Negative Scaling
 - 实现了 Linear Allocator 和 Buddy Allocator，并支持多种资源分配方式 Committed / Placed / Suballocation

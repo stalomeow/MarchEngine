@@ -82,6 +82,9 @@ namespace march
         , m_NumScissorRects(0)
         , m_ScissorRects{}
         , m_OutputDesc{}
+        , m_CurrentPredicationBuffer(nullptr)
+        , m_CurrentPredicationOffset(0)
+        , m_CurrentPredicationOperation(D3D12_PREDICATION_OP_EQUAL_ZERO)
         , m_CurrentPipelineState(nullptr)
         , m_CurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_UNDEFINED)
         , m_CurrentVertexBuffer{}
@@ -144,6 +147,9 @@ namespace march
         m_NumViewports = 0;
         m_NumScissorRects = 0;
         m_OutputDesc = {};
+        m_CurrentPredicationBuffer = nullptr;
+        m_CurrentPredicationOffset = 0;
+        m_CurrentPredicationOperation = D3D12_PREDICATION_OP_EQUAL_ZERO;
         m_CurrentPipelineState = nullptr;
         m_CurrentPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
         m_CurrentVertexBuffer = {};
@@ -554,6 +560,28 @@ namespace march
         {
             m_OutputDesc.Wireframe = value;
             m_OutputDesc.MarkDirty();
+        }
+    }
+
+    void GfxCommandContext::SetPredication(GfxBuffer* buffer, uint32_t alignedOffset, D3D12_PREDICATION_OP operation)
+    {
+        if (m_CurrentPredicationBuffer != buffer || m_CurrentPredicationOffset != alignedOffset || m_CurrentPredicationOperation != operation)
+        {
+            m_CurrentPredicationBuffer = buffer;
+            m_CurrentPredicationOffset = alignedOffset;
+            m_CurrentPredicationOperation = operation;
+
+            if (buffer != nullptr)
+            {
+                TransitionResource(buffer->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PREDICATION);
+                FlushResourceBarriers();
+
+                m_CommandList->SetPredication(buffer->GetUnderlyingD3DResource(), static_cast<UINT64>(alignedOffset), operation);
+            }
+            else
+            {
+                m_CommandList->SetPredication(nullptr, static_cast<UINT64>(alignedOffset), operation);
+            }
         }
     }
 

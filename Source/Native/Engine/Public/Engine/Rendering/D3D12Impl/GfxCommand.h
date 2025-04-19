@@ -228,6 +228,10 @@ namespace march
         void SetDefaultDepthBias();
         void SetWireframe(bool value);
 
+        // Use this method to denote that subsequent rendering and resource manipulation commands are not actually performed
+        // if the resulting predicate data of the predicate is equal to the operation specified.
+        void SetPredication(GfxBuffer* buffer, uint32_t alignedOffset = 0, D3D12_PREDICATION_OP operation = D3D12_PREDICATION_OP_EQUAL_ZERO);
+
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex);
         void DrawMesh(GfxMeshGeometry geometry, Material* material, size_t shaderPassIndex, const DirectX::XMFLOAT4X4& matrix);
         void DrawMesh(GfxMesh* mesh, uint32_t subMeshIndex, Material* material, size_t shaderPassIndex);
@@ -287,6 +291,10 @@ namespace march
         D3D12_RECT m_ScissorRects[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 
         GfxOutputDesc m_OutputDesc;
+
+        GfxBuffer* m_CurrentPredicationBuffer;
+        uint32_t m_CurrentPredicationOffset;
+        D3D12_PREDICATION_OP m_CurrentPredicationOperation;
 
         ID3D12PipelineState* m_CurrentPipelineState;
 
