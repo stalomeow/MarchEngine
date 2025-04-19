@@ -13,6 +13,7 @@
 #include "Engine/ImGui/ImGuiStyleManager.h"
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Misc/PathUtils.h"
+#include "Engine/Misc/DeferFunc.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Profiling/FrameDebugger.h"
 #include "Engine/Debug.h"
@@ -270,7 +271,8 @@ namespace march
 
     void EditorApplication::OnTick(bool willQuit)
     {
-        BusyProgressBar::EnabledScope busyScope(m_ProgressBar.get());
+        m_ProgressBar->BeginEnabledScope();
+        DEFER_FUNC() { m_ProgressBar->EndEnabledScope(); };
 
         m_SwapChain->NewFrame(GetClientWidth(), GetClientHeight(), willQuit);
 

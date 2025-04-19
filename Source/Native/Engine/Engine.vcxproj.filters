@@ -59,6 +59,7 @@
     <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
     <ClInclude Include="Public\Engine\InlineArray.h" />
     <ClInclude Include="Public\Engine\ImGui\ImGuiStyleManager.h" />
+    <ClInclude Include="Public\Engine\Misc\DeferFunc.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />

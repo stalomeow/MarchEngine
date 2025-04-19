@@ -33,13 +33,5 @@ namespace march
         void ReportAlive();
         void BeginEnabledScope();
         void EndEnabledScope();
-
-        struct EnabledScope
-        {
-            BusyProgressBar* ProgressBar;
-
-            EnabledScope(BusyProgressBar* bar) : ProgressBar(bar) { ProgressBar->BeginEnabledScope(); }
-            ~EnabledScope() { ProgressBar->EndEnabledScope(); }
-        };
     };
 }

@@ -15,6 +15,7 @@
     <ClInclude Include="Public\Engine\ImGui\ImGuiStyleManager.h" />
     <ClInclude Include="Public\Engine\InlineArray.h" />
     <ClInclude Include="Public\Engine\Memory\RefCounting.h" />
+    <ClInclude Include="Public\Engine\Misc\DeferFunc.h" />
     <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12.h" />
