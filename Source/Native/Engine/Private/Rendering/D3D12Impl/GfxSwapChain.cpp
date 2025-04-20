@@ -129,7 +129,8 @@ namespace march
         // 需要外部保证当前的 back buffer 是在 D3D12_RESOURCE_STATE_PRESENT 状态
         assert(GetBackBuffer()->GetUnderlyingResource()->AreAllStatesEqualTo(D3D12_RESOURCE_STATE_PRESENT));
 
-        CHECK_HR(m_SwapChain->Present(0, 0)); // No vsync
+        // TODO VSync
+        CHECK_HR(m_SwapChain->Present(0, 0));
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
     }
 

@@ -3,6 +3,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
+#include "Engine/Profiling/NsightAftermath.h"
 #include "Engine/Debug.h"
 #include <stdexcept>
 #include <assert.h>
@@ -37,6 +38,7 @@ namespace march
         , m_AllStatesSame(true)
         , m_State(state)
         , m_SubresourceStates(nullptr)
+        , m_NsightAftermathHandle(NsightAftermath::RegisterResource(resource.Get()))
     {
         m_SubresourceCount = CalcSubresourceCount(m_Device->GetD3DDevice4(), m_Resource.Get());
         assert(m_SubresourceCount >= 1);
@@ -51,6 +53,7 @@ namespace march
         , m_AllStatesSame(true)
         , m_State(state)
         , m_SubresourceStates(nullptr)
+        , m_NsightAftermathHandle(NsightAftermath::RegisterResource(resource.Get()))
     {
         m_SubresourceCount = CalcSubresourceCount(m_Device->GetD3DDevice4(), m_Resource.Get());
         assert(m_SubresourceCount >= 1);
@@ -58,6 +61,9 @@ namespace march
 
     GfxResource::~GfxResource()
     {
+        NsightAftermath::UnregisterResource(m_NsightAftermathHandle);
+        m_NsightAftermathHandle = nullptr;
+
 #ifdef ENABLE_GFX_DEBUG_NAME
         //if (m_Resource)
         //{

@@ -118,6 +118,7 @@
     <CustomBuildStep>
       <Message>Copy Files</Message>
       <Command>xcopy /y /d "$(VcpkgInstalledDir)\$(VcpkgTriplet)\bin\dxil.dll" "$(TargetDir)"
+xcopy /y /d "$(SolutionDir)Binaries\NsightAftermath\$(Platform)\GFSDK_Aftermath_Lib.$(Platform).dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.pdb" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"
@@ -162,6 +163,7 @@ exit 0</Command>
     <CustomBuildStep>
       <Message>Copy Files</Message>
       <Command>xcopy /y /d "$(VcpkgInstalledDir)\$(VcpkgTriplet)\bin\dxil.dll" "$(TargetDir)"
+xcopy /y /d "$(SolutionDir)Binaries\NsightAftermath\$(Platform)\GFSDK_Aftermath_Lib.$(Platform).dll" "$(TargetDir)"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.dll" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.pdb" "$(TargetDir)Managed\"
 xcopy /y /d "$(SolutionDir)Build\Output\Managed\Core\$(Configuration)\net9.0\March.Core.runtimeconfig.json" "$(TargetDir)Managed\"

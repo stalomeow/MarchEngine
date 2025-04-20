@@ -89,14 +89,15 @@ namespace march
 
         static void Capture(uint32_t numFrames)
         {
-            fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Captures");
+            fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Logs");
 
             if (!fs::exists(path) && !fs::create_directories(path))
             {
                 LOG_ERROR("Failed to create directory: {}", path.string());
+                return;
             }
 
-            path /= StringUtils::Format(L"{:%Y-%m-%d-%H-%M-%S}.wpix", fmt::localtime(std::time(nullptr)));
+            path /= StringUtils::Format(L"Capture-{:%Y-%m-%d-%H-%M-%S}.wpix", fmt::localtime(std::time(nullptr)));
 
             if (SUCCEEDED(PIXGpuCaptureNextFrames(path.c_str(), static_cast<UINT32>(numFrames))))
             {

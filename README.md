@@ -67,6 +67,19 @@ public class ShaderIncludeImporter : AssetImporter
 - Shader 也支持热重载，IDE 里修改后，回到引擎立即生效
 - 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
+### GPU Crash
+
+- 集成了 [NVIDIA Nsight Aftermath SDK](https://developer.nvidia.com/nsight-aftermath)
+
+<p align="center"><img src="Documentation/Attachments/gpu-crash-message.png"></p>
+
+在 GPU 崩溃时，会有弹窗提示崩溃原因
+
+- 如果是 CPU 代码导致的错误，在有调试器附加时，会自动在相关位置设置断点，方便检查问题
+- 如果是 GPU 侧导致的错误，会在项目的 Logs 目录下生成 `nv-gpudmp` 文件，可以用 [NVIDIA Nsight Graphics](https://developer.nvidia.com/nsight-graphics) 打开来检查问题
+
+<p align="center"><img src="Documentation/Attachments/gpu-crash-dumps.png"></p>
+
 ### RenderGraph
 
 - 自动计算资源的生命周期，并尽可能地复用资源

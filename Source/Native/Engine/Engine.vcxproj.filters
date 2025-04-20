@@ -64,6 +64,7 @@
     <ClInclude Include="ThirdParty\GFSDK_Aftermath_Defines.h" />
     <ClInclude Include="ThirdParty\GFSDK_Aftermath_GpuCrashDump.h" />
     <ClInclude Include="ThirdParty\GFSDK_Aftermath_GpuCrashDumpDecoding.h" />
+    <ClInclude Include="Public\Engine\Profiling\NsightAftermath.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Private\Memory\Allocator.cpp" />
@@ -127,5 +128,6 @@
     <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
     <ClCompile Include="Private\Rendering\RenderPipelineResource.cpp" />
     <ClCompile Include="Private\ImGui\ImGuiStyleManager.cpp" />
+    <ClCompile Include="Private\Profiling\NsightAftermath.cpp" />
   </ItemGroup>
 </Project>

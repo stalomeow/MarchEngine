@@ -35,9 +35,10 @@ namespace march
         float GetElapsedTime() const;
         uint64_t GetFrameCount() const;
 
-        static void ShowErrorMessageBox(const std::string& message);
-        static void ShowErrorMessageBox(const std::string& title, const std::string& message);
+        void CrashWithMessage(const std::string& message, bool debugBreak = false);
+        virtual void CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak = false);
 
+        virtual const std::string& GetProjectName() const = 0;
         virtual const std::string& GetDataPath() const = 0;
         virtual const std::string& GetEngineResourcePath() const = 0;
         virtual const std::string& GetEngineShaderPath() const = 0;

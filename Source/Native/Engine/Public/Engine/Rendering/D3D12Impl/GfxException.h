@@ -17,20 +17,11 @@ namespace march
         std::string m_Message;
     };
 
-    class GfxHResultException : public std::exception
-    {
-    public:
-        GfxHResultException(HRESULT hr, const std::string& expr, const std::string& filename, int line);
-
-        char const* what() const override { return m_Message.c_str(); }
-
-    private:
-        std::string m_Message;
-    };
+    void HandleD3D12FailureAndTerminateProcess(HRESULT hr, const std::string& expr, const std::string& filename, int line);
 }
 
 #define CHECK_HR(x) \
 { \
     HRESULT ___hr___ = (x); \
-    if (FAILED(___hr___)) { throw ::march::GfxHResultException(___hr___, #x, __FILE__, __LINE__); } \
+    if (FAILED(___hr___)) { ::march::HandleD3D12FailureAndTerminateProcess(___hr___, #x, __FILE__, __LINE__); } \
 }

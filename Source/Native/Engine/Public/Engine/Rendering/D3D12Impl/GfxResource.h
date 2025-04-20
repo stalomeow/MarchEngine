@@ -34,6 +34,8 @@ namespace march
         D3D12_RESOURCE_STATES m_State; // 整个 Resource 的 State，当所有 Subresource State 一致时才有效
         std::unique_ptr<D3D12_RESOURCE_STATES[]> m_SubresourceStates;
 
+        void* m_NsightAftermathHandle;
+
     public:
         GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
         GfxResource(GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);

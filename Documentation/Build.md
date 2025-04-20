@@ -45,6 +45,7 @@
 - `--renderdoc`：启动时加载 RenderDoc，之后点击编辑器上方的相机按钮就能截帧
 - `--pix`：启动时加载 PIX，之后点击编辑器上方的相机按钮就能截帧
 - `--d3d12-debug-layer`：启用 D3D12 的调试层，能提供详细的错误信息，但运行会变卡
+- `--nvaftermath`：启用 NVIDIA Nsight Aftermath SDK 的基本功能
 
 ### 工作目录
 

@@ -22,6 +22,17 @@ namespace March.Core
 
         #endregion
 
+        #region ProjectName
+
+        private static string? s_CachedProjectName;
+
+        public static string ProjectName => s_CachedProjectName ??= GetProjectName();
+
+        [NativeMethod]
+        private static partial string GetProjectName();
+
+        #endregion
+
         #region DataPath
 
         private static string? s_CachedDataPath;

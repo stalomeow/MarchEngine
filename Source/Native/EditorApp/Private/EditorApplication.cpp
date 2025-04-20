@@ -16,6 +16,7 @@
 #include "Engine/Misc/DeferFunc.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Profiling/FrameDebugger.h"
+#include "Engine/Profiling/NsightAftermath.h"
 #include "Engine/Debug.h"
 #include <directx/d3dx12.h>
 #include <imgui.h>
@@ -42,6 +43,7 @@ namespace march
     EditorApplication::EditorApplication()
         : m_SwapChain(nullptr)
         , m_ProgressBar(nullptr)
+        , m_ProjectName{}
         , m_DataPath{}
         , m_EngineResourcePath{}
         , m_EngineShaderPath{}
@@ -63,6 +65,7 @@ namespace march
         gfx.add_argument("--renderdoc").help("Load RenderDoc plugin").flag();
         gfx.add_argument("--pix").help("Load PIX plugin").flag();
         gfx.add_argument("--d3d12-debug-layer").help("Enable D3D12 debug layer").flag();
+        gfx.add_argument("--nvaftermath").help("Enable Minimum Nsight Aftermath").flag();
 
         try
         {
@@ -73,13 +76,13 @@ namespace march
         }
         catch (const std::exception& err)
         {
-            ShowErrorMessageBox(err.what(), program.help().str());
-            std::exit(1);
+            CrashWithMessage(err.what(), program.help().str());
         }
 
         InitProject(program.get("--project"));
 
         GfxDeviceDesc desc{};
+        bool useNsightAftermath = false;
 
         if (program["--renderdoc"] == true)
         {
@@ -93,6 +96,11 @@ namespace march
         {
             desc.EnableDebugLayer = true;
         }
+        else if (program["--nvaftermath"] == true)
+        {
+            useNsightAftermath = true;
+            NsightAftermath::InitializeBeforeDeviceCreation();
+        }
 
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] = 64;
@@ -104,6 +112,11 @@ namespace march
         DotNet::InitRuntime(); // 越早越好，mixed debugger 需要 runtime 加载完后才能工作
         GfxDevice* device = InitGfxDevice(desc);
 
+        if (useNsightAftermath)
+        {
+            NsightAftermath::InitializeDevice(device->GetD3DDevice4(), NsightAftermath::FeatureFlags::Minimum);
+        }
+
         m_SwapChain = std::make_unique<GfxSwapChain>(device, GetWindowHandle(), GetClientWidth(), GetClientHeight());
         m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300 /* ms */);
 
@@ -112,14 +125,24 @@ namespace march
         InitImGui();
     }
 
+    static std::string GetNormalizedProjectPath(const std::string& path)
+    {
+        std::string result = path;
+        std::replace(result.begin(), result.end(), '\\', '/');
+        while (!result.empty() && result.back() == '/')
+        {
+            result.pop_back();
+        }
+        return result;
+    }
+
     void EditorApplication::InitProject(const std::string& path)
     {
         if (fs::exists(path))
         {
             if (!fs::is_directory(path))
             {
-                ShowErrorMessageBox("Project path is not a directory.");
-                std::exit(1);
+                Application::CrashWithMessage("Project path is not a directory.");
             }
         }
         else
@@ -127,14 +150,8 @@ namespace march
             fs::create_directories(path);
         }
 
-        m_DataPath = path;
-
-        // Normalize path
-        std::replace(m_DataPath.begin(), m_DataPath.end(), '\\', '/');
-        while (!m_DataPath.empty() && m_DataPath.back() == '/')
-        {
-            m_DataPath.pop_back();
-        }
+        m_DataPath = GetNormalizedProjectPath(path);
+        m_ProjectName = fs::path(m_DataPath).filename().string();
 
 #ifdef ENGINE_RESOURCE_UNIX_PATH
         m_EngineResourcePath = ENGINE_RESOURCE_UNIX_PATH;
@@ -214,6 +231,22 @@ namespace march
 
         DestroyGfxDevice();
         GfxUtils::ReportLiveObjects();
+    }
+
+    void EditorApplication::CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak)
+    {
+        if (m_ProgressBar)
+        {
+            // 强制关闭进度条，避免遮挡
+            m_ProgressBar->EndEnabledScope();
+            DEFER_FUNC() { m_ProgressBar->BeginEnabledScope(); };
+
+            Application::CrashWithMessage(title, message, debugBreak);
+        }
+        else
+        {
+            Application::CrashWithMessage(title, message, debugBreak);
+        }
     }
 
     void EditorApplication::DrawBaseImGui()

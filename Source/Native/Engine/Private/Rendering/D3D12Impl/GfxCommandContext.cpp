@@ -5,6 +5,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxMesh.h"
 #include "Engine/Rendering/D3D12Impl/Material.h"
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
+#include "Engine/Profiling/NsightAftermath.h"
 #include "Engine/Misc/MathUtils.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
@@ -93,7 +94,14 @@ namespace march
         , m_GlobalTextures{}
         , m_GlobalBuffers{}
         , m_InstanceBuffer{ device, "_InstanceBuffer" }
+        , m_NsightAftermathHandle(nullptr)
     {
+    }
+
+    GfxCommandContext::~GfxCommandContext()
+    {
+        NsightAftermath::ReleaseContextHandle(m_NsightAftermathHandle);
+        m_NsightAftermathHandle = nullptr;
     }
 
     void GfxCommandContext::Open()
@@ -107,6 +115,8 @@ namespace march
         {
             CHECK_HR(m_Device->GetD3DDevice4()->CreateCommandList(0, queue->GetType(),
                 m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
+
+            m_NsightAftermathHandle = NsightAftermath::CreateContextHandle(m_CommandList.Get());
         }
         else
         {
@@ -167,11 +177,13 @@ namespace march
     void GfxCommandContext::BeginEvent(const std::string& name)
     {
         PIXBeginEvent(m_CommandList.Get(), 0, name.c_str());
+        NsightAftermath::SetEventMarker(m_NsightAftermathHandle, name);
     }
 
     void GfxCommandContext::EndEvent()
     {
         PIXEndEvent(m_CommandList.Get());
+        NsightAftermath::SetEventMarker(m_NsightAftermathHandle, "EndEvent");
     }
 
     static bool NeedTransition(D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)

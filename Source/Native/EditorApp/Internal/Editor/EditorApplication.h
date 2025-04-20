@@ -16,12 +16,15 @@ namespace march
         EditorApplication();
         ~EditorApplication() override;
 
+        const std::string& GetProjectName() const override { return m_ProjectName; }
         const std::string& GetDataPath() const override { return m_DataPath; }
         const std::string& GetEngineResourcePath() const override { return m_EngineResourcePath; }
         const std::string& GetEngineShaderPath() const override { return m_EngineShaderPath; }
         bool IsEngineResourceEditable() const override;
         bool IsEngineShaderEditable() const override;
         std::string SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const;
+
+        void CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak = false) override;
 
     protected:
         LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) override;
@@ -42,6 +45,7 @@ namespace march
         std::unique_ptr<GfxSwapChain> m_SwapChain;
         std::unique_ptr<BusyProgressBar> m_ProgressBar;
 
+        std::string m_ProjectName;
         std::string m_DataPath;
         std::string m_EngineResourcePath;
         std::string m_EngineShaderPath;

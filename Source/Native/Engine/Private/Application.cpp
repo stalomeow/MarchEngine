@@ -118,7 +118,7 @@ namespace march
         catch (const std::exception& e)
         {
             OnQuit();
-            ShowErrorMessageBox(e.what());
+            CrashWithMessage(e.what());
             return 0;
         }
 #endif
@@ -140,7 +140,7 @@ namespace march
 
         if (!RegisterClassW(&wc))
         {
-            ShowErrorMessageBox("Register Window Class Failed");
+            CrashWithMessage("Register Window Class Failed");
             return false;
         }
 
@@ -159,7 +159,7 @@ namespace march
 
         if (!m_WindowHandle)
         {
-            ShowErrorMessageBox("Create Window Failed");
+            CrashWithMessage("Create Window Failed");
             return false;
         }
 
@@ -241,16 +241,27 @@ namespace march
         return static_cast<int>(msg.wParam);
     }
 
-    void Application::ShowErrorMessageBox(const std::string& message)
+    void Application::CrashWithMessage(const std::string& message, bool debugBreak)
     {
-        ShowErrorMessageBox("Error", message);
+        CrashWithMessage("Fatal Error", message, debugBreak);
     }
 
-    void Application::ShowErrorMessageBox(const std::string& title, const std::string& message)
+    void Application::CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak)
     {
         std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
         std::wstring wMessage = StringUtils::Utf8ToUtf16(message);
         MessageBoxW(NULL, wMessage.c_str(), wTitle.c_str(), MB_OK);
+
+#if defined(_DEBUG)
+        if (debugBreak && IsDebuggerPresent())
+        {
+            DebugBreak();
+        }
+#endif
+
+        // 强制退出
+        // 此时很多对象的状态已经损坏了，不应该执行任何析构函数（可能报错），所以不能用 std::exit
+        TerminateProcess(GetCurrentProcess(), EXIT_FAILURE);
     }
 
     LRESULT Application::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)

@@ -18,6 +18,7 @@
     <ClInclude Include="Public\Engine\Misc\DeferFunc.h" />
     <ClInclude Include="Public\Engine\Misc\SequenceUtils.h" />
     <ClInclude Include="Public\Engine\Profiling\FrameDebugger.h" />
+    <ClInclude Include="Public\Engine\Profiling\NsightAftermath.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxException.h" />
     <ClInclude Include="Public\Engine\Rendering\D3D12Impl\GfxPipeline.h" />
@@ -87,6 +88,7 @@
     <ClCompile Include="Private\Debug.cpp" />
     <ClCompile Include="Private\EngineTimer.cpp" />
     <ClCompile Include="Private\Profiling\FrameDebugger.cpp" />
+    <ClCompile Include="Private\Profiling\NsightAftermath.cpp" />
     <ClCompile Include="Private\Rendering\D3D12Impl\GfxPipeline.cpp" />
     <ClCompile Include="Private\Rendering\Gizmos.binding.cpp" />
     <ClCompile Include="Private\Rendering\Gizmos.cpp" />

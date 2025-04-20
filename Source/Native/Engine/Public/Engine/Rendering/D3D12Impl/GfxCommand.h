@@ -189,6 +189,7 @@ namespace march
     {
     public:
         GfxCommandContext(GfxDevice* device, GfxCommandType type);
+        ~GfxCommandContext();
 
         void Open();
         GfxSyncPoint SubmitAndRelease();
@@ -320,6 +321,8 @@ namespace march
         std::unordered_map<int32_t, GlobalBufferData> m_GlobalBuffers;
 
         GfxBuffer m_InstanceBuffer;
+
+        void* m_NsightAftermathHandle;
 
         void SetRenderTargets(uint32_t numColorTargets, const GfxRenderTargetDesc* colorTargets, const GfxRenderTargetDesc* depthStencilTarget);
         static D3D12_CPU_DESCRIPTOR_HANDLE GetRtvDsvFromRenderTargetDesc(const GfxRenderTargetDesc& desc);
