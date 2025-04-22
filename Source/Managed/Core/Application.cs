@@ -72,6 +72,17 @@ namespace March.Core
 
         #endregion
 
+        #region ShaderCachePath
+
+        private static string? s_CachedShaderCachePath;
+
+        public static string ShaderCachePath => s_CachedShaderCachePath ??= GetShaderCachePath();
+
+        [NativeMethod]
+        private static partial string GetShaderCachePath();
+
+        #endregion
+
         [NativeProperty]
         internal static partial bool IsEngineResourceEditable { get; }
 

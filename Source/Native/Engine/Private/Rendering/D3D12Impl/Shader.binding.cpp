@@ -36,7 +36,6 @@ struct CSharpShaderProgram
     cs_int Type;
     cs<cs_string[]> Keywords;
     cs<march::cs_byte[]> Hash;
-    cs<march::cs_byte[]> Binary;
     cs<CSharpShaderBuffer[]> SrvCbvBuffers;
     cs<CSharpShaderTexture[]> SrvTextures;
     cs<CSharpShaderBuffer[]> UavBuffers;
@@ -267,8 +266,7 @@ namespace march
 
                     try
                     {
-                        CHECK_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
-                            reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
+                        ShaderCompilationInternalUtils::LoadShaderBinaryByHash(program->GetHash(), program->m_Binary.ReleaseAndGetAddressOf());
                     }
                     catch (const std::exception& e)
                     {
@@ -444,7 +442,6 @@ namespace march
                         }
 
                         p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash().Data)), reinterpret_cast<const march::cs_byte*>(program->GetHash().Data));
-                        p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<const march::cs_byte*>(program->GetBinaryData()));
 
                         p.SrvCbvBuffers.assign(static_cast<int32_t>(program->GetSrvCbvBuffers().size()));
                         for (size_t bufIdx = 0; bufIdx < program->GetSrvCbvBuffers().size(); bufIdx++)
@@ -696,7 +693,6 @@ namespace march
                         }
 
                         p.Hash.assign(static_cast<int32_t>(std::size(program->GetHash().Data)), reinterpret_cast<const march::cs_byte*>(program->GetHash().Data));
-                        p.Binary.assign(static_cast<int32_t>(program->GetBinarySize()), reinterpret_cast<const march::cs_byte*>(program->GetBinaryData()));
 
                         p.SrvCbvBuffers.assign(static_cast<int32_t>(program->GetSrvCbvBuffers().size()));
                         for (size_t bufIdx = 0; bufIdx < program->GetSrvCbvBuffers().size(); bufIdx++)
@@ -794,8 +790,7 @@ namespace march
 
                     try
                     {
-                        CHECK_HR(ShaderUtils::GetDxcUtils()->CreateBlob(p.Binary.begin(), p.Binary.size(), DXC_CP_ACP,
-                            reinterpret_cast<IDxcBlobEncoding**>(program->m_Binary.ReleaseAndGetAddressOf())));
+                        ShaderCompilationInternalUtils::LoadShaderBinaryByHash(program->GetHash(), program->m_Binary.ReleaseAndGetAddressOf());
                     }
                     catch (const std::exception& e)
                     {

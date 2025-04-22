@@ -37,6 +37,11 @@ NATIVE_EXPORT_AUTO Application_GetEngineShaderPath()
     retcs GetApp()->GetEngineShaderPath();
 }
 
+NATIVE_EXPORT_AUTO Application_GetShaderCachePath()
+{
+    retcs GetApp()->GetShaderCachePath();
+}
+
 NATIVE_EXPORT_AUTO Application_GetIsEngineResourceEditable()
 {
     retcs GetApp()->IsEngineResourceEditable();

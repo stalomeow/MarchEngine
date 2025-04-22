@@ -139,7 +139,6 @@ namespace March.Core.Rendering
         public int Type;
         public string[] Keywords = [];
         public byte[] Hash = [];
-        public byte[] Binary = [];
         public ShaderBuffer[] SrvCbvBuffers = [];
         public ShaderTexture[] SrvTextures = [];
         public ShaderBuffer[] UavBuffers = [];
@@ -155,7 +154,6 @@ namespace March.Core.Rendering
             public int Type;
             public NativeArray<nint> Keywords;
             public NativeArray<byte> Hash;
-            public NativeArray<byte> Binary;
             public NativeArrayMarshal<ShaderBuffer> SrvCbvBuffers;
             public NativeArrayMarshal<ShaderTexture> SrvTextures;
             public NativeArrayMarshal<ShaderBuffer> UavBuffers;
@@ -171,7 +169,6 @@ namespace March.Core.Rendering
             Type = native.Type,
             Keywords = native.Keywords.ConvertValue((in nint s) => NativeString.Get(s)),
             Hash = native.Hash.Value,
-            Binary = native.Binary.Value,
             SrvCbvBuffers = native.SrvCbvBuffers.Value,
             SrvTextures = native.SrvTextures.Value,
             UavBuffers = native.UavBuffers.Value,
@@ -187,7 +184,6 @@ namespace March.Core.Rendering
             native.Type = value.Type;
             native.Keywords = new NativeArray<nint>(value.Keywords.Length);
             native.Hash = value.Hash;
-            native.Binary = value.Binary;
             native.SrvCbvBuffers = value.SrvCbvBuffers;
             native.SrvTextures = value.SrvTextures;
             native.UavBuffers = value.UavBuffers;
@@ -212,7 +208,6 @@ namespace March.Core.Rendering
 
             native.Hash.Dispose();
             native.Keywords.Dispose();
-            native.Binary.Dispose();
             native.SrvCbvBuffers.Dispose();
             native.SrvTextures.Dispose();
             native.UavBuffers.Dispose();

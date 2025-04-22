@@ -64,7 +64,6 @@ RenderGraph 是利用资源的读写关系构建出一张有向无环图，为�
 
 |预处理指令|描述|
 |:-|:-|
-|`#pragma enable_debug_information`|保留调试信息，默认剔除调试信息|
 |`#pragma target <sm>`|设置 Shader Model，不能低于 6.0，默认是 6.0|
 |`#pragma multi_compile <keyword1> <keyword2> ...`|创建变体，如果 `<keyword>` 是纯 `_`，则表示无 Keyword 的情况|
 |`#pragma vs <func>`|设置 Vertex Shader，在 Compute Shader 中无效|

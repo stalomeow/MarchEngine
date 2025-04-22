@@ -1,127 +1,21 @@
 #include "pch.h"
 #include "Engine/Profiling/NsightAftermath.h"
-#include "Engine/Misc/DeferFunc.h"
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Application.h"
 #include "Engine/Debug.h"
 #include "GFSDK_Aftermath.h"
 #include "GFSDK_Aftermath_GpuCrashDump.h"
 #include "GFSDK_Aftermath_GpuCrashDumpDecoding.h"
-#include <stdexcept>
+#include <type_traits>
 #include <fstream>
 #include <filesystem>
 #include <chrono>
+#include <thread>
 #include <fmt/chrono.h>
 
 namespace fs = std::filesystem;
 
-namespace march
-{
-    static void GFSDK_AFTERMATH_CALL GpuCrashDumpCallback(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData);
-    static void GFSDK_AFTERMATH_CALL ShaderDebugInfoCallback(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize, void* pUserData);
-    static void GFSDK_AFTERMATH_CALL CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addValue, void* pUserData);
-
-    static bool g_IsInitialized = false;
-
-    // Enable Nsight Aftermath GPU crash dump creation.
-    // This needs to be done before the D3D device is created.
-    void NsightAftermath::InitializeBeforeDeviceCreation()
-    {
-        if (g_IsInitialized)
-        {
-            LOG_ERROR("Nsight Aftermath is already initialized.");
-            return;
-        }
-
-        GFSDK_Aftermath_Result result = GFSDK_Aftermath_EnableGpuCrashDumps(
-            GFSDK_Aftermath_Version_API,
-            GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX,
-            GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,
-            GpuCrashDumpCallback,
-            ShaderDebugInfoCallback,
-            CrashDumpDescriptionCallback,
-            nullptr,
-            nullptr);
-
-        if (!GFSDK_Aftermath_SUCCEED(result))
-        {
-            LOG_ERROR("Nsight Aftermath failed to initialize ({:X}).", static_cast<uint32_t>(result));
-            return;
-        }
-
-        g_IsInitialized = true;
-    }
-
-    static uint32_t ConvertFeatureFlags(NsightAftermath::FeatureFlags features)
-    {
-        uint32_t flags = 0;
-
-        if ((features & NsightAftermath::FeatureFlags::EnableMarkers) == NsightAftermath::FeatureFlags::EnableMarkers)
-        {
-            flags |= GFSDK_Aftermath_FeatureFlags_EnableMarkers;
-        }
-
-        if ((features & NsightAftermath::FeatureFlags::EnableResourceTracking) == NsightAftermath::FeatureFlags::EnableResourceTracking)
-        {
-            flags |= GFSDK_Aftermath_FeatureFlags_EnableResourceTracking;
-        }
-
-        if ((features & NsightAftermath::FeatureFlags::CallStackCapturing) == NsightAftermath::FeatureFlags::CallStackCapturing)
-        {
-            flags |= GFSDK_Aftermath_FeatureFlags_CallStackCapturing;
-        }
-
-        if ((features & NsightAftermath::FeatureFlags::GenerateShaderDebugInfo) == NsightAftermath::FeatureFlags::GenerateShaderDebugInfo)
-        {
-            flags |= GFSDK_Aftermath_FeatureFlags_GenerateShaderDebugInfo;
-        }
-
-        if ((features & NsightAftermath::FeatureFlags::EnableShaderErrorReporting) == NsightAftermath::FeatureFlags::EnableShaderErrorReporting)
-        {
-            flags |= GFSDK_Aftermath_FeatureFlags_EnableShaderErrorReporting;
-        }
-
-        return flags;
-    }
-
-    void NsightAftermath::InitializeDevice(ID3D12Device* device, FeatureFlags features)
-    {
-        if (!g_IsInitialized)
-        {
-            LOG_ERROR("Nsight Aftermath is not initialized. Call InitializeBeforeDeviceCreation() first.");
-            return;
-        }
-
-        uint32_t aftermathFlags = ConvertFeatureFlags(features);
-        GFSDK_Aftermath_Result result = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, aftermathFlags, device);
-
-        if (result != GFSDK_Aftermath_Result_Success)
-        {
-            g_IsInitialized = false;
-            LOG_ERROR("Nsight Aftermath failed to initialize ({:X}).", static_cast<uint32_t>(result));
-            return;
-        }
-
-        LOG_INFO("Nsight Aftermath initialized successfully.");
-    }
-
-    static std::string GetErrorMessage(GFSDK_Aftermath_Result result)
-    {
-        switch (result)
-        {
-        case GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported:
-            return "Unsupported driver version - requires an NVIDIA R495 display driver or newer.";
-        case GFSDK_Aftermath_Result_FAIL_D3dDllInterceptionNotSupported:
-            return "Aftermath is incompatible with D3D API interception, such as PIX or Nsight Graphics.";
-        default:
-            return StringUtils::Format("Aftermath Error 0x{:X}", static_cast<uint32_t>(result));
-        }
-    }
-
-    static void HandleAftermathError(GFSDK_Aftermath_Result result)
-    {
-        GetApp()->CrashWithMessage("Nsight Aftermath Error", GetErrorMessage(result), /* debugBreak */ true);
-    }
+// 代码参考 NVIDIA 的官方示例
 
 #define AFTERMATH_CHECK_ERROR(FC)          \
 {                                          \
@@ -131,6 +25,103 @@ namespace march
         HandleAftermathError(_result);     \
     }                                      \
 }
+
+namespace march
+{
+    static constexpr uint32_t FullFeatureFlags
+        = GFSDK_Aftermath_FeatureFlags_Minimum
+        | GFSDK_Aftermath_FeatureFlags_EnableMarkers
+        | GFSDK_Aftermath_FeatureFlags_EnableResourceTracking
+        | GFSDK_Aftermath_FeatureFlags_CallStackCapturing
+        | GFSDK_Aftermath_FeatureFlags_GenerateShaderDebugInfo
+        | GFSDK_Aftermath_FeatureFlags_EnableShaderErrorReporting;
+
+    static void GFSDK_AFTERMATH_CALL GpuCrashDumpCallback(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData);
+    static void GFSDK_AFTERMATH_CALL ShaderDebugInfoCallback(const void* pShaderDebugInfo, const uint32_t shaderDebugInfoSize, void* pUserData);
+    static void GFSDK_AFTERMATH_CALL CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addValue, void* pUserData);
+    static void GFSDK_AFTERMATH_CALL ResolveMarkerCallback(const void* pMarkerData, const uint32_t markerDataSize, void* pUserData, void** ppResolvedMarkerData, uint32_t* pResolvedMarkerDataSize);
+
+    static uint32_t g_FeatureFlags;
+    static bool g_IsInitialized = false;
+
+    void NsightAftermath::InitializeBeforeDeviceCreation(bool fullFeatures)
+    {
+        if (g_IsInitialized)
+        {
+            LOG_ERROR("Nsight Aftermath is already initialized");
+            return;
+        }
+
+        // Enable Nsight Aftermath GPU crash dump creation.
+        // This needs to be done before the D3D device is created.
+
+        GFSDK_Aftermath_Result result = GFSDK_Aftermath_EnableGpuCrashDumps(
+            GFSDK_Aftermath_Version_API,
+            GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX,
+            GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,
+            GpuCrashDumpCallback,
+            ShaderDebugInfoCallback,
+            CrashDumpDescriptionCallback,
+            ResolveMarkerCallback,
+            nullptr);
+
+        if (!GFSDK_Aftermath_SUCCEED(result))
+        {
+            LOG_ERROR("Nsight Aftermath failed to initialize before device creation ({:X})", static_cast<uint32_t>(result));
+            return;
+        }
+
+        g_FeatureFlags = fullFeatures ? FullFeatureFlags : GFSDK_Aftermath_FeatureFlags_Minimum;
+        g_IsInitialized = true;
+    }
+
+    void NsightAftermath::InitializeDevice(ID3D12Device* device)
+    {
+        if (!g_IsInitialized)
+        {
+            LOG_ERROR("Nsight Aftermath is not initialized before device creation");
+            return;
+        }
+
+        GFSDK_Aftermath_Result result = GFSDK_Aftermath_DX12_Initialize(
+            GFSDK_Aftermath_Version_API,
+            g_FeatureFlags,
+            device);
+
+        if (!GFSDK_Aftermath_SUCCEED(result))
+        {
+            g_IsInitialized = false;
+            LOG_ERROR("Nsight Aftermath failed to initialize device ({:X})", static_cast<uint32_t>(result));
+            return;
+        }
+
+        LOG_INFO("Nsight Aftermath initialized");
+    }
+
+    static __forceinline bool IsInitializedAndFeatureEnabled(uint32_t featureFlag)
+    {
+        return g_IsInitialized && (g_FeatureFlags & featureFlag) == featureFlag;
+    }
+
+    static void HandleAftermathError(GFSDK_Aftermath_Result result)
+    {
+        std::string message;
+
+        switch (result)
+        {
+        case GFSDK_Aftermath_Result_FAIL_DriverVersionNotSupported:
+            message = "Unsupported driver version - requires an NVIDIA R495 display driver or newer.";
+            break;
+        case GFSDK_Aftermath_Result_FAIL_D3dDllInterceptionNotSupported:
+            message = "Nsight Aftermath is incompatible with D3D API interception, such as PIX or Nsight Graphics.";
+            break;
+        default:
+            message = StringUtils::Format("Nsight Aftermath Error: 0x{:X}.", static_cast<uint32_t>(result));
+            break;
+        }
+
+        GetApp()->CrashWithMessage("Nsight Aftermath Error", message, /* debugBreak */ true);
+    }
 
     static std::string GetCrashDumpFilePath()
     {
@@ -149,68 +140,21 @@ namespace march
 
     static void GFSDK_AFTERMATH_CALL GpuCrashDumpCallback(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData)
     {
-        const std::string crashDumpFileName = GetCrashDumpFilePath();
+        const std::string path = GetCrashDumpFilePath();
 
-        if (crashDumpFileName.empty())
+        if (path.empty())
         {
-            LOG_ERROR("Failed to create crash dump file.");
+            LOG_ERROR("Failed to create crash dump file");
             return;
         }
 
-        std::ofstream dumpFile(crashDumpFileName, std::ios::out | std::ios::binary);
-
-        if (dumpFile)
-        {
-            dumpFile.write(static_cast<const char*>(pGpuCrashDump), gpuCrashDumpSize);
-            dumpFile.close();
-        }
-
-        // Create a GPU crash dump decoder object for the GPU crash dump.
-        GFSDK_Aftermath_GpuCrashDump_Decoder decoder = {};
-        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_CreateDecoder(
-            GFSDK_Aftermath_Version_API,
-            pGpuCrashDump,
-            gpuCrashDumpSize,
-            &decoder));
-
-        // Destroy the GPU crash dump decoder object.
-        DEFER_FUNC() { AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_DestroyDecoder(decoder)); };
-
-        // Decode the crash dump to a JSON string.
-        // Step 1: Generate the JSON and get the size.
-        uint32_t jsonSize = 0;
-        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_GenerateJSON(
-            decoder,
-            GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO,
-            GFSDK_Aftermath_GpuCrashDumpFormatterFlags_UTF8_OUTPUT,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            &jsonSize));
-
-        // Step 2: Allocate a buffer and fetch the generated JSON.
-        std::vector<char> json(jsonSize);
-        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_GetJSON(
-            decoder,
-            jsonSize,
-            json.data()));
-
-        // Write the crash dump data as JSON to a file.
-        const std::string jsonFileName = crashDumpFileName + ".json";
-        std::ofstream jsonFile(jsonFileName, std::ios::out | std::ios::binary);
-
-        if (jsonFile)
-        {
-            // Write the JSON to the file (excluding string termination)
-            jsonFile.write(json.data(), json.size() - 1);
-            jsonFile.close();
-        }
+        std::ofstream fs(path, std::ios::out | std::ios::binary);
+        fs.write(static_cast<const char*>(pGpuCrashDump), gpuCrashDumpSize);
     }
 
     static std::string GetShaderDebugInfoFilePath(const GFSDK_Aftermath_ShaderDebugInfoIdentifier& identifier)
     {
-        fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Logs/DebugInfo");
+        fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Logs/ShaderDebugInfo");
 
         if (!fs::exists(path) && !fs::create_directories(path))
         {
@@ -218,7 +162,8 @@ namespace march
             return "";
         }
 
-        path /= StringUtils::Format(L"Shader-{:X}-{:X}.nvdbg", identifier.id[0], identifier.id[1]);
+        // uint64_t 转大写 16 进制，并保留前导 0
+        path /= StringUtils::Format(L"{:016X}-{:016X}.nvdbg", identifier.id[0], identifier.id[1]);
         return path.string();
     }
 
@@ -232,14 +177,17 @@ namespace march
             shaderDebugInfoSize,
             &identifier));
 
-        const std::string filePath = GetShaderDebugInfoFilePath(identifier);
-        std::ofstream f(filePath, std::ios::out | std::ios::binary);
+        const std::string path = GetShaderDebugInfoFilePath(identifier);
 
-        if (f)
+        if (path.empty())
         {
-            // Write to file for later in-depth analysis of crash dumps with Nsight Graphics
-            f.write(static_cast<const char*>(pShaderDebugInfo), shaderDebugInfoSize);
+            LOG_ERROR("Failed to create shader debug info file");
+            return;
         }
+
+        // Write to file for later in-depth analysis of crash dumps with Nsight Graphics
+        std::ofstream fs(path, std::ios::out | std::ios::binary);
+        fs.write(static_cast<const char*>(pShaderDebugInfo), shaderDebugInfoSize);
     }
 
     static void GFSDK_AFTERMATH_CALL CrashDumpDescriptionCallback(PFN_GFSDK_Aftermath_AddGpuCrashDumpDescription addValue, void* pUserData)
@@ -248,7 +196,11 @@ namespace march
         addValue(GFSDK_Aftermath_GpuCrashDumpDescriptionKey_ApplicationVersion, "1.0.0"); // TODO app version
     }
 
-    bool NsightAftermath::OnGpuCrash()
+    static void GFSDK_AFTERMATH_CALL ResolveMarkerCallback(const void* pMarkerData, const uint32_t markerDataSize, void* pUserData, void** ppResolvedMarkerData, uint32_t* pResolvedMarkerDataSize)
+    {
+    }
+
+    bool NsightAftermath::HandleGpuCrash()
     {
         if (!g_IsInitialized)
         {
@@ -284,30 +236,19 @@ namespace march
 
     void* NsightAftermath::RegisterResource(ID3D12Resource* resource)
     {
-        if (!g_IsInitialized)
+        if (!IsInitializedAndFeatureEnabled(GFSDK_Aftermath_FeatureFlags_EnableResourceTracking))
         {
             return nullptr;
         }
 
         GFSDK_Aftermath_ResourceHandle handle = {};
-        GFSDK_Aftermath_Result result = GFSDK_Aftermath_DX12_RegisterResource(resource, &handle);
-
-        if (result == GFSDK_Aftermath_Result_Success)
-        {
-            return reinterpret_cast<void*>(handle);
-        }
-
-        if (result != GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled)
-        {
-            HandleAftermathError(result);
-        }
-
-        return nullptr;
+        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_DX12_RegisterResource(resource, &handle));
+        return reinterpret_cast<void*>(handle);
     }
 
     void NsightAftermath::UnregisterResource(void* resourceHandle)
     {
-        if (!g_IsInitialized || !resourceHandle)
+        if (!IsInitializedAndFeatureEnabled(GFSDK_Aftermath_FeatureFlags_EnableResourceTracking))
         {
             return;
         }
@@ -321,30 +262,19 @@ namespace march
 
     void* NsightAftermath::CreateContextHandle(ID3D12CommandList* cmdList)
     {
-        if (!g_IsInitialized)
+        if (!IsInitializedAndFeatureEnabled(GFSDK_Aftermath_FeatureFlags_EnableMarkers))
         {
             return nullptr;
         }
 
         GFSDK_Aftermath_ContextHandle handle = {};
-        GFSDK_Aftermath_Result result = GFSDK_Aftermath_DX12_CreateContextHandle(cmdList, &handle);
-
-        if (result == GFSDK_Aftermath_Result_Success)
-        {
-            return reinterpret_cast<void*>(handle);
-        }
-
-        if (result != GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled)
-        {
-            HandleAftermathError(result);
-        }
-
-        return nullptr;
+        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_DX12_CreateContextHandle(cmdList, &handle));
+        return reinterpret_cast<void*>(handle);
     }
 
     void NsightAftermath::ReleaseContextHandle(void* contextHandle)
     {
-        if (!g_IsInitialized || !contextHandle)
+        if (!IsInitializedAndFeatureEnabled(GFSDK_Aftermath_FeatureFlags_EnableMarkers))
         {
             return;
         }
@@ -355,18 +285,13 @@ namespace march
 
     void NsightAftermath::SetEventMarker(void* contextHandle, const std::string& label)
     {
-        if (!g_IsInitialized || !contextHandle)
+        if (!IsInitializedAndFeatureEnabled(GFSDK_Aftermath_FeatureFlags_EnableMarkers))
         {
             return;
         }
 
         auto handle = reinterpret_cast<GFSDK_Aftermath_ContextHandle>(contextHandle);
         uint32_t dataSize = static_cast<uint32_t>(label.size() + 1); // 需要加上 '\0' 字符
-        GFSDK_Aftermath_Result result = GFSDK_Aftermath_SetEventMarker(handle, label.c_str(), dataSize);
-
-        if (result != GFSDK_Aftermath_Result_Success && result != GFSDK_Aftermath_Result_FAIL_FeatureNotEnabled)
-        {
-            HandleAftermathError(result);
-        }
+        AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_SetEventMarker(handle, label.c_str(), dataSize));
     }
 }

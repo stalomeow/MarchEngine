@@ -14,6 +14,7 @@
 - [Conventions](Documentation/Conventions.md)
 - [Asset Pipeline](Documentation/AssetPipeline.md)
 - [Rendering](Documentation/Rendering.md)
+- [Debugging Shaders](Documentation/DebuggingShaders.md)
 
 ## 已实现的功能
 
@@ -78,7 +79,11 @@ public class ShaderIncludeImporter : AssetImporter
 - 如果是 CPU 代码导致的错误，在有调试器附加时，会自动在相关位置设置断点，方便检查问题
 - 如果是 GPU 侧导致的错误，会在项目的 Logs 目录下生成 `nv-gpudmp` 文件，可以用 [NVIDIA Nsight Graphics](https://developer.nvidia.com/nsight-graphics) 打开来检查问题
 
-<p align="center"><img src="Documentation/Attachments/gpu-crash-dumps.png"></p>
+<p align="center"><img src="Documentation/Attachments/gpu-crash-dump-files.png"></p>
+
+可以直接定位问题到 Shader 的某一行
+
+<p align="center"><img src="Documentation/Attachments/gpu-crash-dump-details.png"></p>
 
 ### RenderGraph
 

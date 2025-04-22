@@ -42,6 +42,7 @@ namespace march
         virtual const std::string& GetDataPath() const = 0;
         virtual const std::string& GetEngineResourcePath() const = 0;
         virtual const std::string& GetEngineShaderPath() const = 0;
+        virtual const std::string& GetShaderCachePath() const = 0;
         virtual bool IsEngineResourceEditable() const = 0;
         virtual bool IsEngineShaderEditable() const = 0;
 

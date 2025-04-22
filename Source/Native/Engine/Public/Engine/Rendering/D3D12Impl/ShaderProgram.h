@@ -275,7 +275,6 @@ namespace march
         struct CompilationConfig
         {
             std::string ShaderModel = "6.0";
-            bool EnableDebugInfo = false;
             std::string Entrypoints[NumProgramTypes]{};
             std::vector<std::vector<std::string>> MultiCompile{};
 
@@ -501,6 +500,9 @@ namespace march
             Microsoft::WRL::ComPtr<IDxcResult> pResults,
             ShaderProgram* program,
             const std::function<void(ID3D12ShaderReflectionConstantBuffer*)>& recordConstantBufferCallback);
+
+        static void LoadShaderBinaryByHash(const ShaderProgramHash& hash, IDxcBlob** ppBlob);
+        static void SaveShaderBinaryAndPdbByHash(const ShaderProgramHash& hash, IDxcBlob* pBinary, IDxcBlob* pPdb);
     };
 
     template <size_t _NumProgramTypes>
@@ -532,13 +534,6 @@ namespace march
                 }
 
                 config.MultiCompile.emplace_back(uniqueKeywords.begin(), uniqueKeywords.end());
-            }
-            else if (args.size() == 1)
-            {
-                if (args[0] == "enable_debug_information")
-                {
-                    config.EnableDebugInfo = true;
-                }
             }
             else if (args.size() == 2)
             {
@@ -628,6 +623,7 @@ namespace march
     Microsoft::WRL::ComPtr<IDxcResult> ShaderProgramGroup<_NumProgramTypes>::CompileEntrypoint(CompilationContext& context, const std::wstring& entrypoint, const std::wstring& targetProfile, size_t programType)
     {
         // https://github.com/microsoft/DirectXShaderCompiler/wiki/Using-dxc.exe-and-dxcompiler.dll
+        // 将调试信息保存到单独的 .pdb 文件中，将字节码中的调试信息剥离
 
         std::vector<LPCWSTR> pszArgs =
         {
@@ -636,22 +632,16 @@ namespace march
             L"-T", targetProfile.c_str(),       // Target.
             L"-I", context.IncludePath.c_str(), // Include directory.
             L"-Zpc",                            // Pack matrices in column-major order.
-            L"-Zsb",                            // Compute Shader Hash considering only output binary
+            L"-Zss",                            // Compute Shader Hash considering source information
             L"-Ges",                            // Enable strict mode
             L"-O3",                             // Optimization Level 3 (Default)
+            L"-Zi",                             // Enable debug information.
+            L"-Fd", L".\\",                     // Write debug information to the given file, or automatically named file in directory when ending in '\'
+            L"-Qstrip_debug",                   // Strip debug information from 4_0+ shader bytecode
+            L"-Qstrip_priv",                    // Strip private data from shader bytecode
+            L"-Qstrip_reflect",                 // Strip reflection data from shader bytecode
+            L"-Qstrip_rootsignature",           // Strip root signature data from shader bytecode
         };
-
-        if (context.Config.EnableDebugInfo)
-        {
-            pszArgs.push_back(L"-Zi"); // Enable debug information.
-        }
-        else
-        {
-            pszArgs.push_back(L"-Qstrip_debug");         // Strip debug information from 4_0+ shader bytecode
-            pszArgs.push_back(L"-Qstrip_priv");          // Strip private data from shader bytecode
-            pszArgs.push_back(L"-Qstrip_reflect");       // Strip reflection data from shader bytecode
-            pszArgs.push_back(L"-Qstrip_rootsignature"); // Strip root signature data from shader bytecode
-        }
 
         std::vector<std::wstring> defines{};
         defines.push_back(StringUtils::Utf8ToUtf16(GetProgramTypePreprocessorMacro(programType)));

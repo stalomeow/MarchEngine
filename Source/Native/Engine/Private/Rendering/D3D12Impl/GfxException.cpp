@@ -36,7 +36,7 @@ namespace march
             // 走到这个分支的话，说明 GPU 崩溃了，问题来自于 GPU，需要生成 dump
             // 问题与 CPU 无关，没必要加 CPU 断点
 
-            if (NsightAftermath::OnGpuCrash())
+            if (NsightAftermath::HandleGpuCrash())
             {
                 GetApp()->CrashWithMessage("GPU Crash - A crash dump has been generated", message);
             }

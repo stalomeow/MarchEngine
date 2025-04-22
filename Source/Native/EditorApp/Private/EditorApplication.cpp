@@ -47,6 +47,7 @@ namespace march
         , m_DataPath{}
         , m_EngineResourcePath{}
         , m_EngineShaderPath{}
+        , m_ShaderCachePath{}
         , m_ImGuiIniFilename{}
         , m_IsInitialized(false)
     {
@@ -66,6 +67,7 @@ namespace march
         gfx.add_argument("--pix").help("Load PIX plugin").flag();
         gfx.add_argument("--d3d12-debug-layer").help("Enable D3D12 debug layer").flag();
         gfx.add_argument("--nvaftermath").help("Enable Minimum Nsight Aftermath").flag();
+        gfx.add_argument("--nvaftermath-full").help("Enable Full Nsight Aftermath").flag();
 
         try
         {
@@ -99,7 +101,12 @@ namespace march
         else if (program["--nvaftermath"] == true)
         {
             useNsightAftermath = true;
-            NsightAftermath::InitializeBeforeDeviceCreation();
+            NsightAftermath::InitializeBeforeDeviceCreation(/* fullFeatures */ false);
+        }
+        else if (program["--nvaftermath-full"] == true)
+        {
+            useNsightAftermath = true;
+            NsightAftermath::InitializeBeforeDeviceCreation(/* fullFeatures */ true);
         }
 
         desc.OfflineDescriptorPageSizes[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = 1024;
@@ -114,7 +121,7 @@ namespace march
 
         if (useNsightAftermath)
         {
-            NsightAftermath::InitializeDevice(device->GetD3DDevice4(), NsightAftermath::FeatureFlags::Minimum);
+            NsightAftermath::InitializeDevice(device->GetD3DDevice4());
         }
 
         m_SwapChain = std::make_unique<GfxSwapChain>(device, GetWindowHandle(), GetClientWidth(), GetClientHeight());
@@ -152,6 +159,7 @@ namespace march
 
         m_DataPath = GetNormalizedProjectPath(path);
         m_ProjectName = fs::path(m_DataPath).filename().string();
+        m_ShaderCachePath = m_DataPath + "/Library/ShaderCache";
 
 #ifdef ENGINE_RESOURCE_UNIX_PATH
         m_EngineResourcePath = ENGINE_RESOURCE_UNIX_PATH;

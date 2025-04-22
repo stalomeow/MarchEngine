@@ -4,14 +4,19 @@
 #include "Engine/Rendering/D3D12Impl/GfxSettings.h"
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
+#include "Engine/Application.h"
 #include "Engine/Debug.h"
 #include <vector>
 #include <string>
 #include <unordered_map>
 #include <sstream>
 #include <functional>
+#include <fstream>
+#include <filesystem>
+#include <iomanip>
 
 using namespace Microsoft::WRL;
+namespace fs = std::filesystem;
 
 namespace march
 {
@@ -182,15 +187,20 @@ namespace march
         ShaderProgram* program,
         const std::function<void(ID3D12ShaderReflectionConstantBuffer*)>& recordConstantBufferCallback)
     {
-        // 保存编译结果
+        // 编译结果
         CHECK_HR(pResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&program->m_Binary), nullptr));
 
-        // 暂时不输出 PDB 文件
+        // PDB
+        ComPtr<IDxcBlob> pPDB = nullptr;
+        CHECK_HR(pResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pPDB), nullptr));
 
-        // 保存 Hash
+        // Hash
         ComPtr<IDxcBlob> hash = nullptr;
         CHECK_HR(pResults->GetOutput(DXC_OUT_SHADER_HASH, IID_PPV_ARGS(&hash), nullptr));
         program->m_Hash.SetData(*static_cast<DxcShaderHash*>(hash->GetBufferPointer()));
+
+        // 保存到 ShaderCache 中
+        SaveShaderBinaryAndPdbByHash(program->GetHash(), program->m_Binary.Get(), pPDB.Get());
 
         // 反射
         ComPtr<IDxcBlob> pReflectionData = nullptr;
@@ -363,6 +373,62 @@ namespace march
             {
                 program->m_StaticSamplers.emplace_back(sampler);
             }
+        }
+    }
+
+    static std::string GetShaderProgramDebugName(const ShaderProgramHash& hash)
+    {
+        // 所谓的 Shader Debug Name 就是 Shader Hash 转成的 16 进制字符串
+
+        std::ostringstream ss{};
+
+        for (uint8_t b : hash.Data)
+        {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+        }
+
+        return ss.str();
+    }
+
+    static std::string GetShaderCacheBasePath(const std::string& debugName, bool createIfNotExist)
+    {
+        std::string path = StringUtils::Format("{}/{}{}", GetApp()->GetShaderCachePath(), debugName[0], debugName[1]);
+
+        if (createIfNotExist && !fs::exists(path))
+        {
+            fs::create_directories(path);
+        }
+
+        return path;
+    }
+
+    void ShaderCompilationInternalUtils::LoadShaderBinaryByHash(const ShaderProgramHash& hash, IDxcBlob** ppBlob)
+    {
+        const std::string debugName = GetShaderProgramDebugName(hash);
+        const std::string basePath = GetShaderCacheBasePath(debugName, /* createIfNotExist */ false);
+
+        std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
+        CHECK_HR(ShaderUtils::GetDxcUtils()->LoadFile(path.c_str(), DXC_CP_ACP, reinterpret_cast<IDxcBlobEncoding**>(ppBlob)));
+    }
+
+    void ShaderCompilationInternalUtils::SaveShaderBinaryAndPdbByHash(const ShaderProgramHash& hash, IDxcBlob* pBinary, IDxcBlob* pPdb)
+    {
+        const std::string debugName = GetShaderProgramDebugName(hash);
+        const std::string basePath = GetShaderCacheBasePath(debugName, /* createIfNotExist */ true);
+
+        // Binary
+        {
+            std::string path = StringUtils::Format("{}/{}.cso", basePath, debugName);
+            std::ofstream fs(path, std::ios::out | std::ios::binary);
+            fs.write(reinterpret_cast<const char*>(pBinary->GetBufferPointer()), pBinary->GetBufferSize());
+        }
+
+        // PDB
+        {
+            // pdb 的名称必须和编译器生成的默认名称保持一致
+            std::string path = StringUtils::Format("{}/{}.pdb", basePath, debugName);
+            std::ofstream fs(path, std::ios::out | std::ios::binary);
+            fs.write(reinterpret_cast<const char*>(pPdb->GetBufferPointer()), pPdb->GetBufferSize());
         }
     }
 }
