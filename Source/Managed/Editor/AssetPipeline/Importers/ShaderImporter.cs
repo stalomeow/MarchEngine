@@ -1,3 +1,4 @@
+using March.Core;
 using March.Core.Diagnostics;
 using March.Core.IconFont;
 using March.Core.Pool;
@@ -9,7 +10,7 @@ using System.Text;
 
 namespace March.Editor.AssetPipeline.Importers
 {
-    [CustomAssetImporter("Shader Asset", ".shader", Version = ShaderCompiler.Version + 92)]
+    [CustomAssetImporter("Shader Asset", ".shader", Version = ShaderCompiler.Version + 94)]
     public class ShaderImporter : AssetImporter
     {
         [JsonProperty]
@@ -27,6 +28,10 @@ namespace March.Editor.AssetPipeline.Importers
         [JsonProperty]
         [HideInInspector]
         private List<string> m_Errors = [];
+
+        [JsonProperty]
+        [HideInInspector]
+        private List<byte[]> m_ProgramHashes = [];
 
         protected override bool CheckNeedReimport(bool fullCheck)
         {
@@ -48,6 +53,7 @@ namespace March.Editor.AssetPipeline.Importers
         {
             m_Warnings.Clear();
             m_Errors.Clear();
+            m_ProgramHashes.Clear();
 
             using var passSourceCodes = ListPool<string>.Get();
             ShaderCompiler.CompileShaderLab(shader, Location.AssetFullPath, content, passSourceCodes, m_Errors);
@@ -56,6 +62,11 @@ namespace March.Editor.AssetPipeline.Importers
             {
                 CompileShaderPassWithFallback(ref context, shader, i, passSourceCodes.Value[i]);
             }
+
+            m_ProgramHashes.AddRange(ShaderProgramUtility.GetDistinctProgramHashes(
+                from pass in shader.Passes
+                from program in pass.Programs
+                select program.Hash));
 
             if (m_Warnings.Count > 0)
             {
@@ -120,6 +131,20 @@ namespace March.Editor.AssetPipeline.Importers
             {
                 context.RequireOtherAsset<ShaderIncludeAsset>(location.AssetPath, dependsOn: true);
             }
+        }
+
+        protected override MarchObject? TryLoadAssetFromCache(string guid)
+        {
+            // 保证所有的 shader program 都有对应的缓存
+            foreach (byte[] hash in m_ProgramHashes)
+            {
+                if (!ShaderUtility.HasCachedShaderProgram(hash))
+                {
+                    return null;
+                }
+            }
+
+            return base.TryLoadAssetFromCache(guid);
         }
     }
 

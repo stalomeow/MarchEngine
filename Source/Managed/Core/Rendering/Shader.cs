@@ -616,6 +616,15 @@ namespace March.Core.Rendering
 
         [NativeMethod]
         public static partial string GetStringFromId(int id);
+
+        public static bool HasCachedShaderProgram(byte[] hash)
+        {
+            using NativeArray<byte> hashArray = hash;
+            return HasCachedShaderProgram(hashArray.Data);
+        }
+
+        [NativeMethod]
+        private static partial bool HasCachedShaderProgram(nint hash);
     }
 
     public unsafe partial class Shader : NativeMarchObject

@@ -28,9 +28,9 @@ Shader 的编译结果被保存在项目的 `Library/ShaderCache` 目录中，�
 
 ## Nsight Aftermath
 
-如果启用了 Nsight Aftermath，当 GPU 崩溃后，会在项目的 `Logs` 目录下生成 Crash Dump。按照前面的方法设置 Nsight Graphics 后，Crash Dump 可以直接定位问题到 Shader 的某一行。
+如果启用了 Nsight Aftermath，当 GPU 崩溃后，会在项目的 `Logs` 目录下生成 Crash Dump。如果启用了 Nsight Aftermath 的全部功能，并且按照前面的方法设置 Nsight Graphics，Crash Dump 可以直接定位问题到 Shader 的某一行。
 
 <p align="center"><img src="Attachments/gpu-crash-dump-details.png"></p>
 
 - 在使用 Nsight Aftermath 前，建议将驱动和 Nsight Graphics 升级到最新版本
-- 某些版本的驱动要求在系统中打开 NVIDIA Nsight Aftermath Monitor 才能使用 Nsight Aftermath SDK 的完整功能，具体请参考文档：https://docs.nvidia.com/nsight-aftermath/index.html
+- 某些版本的驱动要求在系统中打开 NVIDIA Nsight Aftermath Monitor 才能使用 Nsight Aftermath SDK 的全部功能，具体请参考文档：https://docs.nvidia.com/nsight-aftermath/index.html

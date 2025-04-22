@@ -14,6 +14,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iomanip>
+#include <assert.h>
 
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
@@ -390,6 +391,22 @@ namespace march
         return ss.str();
     }
 
+    static std::string GetShaderProgramDebugName(const std::vector<uint8_t>& hash)
+    {
+        assert(hash.size() == (sizeof(ShaderProgramHash::Data) / sizeof(uint8_t)));
+
+        // 所谓的 Shader Debug Name 就是 Shader Hash 转成的 16 进制字符串
+
+        std::ostringstream ss{};
+
+        for (uint8_t b : hash)
+        {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+        }
+
+        return ss.str();
+    }
+
     static std::string GetShaderCacheBasePath(const std::string& debugName, bool createIfNotExist)
     {
         std::string path = StringUtils::Format("{}/{}{}", GetApp()->GetShaderCachePath(), debugName[0], debugName[1]);
@@ -430,5 +447,14 @@ namespace march
             std::ofstream fs(path, std::ios::out | std::ios::binary);
             fs.write(reinterpret_cast<const char*>(pPdb->GetBufferPointer()), pPdb->GetBufferSize());
         }
+    }
+
+    bool ShaderUtils::HasCachedShaderProgram(const std::vector<uint8_t>& hash)
+    {
+        const std::string debugName = GetShaderProgramDebugName(hash);
+        const std::string basePath = GetShaderCacheBasePath(debugName, /* createIfNotExist */ false);
+
+        std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
+        return fs::exists(path);
     }
 }

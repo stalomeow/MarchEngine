@@ -1,6 +1,7 @@
 using March.Core;
 using March.Core.Pool;
 using March.ShaderLab;
+using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor.AssetPipeline
 {
@@ -72,6 +73,38 @@ namespace March.Editor.AssetPipeline
             }
 
             return null;
+        }
+
+        private sealed class HashEqualityComparer : IEqualityComparer<byte[]>
+        {
+            public bool Equals(byte[]? x, byte[]? y)
+            {
+                if (x == null && y == null)
+                {
+                    return true;
+                }
+
+                if (x != null && y != null)
+                {
+                    return x.SequenceEqual(y);
+                }
+
+                return false;
+            }
+
+            public int GetHashCode([DisallowNull] byte[] obj)
+            {
+                var hash = new HashCode();
+                hash.AddBytes(obj);
+                return hash.ToHashCode();
+            }
+        }
+
+        private static readonly IEqualityComparer<byte[]> s_HashComparer = new HashEqualityComparer();
+
+        public static IEnumerable<byte[]> GetDistinctProgramHashes(IEnumerable<byte[]> hashes)
+        {
+            return hashes.Distinct(s_HashComparer);
         }
     }
 }

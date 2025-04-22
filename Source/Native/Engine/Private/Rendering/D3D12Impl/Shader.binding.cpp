@@ -643,6 +643,18 @@ NATIVE_EXPORT_AUTO ShaderUtils_GetStringFromId(cs_int id)
     retcs ShaderUtils::GetStringFromId(id);
 }
 
+NATIVE_EXPORT_AUTO ShaderUtils_HasCachedShaderProgram(cs<march::cs_byte[]> hash)
+{
+    std::vector<uint8_t> hashVec;
+
+    for (int32_t i = 0; i < hash.size(); i++)
+    {
+        hashVec.push_back(hash[i]);
+    }
+
+    retcs ShaderUtils::HasCachedShaderProgram(hashVec);
+}
+
 struct CSharpComputeShaderKernel
 {
     cs_string Name;

@@ -3,6 +3,7 @@
 #include "Engine/Ints.h"
 #include <dxcapi.h>
 #include <string>
+#include <vector>
 
 namespace march
 {
@@ -15,5 +16,7 @@ namespace march
         static IDxcCompiler3* GetDxcCompiler();
 
         static void ClearRootSignatureCache();
+
+        static bool HasCachedShaderProgram(const std::vector<uint8_t>& hash);
     };
 }

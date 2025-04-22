@@ -5,7 +5,13 @@
   "m_ColorSpace": 0,
   "m_Warnings": [],
   "m_Errors": [],
-  "m_SerializedVersion": 103,
+  "m_ProgramHashes": [
+    "VRBXBhWD9rqwTiP86aZqFw==",
+    "VHoAw6IY8v7YX/RnMmyA/w==",
+    "7ZumkZCM/U+X+zFHUW0Ipw==",
+    "FArfLLVlbtye/RE0yDwpxQ=="
+  ],
+  "m_SerializedVersion": 105,
   "m_MainAssetGuid": "22dc573a5a4544f6b42f09d086e06e5b",
   "m_GuidToAssetMap": {
     "22dc573a5a4544f6b42f09d086e06e5b": {
