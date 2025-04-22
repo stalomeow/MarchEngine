@@ -20,7 +20,7 @@ namespace march
         return ss.str();
     }
 
-    void HandleD3D12FailureAndTerminateProcess(HRESULT hr, const std::string& expr, const std::string& filename, int line)
+    void HandleHResultFailureAndTerminateProcess(HRESULT hr, const std::string& expr, const std::string& filename, int line)
     {
         assert(FAILED(hr));
 
@@ -50,7 +50,7 @@ namespace march
             // 走到这个分支的话，错误只来自 CPU，添加断点，方便调试
 
             std::string message = GetErrorMessage(hr, expr, filename, line);
-            GetApp()->CrashWithMessage("D3D12 Error", message, /* debugBreak */ true);
+            GetApp()->CrashWithMessage("HRESULT Error", message, /* debugBreak */ true);
         }
     }
 }
