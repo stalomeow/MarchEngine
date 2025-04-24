@@ -1,10 +1,18 @@
 using March.Core;
 using March.Core.Pool;
+using March.Core.Rendering;
 using March.ShaderLab;
 using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor.AssetPipeline
 {
+    internal sealed class ShaderProgramManifest
+    {
+        public bool UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
+        public GraphicsColorSpace ColorSpace = GraphicsSettings.ColorSpace;
+        public List<byte[]> Hashes = [];
+    }
+
     public static class ShaderProgramUtility
     {
         public static void GetHLSLIncludeFileLocations(string fileFullPath, string source, List<AssetLocation> locations)
@@ -102,9 +110,43 @@ namespace March.Editor.AssetPipeline
 
         private static readonly IEqualityComparer<byte[]> s_HashComparer = new HashEqualityComparer();
 
-        public static IEnumerable<byte[]> GetDistinctProgramHashes(IEnumerable<byte[]> hashes)
+        internal static ShaderProgramManifest CreateManifest(Shader shader)
         {
-            return hashes.Distinct(s_HashComparer);
+            IEnumerable<byte[]> hashes =
+                from pass in shader.Passes
+                from program in pass.Programs
+                select program.Hash;
+
+            ShaderProgramManifest manifest = new();
+            manifest.Hashes.AddRange(hashes.Distinct(s_HashComparer));
+            return manifest;
+        }
+
+        internal static ShaderProgramManifest CreateManifest(ComputeShader shader)
+        {
+            IEnumerable<byte[]> hashes =
+                from pass in shader.Kernels
+                from program in pass.Programs
+                select program.Hash;
+
+            ShaderProgramManifest manifest = new();
+            manifest.Hashes.AddRange(hashes.Distinct(s_HashComparer));
+            return manifest;
+        }
+
+        internal static bool HasValidCache(ShaderProgramManifest manifest)
+        {
+            return manifest.UseReversedZBuffer == GraphicsSettings.UseReversedZBuffer
+                && manifest.ColorSpace == GraphicsSettings.ColorSpace
+                && manifest.Hashes.All(ShaderUtility.HasCachedShaderProgram);
+        }
+
+        internal static void DeleteCache(ShaderProgramManifest manifest)
+        {
+            foreach (byte[] hash in manifest.Hashes)
+            {
+                ShaderUtility.DeleteCachedShaderProgram(hash);
+            }
         }
     }
 }

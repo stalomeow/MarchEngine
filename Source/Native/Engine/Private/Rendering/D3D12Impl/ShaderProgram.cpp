@@ -457,4 +457,22 @@ namespace march
         std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
         return fs::exists(path);
     }
+
+    void ShaderUtils::DeleteCachedShaderProgram(const std::vector<uint8_t>& hash)
+    {
+        const std::string debugName = GetShaderProgramDebugName(hash);
+        const std::string basePath = GetShaderCacheBasePath(debugName, /* createIfNotExist */ false);
+
+        // Binary
+        {
+            std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
+            fs::remove(path);
+        }
+
+        // PDB
+        {
+            std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.pdb", basePath, debugName));
+            fs::remove(path);
+        }
+    }
 }

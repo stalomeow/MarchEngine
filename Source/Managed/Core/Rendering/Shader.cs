@@ -623,8 +623,17 @@ namespace March.Core.Rendering
             return HasCachedShaderProgram(hashArray.Data);
         }
 
+        public static void DeleteCachedShaderProgram(byte[] hash)
+        {
+            using NativeArray<byte> hashArray = hash;
+            DeleteCachedShaderProgram(hashArray.Data);
+        }
+
         [NativeMethod]
         private static partial bool HasCachedShaderProgram(nint hash);
+
+        [NativeMethod]
+        private static partial void DeleteCachedShaderProgram(nint hash);
     }
 
     public unsafe partial class Shader : NativeMarchObject

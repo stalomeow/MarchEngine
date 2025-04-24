@@ -1,7 +1,7 @@
 ﻿{
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.ShaderIncludeImporter, March.Editor",
-  "m_SerializedVersion": 16,
+  "m_SerializedVersion": 17,
   "m_MainAssetGuid": "de5613403dbe4af985bb47191e0e5d30",
   "m_GuidToAssetMap": {
     "de5613403dbe4af985bb47191e0e5d30": {

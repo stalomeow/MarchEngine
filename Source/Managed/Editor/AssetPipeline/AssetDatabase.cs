@@ -213,9 +213,7 @@ namespace March.Editor.AssetPipeline
                 throw new InvalidOperationException("Can not load asset importer");
             }
 
-            AssetImporter? importer = GetAssetImporter(path);
-            importer?.ReimportAndSave(AssetReimportMode.FastCheck); // 保证拿到新的资产
-            return importer?.MainAsset as T;
+            return GetAssetImporter(path)?.MainAsset as T;
         }
 
         internal static T? Reload<T>(string path, Action<AssetImporter> settings) where T : MarchObject?
@@ -233,7 +231,7 @@ namespace March.Editor.AssetPipeline
             }
 
             settings(importer); // 修改 importer 的设置
-            importer.ReimportAndSave(AssetReimportMode.Force); // 保证拿到新的资产
+            importer.ReimportAndSave(AssetReimportMode.Force); // 重新导入并保存设置
             return importer.MainAsset as T;
         }
 
@@ -249,9 +247,7 @@ namespace March.Editor.AssetPipeline
                 return null;
             }
 
-            AssetImporter? importer = GetAssetImporter(path);
-            importer?.ReimportAndSave(AssetReimportMode.FastCheck); // 保证拿到新的资产
-            return importer?.GetAsset(guid) as T;
+            return GetAssetImporter(path)?.GetAsset(guid) as T;
         }
 
         public static void GetAllAssetLocations(List<AssetLocation> locations, List<bool>? isFolders = null)

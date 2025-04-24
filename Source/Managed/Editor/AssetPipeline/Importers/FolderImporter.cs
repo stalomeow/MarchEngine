@@ -17,10 +17,9 @@ namespace March.Editor.AssetPipeline.Importers
             context.AddMainAsset<FolderAsset>(normalIcon: FolderIconNormal, expandedIcon: FolderIconExpanded);
         }
 
-        protected override MarchObject? TryLoadAssetFromCache(string guid)
-        {
-            return new FolderAsset();
-        }
+        protected override MarchObject LoadAssetFromCache(string guid) => new FolderAsset();
+
+        protected override bool HasValidAssetCache(string guid) => true;
 
         protected override void SaveAssetToCache(MarchObject asset) { }
 

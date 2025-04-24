@@ -13,6 +13,9 @@ namespace March.Editor.AssetPipeline
         [JsonProperty] private DateTime m_AssetLastWriteTimeUtc;
         [JsonProperty] private List<AssetDependency> m_Dependencies = []; // 记录依赖的 Importer 的修改时间，不是 Asset 的修改时间
 
+        [JsonProperty]
+        public object? UserData { get; set; }
+
         public bool IsModified(in AssetLocation location)
         {
             if (m_AssetLastWriteTimeUtc != GetLastWriteTimeUtc(location.AssetFullPath))

@@ -1,16 +1,9 @@
 ﻿{
   "$id": "0",
   "$type": "March.Editor.AssetPipeline.Importers.ComputeShaderImporter, March.Editor",
-  "m_UseReversedZBuffer": true,
-  "m_ColorSpace": 0,
   "m_Warnings": [],
   "m_Errors": [],
-  "m_ProgramHashes": [
-    "6Ln4iebyZ136qJDTLOTdQw==",
-    "pkhXDBR4ATymyOv/UZ9wQA==",
-    "wLpFqxBT7iYX148PIigi9w=="
-  ],
-  "m_SerializedVersion": 37,
+  "m_SerializedVersion": 38,
   "m_MainAssetGuid": "9cd957702aaa43479b6c407fcd3f8d62",
   "m_GuidToAssetMap": {
     "9cd957702aaa43479b6c407fcd3f8d62": {

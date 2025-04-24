@@ -655,6 +655,18 @@ NATIVE_EXPORT_AUTO ShaderUtils_HasCachedShaderProgram(cs<march::cs_byte[]> hash)
     retcs ShaderUtils::HasCachedShaderProgram(hashVec);
 }
 
+NATIVE_EXPORT_AUTO ShaderUtils_DeleteCachedShaderProgram(cs<march::cs_byte[]> hash)
+{
+    std::vector<uint8_t> hashVec;
+
+    for (int32_t i = 0; i < hash.size(); i++)
+    {
+        hashVec.push_back(hash[i]);
+    }
+
+    ShaderUtils::DeleteCachedShaderProgram(hashVec);
+}
+
 struct CSharpComputeShaderKernel
 {
     cs_string Name;

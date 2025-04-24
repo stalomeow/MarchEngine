@@ -18,5 +18,6 @@ namespace march
         static void ClearRootSignatureCache();
 
         static bool HasCachedShaderProgram(const std::vector<uint8_t>& hash);
+        static void DeleteCachedShaderProgram(const std::vector<uint8_t>& hash);
     };
 }

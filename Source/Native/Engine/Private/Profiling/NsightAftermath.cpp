@@ -28,6 +28,7 @@ namespace fs = std::filesystem;
 
 namespace march
 {
+    // TODO 目前 EnableMarkers 和 CallStackCapturing 似乎没用
     static constexpr uint32_t FullFeatureFlags
         = GFSDK_Aftermath_FeatureFlags_Minimum
         | GFSDK_Aftermath_FeatureFlags_EnableMarkers

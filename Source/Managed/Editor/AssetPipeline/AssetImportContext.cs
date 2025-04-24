@@ -6,6 +6,7 @@ namespace March.Editor.AssetPipeline
 {
     public ref struct AssetImportContext
     {
+        private object? m_UserData;
         private string? m_MainAssetName;
         private readonly PooledObject<List<MarchObject>> m_ImportedAssets; // 保存强引用，避免 Import 时被 GC 回收
         private readonly PooledObject<Dictionary<string, AssetData>> m_ImportedData; // 使用 name 作为 key
@@ -14,6 +15,7 @@ namespace March.Editor.AssetPipeline
 
         internal AssetImportContext(IReadOnlyDictionary<string, AssetData> oldGuidToAssetMap)
         {
+            m_UserData = null;
             m_MainAssetName = null;
             m_ImportedAssets = ListPool<MarchObject>.Get();
             m_ImportedData = DictionaryPool<string, AssetData>.Get();
@@ -25,6 +27,8 @@ namespace March.Editor.AssetPipeline
                 m_DataPool.Value.Add(kv.Value.Name, kv.Value);
             }
         }
+
+        public readonly object? UserData => m_UserData;
 
         public readonly ReadOnlySpan<MarchObject> ImportedAssets => CollectionsMarshal.AsSpan(m_ImportedAssets.Value);
 
@@ -146,6 +150,11 @@ namespace March.Editor.AssetPipeline
             }
 
             return asset;
+        }
+
+        public void SetUserData(object? userData)
+        {
+            m_UserData = userData;
         }
     }
 }

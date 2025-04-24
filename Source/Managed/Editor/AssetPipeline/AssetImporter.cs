@@ -121,7 +121,7 @@ namespace March.Editor.AssetPipeline
                 // 保存 Importer，放在最后面的原因：
                 // 1. 如果导入失败，不会保存 Importer，下次重新导入时会再次尝试
                 // 2. 导入过程中可能写入原始资产文件，这里可以记录到最后一次的写入时间，避免再触发一次导入
-                ForceSaveImporter(context.Dependencies, updateDependencies: true);
+                ForceSaveImporter(context.UserData, context.Dependencies, updateDependencies: true);
                 return true;
             }
             finally
@@ -144,17 +144,17 @@ namespace March.Editor.AssetPipeline
             }
         }
 
-        private void ForceSaveImporter(ReadOnlySpan<string> dependencies, bool updateDependencies)
+        private void ForceSaveImporter(object? userData, ReadOnlySpan<string> dependencies, bool updateDependencies)
         {
-            SaveModificationDetector(dependencies, updateDependencies);
+            SaveModificationDetector(userData, dependencies, updateDependencies);
 
             m_SerializedVersion = Version;
             PersistentManager.Save(this, Location.ImporterFullPath);
         }
 
-        protected void ForceSaveImporter()
+        protected void ForceSaveImporter(object? userData)
         {
-            ForceSaveImporter([], updateDependencies: false);
+            ForceSaveImporter(userData, [], updateDependencies: false);
         }
 
         public string MainAssetGuid => m_MainAssetGuid;
@@ -182,21 +182,14 @@ namespace March.Editor.AssetPipeline
                 {
                     try
                     {
-                        asset = TryLoadAssetFromCache(guid);
+                        asset = LoadAssetFromCache(guid);
                     }
-                    catch (IOException)
+                    catch
                     {
                         // 递归时，缓存文件被占用
                         // 假设一个资产里有 a 和 b 两个子资产，a 依赖 b
                         // 加载 a 时，需要加载 b，但是**递归**加载 b 时发现 b 的缓存文件没了
                         // 这时要重新导入 a 和 b，但是 a 的缓存文件还在被占用（读），无法写入，所以会抛出异常
-                        mode = AssetReimportMode.Force;
-                        continue;
-                    }
-
-                    // 可能是缓存文件被删除了，重新导入再试一次
-                    if (asset == null)
-                    {
                         mode = AssetReimportMode.Force;
                         continue;
                     }
@@ -260,9 +253,21 @@ namespace March.Editor.AssetPipeline
             m_ModificationDetector?.GetDependencies(dependencies);
         }
 
+        /// <summary>
+        /// 该对象被保存在 Library 中，而不是 meta 文件里
+        /// </summary>
+        protected object? UserData
+        {
+            get
+            {
+                TryLoadModificationDetectorIfNot();
+                return m_ModificationDetector?.UserData;
+            }
+        }
+
         public string DisplayName => GetCustomAttribute().DisplayName;
 
-        private int Version => GetCustomAttribute().Version + 10;
+        private int Version => GetCustomAttribute().Version + 11;
 
         /// <summary>
         /// 
@@ -291,6 +296,14 @@ namespace March.Editor.AssetPipeline
                 {
                     return true;
                 }
+
+                foreach (KeyValuePair<string, AssetData> kv in m_GuidToAssetMap)
+                {
+                    if (!HasValidAssetCache(kv.Key))
+                    {
+                        return true;
+                    }
+                }
             }
 
             return false;
@@ -300,16 +313,16 @@ namespace March.Editor.AssetPipeline
 
         public virtual void LogImportMessages() { }
 
-        protected virtual MarchObject? TryLoadAssetFromCache(string guid)
+        protected virtual MarchObject LoadAssetFromCache(string guid)
         {
             string fullPath = GetAssetCacheFileFullPath(guid);
-
-            if (!File.Exists(fullPath))
-            {
-                return null;
-            }
-
             return PersistentManager.Load(fullPath);
+        }
+
+        protected virtual bool HasValidAssetCache(string guid)
+        {
+            string fullPath = GetAssetCacheFileFullPath(guid);
+            return File.Exists(fullPath);
         }
 
         protected virtual void SaveAssetToCache(MarchObject asset)
@@ -343,7 +356,7 @@ namespace March.Editor.AssetPipeline
             }
         }
 
-        private void SaveModificationDetector(ReadOnlySpan<string> dependencies, bool updateDependencies)
+        private void SaveModificationDetector(object? userData, ReadOnlySpan<string> dependencies, bool updateDependencies)
         {
             string path = GetModificationDetectorFileFullPath();
 
@@ -354,6 +367,7 @@ namespace March.Editor.AssetPipeline
             }
 
             m_ModificationDetector ??= new AssetModificationDetector();
+            m_ModificationDetector.UserData = userData;
             m_ModificationDetector.SyncAsset(in Location);
 
             if (updateDependencies)
@@ -445,35 +459,40 @@ namespace March.Editor.AssetPipeline
 
     public abstract class DirectAssetImporter : AssetImporter
     {
-        protected override void OnImportAssets(ref AssetImportContext context)
+        protected sealed override void OnImportAssets(ref AssetImportContext context)
         {
             MarchObject asset = context.AddMainAsset(CreateAsset, GetNormalIcon(), GetExpandedIcon());
             PersistentManager.Overwrite(Location.AssetFullPath, asset);
         }
 
-        protected override MarchObject? TryLoadAssetFromCache(string guid)
+        protected sealed override MarchObject LoadAssetFromCache(string guid)
         {
             return PersistentManager.Load(Location.AssetFullPath);
         }
 
-        protected override void SaveAssetToCache(MarchObject asset)
+        protected sealed override bool HasValidAssetCache(string guid)
+        {
+            return true;
+        }
+
+        protected sealed override void SaveAssetToCache(MarchObject asset)
         {
             PersistentManager.Save(asset, Location.AssetFullPath);
         }
 
-        protected override void DeleteAssetCache(string guid) { }
+        protected sealed override void DeleteAssetCache(string guid) { }
 
         internal void SetAssetAndSave(MarchObject asset)
         {
             InitMainAsset(AssetImportContext.DefaultMainAssetName, asset, GetNormalIcon(), GetExpandedIcon());
             PersistentManager.Save(asset, Location.AssetFullPath);
-            ForceSaveImporter();
+            ForceSaveImporter(userData: null);
         }
 
         internal void SaveAsset()
         {
             PersistentManager.Save(MainAsset, Location.AssetFullPath);
-            ForceSaveImporter(); // 记录这次的写入时间，避免等会触发一次重新导入
+            ForceSaveImporter(userData: null); // 记录这次的写入时间，避免等会触发一次重新导入
         }
 
         protected abstract MarchObject CreateAsset();

@@ -1,4 +1,3 @@
-using March.Core;
 using March.Core.Diagnostics;
 using March.Core.IconFont;
 using March.Core.Pool;
@@ -15,56 +14,29 @@ namespace March.Editor.AssetPipeline.Importers
     {
         [JsonProperty]
         [HideInInspector]
-        private bool m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
-
-        [JsonProperty]
-        [HideInInspector]
-        private GraphicsColorSpace m_ColorSpace = GraphicsSettings.ColorSpace;
-
-        [JsonProperty]
-        [HideInInspector]
         private List<string> m_Warnings = [];
 
         [JsonProperty]
         [HideInInspector]
         private List<string> m_Errors = [];
 
-        [JsonProperty]
-        [HideInInspector]
-        private List<byte[]> m_ProgramHashes = [];
-
-        protected override bool CheckNeedReimport(bool fullCheck)
-        {
-            return m_UseReversedZBuffer != GraphicsSettings.UseReversedZBuffer
-                || m_ColorSpace != GraphicsSettings.ColorSpace
-                || base.CheckNeedReimport(fullCheck);
-        }
-
         protected override void OnImportAssets(ref AssetImportContext context)
         {
-            m_UseReversedZBuffer = GraphicsSettings.UseReversedZBuffer;
-            m_ColorSpace = GraphicsSettings.ColorSpace;
-
             ComputeShader shader = context.AddMainAsset<ComputeShader>(normalIcon: FontAwesome6Brands.StripeS);
             CompileShader(ref context, shader, File.ReadAllText(Location.AssetFullPath, Encoding.UTF8));
+            context.SetUserData(ShaderProgramUtility.CreateManifest(shader));
         }
 
         private void CompileShader(ref AssetImportContext context, ComputeShader shader, string content)
         {
             m_Warnings.Clear();
             m_Errors.Clear();
-            m_ProgramHashes.Clear();
 
             shader.Name = Path.GetFileNameWithoutExtension(Location.AssetFullPath);
 
             ShaderCompiler.GetHLSLIncludesAndPragmas(content, out List<string> includes, out List<string> pragmas);
             AddDependency(ref context, includes);
             shader.Compile(Location.AssetFullPath, content, pragmas, m_Warnings, m_Errors);
-
-            m_ProgramHashes.AddRange(ShaderProgramUtility.GetDistinctProgramHashes(
-                from pass in shader.Kernels
-                from program in pass.Programs
-                select program.Hash));
 
             if (m_Warnings.Count > 0)
             {
@@ -107,18 +79,29 @@ namespace March.Editor.AssetPipeline.Importers
             }
         }
 
-        protected override MarchObject? TryLoadAssetFromCache(string guid)
+        protected override bool HasValidAssetCache(string guid)
         {
-            // 保证所有的 shader program 都有对应的缓存
-            foreach (byte[] hash in m_ProgramHashes)
+            if (UserData is not ShaderProgramManifest manifest)
             {
-                if (!ShaderUtility.HasCachedShaderProgram(hash))
-                {
-                    return null;
-                }
+                return false;
             }
 
-            return base.TryLoadAssetFromCache(guid);
+            if (!ShaderProgramUtility.HasValidCache(manifest))
+            {
+                return false;
+            }
+
+            return base.HasValidAssetCache(guid);
+        }
+
+        protected override void DeleteAssetCache(string guid)
+        {
+            if (UserData is ShaderProgramManifest manifest)
+            {
+                ShaderProgramUtility.DeleteCache(manifest);
+            }
+
+            base.DeleteAssetCache(guid);
         }
     }
 
