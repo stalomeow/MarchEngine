@@ -50,7 +50,7 @@ namespace march
     static std::wstring GetManagedFilePath(const LPCWSTR fileName)
     {
         std::wstring dir = PathUtils::GetWorkingDirectoryUtf16();
-        return dir + L"\\Managed\\" + fileName;
+        return dir + L"\\" + fileName;
     }
 
     class DotNetRuntimeImpl : public IDotNetRuntime

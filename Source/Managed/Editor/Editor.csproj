@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>$(SolutionDir)Build\Output\Managed\Editor\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(SolutionDir)Build\Intermediate\Managed\Editor\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(SolutionDir)Binaries\Managed\Editor\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Intermediate\Managed\Editor\</BaseIntermediateOutputPath>
     <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 

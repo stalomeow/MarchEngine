@@ -4,9 +4,33 @@
 
 <p align="center"><img src="Documentation/Attachments/overview.png"></p>
 
-这是我根据自己使用 Unity 的经验写的，花了非常多时间，之后还会慢慢完善。<b>现在准备找暑期实习（2026 年本科毕业，计算机科学与技术专业，希望 base 上海）。</b>
+这是我根据自己使用 Unity 的经验写的，花了非常多时间，之后还会慢慢完善。
 
 ~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
+
+## 目录结构
+
+``` shell
+MarchEngine
+├─ Binaries
+│  ├─ DotNetRuntime   # .NET Runtime
+│  └─ NsightAftermath # NVIDIA Nsight Aftermath SDK
+├─ Build              # 构建脚本
+├─ Documentation      # 文档
+├─ Output             # 构建结果和临时文件（不参与版本控制）
+├─ Resources          # 引擎内置资源
+├─ Source
+│  ├─ Managed
+│  │  ├─ Binding      # C# Binding 生成器
+│  │  ├─ Core         # 引擎核心的 C# 代码
+│  │  ├─ Editor       # 编辑器的 C# 代码
+│  │  └─ ShaderLab    # ShaderLab 编译器
+│  ├─ Native
+│  │  ├─ EditorApp    # 编辑器 App
+│  │  └─ Engine       # 引擎核心的 C++ 代码
+│  └─ Shaders         # 引擎内置的 Shader
+└─ Tools              # 可能有用的工具
+```
 
 ## 文档
 
