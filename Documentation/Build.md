@@ -65,3 +65,11 @@ premake5 vs2022
 推荐使用 `Mixed (.NET Core)`，它可以同时调试 C++ 和 C# 代码。这个调试器貌似是 Visual Studio 独占的，所以我才用它开发。
 
 只有加载完 .NET Runtime，`Mixed (.NET Core)` 调试器才能正常工作，如果在这之前的 C++ 代码出错了需要调试，可以临时改用 `Native Only` 调试器。
+
+## 清理项目
+
+可以使用下面的命令清理生成的文件
+
+``` shell
+premake5 clean
+```
