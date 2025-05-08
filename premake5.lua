@@ -9,8 +9,16 @@ local vcpkg = require "Build/Vcpkg"
 newaction {
     trigger = "install",
     description = "Install packages",
-    execute = function ()
+    execute = function()
         vcpkg.install_packages()
+    end
+}
+
+newaction {
+    trigger = "clean",
+    description = "Remove all binaries and generated files",
+    execute = function()
+        os.rmdir(path.join(_MAIN_SCRIPT_DIR, "Output"))
     end
 }
 
