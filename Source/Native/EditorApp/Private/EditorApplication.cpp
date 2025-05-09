@@ -444,18 +444,12 @@ namespace march
 
     LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        LRESULT result;
-
         if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
         {
-            result = true;
-        }
-        else
-        {
-            result = Application::HandleMessage(msg, wParam, lParam);
+            return true;
         }
 
-        return result;
+        return Application::HandleMessage(msg, wParam, lParam);
     }
 
     void EditorApplication::DrawFrameStats()

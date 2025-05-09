@@ -26,7 +26,7 @@ namespace March.Editor
             CurrentScene.Update();
 
             Gizmos.Clear();
-            CurrentScene.DrawGizmos(selected: go => Selection.Active == go);
+            CurrentScene.DrawGizmos(selected: Selection.Contains);
         }
 
         private static void OnQuit()

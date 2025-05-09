@@ -157,11 +157,9 @@ namespace March.Editor.Drawers
                 Type componentType = type;
                 s_AddComponentPopup.AddMenuItem(displayName, callback: (ref object? arg) =>
                 {
-                    if (Selection.Active is GameObject go)
-                    {
-                        go.AddComponent(componentType);
-                    }
-                }, enabled: (ref object? arg) => Selection.Active is GameObject);
+                    GameObject? go = Selection.FirstOrDefault<GameObject>();
+                    go?.AddComponent(componentType);
+                }, enabled: (ref object? arg) => Selection.Any<GameObject>());
             }
 
             s_AddComponentPopupTypeCacheVersion = TypeCache.Version;

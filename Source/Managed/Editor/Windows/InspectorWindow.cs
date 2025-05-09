@@ -20,7 +20,16 @@ namespace March.Editor.Windows
         {
             base.OnDraw();
 
-            MarchObject? target = Selection.Active;
+            MarchObject? target = null;
+
+            if (Selection.Count > 1)
+            {
+                EditorGUI.LabelField("##Error", string.Empty, "Multiple selection is not supported.");
+            }
+            else
+            {
+                target = Selection.FirstOrDefault();
+            }
 
             if (target != m_LastTarget)
             {

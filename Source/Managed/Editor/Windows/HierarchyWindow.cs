@@ -16,81 +16,84 @@ namespace March.Editor.Windows
         {
             s_ContextMenu.AddMenuItem("Create/Geometry/Cube", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject("Cube", Selection.Active as GameObject);
+                var go = SceneManager.CurrentScene.CreateGameObject("Cube", Selection.FirstOrDefault<GameObject>());
                 var renderer = go.AddComponent<MeshRenderer>();
                 renderer.Mesh = Mesh.GetGeometry(MeshGeometry.Cube);
                 renderer.Materials.Add(AssetManager.Load<Material>("Engine/Resources/Materials/DefaultLit.mat"));
                 renderer.SyncNativeMaterials();
 
-                Selection.Active = go;
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Create/Geometry/Sphere", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject("Sphere", Selection.Active as GameObject);
+                var go = SceneManager.CurrentScene.CreateGameObject("Sphere", Selection.FirstOrDefault<GameObject>());
                 var renderer = go.AddComponent<MeshRenderer>();
                 renderer.Mesh = Mesh.GetGeometry(MeshGeometry.Sphere);
                 renderer.Materials.Add(AssetManager.Load<Material>("Engine/Resources/Materials/DefaultLit.mat"));
                 renderer.SyncNativeMaterials();
 
-                Selection.Active = go;
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Create/Light/Directional", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject("Directional Light", Selection.Active as GameObject);
+                var go = SceneManager.CurrentScene.CreateGameObject("Directional Light", Selection.FirstOrDefault<GameObject>());
                 var light = go.AddComponent<Light>();
                 light.Type = LightType.Directional;
 
-                Selection.Active = go;
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Create/Light/Point", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject("Point Light", Selection.Active as GameObject);
+                var go = SceneManager.CurrentScene.CreateGameObject("Point Light", Selection.FirstOrDefault<GameObject>());
                 var light = go.AddComponent<Light>();
                 light.Type = LightType.Point;
 
-                Selection.Active = go;
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Create/Light/Spot", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject("Spot Light", Selection.Active as GameObject);
+                var go = SceneManager.CurrentScene.CreateGameObject("Spot Light", Selection.FirstOrDefault<GameObject>());
                 var light = go.AddComponent<Light>();
                 light.Type = LightType.Spot;
 
-                Selection.Active = go;
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Create/Camera", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject("Camera", Selection.Active as GameObject);
+                var go = SceneManager.CurrentScene.CreateGameObject("Camera", Selection.FirstOrDefault<GameObject>());
                 go.AddComponent<Camera>();
 
-                Selection.Active = go;
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Create/Empty", (ref object? arg) =>
             {
-                var go = SceneManager.CurrentScene.CreateGameObject(parent: Selection.Active as GameObject);
-                Selection.Active = go;
+                var go = SceneManager.CurrentScene.CreateGameObject(parent: Selection.FirstOrDefault<GameObject>());
+                Selection.Set(go);
             });
 
             s_ContextMenu.AddMenuItem("Delete", (ref object? arg) =>
             {
-                if (Selection.Active is not GameObject go)
+                foreach (MarchObject obj in Selection.Objects)
                 {
-                    return;
+                    if (obj is not GameObject go)
+                    {
+                        continue;
+                    }
+
+                    go.transform.Detach();
+                    SceneManager.CurrentScene.RootGameObjects.Remove(go);
+                    go.Dispose();
                 }
 
-                go.transform.Detach();
-                SceneManager.CurrentScene.RootGameObjects.Remove(go);
-                go.Dispose();
+                Selection.Clear();
 
-                Selection.Active = null;
-
-            }, enabled: (ref object? arg) => Selection.Active is GameObject);
+            }, enabled: (ref object? arg) => Selection.All<GameObject>());
         }
 
         public HierarchyWindow() : base(FontAwesome6.BarsStaggered, "Hierarchy")
@@ -123,12 +126,12 @@ namespace March.Editor.Windows
                 // 在 window context menu 之前处理选择
                 if (selections.Value.Count > 0)
                 {
-                    Selection.Active = selections.Value[0];
+                    Selection.Set(selections.Value);
                 }
                 else if (!isAnyItemClicked && EditorGUI.IsWindowClicked())
                 {
                     // 点在空白上取消选择，这样用户体验更好一点
-                    Selection.Active = null;
+                    Selection.Clear();
                 }
 
                 s_ContextMenu.ShowAsWindowContext();
@@ -137,7 +140,7 @@ namespace March.Editor.Windows
             else if (EditorGUI.IsWindowClicked())
             {
                 // 点在空白上取消选择，这样用户体验更好一点
-                Selection.Active = null;
+                Selection.Clear();
             }
 
             HandleDragDrop(scene, enableDragDrop);
@@ -171,7 +174,7 @@ namespace March.Editor.Windows
             using (new EditorGUI.DisabledScope(!go.IsActiveSelf, allowInteraction: true))
             {
                 using var label = EditorGUIUtility.BuildIconText(FontAwesome6.DiceD6, go.Name, "GameObject");
-                bool isSelected = Selection.Active == go;
+                bool isSelected = Selection.Contains(go);
                 bool isLeaf = go.transform.ChildCount == 0;
                 bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
 

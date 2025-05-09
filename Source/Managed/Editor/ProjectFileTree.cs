@@ -76,7 +76,7 @@ namespace March.Editor
             private static bool BeginAssetTreeNode(string name, AssetImporter? importer, string? assetGuid, bool isLeaf)
             {
                 bool selectable = (importer != null) && (assetGuid == importer.MainAssetGuid);
-                bool selected = selectable && (Selection.Active == importer);
+                bool selected = selectable && Selection.Contains(importer!);
                 bool defaultOpen = (importer == null);
 
                 string icon;
@@ -102,7 +102,7 @@ namespace March.Editor
 
                 if (selectable && EditorGUI.IsTreeNodeClicked(isOpen, isLeaf) == EditorGUI.ItemClickResult.True)
                 {
-                    Selection.Active = importer;
+                    Selection.Set(importer!);
                 }
 
                 return isOpen;

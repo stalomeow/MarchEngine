@@ -193,7 +193,9 @@ namespace March.Editor.Windows
 
         private void ManipulateTransform()
         {
-            if (Selection.Active is not GameObject go)
+            GameObject? go = Selection.FirstOrDefault<GameObject>();
+
+            if (go == null)
             {
                 return;
             }
@@ -212,7 +214,7 @@ namespace March.Editor.Windows
             try
             {
                 BeginGizmosGUI(m_SceneViewCamera);
-                SceneManager.CurrentScene.DrawGizmosGUI(selected: go => Selection.Active == go);
+                SceneManager.CurrentScene.DrawGizmosGUI(selected: Selection.Contains);
             }
             finally
             {

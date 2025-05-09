@@ -147,6 +147,24 @@ namespace March.Core
             SetNativeParent(null);
         }
 
+        public bool IsChildOf(Transform parent)
+        {
+            Transform? transform = this;
+
+            while (transform != null)
+            {
+                // 如果自己就是 parent，那么也返回 true
+                if (transform == parent)
+                {
+                    return true;
+                }
+
+                transform = transform.Parent;
+            }
+
+            return false;
+        }
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
