@@ -1,4 +1,3 @@
-using March.Core.Pool;
 using March.Editor.AssetPipeline;
 using March.Editor.AssetPipeline.Importers;
 using System.Diagnostics.CodeAnalysis;
@@ -44,31 +43,9 @@ namespace March.Editor
             private static void DrawLeafAssetNode(string name, string path)
             {
                 AssetImporter importer = AssetDatabase.GetAssetImporter(path)!;
-                using var guids = ListPool<string>.Get();
-                importer.GetAssetGuids(guids);
 
-                bool isLeaf = guids.Value.Count == 1;
-                if (BeginAssetTreeNode(name, importer, importer.MainAssetGuid, isLeaf))
+                if (BeginAssetTreeNode(name, importer, importer.MainAssetGuid, isLeaf: true))
                 {
-                    if (!isLeaf)
-                    {
-                        using (new EditorGUI.IDScope(name))
-                        {
-                            foreach (string guid in guids.Value)
-                            {
-                                if (guid == importer.MainAssetGuid)
-                                {
-                                    continue;
-                                }
-
-                                if (BeginAssetTreeNode(importer.GetAssetName(guid)!, importer, guid, isLeaf: true))
-                                {
-                                    EditorGUI.EndTreeNode();
-                                }
-                            }
-                        }
-                    }
-
                     EditorGUI.EndTreeNode();
                 }
             }

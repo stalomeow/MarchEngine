@@ -4,6 +4,7 @@ using March.Core.Pool;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline.Importers;
 using Newtonsoft.Json;
+using System;
 using System.Reflection;
 using System.Runtime.Serialization;
 
@@ -613,6 +614,32 @@ namespace March.Editor.AssetPipeline
         {
             EditorGUI.Separator();
             EditorGUI.Space();
+
+            if (EditorGUI.Foldout("Artifacts", ""))
+            {
+                using var guids = ListPool<string>.Get();
+                Target.GetAssetGuids(guids);
+
+                guids.Value.Sort((x, y) =>
+                {
+                    string name1 = Target.GetAssetName(x)!;
+                    string name2 = Target.GetAssetName(y)!;
+                    return StringComparer.InvariantCulture.Compare(name1, name2);
+                });
+
+                using (new EditorGUI.IndentedScope())
+                {
+                    foreach (string guid in guids.Value)
+                    {
+                        using var label = StringBuilderPool.Get();
+                        label.Value.Append(Target.GetAssetNormalIcon(guid)!);
+                        label.Value.Append(' ');
+                        label.Value.Append(Target.GetAssetName(guid)!);
+                        label.Value.Append(' ').Append('<').Append(guid).Append('>');
+                        EditorGUI.BulletLabel(label, "");
+                    }
+                }
+            }
 
             if (EditorGUI.Foldout("Dependencies", ""))
             {
