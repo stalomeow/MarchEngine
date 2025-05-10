@@ -28,7 +28,8 @@ MarchEngine
 │  ├─ Native
 │  │  ├─ EditorApp    # 编辑器 App
 │  │  └─ Engine       # 引擎核心的 C++ 代码
-│  └─ Shaders         # 引擎内置的 Shader
+│  ├─ Shaders         # 引擎内置的 Shader
+│  └─ ThirdParty      # 部分第三方库
 └─ Tools              # 可能有用的工具
 ```
 

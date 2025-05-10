@@ -3,6 +3,10 @@
 #include "Engine/Ints.h"
 #include "Engine/Object.h"
 
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "ImGuizmo.h"
+
 #include <directx/d3dx12.h>
 #include <dxgi1_4.h>
 #include <DirectXCollision.h>
@@ -14,7 +18,3 @@
 #include <vector>
 #include <string>
 #include <memory>
-
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "ImGuizmo.h"

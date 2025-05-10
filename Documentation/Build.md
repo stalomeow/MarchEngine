@@ -15,7 +15,7 @@
 先下载项目
 
 ``` shell
-git clone https://github.com/stalomeow/MarchEngine.git
+git clone --recursive https://github.com/stalomeow/MarchEngine.git
 ```
 
 然后进入项目目录
