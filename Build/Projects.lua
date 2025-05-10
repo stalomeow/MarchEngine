@@ -44,7 +44,7 @@ function proj.setup_csharp()
     location (path.join(_MAIN_SCRIPT_DIR, "Source/Managed/%{prj.name}"))
 end
 
-function proj.setup_cpp()
+local function setup_common_cpp()
     language "C++"
     cppdialect "C++17"
 
@@ -52,25 +52,8 @@ function proj.setup_cpp()
     conformancemode "Off"
     characterset "Unicode"
 
-    targetdir (path.join(_MAIN_SCRIPT_DIR, "Output/Binaries/Native/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
-    objdir (path.join(_MAIN_SCRIPT_DIR, "Output/Intermediate/Native/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
-
     flags { "MultiProcessorCompile" }
     defines { "_UNICODE", "UNICODE", "NOMINMAX" }
-
-    files {
-        "**.h",
-        "**.hpp",
-        "**.cpp",
-        "**.manifest",
-        "**.rc",
-    }
-
-    pchheader "pch.h"
-    pchsource "Private/pch.cpp"
-
-    include_dir_if_exists "ThirdParty"
-    include_dir_if_exists "Internal"
 
     vsprops {
         SDLCheck = "true",
@@ -78,7 +61,7 @@ function proj.setup_cpp()
     }
 
     filter "configurations:Debug"
-        defines { "_DEBUG" }
+        defines { "DEBUG", "_DEBUG" }
         runtime "Debug"
         symbols "On"
         optimize "Off"
@@ -96,12 +79,42 @@ function proj.setup_cpp()
     filter "action:vs*"
         buildoptions { "/utf-8" }
 
+    -- 还原到默认的状态
     filter {}
-        usage "PUBLIC"
-            include_dir_if_exists "Public"
+end
+
+function proj.setup_cpp()
+    setup_common_cpp()
+
+    targetdir (path.join(_MAIN_SCRIPT_DIR, "Output/Binaries/Native/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
+    objdir (path.join(_MAIN_SCRIPT_DIR, "Output/Intermediate/Native/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
+
+    files {
+        "**.h",
+        "**.hpp",
+        "**.cpp",
+        "**.manifest",
+        "**.rc",
+    }
+
+    pchheader "pch.h"
+    pchsource "Private/pch.cpp"
+
+    include_dir_if_exists "ThirdParty"
+    include_dir_if_exists "Internal"
+
+    usage "PUBLIC"
+        include_dir_if_exists "Public"
 
     -- 还原到默认的状态
     usage "PRIVATE"
+end
+
+function proj.setup_cpp_third_party()
+    setup_common_cpp()
+
+    targetdir (path.join(_MAIN_SCRIPT_DIR, "Output/Binaries/ThirdParty/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
+    objdir (path.join(_MAIN_SCRIPT_DIR, "Output/Intermediate/ThirdParty/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
 end
 
 return proj

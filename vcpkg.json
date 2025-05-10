@@ -1,6 +1,7 @@
 {
   "builtin-baseline": "d5ec528843d29e3a52d745a64b469f810b2cedbf",
   "dependencies": [
+    "argparse",
     "directx-dxc",
     "directx-headers",
     {
@@ -11,16 +12,7 @@
       ]
     },
     "fmt",
-    {
-      "name": "imgui",
-      "features": [
-        "docking-experimental",
-        "freetype",
-        "win32-binding"
-      ]
-    },
-    "imguizmo",
     "winpixevent",
-    "argparse"
+    "freetype"
   ]
 }

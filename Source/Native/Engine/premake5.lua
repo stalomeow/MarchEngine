@@ -8,6 +8,8 @@ project "Engine"
     proj.setup_cpp()
     vcpkg.include_headers()
 
+    uses { "ImGui" }
+
     usage "PUBLIC"
         filter "configurations:Debug"
             -- 允许给图形资源设置名称

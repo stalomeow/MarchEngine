@@ -9,7 +9,7 @@ project "EditorApp"
     vcpkg.include_headers()
     vcpkg.link_libraries()
 
-    uses { "Engine" }
+    uses { "Engine", "ImGui", "ImGuizmo" }
 
     links {
         "Core",

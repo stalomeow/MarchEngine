@@ -48,3 +48,6 @@ group "Managed"
     externalproject "ShaderLab"
         uuid "123DAE4E-49F3-CED1-0410-D6D8B4BE9F8E"
         proj.setup_csharp()
+
+group "ThirdParty"
+    include "Source/ThirdParty"
