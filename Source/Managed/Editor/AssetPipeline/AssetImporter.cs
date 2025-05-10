@@ -4,7 +4,6 @@ using March.Core.Pool;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline.Importers;
 using Newtonsoft.Json;
-using System;
 using System.Reflection;
 using System.Runtime.Serialization;
 

@@ -44,14 +44,26 @@ namespace March.Editor
 
         public static PooledObject<StringBuilder> BuildIconText(StringLike icon, StringLike text)
         {
-            return BuildIconText(icon, text, text); // 使得 ImGui Id 与图标无关，切换图标后状态不会丢失
+            PooledObject<StringBuilder> builder = StringBuilderPool.Get();
+            builder.Value.AppendIconText(icon, text);
+            return builder;
         }
 
         public static PooledObject<StringBuilder> BuildIconText(StringLike icon, StringLike text, StringLike id)
         {
             PooledObject<StringBuilder> builder = StringBuilderPool.Get();
-            builder.Value.Append(icon).Append(' ').Append(text).AppendId(id);
+            builder.Value.AppendIconText(icon, text, id);
             return builder;
+        }
+
+        public static StringBuilder AppendIconText(this StringBuilder builder, StringLike icon, StringLike text)
+        {
+            return AppendIconText(builder, icon, text, text); // 使得 ImGui Id 与图标无关，切换图标后状态不会丢失
+        }
+
+        public static StringBuilder AppendIconText(this StringBuilder builder, StringLike icon, StringLike text, StringLike id)
+        {
+            return builder.Append(icon).Append(' ').Append(text).AppendId(id);
         }
 
         public static PooledObject<StringBuilder> BuildId(StringLike id)

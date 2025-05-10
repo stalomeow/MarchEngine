@@ -55,11 +55,31 @@ namespace march
         static void OpenPopup(const std::string& id);
         static bool FloatRangeField(const std::string& label, const std::string& tooltip, float& currentMin, float& currentMax, float speed = 0.1f, float min = 0.0f, float max = 0.0f);
 
-        static bool BeginTreeNode(const std::string& label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
+        static bool BeginTreeNode(const std::string& label, int32_t index, bool isLeaf, bool selected, bool defaultOpen);
         // only call EndTreeNode() if BeginTreeNode() returns true!
         static void EndTreeNode();
 
-        static ImGuiTreeNodeFlags GetTreeNodeFlags(bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth);
+        enum class SelectionRequestType : int32_t
+        {
+            Nop,
+            SetAll,
+            ClearAll,
+            SetRange,
+            ClearRange,
+        };
+
+        struct SelectionRequest
+        {
+            SelectionRequestType Type;
+            int32_t StartIndex; // inclusive
+            int32_t EndIndex;   // inclusive
+        };
+
+        static void* BeginTreeNodeMultiSelect();
+        static void* EndTreeNodeMultiSelect();
+        static int32_t GetMultiSelectRequestCount(void* handle);
+        static void GetMultiSelectRequests(void* handle, SelectionRequest* pOutRequests);
+
         static bool IsTreeNodeOpen(const std::string& id, bool defaultValue);
 
         enum class ItemClickOptions

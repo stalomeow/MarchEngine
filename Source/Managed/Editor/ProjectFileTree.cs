@@ -68,8 +68,7 @@ namespace March.Editor
                 }
 
                 using var label = EditorGUIUtility.BuildIconText(icon, name);
-                bool isOpen = EditorGUI.BeginTreeNode(label, isLeaf: isLeaf, selected: selected, defaultOpen: defaultOpen,
-                    openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
+                bool isOpen = EditorGUI.BeginTreeNode(label, 0, isLeaf, selected, defaultOpen);
 
                 if (importer != null && assetGuid != null && DragDrop.BeginSource())
                 {

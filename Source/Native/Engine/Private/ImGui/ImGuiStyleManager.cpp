@@ -88,6 +88,7 @@ namespace march
         colors[ImGuiCol_TabDimmedSelected] = panelColor;
         colors[ImGuiCol_TabDimmedSelectedOverline] = panelColor;
         colors[ImGuiCol_TabSelectedOverline] = panelActiveColor;
+        colors[ImGuiCol_NavCursor] = panelActiveColor;
 
         //style.WindowMenuButtonPosition = ImGuiDir_None;
         style.WindowRounding = 3.0f;

@@ -6,6 +6,7 @@ using March.Core.Serialization;
 using March.Editor.AssetPipeline;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace March.Editor
@@ -34,6 +35,23 @@ namespace March.Editor
             False = 0,
             TreeNodeArrow = 1,
             True = 2,
+        }
+
+        internal enum SelectionRequestType : int
+        {
+            Nop,
+            SetAll,
+            ClearAll,
+            SetRange,
+            ClearRange,
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SelectionRequest
+        {
+            public SelectionRequestType Type;
+            public int StartIndex; // inclusive
+            public int EndIndex;   // inclusive
         }
 
         [NativeMethod]
@@ -234,16 +252,28 @@ namespace March.Editor
         public static partial bool FloatRangeField(StringLike label, StringLike tooltip, ref float currentMin, ref float currentMax, float speed = 0.1f, float minValue = 0.0f, float maxValue = 0.0f);
 
         [NativeMethod]
-        public static partial bool BeginTreeNode(StringLike label, bool isLeaf = false, bool openOnArrow = false, bool openOnDoubleClick = false, bool selected = false, bool showBackground = false, bool defaultOpen = false, bool spanWidth = true);
+        internal static partial bool BeginTreeNode(StringLike label, int index, bool isLeaf, bool selected, bool defaultOpen);
 
         /// <summary>
         /// only call EndTreeNode() if BeginTreeNode() returns true!
         /// </summary>
         [NativeMethod]
-        public static partial void EndTreeNode();
+        internal static partial void EndTreeNode();
 
         [NativeMethod]
-        public static partial bool IsTreeNodeOpen(StringLike id, bool defaultValue);
+        private static partial nint BeginTreeNodeMultiSelect();
+
+        [NativeMethod]
+        private static partial nint EndTreeNodeMultiSelect();
+
+        [NativeMethod]
+        private static partial int GetMultiSelectRequestCount(nint handle);
+
+        [NativeMethod]
+        private static partial void GetMultiSelectRequests(nint handle, SelectionRequest* pOutRequests);
+
+        [NativeMethod]
+        internal static partial bool IsTreeNodeOpen(StringLike id, bool defaultValue);
 
         [NativeMethod]
         public static partial ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options);
@@ -610,6 +640,45 @@ namespace March.Editor
         [NativeMethod]
         private static partial void EndGroup();
 
+        internal readonly ref struct TreeNodeMultiSelectScope
+        {
+            private readonly List<SelectionRequest> m_Requests;
+
+            [Obsolete("Use other constructors", error: true)]
+            public TreeNodeMultiSelectScope() => m_Requests = null!; // 避免编译器警告
+
+            public TreeNodeMultiSelectScope(List<SelectionRequest> requests)
+            {
+                m_Requests = requests;
+
+                nint handle = BeginTreeNodeMultiSelect();
+                GetSelectionRequests(handle);
+            }
+
+            public void Dispose()
+            {
+                nint handle = EndTreeNodeMultiSelect();
+                GetSelectionRequests(handle);
+            }
+
+            private unsafe void GetSelectionRequests(nint handle)
+            {
+                int count = GetMultiSelectRequestCount(handle);
+
+                if (count <= 0)
+                {
+                    return;
+                }
+
+                int offset = m_Requests.Count;
+                CollectionsMarshal.SetCount(m_Requests, offset + count); // 保留之前的 request
+
+                fixed (SelectionRequest* p = CollectionsMarshal.AsSpan(m_Requests))
+                {
+                    GetMultiSelectRequests(handle, p + offset);
+                }
+            }
+        }
         #endregion
     }
 }

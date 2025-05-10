@@ -5,6 +5,7 @@
 #include <imgui_stdlib.h>
 #include <imgui_internal.h>
 #include <algorithm>
+#include <assert.h>
 
 namespace march
 {
@@ -532,9 +533,19 @@ namespace march
         return ImGui::DragFloatRange2(("##" + label).c_str(), &currentMin, &currentMax, speed, min, max);
     }
 
-    bool EditorGUI::BeginTreeNode(const std::string& label, bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
+    bool EditorGUI::BeginTreeNode(const std::string& label, int32_t index, bool isLeaf, bool selected, bool defaultOpen)
     {
-        ImGuiTreeNodeFlags flags = GetTreeNodeFlags(isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+        ImGuiTreeNodeFlags flags
+            = ImGuiTreeNodeFlags_OpenOnArrow
+            | ImGuiTreeNodeFlags_OpenOnDoubleClick
+            | ImGuiTreeNodeFlags_SpanFullWidth;
+
+        if (isLeaf)      flags |= ImGuiTreeNodeFlags_Leaf;
+        if (selected)    flags |= ImGuiTreeNodeFlags_Selected;
+        if (defaultOpen) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+
+        // 记录 tree node 的 index
+        ImGui::SetNextItemSelectionUserData(static_cast<ImGuiSelectionUserData>(index));
         return ImGui::TreeNodeEx(label.c_str(), flags);
     }
 
@@ -543,19 +554,47 @@ namespace march
         ImGui::TreePop();
     }
 
-    ImGuiTreeNodeFlags EditorGUI::GetTreeNodeFlags(bool isLeaf, bool openOnArrow, bool openOnDoubleClick, bool selected, bool showBackground, bool defaultOpen, bool spanWidth)
+    void* EditorGUI::BeginTreeNodeMultiSelect()
     {
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_None;
+        constexpr ImGuiMultiSelectFlags flags
+            = ImGuiMultiSelectFlags_NoAutoClearOnReselect
+            | ImGuiMultiSelectFlags_ClearOnClickVoid
+            | ImGuiMultiSelectFlags_SelectOnClickRelease;
+        return ImGui::BeginMultiSelect(flags);
+    }
 
-        if (isLeaf)             flags |= ImGuiTreeNodeFlags_Leaf;
-        if (openOnArrow)        flags |= ImGuiTreeNodeFlags_OpenOnArrow;
-        if (openOnDoubleClick)  flags |= ImGuiTreeNodeFlags_OpenOnDoubleClick;
-        if (selected)           flags |= ImGuiTreeNodeFlags_Selected;
-        if (showBackground)     flags |= ImGuiTreeNodeFlags_Framed;
-        if (defaultOpen)        flags |= ImGuiTreeNodeFlags_DefaultOpen;
-        if (spanWidth)          flags |= ImGuiTreeNodeFlags_SpanFullWidth; // ImGuiTreeNodeFlags_SpanAvailWidth;
+    void* EditorGUI::EndTreeNodeMultiSelect()
+    {
+        return ImGui::EndMultiSelect();
+    }
 
-        return flags;
+    int32_t EditorGUI::GetMultiSelectRequestCount(void* handle)
+    {
+        ImGuiMultiSelectIO* io = static_cast<ImGuiMultiSelectIO*>(handle);
+        return static_cast<int32_t>(io->Requests.size());
+    }
+
+    void EditorGUI::GetMultiSelectRequests(void* handle, SelectionRequest* pOutRequests)
+    {
+        ImGuiMultiSelectIO* io = static_cast<ImGuiMultiSelectIO*>(handle);
+
+        for (int i = 0; i < io->Requests.size(); i++)
+        {
+            const ImGuiSelectionRequest& req = io->Requests[i];
+
+            if (req.Type == ImGuiSelectionRequestType_SetAll)
+            {
+                pOutRequests[i].Type = req.Selected ? SelectionRequestType::SetAll : SelectionRequestType::ClearAll;
+                pOutRequests[i].StartIndex = -1;
+                pOutRequests[i].EndIndex = -1;
+            }
+            else if (req.Type == ImGuiSelectionRequestType_SetRange)
+            {
+                pOutRequests[i].Type = req.Selected ? SelectionRequestType::SetRange : SelectionRequestType::ClearRange;
+                pOutRequests[i].StartIndex = static_cast<int32_t>(req.RangeFirstItem);
+                pOutRequests[i].EndIndex = static_cast<int32_t>(req.RangeLastItem);
+            }
+        }
     }
 
     bool EditorGUI::IsTreeNodeOpen(const std::string& id, bool defaultValue)

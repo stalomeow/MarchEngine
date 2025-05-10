@@ -214,14 +214,34 @@ NATIVE_EXPORT_AUTO EditorGUI_FloatRangeField(cs_string label, cs_string tooltip,
     retcs EditorGUI::FloatRangeField(label, tooltip, *currentMin, *currentMax, speed, minValue, maxValue);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_BeginTreeNode(cs_string label, cs_bool isLeaf, cs_bool openOnArrow, cs_bool openOnDoubleClick, cs_bool selected, cs_bool showBackground, cs_bool defaultOpen, cs_bool spanWidth)
+NATIVE_EXPORT_AUTO EditorGUI_BeginTreeNode(cs_string label, cs_int index, cs_bool isLeaf, cs_bool selected, cs_bool defaultOpen)
 {
-    retcs EditorGUI::BeginTreeNode(label, isLeaf, openOnArrow, openOnDoubleClick, selected, showBackground, defaultOpen, spanWidth);
+    retcs EditorGUI::BeginTreeNode(label, index, isLeaf, selected, defaultOpen);
 }
 
 NATIVE_EXPORT_AUTO EditorGUI_EndTreeNode()
 {
     EditorGUI::EndTreeNode();
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_BeginTreeNodeMultiSelect()
+{
+    retcs EditorGUI::BeginTreeNodeMultiSelect();
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_EndTreeNodeMultiSelect()
+{
+    retcs EditorGUI::EndTreeNodeMultiSelect();
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_GetMultiSelectRequestCount(cs<void*> handle)
+{
+    retcs EditorGUI::GetMultiSelectRequestCount(handle);
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_GetMultiSelectRequests(cs<void*> handle, cs<void*> pOutRequests)
+{
+    EditorGUI::GetMultiSelectRequests(handle, static_cast<EditorGUI::SelectionRequest*>(pOutRequests.data));
 }
 
 NATIVE_EXPORT_AUTO EditorGUI_IsTreeNodeOpen(cs_string id, cs_bool defaultValue)

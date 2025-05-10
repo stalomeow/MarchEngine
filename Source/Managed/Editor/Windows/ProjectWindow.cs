@@ -1,4 +1,3 @@
-using March.Core;
 using March.Core.IconFont;
 using March.Core.Pool;
 using March.Core.Rendering;
@@ -110,9 +109,9 @@ namespace March.Editor.Windows
 
             s_ContextMenu.AddMenuItem("Reimport", (ref object? arg) =>
             {
-                foreach (MarchObject obj in Selection.Objects)
+                for (int i = 0; i < Selection.Count; i++)
                 {
-                    if (obj is not AssetImporter importer)
+                    if (Selection.Get(i) is not AssetImporter importer)
                     {
                         continue;
                     }

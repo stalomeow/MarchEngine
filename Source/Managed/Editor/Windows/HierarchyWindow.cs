@@ -1,9 +1,9 @@
 using March.Core;
 using March.Core.IconFont;
-using March.Core.Pool;
 using March.Core.Rendering;
 using March.Editor.AssetPipeline.Importers;
 using System.Numerics;
+using System.Text;
 
 namespace March.Editor.Windows
 {
@@ -79,9 +79,9 @@ namespace March.Editor.Windows
 
             s_ContextMenu.AddMenuItem("Delete", (ref object? arg) =>
             {
-                foreach (MarchObject obj in Selection.Objects)
+                for (int i = 0; i < Selection.Count; i++)
                 {
-                    if (obj is not GameObject go)
+                    if (Selection.Get(i) is not GameObject go)
                     {
                         continue;
                     }
@@ -96,6 +96,8 @@ namespace March.Editor.Windows
             }, enabled: (ref object? arg) => Selection.All<GameObject>());
         }
 
+        private readonly HierarchyTreeView m_TreeView = new();
+
         public HierarchyWindow() : base(FontAwesome6.BarsStaggered, "Hierarchy")
         {
             DefaultSize = new Vector2(350.0f, 600.0f);
@@ -108,32 +110,10 @@ namespace March.Editor.Windows
             bool enableDragDrop = false;
             Scene scene = SceneManager.CurrentScene;
             using var sceneLabel = EditorGUIUtility.BuildIconText(SceneImporter.SceneIcon, scene.Name);
-            using var selections = ListPool<GameObject>.Get();
 
             if (EditorGUI.CollapsingHeader(sceneLabel, defaultOpen: true))
             {
-                List<GameObject> gameObjects = scene.RootGameObjects;
-                bool isAnyItemClicked = false;
-
-                for (int i = 0; i < gameObjects.Count; i++)
-                {
-                    using (new EditorGUI.IDScope(i))
-                    {
-                        DrawGameObjectsRecursive(gameObjects[i], selections, ref isAnyItemClicked);
-                    }
-                }
-
-                // 在 window context menu 之前处理选择
-                if (selections.Value.Count > 0)
-                {
-                    Selection.Set(selections.Value);
-                }
-                else if (!isAnyItemClicked && EditorGUI.IsWindowClicked())
-                {
-                    // 点在空白上取消选择，这样用户体验更好一点
-                    Selection.Clear();
-                }
-
+                m_TreeView.Draw();
                 s_ContextMenu.ShowAsWindowContext();
                 enableDragDrop = true;
             }
@@ -167,39 +147,40 @@ namespace March.Editor.Windows
                 DragDrop.EndTarget(DragDropResult.Reject);
             }
         }
+    }
 
-        private static void DrawGameObjectsRecursive(GameObject go, List<GameObject> selections, ref bool isAnyItemClicked)
+    internal class HierarchyTreeView : TreeView
+    {
+        protected override int GetChildCount(object? item)
         {
-            // 因为是从上往下递归绘制的，所以只要判断当前节点是否激活即可
-            using (new EditorGUI.DisabledScope(!go.IsActiveSelf, allowInteraction: true))
+            if (item == null)
             {
-                using var label = EditorGUIUtility.BuildIconText(FontAwesome6.DiceD6, go.Name, "GameObject");
-                bool isSelected = Selection.Contains(go);
-                bool isLeaf = go.transform.ChildCount == 0;
-                bool isOpen = EditorGUI.BeginTreeNode(label, selected: isSelected, isLeaf: isLeaf, openOnArrow: true, openOnDoubleClick: true, spanWidth: true);
-
-                EditorGUI.ItemClickResult clickResult = EditorGUI.IsTreeNodeClicked(isOpen, isLeaf);
-                isAnyItemClicked |= clickResult != EditorGUI.ItemClickResult.False;
-
-                // 点箭头不修改 selection
-                if (clickResult == EditorGUI.ItemClickResult.True)
-                {
-                    selections.Add(go);
-                }
-
-                if (isOpen)
-                {
-                    for (int i = 0; i < go.transform.ChildCount; i++)
-                    {
-                        using (new EditorGUI.IDScope(i))
-                        {
-                            DrawGameObjectsRecursive(go.transform.GetChild(i).gameObject, selections, ref isAnyItemClicked);
-                        }
-                    }
-
-                    EditorGUI.EndTreeNode();
-                }
+                return SceneManager.CurrentScene.RootGameObjects.Count;
             }
+
+            return ((GameObject)item).transform.ChildCount;
+        }
+
+        protected override object GetChildItem(object? item, int index)
+        {
+            if (item == null)
+            {
+                return SceneManager.CurrentScene.RootGameObjects[index];
+            }
+
+            return ((GameObject)item).transform.GetChild(index).gameObject;
+        }
+
+        protected override TreeViewItemDesc GetItemDesc(object item, StringBuilder labelBuilder)
+        {
+            GameObject go = (GameObject)item;
+            labelBuilder.AppendIconText(FontAwesome6.DiceD6, go.Name, "GameObject");
+
+            return new TreeViewItemDesc
+            {
+                IsDisabled = !go.IsActiveSelf, // 因为是从上往下递归绘制的，所以只要判断当前节点是否激活即可
+                SelectionObject = go,
+            };
         }
     }
 }
