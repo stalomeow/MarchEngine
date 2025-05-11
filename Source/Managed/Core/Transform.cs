@@ -113,14 +113,7 @@ namespace March.Core
 
         public void AddChild(Transform child)
         {
-            if (child.m_Parent != null)
-            {
-                throw new InvalidOperationException("The transform already has a parent.");
-            }
-
-            m_Children.Add(child);
-            child.m_Parent = this;
-            child.SetNativeParent(this);
+            InsertChild(m_Children.Count, child);
         }
 
         public void InsertChild(int index, Transform child)
@@ -133,18 +126,36 @@ namespace March.Core
             m_Children.Insert(index, child);
             child.m_Parent = this;
             child.SetNativeParent(this);
+
+            SceneManager.CurrentScene.RootGameObjects.Remove(child.gameObject);
         }
 
-        public void Detach()
+        public void Detach(bool worldPositionStays = true)
         {
             if (m_Parent == null)
             {
                 return;
             }
 
-            m_Parent.m_Children.Remove(this);
-            m_Parent = null;
-            SetNativeParent(null);
+            if (worldPositionStays)
+            {
+                Matrix4x4 matrix = LocalToWorldMatrix;
+                Impl();
+                LocalToWorldMatrix = matrix;
+            }
+            else
+            {
+                Impl();
+            }
+
+            void Impl()
+            {
+                m_Parent.m_Children.Remove(this);
+                m_Parent = null;
+                SetNativeParent(null);
+
+                SceneManager.CurrentScene.RootGameObjects.Add(gameObject);
+            }
         }
 
         public bool IsChildOf(Transform parent)
@@ -163,6 +174,98 @@ namespace March.Core
             }
 
             return false;
+        }
+
+        public int GetSiblingIndex()
+        {
+            if (m_Parent == null)
+            {
+                return SceneManager.CurrentScene.RootGameObjects.IndexOf(gameObject);
+            }
+
+            return m_Parent.m_Children.IndexOf(this);
+        }
+
+        public void SetSiblingIndex(int index)
+        {
+            if (m_Parent == null)
+            {
+                Move(SceneManager.CurrentScene.RootGameObjects, gameObject, index);
+            }
+            else
+            {
+                Move(m_Parent.m_Children, this, index);
+            }
+
+            static void Move<T>(List<T> list, T item, int newIndex)
+            {
+                int index = list.IndexOf(item);
+
+                if (index < 0)
+                {
+                    throw new InvalidOperationException("The item is not in the list.");
+                }
+
+                if (index == newIndex)
+                {
+                    return;
+                }
+
+                list.RemoveAt(index);
+
+                if (index < newIndex)
+                {
+                    newIndex--;
+                }
+
+                list.Insert(newIndex, item);
+            }
+        }
+
+        public void SetParent(Transform? parent, bool worldPositionStays = true)
+        {
+            if (parent == null)
+            {
+                Detach(worldPositionStays);
+                return;
+            }
+
+            if (parent == m_Parent)
+            {
+                return;
+            }
+
+            if (parent.IsChildOf(this))
+            {
+                throw new InvalidOperationException("Cannot set parent to a child transform.");
+            }
+
+            if (worldPositionStays)
+            {
+                Matrix4x4 matrix = LocalToWorldMatrix;
+                Impl(parent);
+                LocalToWorldMatrix = matrix;
+            }
+            else
+            {
+                Impl(parent);
+            }
+
+            void Impl(Transform parent)
+            {
+                if (m_Parent != null)
+                {
+                    m_Parent.m_Children.Remove(this);
+                }
+                else
+                {
+                    SceneManager.CurrentScene.RootGameObjects.Remove(gameObject);
+                }
+
+                m_Parent = parent;
+                m_Parent.m_Children.Add(this);
+                SetNativeParent(parent);
+            }
         }
 
         [OnDeserialized]

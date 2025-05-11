@@ -31,9 +31,6 @@ namespace March.Editor
     {
         public required object Payload { get; init; }
 
-        /// <summary>
-        /// 可用于判断 <see cref="Payload"/> 的来源
-        /// </summary>
         public required object? Context { get; init; }
 
         /// <summary>

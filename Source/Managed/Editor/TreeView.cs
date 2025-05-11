@@ -1,5 +1,4 @@
 using March.Core;
-using March.Core.Interop;
 using March.Core.Pool;
 using System.Numerics;
 using System.Text;
@@ -15,22 +14,35 @@ namespace March.Editor
         public bool IsOpenByDefault { get; init; }
     }
 
+    public enum TreeViewDragDropPosition
+    {
+        AboveItem,
+        OnItem,
+        BelowItem,
+    }
+
     public abstract class TreeView
     {
         private readonly struct ItemState
         {
             public required object? Parent { get; init; }
 
-            public required int SiblingIndex { get; init; }
-
-            public required bool IsOpen { get; init; }
-
             public required MarchObject? SelectionObject { get; init; }
+        }
+
+        private readonly struct MoveRequest
+        {
+            public required object MovingItem { get; init; }
+
+            public required object AnchorItem { get; init; }
+
+            public required TreeViewDragDropPosition Position { get; init; }
         }
 
         private readonly List<object> m_Items = [];
         private readonly Dictionary<object, ItemState> m_ItemStates = [];
         private readonly List<EditorGUI.SelectionRequest> m_SelectionRequests = [];
+        private readonly List<MoveRequest> m_MoveRequests = [];
 
         public void Draw()
         {
@@ -55,12 +67,19 @@ namespace March.Editor
                 {
                     HandleSelectionRequest(in request);
                 }
+
+                // 移动会使 Item 的索引失效，所以放在最后处理
+                foreach (MoveRequest request in m_MoveRequests)
+                {
+                    MoveItem(request.MovingItem, request.AnchorItem, request.Position);
+                }
             }
             finally
             {
                 m_Items.Clear();
                 m_ItemStates.Clear();
                 m_SelectionRequests.Clear();
+                m_MoveRequests.Clear();
             }
         }
 
@@ -74,22 +93,41 @@ namespace March.Editor
                 using (new EditorGUI.DisabledScope(desc.IsDisabled, allowInteraction: true))
                 {
                     int itemIndex = m_Items.Count; // 当前 item 在 m_Items 中的索引，用于后面处理 selection requests
+                    m_Items.Add(item);
+                    m_ItemStates[item] = new ItemState
+                    {
+                        Parent = parent,
+                        SelectionObject = desc.SelectionObject,
+                    };
+
+                    if (siblingIndex == 0)
+                    {
+                        // 模拟一次 TreePush
+                        using (new EditorGUI.IndentedScope())
+                        {
+                            DrawItemSpacing(spacing, item, TreeViewDragDropPosition.AboveItem);
+                        }
+                    }
+
                     int childCount = GetChildCount(item);
                     bool isLeaf = childCount == 0;
                     bool isSelected = IsItemSelected(ref desc);
                     bool isOpen = EditorGUI.BeginTreeNode(label, itemIndex, isLeaf, isSelected, desc.IsOpenByDefault);
 
-                    m_Items.Add(item);
-                    m_ItemStates[item] = new ItemState
-                    {
-                        Parent = parent,
-                        SiblingIndex = siblingIndex,
-                        IsOpen = isOpen,
-                        SelectionObject = desc.SelectionObject,
-                    };
+                    HandleItemDragDrop(item);
 
-                    HandleItemDragDrop(item, label);
-                    DrawItemSpacing(item, spacing);
+                    if (!isOpen)
+                    {
+                        // 模拟一次 TreePush
+                        using (new EditorGUI.IndentedScope())
+                        {
+                            DrawItemSpacing(spacing, item, TreeViewDragDropPosition.BelowItem);
+                        }
+                    }
+                    else if (childCount == 0)
+                    {
+                        DrawItemSpacing(spacing, item, TreeViewDragDropPosition.BelowItem);
+                    }
 
                     if (isOpen)
                     {
@@ -104,28 +142,58 @@ namespace March.Editor
             }
         }
 
-        private void HandleItemDragDrop(object item, StringLike label)
+        private void HandleItemDragDrop(object item)
         {
             if (DragDrop.BeginSource())
             {
-                DragDrop.EndSource(label, item, this);
+                using var tooltip = StringBuilderPool.Get();
+                GetItemDragDropTooltip(item, tooltip);
+
+                DragDrop.EndSource(tooltip, item, this);
             }
+
+            HandleDragDropTarget(item, TreeViewDragDropPosition.OnItem, DragDropResult.AcceptByRect);
         }
 
-        private void DrawItemSpacing(object item, float height)
+        private void DrawItemSpacing(float height, object item, TreeViewDragDropPosition position)
         {
+            // 绘制 ItemSpacing
             EditorGUI.Dummy(EditorGUI.ContentRegionAvailable.X, height);
+            HandleDragDropTarget(item, position, DragDropResult.AcceptByLine);
+        }
 
-            if (DragDrop.BeginTarget(DragDropArea.Item, out DragDropData data))
+        private void HandleDragDropTarget(object item, TreeViewDragDropPosition position, DragDropResult acceptResult)
+        {
+            if (!DragDrop.BeginTarget(DragDropArea.Item, out DragDropData data))
             {
-                if (data.Context == this)
+                return;
+            }
+
+            if (data.Context == this)
+            {
+                if (CanMoveItem(data.Payload, item, position))
                 {
-                    DragDrop.EndTarget(DragDropResult.AcceptByLine);
+                    if (data.IsDelivery)
+                    {
+                        m_MoveRequests.Add(new MoveRequest
+                        {
+                            AnchorItem = item,
+                            MovingItem = data.Payload,
+                            Position = position,
+                        });
+                    }
+
+                    DragDrop.EndTarget(acceptResult);
                 }
                 else
                 {
                     DragDrop.EndTarget(DragDropResult.Reject);
                 }
+            }
+            else
+            {
+                // TODO 写一个虚函数来处理
+                DragDrop.EndTarget(DragDropResult.Reject);
             }
         }
 
@@ -203,5 +271,27 @@ namespace March.Editor
         protected abstract object GetChildItem(object? item, int index);
 
         protected abstract TreeViewItemDesc GetItemDesc(object item, StringBuilder labelBuilder);
+
+        protected abstract void GetItemDragDropTooltip(object item, StringBuilder tooltipBuilder);
+
+        protected virtual bool CanMoveItem(object movingItem, object anchorItem, TreeViewDragDropPosition position)
+        {
+            // 如果把 movingItem 移动到自己或者子结点上，返回 false
+            object? parent = anchorItem;
+
+            while (parent != null)
+            {
+                if (parent == movingItem)
+                {
+                    return false;
+                }
+
+                parent = m_ItemStates[parent].Parent;
+            }
+
+            return true;
+        }
+
+        protected abstract void MoveItem(object movingItem, object anchorItem, TreeViewDragDropPosition position);
     }
 }

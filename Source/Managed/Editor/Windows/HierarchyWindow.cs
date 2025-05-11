@@ -1,8 +1,10 @@
 using March.Core;
 using March.Core.IconFont;
+using March.Core.Pool;
 using March.Core.Rendering;
 using March.Editor.AssetPipeline.Importers;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace March.Editor.Windows
@@ -181,6 +183,47 @@ namespace March.Editor.Windows
                 IsDisabled = !go.IsActiveSelf, // 因为是从上往下递归绘制的，所以只要判断当前节点是否激活即可
                 SelectionObject = go,
             };
+        }
+
+        protected override void GetItemDragDropTooltip(object item, StringBuilder tooltipBuilder)
+        {
+            GameObject go = (GameObject)item;
+
+            // 获取物体的路径
+            Transform? transform = go.transform;
+            using var paths = ListPool<string?>.Get();
+            while (transform != null)
+            {
+                paths.Value.Add(transform.gameObject.Name);
+                transform = transform.Parent;
+            }
+            paths.Value.Reverse();
+
+            tooltipBuilder.Append(FontAwesome6.DiceD6).Append(' ');
+            tooltipBuilder.AppendJoin('/', CollectionsMarshal.AsSpan(paths.Value));
+        }
+
+        protected override void MoveItem(object movingItem, object anchorItem, TreeViewDragDropPosition position)
+        {
+            Transform moving = ((GameObject)movingItem).transform;
+            Transform anchor = ((GameObject)anchorItem).transform;
+
+            switch (position)
+            {
+                case TreeViewDragDropPosition.AboveItem:
+                    moving.SetParent(anchor.Parent);
+                    moving.SetSiblingIndex(anchor.GetSiblingIndex());
+                    break;
+                case TreeViewDragDropPosition.OnItem:
+                    moving.SetParent(anchor);
+                    break;
+                case TreeViewDragDropPosition.BelowItem:
+                    moving.SetParent(anchor.Parent);
+                    moving.SetSiblingIndex(anchor.GetSiblingIndex() + 1);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(position));
+            }
         }
     }
 }

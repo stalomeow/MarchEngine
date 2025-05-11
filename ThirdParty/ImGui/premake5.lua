@@ -27,6 +27,9 @@ project "ImGui"
         "Source/imgui_internal.h",
         "Source/imgui_tables.cpp",
         "Source/imgui_widgets.cpp",
+        "Source/imstb_rectpack.h",
+        "Source/imstb_textedit.h",
+        "Source/imstb_truetype.h",
 
         -- 添加对 std::string 的支持
         "Source/misc/cpp/imgui_stdlib.cpp",
