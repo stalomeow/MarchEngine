@@ -50,4 +50,9 @@ group "Managed"
         proj.setup_csharp()
 
 group "ThirdParty"
-    include "Source/ThirdParty"
+    include "ThirdParty/DotNetRuntime"
+    include "ThirdParty/ImGui"
+    include "ThirdParty/ImGuizmo"
+    include "ThirdParty/ImOGuizmo"
+    include "ThirdParty/NsightAftermath"
+    include "ThirdParty/RenderDoc"

@@ -1,3 +1,5 @@
+local cmd = require "Build/Commands"
+
 local vcpkg = {}
 local install_dir = path.join(_MAIN_SCRIPT_DIR, "Output", "Vcpkg")
 local triplet = "x64-windows"
@@ -10,16 +12,12 @@ local function get_path(...)
     return path.join(install_dir, triplet, ...)
 end
 
-function vcpkg.include_headers()
+function vcpkg.setup()
     includedirs { get_path("include") }
-end
-
-function vcpkg.link_libraries()
-    local cmd = require "Build/Commands"
 
     -- 直接暴力链接所有库，开摆！
 
-    filter "configurations:Debug"
+    filter { "kind:WindowedApp or ConsoleApp", "configurations:Debug" }
         links (os.matchfiles(get_path("debug", "lib", "*.lib")))
 
         postbuildcommands {
@@ -27,7 +25,7 @@ function vcpkg.link_libraries()
             cmd.copy_file_to_build_target_dir(get_path("debug", "bin", "*.pdb")),
         }
 
-    filter "configurations:Release"
+    filter { "kind:WindowedApp or ConsoleApp", "configurations:Release" }
         links (os.matchfiles(get_path("lib", "*.lib")))
 
         postbuildcommands {

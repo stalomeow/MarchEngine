@@ -1,12 +1,12 @@
-[submodule "Source/ThirdParty/ImGui"]
-	path = Source/ThirdParty/ImGui
+[submodule "ThirdParty/ImGui/Source"]
+	path = ThirdParty/ImGui/Source
 	url = https://github.com/stalomeow/imgui.git
 	branch = march-engine
-[submodule "Source/ThirdParty/ImGuizmo"]
-	path = Source/ThirdParty/ImGuizmo
+[submodule "ThirdParty/ImGuizmo/Source"]
+	path = ThirdParty/ImGuizmo/Source
 	url = https://github.com/stalomeow/ImGuizmo.git
 	branch = march-engine
-[submodule "Source/ThirdParty/ImOGuizmo"]
-	path = Source/ThirdParty/ImOGuizmo
+[submodule "ThirdParty/ImOGuizmo/Source"]
+	path = ThirdParty/ImOGuizmo/Source
 	url = https://github.com/stalomeow/imoguizmo.git
 	branch = march-engine

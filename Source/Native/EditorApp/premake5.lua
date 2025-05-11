@@ -6,10 +6,9 @@ project "EditorApp"
     kind "WindowedApp"
 
     proj.setup_cpp()
-    vcpkg.include_headers()
-    vcpkg.link_libraries()
+    vcpkg.setup()
 
-    uses { "Engine", "ImGui", "ImGuizmo", "ImOGuizmo" }
+    uses { "Engine", "DotNetRuntimeBinaries", "NsightAftermathBinaries", "ImGuizmo", "ImOGuizmo" }
 
     links {
         "Core",
@@ -29,7 +28,6 @@ project "EditorApp"
         -- 额外的资源
         cmd.mirror_dir_to_build_target_dir(path.join(_MAIN_SCRIPT_DIR, "Resources"), "Resources"),
         cmd.mirror_dir_to_build_target_dir(path.join(_MAIN_SCRIPT_DIR, "Source/Shaders/Public"), "Shaders"),
-        cmd.mirror_dir_to_build_target_dir(path.join(_MAIN_SCRIPT_DIR, "Binaries/DotNetRuntime/%{cfg.platform}"), "Runtime"),
     }
 
     filter "configurations:Debug"

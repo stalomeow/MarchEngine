@@ -1,7 +1,6 @@
 * text=auto
 
 Source/Managed/ShaderLab/Internal/** linguist-generated
-Binaries/**                          linguist-vendored
 Resources/Meta/**                    linguist-generated
 
 *.h                                        linguist-language=cpp

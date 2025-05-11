@@ -20,12 +20,6 @@ function proj.get_csharp_binary_path(project_name, binary_name)
     return path.join(_MAIN_SCRIPT_DIR, "Output/Binaries/Managed", project_name, "%{cfg.buildcfg}", dotnet_version, binary_name)
 end
 
-function proj.get_nsight_aftermath_binary_path(ext)
-    local arch = "%{cfg.architecture == 'x86_64' and 'x64' or cfg.architecture}" -- 将 x86_64 替换为 x64
-    local filename = string.format("GFSDK_Aftermath_Lib.%s.%s", arch, ext)
-    return path.join(_MAIN_SCRIPT_DIR, "Binaries/NsightAftermath", arch, filename)
-end
-
 local function include_dir_if_exists(dir_path)
     if os.isdir(dir_path) then
         includedirs { dir_path }
@@ -99,9 +93,6 @@ function proj.setup_cpp()
 
     pchheader "pch.h"
     pchsource "Private/pch.cpp"
-
-    include_dir_if_exists "ThirdParty"
-    include_dir_if_exists "Internal"
 
     usage "PUBLIC"
         include_dir_if_exists "Public"

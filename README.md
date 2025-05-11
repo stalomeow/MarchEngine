@@ -12,25 +12,22 @@
 
 ``` shell
 MarchEngine
-├─ Binaries
-│  ├─ DotNetRuntime   # .NET Runtime
-│  └─ NsightAftermath # NVIDIA Nsight Aftermath SDK
-├─ Build              # 构建脚本
-├─ Documentation      # 文档
-├─ Output             # 构建结果和临时文件（不参与版本控制）
-├─ Resources          # 引擎内置资源
+├─ Build           # 构建脚本
+├─ Documentation   # 文档
+├─ Output          # 构建结果和临时文件（不参与版本控制）
+├─ Resources       # 引擎内置资源
 ├─ Source
 │  ├─ Managed
-│  │  ├─ Binding      # C# Binding 生成器
-│  │  ├─ Core         # 引擎核心的 C# 代码
-│  │  ├─ Editor       # 编辑器的 C# 代码
-│  │  └─ ShaderLab    # ShaderLab 编译器
+│  │  ├─ Binding   # C# Binding 生成器
+│  │  ├─ Core      # 引擎核心的 C# 代码
+│  │  ├─ Editor    # 编辑器的 C# 代码
+│  │  └─ ShaderLab # ShaderLab 编译器
 │  ├─ Native
-│  │  ├─ EditorApp    # 编辑器 App
-│  │  └─ Engine       # 引擎核心的 C++ 代码
-│  ├─ Shaders         # 引擎内置的 Shader
-│  └─ ThirdParty      # 部分第三方库
-└─ Tools              # 可能有用的工具
+│  │  ├─ EditorApp # 编辑器 App
+│  │  └─ Engine    # 引擎核心的 C++ 代码
+│  └─ Shaders      # 引擎内置的 Shader
+├─ ThirdParty      # 部分第三方库
+└─ Tools           # 可能有用的工具
 ```
 
 ## 文档
