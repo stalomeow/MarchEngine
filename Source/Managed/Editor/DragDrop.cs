@@ -1,24 +1,51 @@
 using March.Core;
 using March.Core.Interop;
-using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor
 {
     public enum DragDropArea
     {
-        Item = 0,
-        Window = 1,
+        Item,
+        Window,
     }
 
     public enum DragDropResult
     {
-        Accept = 0,
-        Reject = 1,
+        /// <summary>
+        /// 接受并显示一个矩形框
+        /// </summary>
+        AcceptByRect,
+
+        /// <summary>
+        /// 接受并显示一条线
+        /// </summary>
+        AcceptByLine,
+
+        /// <summary>
+        /// 拒绝
+        /// </summary>
+        Reject,
+    }
+
+    public readonly ref struct DragDropData
+    {
+        public required object Payload { get; init; }
+
+        /// <summary>
+        /// 可用于判断 <see cref="Payload"/> 的来源
+        /// </summary>
+        public required object? Context { get; init; }
+
+        /// <summary>
+        /// 用户释放鼠标按键时，为 <see langword="true"/>
+        /// </summary>
+        public required bool IsDelivery { get; init; }
     }
 
     public static partial class DragDrop
     {
-        private static MarchObject? s_Payload;
+        private static object? s_Payload;
+        private static object? s_Context;
 
         static DragDrop()
         {
@@ -27,6 +54,7 @@ namespace March.Editor
                 if (!IsActive)
                 {
                     s_Payload = null;
+                    s_Context = null;
                 }
             };
         }
@@ -34,44 +62,52 @@ namespace March.Editor
         [NativeMethod]
         public static partial bool BeginSource();
 
-        public static void EndSource(StringLike tooltip, MarchObject payload)
+        public static void EndSource(StringLike tooltip, object payload, object? context = null)
         {
             EndSourceNative(tooltip);
             s_Payload = payload;
+            s_Context = context;
         }
 
         [NativeMethod("EndSource")]
         private static partial void EndSourceNative(StringLike tooltip);
 
-        public static bool BeginTarget(DragDropArea area, [NotNullWhen(true)] out MarchObject? payload, out bool isDelivery)
+        public static bool BeginTarget(DragDropArea area, out DragDropData data)
         {
             if (!BeginTargetNative(area == DragDropArea.Window))
             {
-                payload = null;
-                isDelivery = false;
+                data = default;
                 return false;
             }
 
-            if (!CheckPayloadNative(out isDelivery))
+            if (!CheckPayloadNative(out bool isDelivery))
             {
                 EndTargetNative();
 
-                payload = null;
+                data = default;
                 return false;
             }
 
-            if ((payload = s_Payload) == null)
+            if (s_Payload == null)
             {
                 EndTarget(DragDropResult.Reject);
+
+                data = default;
                 return false;
             }
 
+            data = new DragDropData
+            {
+                Payload = s_Payload,
+                Context = s_Context,
+                IsDelivery = isDelivery
+            };
             return true;
         }
 
         public static void EndTarget(DragDropResult result)
         {
-            AcceptTargetNative(result == DragDropResult.Accept);
+            AcceptTargetNative(result);
             EndTargetNative();
         }
 
@@ -82,7 +118,7 @@ namespace March.Editor
         private static partial bool CheckPayloadNative(out bool isDelivery);
 
         [NativeMethod("AcceptTarget")]
-        private static partial void AcceptTargetNative(bool accept);
+        private static partial void AcceptTargetNative(DragDropResult result);
 
         [NativeMethod("EndTarget")]
         private static partial void EndTargetNative();

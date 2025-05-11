@@ -351,6 +351,9 @@ namespace March.Editor
         [NativeMethod]
         public static partial void BulletLabel(StringLike label, StringLike tooltip);
 
+        [NativeMethod]
+        public static partial void Dummy(float width, float height);
+
         #region Object
 
         public static bool MarchObjectField<T>(StringLike label, StringLike tooltip, ref T? asset) where T : MarchObject
@@ -396,17 +399,19 @@ namespace March.Editor
 
             bool isChanged = false;
 
-            if (DragDrop.BeginTarget(DragDropArea.Item, out MarchObject? newAsset, out bool isDelivery))
+            if (DragDrop.BeginTarget(DragDropArea.Item, out DragDropData data))
             {
-                if (assetType.IsAssignableFrom(newAsset.GetType()))
+                if (assetType.IsAssignableFrom(data.Payload.GetType()))
                 {
-                    if (isDelivery && newAsset != asset)
+                    MarchObject newAsset = (MarchObject)data.Payload;
+
+                    if (data.IsDelivery && newAsset != asset)
                     {
                         asset = newAsset;
                         isChanged = true;
                     }
 
-                    DragDrop.EndTarget(DragDropResult.Accept);
+                    DragDrop.EndTarget(DragDropResult.AcceptByRect);
                 }
                 else
                 {
@@ -679,6 +684,22 @@ namespace March.Editor
                 }
             }
         }
+
+        public readonly ref struct ItemSpacingScope
+        {
+            [Obsolete("Use other constructors", error: true)]
+            public ItemSpacingScope() { }
+
+            public ItemSpacingScope(Vector2 value) => PushItemSpacing(value);
+
+            public void Dispose() => PopItemSpacing();
+        }
+
+        [NativeMethod]
+        private static partial void PushItemSpacing(Vector2 value);
+
+        [NativeMethod]
+        private static partial void PopItemSpacing();
         #endregion
     }
 }

@@ -328,3 +328,18 @@ NATIVE_EXPORT_AUTO EditorGUI_BulletLabel(cs_string label, cs_string tooltip)
 {
     EditorGUI::BulletLabel(label, tooltip);
 }
+
+NATIVE_EXPORT_AUTO EditorGUI_Dummy(cs_float width, cs_float height)
+{
+    EditorGUI::Dummy(width, height);
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_PushItemSpacing(cs_vec2 value)
+{
+    EditorGUI::PushItemSpacing(value);
+}
+
+NATIVE_EXPORT_AUTO EditorGUI_PopItemSpacing()
+{
+    EditorGUI::PopItemSpacing();
+}

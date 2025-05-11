@@ -94,6 +94,8 @@ function proj.setup_cpp()
     pchheader "pch.h"
     pchsource "Private/pch.cpp"
 
+    include_dir_if_exists "Internal"
+
     usage "PUBLIC"
         include_dir_if_exists "Public"
 

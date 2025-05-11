@@ -6,6 +6,8 @@
 #include <utility>
 #include <algorithm>
 
+using namespace DirectX;
+
 namespace march
 {
     namespace
@@ -474,7 +476,7 @@ namespace march
         ImGui::SameLine(offsetFromStartX, spacing);
     }
 
-    DirectX::XMFLOAT2 EditorGUI::GetContentRegionAvail()
+    XMFLOAT2 EditorGUI::GetContentRegionAvail()
     {
         ImVec2 avail = ImGui::GetContentRegionAvail();
         return { avail.x, avail.y };
@@ -716,7 +718,7 @@ namespace march
         return ImGui::CalcTextSize(label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
     }
 
-    DirectX::XMFLOAT2 EditorGUI::GetItemSpacing()
+    XMFLOAT2 EditorGUI::GetItemSpacing()
     {
         ImVec2 spacing = ImGui::GetStyle().ItemSpacing;
         return { spacing.x, spacing.y };
@@ -787,5 +789,20 @@ namespace march
         {
             ImGui::SetItemTooltip(tooltip.c_str());
         }
+    }
+
+    void EditorGUI::Dummy(float width, float height)
+    {
+        ImGui::Dummy(ImVec2(width, height));
+    }
+
+    void EditorGUI::PushItemSpacing(const XMFLOAT2& value)
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(value.x, value.y));
+    }
+
+    void EditorGUI::PopItemSpacing()
+    {
+        ImGui::PopStyleVar();
     }
 }

@@ -101,5 +101,6 @@ namespace march
         style.TabBarBorderSize = 1.0f;
         style.TabBarOverlineSize = 2.0f;
         style.DockingSeparatorSize = 1.0f;
+        style.ItemSpacing.y = 5.0f;
     }
 }

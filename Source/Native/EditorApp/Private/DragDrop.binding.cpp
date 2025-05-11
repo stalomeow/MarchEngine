@@ -22,7 +22,6 @@ NATIVE_EXPORT_AUTO DragDrop_BeginTarget(cs_bool useWindow)
     if (useWindow)
     {
         // https://github.com/ocornut/imgui/issues/1771
-
         const ImGuiWindow* w = ImGui::GetCurrentWindowRead();
         retcs ImGui::BeginDragDropTargetCustom(w->ContentRegionRect, w->ID);
     }
@@ -45,14 +44,28 @@ NATIVE_EXPORT_AUTO DragDrop_CheckPayload(cs<cs_bool*> outIsDelivery)
     retcs true;
 }
 
-NATIVE_EXPORT_AUTO DragDrop_AcceptTarget(cs_bool accept)
+enum class DragDropResult
 {
-    if (accept)
+    AcceptByRect,
+    AcceptByLine,
+    Reject,
+};
+
+NATIVE_EXPORT_AUTO DragDrop_AcceptTarget(cs<DragDropResult> result)
+{
+    DragDropResult res = result;
+
+    if (res == DragDropResult::AcceptByRect)
     {
         ImGuiContext* context = ImGui::GetCurrentContext();
-        ImGui::RenderDragDropTargetRect(context->DragDropTargetRect, context->DragDropTargetClipRect);
+        ImGui::RenderDragDropTargetRect(context->DragDropTargetRect, context->DragDropTargetClipRect, /* render_as_line */ false);
     }
-    else
+    else if (res == DragDropResult::AcceptByLine)
+    {
+        ImGuiContext* context = ImGui::GetCurrentContext();
+        ImGui::RenderDragDropTargetRect(context->DragDropTargetRect, context->DragDropTargetClipRect, /* render_as_line */ true);
+    }
+    else // Reject
     {
         ImGui::SetMouseCursor(ImGuiMouseCursor_NotAllowed);
     }

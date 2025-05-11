@@ -107,7 +107,7 @@ namespace March.Editor.Windows
         {
             base.OnDraw();
 
-            bool enableDragDrop = false;
+            //bool enableDragDrop = false;
             Scene scene = SceneManager.CurrentScene;
             using var sceneLabel = EditorGUIUtility.BuildIconText(SceneImporter.SceneIcon, scene.Name);
 
@@ -115,7 +115,7 @@ namespace March.Editor.Windows
             {
                 m_TreeView.Draw();
                 s_ContextMenu.ShowAsWindowContext();
-                enableDragDrop = true;
+                //enableDragDrop = true;
             }
             else if (EditorGUI.IsWindowClicked())
             {
@@ -123,24 +123,24 @@ namespace March.Editor.Windows
                 Selection.Clear();
             }
 
-            HandleDragDrop(scene, enableDragDrop);
+            //HandleDragDrop(scene, enableDragDrop);
         }
 
         private static void HandleDragDrop(Scene scene, bool enabled)
         {
-            if (!DragDrop.BeginTarget(DragDropArea.Window, out MarchObject? payload, out bool isDelivery))
+            if (!DragDrop.BeginTarget(DragDropArea.Window, out DragDropData data))
             {
                 return;
             }
 
-            if (enabled && payload is GameObject go)
+            if (enabled && data.Payload is GameObject go)
             {
-                if (isDelivery)
+                if (data.IsDelivery)
                 {
                     scene.AddRootGameObject(Instantiate(go));
                 }
 
-                DragDrop.EndTarget(DragDropResult.Accept);
+                DragDrop.EndTarget(DragDropResult.AcceptByRect);
             }
             else
             {

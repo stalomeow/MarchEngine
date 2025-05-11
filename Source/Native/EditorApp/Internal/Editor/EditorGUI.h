@@ -127,6 +127,11 @@ namespace march
 
         static void BulletLabel(const std::string& label, const std::string& tooltip);
 
+        static void Dummy(float width, float height);
+
+        static void PushItemSpacing(const DirectX::XMFLOAT2& value);
+        static void PopItemSpacing();
+
     public:
         static constexpr float MinLabelWidth = 160.0f;
         static constexpr float MaxFieldWidth = 280.0f;

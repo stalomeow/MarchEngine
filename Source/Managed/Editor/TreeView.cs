@@ -1,5 +1,7 @@
 using March.Core;
+using March.Core.Interop;
 using March.Core.Pool;
+using System.Numerics;
 using System.Text;
 
 namespace March.Editor
@@ -34,13 +36,18 @@ namespace March.Editor
         {
             try
             {
+                // 为了实现更复杂的 Drag & Drop，需要手动绘制 ItemSpacing
+                Vector2 originalSpacing = EditorGUI.ItemSpacing;
+                Vector2 tempSpacing = new(originalSpacing.X, 0);
+
+                using (new EditorGUI.ItemSpacingScope(tempSpacing))
                 using (new EditorGUI.TreeNodeMultiSelectScope(m_SelectionRequests))
                 {
                     int count = GetChildCount(null);
 
                     for (int i = 0; i < count; i++)
                     {
-                        DrawItem(GetChildItem(null, i), null, i);
+                        DrawItem(GetChildItem(null, i), null, i, originalSpacing.Y);
                     }
                 }
 
@@ -57,7 +64,7 @@ namespace March.Editor
             }
         }
 
-        private void DrawItem(object item, object? parent, int siblingIndex)
+        private void DrawItem(object item, object? parent, int siblingIndex, float spacing)
         {
             using (new EditorGUI.IDScope(siblingIndex))
             {
@@ -81,15 +88,43 @@ namespace March.Editor
                         SelectionObject = desc.SelectionObject,
                     };
 
+                    HandleItemDragDrop(item, label);
+                    DrawItemSpacing(item, spacing);
+
                     if (isOpen)
                     {
                         for (int i = 0; i < childCount; i++)
                         {
-                            DrawItem(GetChildItem(item, i), item, i);
+                            DrawItem(GetChildItem(item, i), item, i, spacing);
                         }
 
                         EditorGUI.EndTreeNode();
                     }
+                }
+            }
+        }
+
+        private void HandleItemDragDrop(object item, StringLike label)
+        {
+            if (DragDrop.BeginSource())
+            {
+                DragDrop.EndSource(label, item, this);
+            }
+        }
+
+        private void DrawItemSpacing(object item, float height)
+        {
+            EditorGUI.Dummy(EditorGUI.ContentRegionAvailable.X, height);
+
+            if (DragDrop.BeginTarget(DragDropArea.Item, out DragDropData data))
+            {
+                if (data.Context == this)
+                {
+                    DragDrop.EndTarget(DragDropResult.AcceptByLine);
+                }
+                else
+                {
+                    DragDrop.EndTarget(DragDropResult.Reject);
                 }
             }
         }
@@ -139,58 +174,25 @@ namespace March.Editor
 
         private void SelectItemRange(int startIndex, int endIndex, bool unselect)
         {
-            object firstItem = m_Items[startIndex]; // inclusive
-            object lastItem = m_Items[endIndex];    // inclusive
-
-            for (object? item = firstItem; item != null; item = GetNextVisibleItem(item, lastItem))
+            // [startIndex, endIndex] 闭区间
+            for (int i = startIndex; i <= endIndex; i++)
             {
+                object item = m_Items[i];
                 MarchObject? obj = m_ItemStates[item].SelectionObject;
 
-                if (obj != null)
+                if (obj == null)
                 {
-                    if (unselect)
-                    {
-                        Selection.Remove(obj, context: this);
-                    }
-                    else
-                    {
-                        Selection.Add(obj, context: this);
-                    }
-                }
-            }
-        }
-
-        private object? GetNextVisibleItem(object item, object lastItem)
-        {
-            // 按照 dfs 的顺序，返回下一个可见的 item
-
-            if (item == lastItem)
-            {
-                return null;
-            }
-
-            ItemState state = m_ItemStates[item];
-
-            // 如果能继续向下遍历子结点，就返回第一个子结点
-            if (state.IsOpen && GetChildCount(item) > 0)
-            {
-                return GetChildItem(item, 0);
-            }
-
-            // 如果没有子结点，就返回下一个兄弟结点
-            while (true)
-            {
-                if (state.SiblingIndex + 1 < GetChildCount(state.Parent))
-                {
-                    return GetChildItem(state.Parent, state.SiblingIndex + 1);
+                    continue;
                 }
 
-                if (state.Parent == null)
+                if (unselect)
                 {
-                    return null;
+                    Selection.Remove(obj, context: this);
                 }
-
-                state = m_ItemStates[state.Parent];
+                else
+                {
+                    Selection.Add(obj, context: this);
+                }
             }
         }
 
