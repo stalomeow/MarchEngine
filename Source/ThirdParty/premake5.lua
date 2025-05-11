@@ -66,3 +66,59 @@ project "ImGuizmo"
 
     usage "INTERFACE"
         links { "ImGuizmo" }
+
+project "ImOGuizmo"
+    kind "SharedItems"
+    language "C++"
+
+    files {
+        "ImOGuizmo/**.hpp",
+    }
+
+    usage "PUBLIC"
+        includedirs { "ImOGuizmo" }
+
+    usage "INTERFACE"
+        links { "ImOGuizmo" }
+
+project "CoreCLRHost"
+    kind "SharedItems"
+    language "C++"
+
+    files {
+        "CoreCLRHost/**.h",
+    }
+
+    usage "PUBLIC"
+        includedirs { "CoreCLRHost" }
+
+    usage "INTERFACE"
+        links { "CoreCLRHost" }
+
+project "NsightAftermath"
+    kind "SharedItems"
+    language "C++"
+
+    files {
+        "NsightAftermath/**.h",
+    }
+
+    usage "PUBLIC"
+        includedirs { "NsightAftermath" }
+
+    usage "INTERFACE"
+        links { "NsightAftermath" }
+
+project "RenderDoc"
+    kind "SharedItems"
+    language "C++"
+
+    files {
+        "RenderDoc/**.h",
+    }
+
+    usage "PUBLIC"
+        includedirs { "RenderDoc" }
+
+    usage "INTERFACE"
+        links { "RenderDoc" }

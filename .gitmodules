@@ -6,3 +6,7 @@
 	path = Source/ThirdParty/ImGuizmo
 	url = https://github.com/stalomeow/ImGuizmo.git
 	branch = march-engine
+[submodule "Source/ThirdParty/ImOGuizmo"]
+	path = Source/ThirdParty/ImOGuizmo
+	url = https://github.com/stalomeow/imoguizmo.git
+	branch = march-engine

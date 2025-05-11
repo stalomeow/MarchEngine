@@ -8,7 +8,7 @@ project "Engine"
     proj.setup_cpp()
     vcpkg.include_headers()
 
-    uses { "ImGui" }
+    uses { "ImGui", "CoreCLRHost", "NsightAftermath", "RenderDoc" }
 
     usage "PUBLIC"
         filter "configurations:Debug"
