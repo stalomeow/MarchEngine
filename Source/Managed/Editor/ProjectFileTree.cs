@@ -72,8 +72,10 @@ namespace March.Editor
 
                 if (importer != null && assetGuid != null && DragDrop.BeginSource())
                 {
+                    DragDrop.Objects.Add(importer.GetAsset(assetGuid)!);
+
                     using var tooltip = EditorGUIUtility.BuildAssetPath(importer, assetGuid);
-                    DragDrop.EndSource(tooltip, importer.GetAsset(assetGuid)!);
+                    DragDrop.EndSource(tooltip);
                 }
 
                 if (selectable && EditorGUI.IsTreeNodeClicked(isOpen, isLeaf) == EditorGUI.ItemClickResult.True)

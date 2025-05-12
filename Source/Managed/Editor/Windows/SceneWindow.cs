@@ -224,16 +224,19 @@ namespace March.Editor.Windows
 
         private static void HandleDragDrop()
         {
-            if (!DragDrop.BeginTarget(DragDropArea.Window, out DragDropData data))
+            if (!DragDrop.BeginTarget(DragDropArea.Window))
             {
                 return;
             }
 
-            if (data.Payload is GameObject go)
+            if (DragDrop.Objects.All(obj => obj is GameObject))
             {
-                if (data.IsDelivery)
+                if (DragDrop.IsDelivery)
                 {
-                    SceneManager.CurrentScene.AddRootGameObject(Instantiate(go));
+                    foreach (object obj in DragDrop.Objects)
+                    {
+                        SceneManager.CurrentScene.AddRootGameObject(Instantiate((GameObject)obj));
+                    }
                 }
 
                 DragDrop.EndTarget(DragDropResult.AcceptByRect);

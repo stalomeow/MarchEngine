@@ -46,9 +46,10 @@ NATIVE_EXPORT_AUTO DragDrop_CheckPayload(cs<cs_bool*> outIsDelivery)
 
 enum class DragDropResult
 {
+    Ignore,
+    Reject,
     AcceptByRect,
     AcceptByLine,
-    Reject,
 };
 
 NATIVE_EXPORT_AUTO DragDrop_AcceptTarget(cs<DragDropResult> result)
@@ -65,7 +66,7 @@ NATIVE_EXPORT_AUTO DragDrop_AcceptTarget(cs<DragDropResult> result)
         ImGuiContext* context = ImGui::GetCurrentContext();
         ImGui::RenderDragDropTargetRect(context->DragDropTargetRect, context->DragDropTargetClipRect, /* render_as_line */ true);
     }
-    else // Reject
+    else if (res == DragDropResult::Reject)
     {
         ImGui::SetMouseCursor(ImGuiMouseCursor_NotAllowed);
     }

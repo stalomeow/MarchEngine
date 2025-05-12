@@ -399,13 +399,13 @@ namespace March.Editor
 
             bool isChanged = false;
 
-            if (DragDrop.BeginTarget(DragDropArea.Item, out DragDropData data))
+            if (DragDrop.BeginTarget(DragDropArea.Item))
             {
-                if (assetType.IsAssignableFrom(data.Payload.GetType()))
+                if (DragDrop.Objects.Count == 1 && assetType.IsAssignableFrom(DragDrop.Objects[0].GetType()))
                 {
-                    MarchObject newAsset = (MarchObject)data.Payload;
+                    MarchObject newAsset = DragDrop.Objects[0];
 
-                    if (data.IsDelivery && newAsset != asset)
+                    if (DragDrop.IsDelivery && newAsset != asset)
                     {
                         asset = newAsset;
                         isChanged = true;

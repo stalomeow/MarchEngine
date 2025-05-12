@@ -1,34 +1,27 @@
 using March.Core;
+using March.Core.Pool;
 using System.Diagnostics.CodeAnalysis;
 
 namespace March.Editor
 {
     public static class Selection
     {
-        private static readonly List<MarchObject> s_Objects = [];
-        private static object? s_Context = null;
+        public static List<MarchObject> Objects { get; } = [];
 
-        public static int Count => s_Objects.Count;
+        public static int Count => Objects.Count;
 
-        public static bool IsEmpty => s_Objects.Count == 0;
-
-        public static object? Context => s_Context;
-
-        public static MarchObject Get(int index)
-        {
-            return s_Objects[index];
-        }
+        public static bool IsEmpty => Objects.Count == 0;
 
         [return: NotNullIfNotNull(nameof(defaultObject))]
         public static MarchObject? FirstOrDefault(MarchObject? defaultObject = null)
         {
-            return s_Objects.Count > 0 ? s_Objects[0] : defaultObject;
+            return Objects.Count > 0 ? Objects[0] : defaultObject;
         }
 
         [return: NotNullIfNotNull(nameof(defaultObject))]
         public static T? FirstOrDefault<T>(T? defaultObject = null) where T : MarchObject
         {
-            foreach (MarchObject obj in s_Objects)
+            foreach (MarchObject obj in Objects)
             {
                 if (obj is T t)
                 {
@@ -41,7 +34,7 @@ namespace March.Editor
 
         public static bool Any<T>() where T : MarchObject
         {
-            foreach (MarchObject obj in s_Objects)
+            foreach (MarchObject obj in Objects)
             {
                 if (obj is T)
                 {
@@ -54,7 +47,7 @@ namespace March.Editor
 
         public static bool All<T>() where T : MarchObject
         {
-            foreach (MarchObject obj in s_Objects)
+            foreach (MarchObject obj in Objects)
             {
                 if (obj is not T)
                 {
@@ -65,96 +58,67 @@ namespace March.Editor
             return true;
         }
 
+        public static void GetTopLevelGameObjects(List<GameObject> gameObjects)
+        {
+            using var transforms = HashSetPool<Transform>.Get();
+
+            foreach (MarchObject obj in Objects)
+            {
+                if (obj is GameObject go)
+                {
+                    transforms.Value.Add(go.transform);
+                }
+            }
+
+            foreach (Transform trans in transforms.Value)
+            {
+                bool isTopLevel = true;
+                Transform? parent = trans.Parent;
+
+                while (parent != null)
+                {
+                    if (transforms.Value.Contains(parent))
+                    {
+                        isTopLevel = false;
+                        break;
+                    }
+
+                    parent = parent.Parent;
+                }
+
+                if (isTopLevel)
+                {
+                    gameObjects.Add(trans.gameObject);
+                }
+            }
+        }
+
         public static bool Contains(MarchObject obj)
         {
-            return s_Objects.Contains(obj);
+            return Objects.Contains(obj);
         }
 
-        public static void Clear(object? context = null)
+        public static void Clear()
         {
-            s_Objects.Clear();
-            s_Context = context;
+            Objects.Clear();
         }
 
-        public static void Set(MarchObject obj, object? context = null)
+        public static void Set(MarchObject obj)
         {
-            s_Objects.Clear();
-            s_Objects.Add(obj);
-            s_Context = context;
+            Objects.Clear();
+            Objects.Add(obj);
         }
 
-        public static void Set(IEnumerable<MarchObject> objs, object? context = null)
+        public static void Set(IEnumerable<MarchObject> objs)
         {
-            s_Objects.Clear();
-            s_Objects.AddRange(objs);
-            s_Context = context;
+            Objects.Clear();
+            Objects.AddRange(objs);
         }
 
-        public static void Set(ReadOnlySpan<MarchObject> objs, object? context = null)
+        public static void Set(ReadOnlySpan<MarchObject> objs)
         {
-            s_Objects.Clear();
-            s_Objects.AddRange(objs);
-            s_Context = context;
-        }
-
-        public static void Add(MarchObject obj, object? context = null)
-        {
-            if (s_Context != context)
-            {
-                s_Objects.Clear();
-                s_Context = context;
-            }
-
-            if (!s_Objects.Contains(obj))
-            {
-                s_Objects.Add(obj);
-            }
-        }
-
-        public static void AddRange(IEnumerable<MarchObject> objs, object? context = null)
-        {
-            if (s_Context != context)
-            {
-                s_Objects.Clear();
-                s_Context = context;
-            }
-
-            s_Objects.AddRange(objs);
-        }
-
-        public static void AddRange(ReadOnlySpan<MarchObject> objs, object? context = null)
-        {
-            if (s_Context != context)
-            {
-                s_Objects.Clear();
-                s_Context = context;
-            }
-
-            s_Objects.AddRange(objs);
-        }
-
-        public static void Remove(MarchObject obj, object? context = null)
-        {
-            if (s_Context != context)
-            {
-                s_Objects.Clear();
-                s_Context = context;
-                return;
-            }
-
-            s_Objects.Remove(obj);
-        }
-
-        public static void RemoveAt(int index, object? context = null)
-        {
-            if (s_Context != context)
-            {
-                s_Objects.Clear();
-                s_Context = context;
-                return;
-            }
-
-            s_Objects.RemoveAt(index);
+            Objects.Clear();
+            Objects.AddRange(objs);
         }
     }
 }

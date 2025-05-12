@@ -81,13 +81,11 @@ namespace March.Editor.Windows
 
             s_ContextMenu.AddMenuItem("Delete", (ref object? arg) =>
             {
-                for (int i = 0; i < Selection.Count; i++)
-                {
-                    if (Selection.Get(i) is not GameObject go)
-                    {
-                        continue;
-                    }
+                using var gameObjects = ListPool<GameObject>.Get();
+                Selection.GetTopLevelGameObjects(gameObjects);
 
+                foreach (GameObject go in gameObjects.Value)
+                {
                     go.transform.Detach();
                     SceneManager.CurrentScene.RootGameObjects.Remove(go);
                     go.Dispose();
@@ -130,24 +128,24 @@ namespace March.Editor.Windows
 
         private static void HandleDragDrop(Scene scene, bool enabled)
         {
-            if (!DragDrop.BeginTarget(DragDropArea.Window, out DragDropData data))
-            {
-                return;
-            }
+            //if (!DragDrop.BeginTarget(DragDropArea.Window))
+            //{
+            //    return;
+            //}
 
-            if (enabled && data.Payload is GameObject go)
-            {
-                if (data.IsDelivery)
-                {
-                    scene.AddRootGameObject(Instantiate(go));
-                }
+            //if (enabled && data.Payload is GameObject go)
+            //{
+            //    if (data.IsDelivery)
+            //    {
+            //        scene.AddRootGameObject(Instantiate(go));
+            //    }
 
-                DragDrop.EndTarget(DragDropResult.AcceptByRect);
-            }
-            else
-            {
-                DragDrop.EndTarget(DragDropResult.Reject);
-            }
+            //    DragDrop.EndTarget(DragDropResult.AcceptByRect);
+            //}
+            //else
+            //{
+            //    DragDrop.EndTarget(DragDropResult.Reject);
+            //}
         }
     }
 
@@ -173,6 +171,11 @@ namespace March.Editor.Windows
             return ((GameObject)item).transform.GetChild(index).gameObject;
         }
 
+        protected override object? GetItemByEngineObject(MarchObject obj)
+        {
+            return obj is GameObject ? obj : null;
+        }
+
         protected override TreeViewItemDesc GetItemDesc(object item, StringBuilder labelBuilder)
         {
             GameObject go = (GameObject)item;
@@ -181,43 +184,54 @@ namespace March.Editor.Windows
             return new TreeViewItemDesc
             {
                 IsDisabled = !go.IsActiveSelf, // 因为是从上往下递归绘制的，所以只要判断当前节点是否激活即可
-                SelectionObject = go,
+                EngineObject = go,
             };
         }
 
-        protected override void GetItemDragDropTooltip(object item, StringBuilder tooltipBuilder)
+        protected override void GetDragTooltip(IReadOnlyList<object> items, StringBuilder tooltipBuilder)
         {
-            GameObject go = (GameObject)item;
-
-            // 获取物体的路径
-            Transform? transform = go.transform;
             using var paths = ListPool<string?>.Get();
-            while (transform != null)
-            {
-                paths.Value.Add(transform.gameObject.Name);
-                transform = transform.Parent;
-            }
-            paths.Value.Reverse();
 
-            tooltipBuilder.Append(FontAwesome6.DiceD6).Append(' ');
-            tooltipBuilder.AppendJoin('/', CollectionsMarshal.AsSpan(paths.Value));
+            for (int i = 0; i < items.Count; i++)
+            {
+                GameObject go = (GameObject)items[i];
+
+                // 获取物体的路径
+                paths.Value.Clear();
+                Transform? transform = go.transform;
+                while (transform != null)
+                {
+                    paths.Value.Add(transform.gameObject.Name);
+                    transform = transform.Parent;
+                }
+                paths.Value.Reverse();
+
+                tooltipBuilder.Append(FontAwesome6.DiceD6).Append(' ');
+                tooltipBuilder.AppendJoin('/', CollectionsMarshal.AsSpan(paths.Value));
+                tooltipBuilder.AppendLine();
+            }
         }
 
-        protected override void MoveItem(object movingItem, object anchorItem, TreeViewDragDropPosition position)
+        protected override bool CanMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
+        {
+            return true;
+        }
+
+        protected override void OnMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
         {
             Transform moving = ((GameObject)movingItem).transform;
             Transform anchor = ((GameObject)anchorItem).transform;
 
             switch (position)
             {
-                case TreeViewDragDropPosition.AboveItem:
+                case TreeViewDropPosition.AboveItem:
                     moving.SetParent(anchor.Parent);
                     moving.SetSiblingIndex(anchor.GetSiblingIndex());
                     break;
-                case TreeViewDragDropPosition.OnItem:
+                case TreeViewDropPosition.OnItem:
                     moving.SetParent(anchor);
                     break;
-                case TreeViewDragDropPosition.BelowItem:
+                case TreeViewDropPosition.BelowItem:
                     moving.SetParent(anchor.Parent);
                     moving.SetSiblingIndex(anchor.GetSiblingIndex() + 1);
                     break;

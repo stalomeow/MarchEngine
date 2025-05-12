@@ -9,12 +9,15 @@ namespace March.Editor
     {
         public required bool IsDisabled { get; init; }
 
-        public required MarchObject? SelectionObject { get; init; }
+        /// <summary>
+        /// 如果不为 <see langword="null"/> 则可以被选择和拖拽
+        /// </summary>
+        public required MarchObject? EngineObject { get; init; }
 
         public bool IsOpenByDefault { get; init; }
     }
 
-    public enum TreeViewDragDropPosition
+    public enum TreeViewDropPosition
     {
         AboveItem,
         OnItem,
@@ -23,11 +26,13 @@ namespace March.Editor
 
     public abstract class TreeView
     {
-        private readonly struct ItemState
+        private readonly struct ItemData
         {
-            public required object? Parent { get; init; }
+            public required object Item { get; init; }
 
-            public required MarchObject? SelectionObject { get; init; }
+            public required int? ParentIndex { get; init; }
+
+            public required MarchObject? EngineObject { get; init; }
         }
 
         private readonly struct MoveRequest
@@ -36,11 +41,11 @@ namespace March.Editor
 
             public required object AnchorItem { get; init; }
 
-            public required TreeViewDragDropPosition Position { get; init; }
+            public required TreeViewDropPosition Position { get; init; }
         }
 
-        private readonly List<object> m_Items = [];
-        private readonly Dictionary<object, ItemState> m_ItemStates = [];
+        private readonly List<ItemData> m_Items = [];
+        private readonly Dictionary<object, MarchObject> m_SelectionData = [];
         private readonly List<EditorGUI.SelectionRequest> m_SelectionRequests = [];
         private readonly List<MoveRequest> m_MoveRequests = [];
 
@@ -48,6 +53,8 @@ namespace March.Editor
         {
             try
             {
+                FetchSelectionData();
+
                 // 为了实现更复杂的 Drag & Drop，需要手动绘制 ItemSpacing
                 Vector2 originalSpacing = EditorGUI.ItemSpacing;
                 Vector2 tempSpacing = new(originalSpacing.X, 0);
@@ -59,7 +66,8 @@ namespace March.Editor
 
                     for (int i = 0; i < count; i++)
                     {
-                        DrawItem(GetChildItem(null, i), null, i, originalSpacing.Y);
+                        object childItem = GetChildItem(null, i);
+                        DrawItem(childItem, null, i, originalSpacing.Y);
                     }
                 }
 
@@ -71,19 +79,19 @@ namespace March.Editor
                 // 移动会使 Item 的索引失效，所以放在最后处理
                 foreach (MoveRequest request in m_MoveRequests)
                 {
-                    MoveItem(request.MovingItem, request.AnchorItem, request.Position);
+                    OnMoveItem(request.MovingItem, request.AnchorItem, request.Position);
                 }
             }
             finally
             {
                 m_Items.Clear();
-                m_ItemStates.Clear();
+                m_SelectionData.Clear();
                 m_SelectionRequests.Clear();
                 m_MoveRequests.Clear();
             }
         }
 
-        private void DrawItem(object item, object? parent, int siblingIndex, float spacing)
+        private void DrawItem(object item, int? parentIndex, int siblingIndex, float spacing)
         {
             using (new EditorGUI.IDScope(siblingIndex))
             {
@@ -92,48 +100,50 @@ namespace March.Editor
 
                 using (new EditorGUI.DisabledScope(desc.IsDisabled, allowInteraction: true))
                 {
-                    int itemIndex = m_Items.Count; // 当前 item 在 m_Items 中的索引，用于后面处理 selection requests
-                    m_Items.Add(item);
-                    m_ItemStates[item] = new ItemState
+                    // 记录当前 item 在 m_Items 中的索引，用于后面处理 selection requests
+                    int itemIndex = m_Items.Count;
+                    m_Items.Add(new ItemData
                     {
-                        Parent = parent,
-                        SelectionObject = desc.SelectionObject,
-                    };
+                        Item = item,
+                        ParentIndex = parentIndex,
+                        EngineObject = desc.EngineObject,
+                    });
 
                     if (siblingIndex == 0)
                     {
                         // 模拟一次 TreePush
                         using (new EditorGUI.IndentedScope())
                         {
-                            DrawItemSpacing(spacing, item, TreeViewDragDropPosition.AboveItem);
+                            DrawItemSpacing(spacing, item, itemIndex, TreeViewDropPosition.AboveItem);
                         }
                     }
 
                     int childCount = GetChildCount(item);
                     bool isLeaf = childCount == 0;
-                    bool isSelected = IsItemSelected(ref desc);
+                    bool isSelected = m_SelectionData.ContainsKey(item);
                     bool isOpen = EditorGUI.BeginTreeNode(label, itemIndex, isLeaf, isSelected, desc.IsOpenByDefault);
 
-                    HandleItemDragDrop(item);
+                    HandleItemDragDrop(item, itemIndex, in desc);
 
                     if (!isOpen)
                     {
                         // 模拟一次 TreePush
                         using (new EditorGUI.IndentedScope())
                         {
-                            DrawItemSpacing(spacing, item, TreeViewDragDropPosition.BelowItem);
+                            DrawItemSpacing(spacing, item, itemIndex, TreeViewDropPosition.BelowItem);
                         }
                     }
-                    else if (childCount == 0)
+                    else
                     {
-                        DrawItemSpacing(spacing, item, TreeViewDragDropPosition.BelowItem);
-                    }
+                        if (childCount == 0)
+                        {
+                            DrawItemSpacing(spacing, item, itemIndex, TreeViewDropPosition.BelowItem);
+                        }
 
-                    if (isOpen)
-                    {
                         for (int i = 0; i < childCount; i++)
                         {
-                            DrawItem(GetChildItem(item, i), item, i, spacing);
+                            object childItem = GetChildItem(item, i);
+                            DrawItem(childItem, itemIndex, i, spacing);
                         }
 
                         EditorGUI.EndTreeNode();
@@ -142,124 +152,171 @@ namespace March.Editor
             }
         }
 
-        private void HandleItemDragDrop(object item)
+        private void HandleItemDragDrop(object item, int itemIndex, in TreeViewItemDesc desc)
         {
-            if (DragDrop.BeginSource())
+            if (desc.EngineObject != null && DragDrop.BeginSource())
             {
-                using var tooltip = StringBuilderPool.Get();
-                GetItemDragDropTooltip(item, tooltip);
+                DragDrop.Context = this;
 
-                DragDrop.EndSource(tooltip, item, this);
+                if (m_SelectionData.ContainsKey(item))
+                {
+                    // 如果拖动了一个选中的对象，拖动所有选中的对象
+                    foreach (KeyValuePair<object, MarchObject> kv in m_SelectionData)
+                    {
+                        DragDrop.Objects.Add(kv.Value);
+                        DragDrop.Extras.Add(kv.Key);
+                    }
+                }
+                else
+                {
+                    DragDrop.Objects.Add(desc.EngineObject);
+                    DragDrop.Extras.Add(item);
+                }
+
+                using var tooltip = StringBuilderPool.Get();
+                GetDragTooltip(DragDrop.Extras, tooltip);
+                DragDrop.EndSource(tooltip);
             }
 
-            HandleDragDropTarget(item, TreeViewDragDropPosition.OnItem, DragDropResult.AcceptByRect);
+            HandleDragDropTarget(item, itemIndex, TreeViewDropPosition.OnItem, DragDropResult.AcceptByRect);
         }
 
-        private void DrawItemSpacing(float height, object item, TreeViewDragDropPosition position)
+        private void DrawItemSpacing(float height, object item, int itemIndex, TreeViewDropPosition position)
         {
-            // 绘制 ItemSpacing
+            // 利用 Dummy 绘制 ItemSpacing
             EditorGUI.Dummy(EditorGUI.ContentRegionAvailable.X, height);
-            HandleDragDropTarget(item, position, DragDropResult.AcceptByLine);
+            HandleDragDropTarget(item, itemIndex, position, DragDropResult.AcceptByLine);
         }
 
-        private void HandleDragDropTarget(object item, TreeViewDragDropPosition position, DragDropResult acceptResult)
+        private void HandleDragDropTarget(object item, int itemIndex, TreeViewDropPosition position, DragDropResult acceptResult)
         {
-            if (!DragDrop.BeginTarget(DragDropArea.Item, out DragDropData data))
+            if (!DragDrop.BeginTarget(DragDropArea.Item))
             {
                 return;
             }
 
-            if (data.Context == this)
+            if (DragDrop.Context != this)
             {
-                if (CanMoveItem(data.Payload, item, position))
-                {
-                    if (data.IsDelivery)
-                    {
-                        m_MoveRequests.Add(new MoveRequest
-                        {
-                            AnchorItem = item,
-                            MovingItem = data.Payload,
-                            Position = position,
-                        });
-                    }
+                bool accept = HandleExternalDrop(item, position);
+                DragDrop.EndTarget(accept ? acceptResult : DragDropResult.Reject);
+                return;
+            }
 
-                    DragDrop.EndTarget(acceptResult);
-                }
-                else
+            // 检查是否全部可以移动
+            foreach (object movingItem in DragDrop.Extras)
+            {
+                // 不允许将结点移动到自己或者子结点上
+                if (IsChildOf(itemIndex, movingItem) || !CanMoveItem(movingItem, item, position))
                 {
                     DragDrop.EndTarget(DragDropResult.Reject);
+                    return;
                 }
             }
-            else
+
+            if (DragDrop.IsDelivery)
             {
-                // TODO 写一个虚函数来处理
-                DragDrop.EndTarget(DragDropResult.Reject);
+                foreach (object movingItem in DragDrop.Extras)
+                {
+                    m_MoveRequests.Add(new MoveRequest
+                    {
+                        AnchorItem = item,
+                        MovingItem = movingItem,
+                        Position = position,
+                    });
+                }
+            }
+
+            DragDrop.EndTarget(acceptResult);
+        }
+
+        private bool IsChildOf(int childItemIndex, object parentItem)
+        {
+            int? index = childItemIndex;
+
+            while (index != null)
+            {
+                ItemData data = m_Items[index.Value];
+
+                if (data.Item == parentItem)
+                {
+                    return true;
+                }
+
+                index = data.ParentIndex;
+            }
+
+            return false;
+        }
+
+        private void FetchSelectionData()
+        {
+            foreach (MarchObject obj in Selection.Objects)
+            {
+                object? item = GetItemByEngineObject(obj);
+
+                if (item != null)
+                {
+                    m_SelectionData.Add(item, obj);
+                }
             }
         }
 
         private void HandleSelectionRequest(in EditorGUI.SelectionRequest request)
         {
-            switch (request.Type)
+            if (request.Type == EditorGUI.SelectionRequestType.ClearAll)
             {
-                case EditorGUI.SelectionRequestType.Nop:
-                    break;
-                case EditorGUI.SelectionRequestType.SetAll:
-                    SelectAllItems();
-                    break;
-                case EditorGUI.SelectionRequestType.ClearAll:
-                    Selection.Clear(context: this);
-                    break;
-                case EditorGUI.SelectionRequestType.SetRange:
-                    SelectItemRange(request.StartIndex, request.EndIndex, unselect: false);
-                    break;
-                case EditorGUI.SelectionRequestType.ClearRange:
-                    SelectItemRange(request.StartIndex, request.EndIndex, unselect: true);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown selection request type: {request.Type}");
+                Selection.Objects.Clear();
+                m_SelectionData.Clear();
             }
-        }
-
-        private bool IsItemSelected(ref readonly TreeViewItemDesc desc)
-        {
-            return desc.SelectionObject != null
-                && Selection.Context == this
-                && Selection.Contains(desc.SelectionObject);
-        }
-
-        private void SelectAllItems()
-        {
-            foreach (KeyValuePair<object, ItemState> kv in m_ItemStates)
+            else if (request.Type == EditorGUI.SelectionRequestType.SetAll)
             {
-                MarchObject? obj = kv.Value.SelectionObject;
-
-                if (obj != null)
+                foreach (ItemData data in m_Items)
                 {
-                    Selection.Add(obj, context: this);
+                    if (data.EngineObject != null && m_SelectionData.TryAdd(data.Item, data.EngineObject))
+                    {
+                        Selection.Objects.Add(data.EngineObject);
+                    }
                 }
+            }
+            else if (request.Type == EditorGUI.SelectionRequestType.ClearRange)
+            {
+                SelectItemRange(request.StartIndex, request.EndIndex, unselect: true);
+            }
+            else if (request.Type == EditorGUI.SelectionRequestType.SetRange)
+            {
+                SelectItemRange(request.StartIndex, request.EndIndex, unselect: false);
+            }
+            else
+            {
+                throw new NotSupportedException($"Unsupported selection request type: {request.Type}");
             }
         }
 
         private void SelectItemRange(int startIndex, int endIndex, bool unselect)
         {
-            // [startIndex, endIndex] 闭区间
+            // 闭区间
             for (int i = startIndex; i <= endIndex; i++)
             {
-                object item = m_Items[i];
-                MarchObject? obj = m_ItemStates[item].SelectionObject;
+                ItemData data = m_Items[i];
 
-                if (obj == null)
+                if (data.EngineObject == null)
                 {
                     continue;
                 }
 
                 if (unselect)
                 {
-                    Selection.Remove(obj, context: this);
+                    if (m_SelectionData.Remove(data.Item))
+                    {
+                        Selection.Objects.Remove(data.EngineObject);
+                    }
                 }
                 else
                 {
-                    Selection.Add(obj, context: this);
+                    if (m_SelectionData.TryAdd(data.Item, data.EngineObject))
+                    {
+                        Selection.Objects.Add(data.EngineObject);
+                    }
                 }
             }
         }
@@ -270,28 +327,24 @@ namespace March.Editor
         // item 为 null 表示获取根结点
         protected abstract object GetChildItem(object? item, int index);
 
+        protected abstract object? GetItemByEngineObject(MarchObject obj);
+
         protected abstract TreeViewItemDesc GetItemDesc(object item, StringBuilder labelBuilder);
 
-        protected abstract void GetItemDragDropTooltip(object item, StringBuilder tooltipBuilder);
+        protected abstract void GetDragTooltip(IReadOnlyList<object> items, StringBuilder tooltipBuilder);
 
-        protected virtual bool CanMoveItem(object movingItem, object anchorItem, TreeViewDragDropPosition position)
+        protected virtual bool CanMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
         {
-            // 如果把 movingItem 移动到自己或者子结点上，返回 false
-            object? parent = anchorItem;
-
-            while (parent != null)
-            {
-                if (parent == movingItem)
-                {
-                    return false;
-                }
-
-                parent = m_ItemStates[parent].Parent;
-            }
-
-            return true;
+            return false;
         }
 
-        protected abstract void MoveItem(object movingItem, object anchorItem, TreeViewDragDropPosition position);
+        protected virtual void OnMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
+        {
+        }
+
+        protected virtual bool HandleExternalDrop(object item, TreeViewDropPosition position)
+        {
+            return false;
+        }
     }
 }
