@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using System.Numerics;
 using Material = March.Core.Rendering.Material;
 using Mesh = March.Core.Rendering.Mesh;
+using Scene = March.Core.Scene;
 using Texture = March.Core.Rendering.Texture;
 
 namespace March.Editor.AssetPipeline.Importers
@@ -30,7 +31,7 @@ namespace March.Editor.AssetPipeline.Importers
     // TODO 按照 spec 实现更完整的 glTF 支持
 
     [CustomAssetImporter("glTF Model Asset", ".gltf", Version = 55)]
-    public class GltfImporter : AssetImporter
+    public class GltfImporter : AssetImporter, ISceneDropHandler
     {
         [JsonProperty]
         [InspectorName("Normals")]
@@ -387,6 +388,12 @@ namespace March.Editor.AssetPipeline.Importers
                 parent.transform.AddChild(go.transform);
                 CreateChildren(reader, go, node.Children, materials, meshes);
             }
+        }
+
+        void ISceneDropHandler.Execute(Scene scene)
+        {
+            GameObject prefab = (GameObject)MainAsset;
+            scene.AddRootGameObject(Instantiate(prefab));
         }
     }
 

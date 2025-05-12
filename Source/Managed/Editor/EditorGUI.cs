@@ -401,22 +401,37 @@ namespace March.Editor
 
             if (DragDrop.BeginTarget(DragDropArea.Item))
             {
-                if (DragDrop.Objects.Count == 1 && assetType.IsAssignableFrom(DragDrop.Objects[0].GetType()))
-                {
-                    MarchObject newAsset = DragDrop.Objects[0];
+                bool accept = false;
+                MarchObject? newAsset = null;
 
-                    if (DragDrop.IsDelivery && newAsset != asset)
+                if (DragDrop.Objects.Count == 1)
+                {
+                    MarchObject obj = DragDrop.Objects[0];
+
+                    if (assetType.IsAssignableFrom(obj.GetType()))
                     {
-                        asset = newAsset;
-                        isChanged = true;
+                        newAsset = obj;
+                        accept = true;
                     }
+                    else if (obj is AssetImporter importer)
+                    {
+                        MarchObject mainAsset = importer.MainAsset;
 
-                    DragDrop.EndTarget(DragDropResult.AcceptByRect);
+                        if (assetType.IsAssignableFrom(mainAsset.GetType()))
+                        {
+                            newAsset = mainAsset;
+                            accept = true;
+                        }
+                    }
                 }
-                else
+
+                if (accept && DragDrop.IsDelivery && newAsset != asset)
                 {
-                    DragDrop.EndTarget(DragDropResult.Reject);
+                    asset = newAsset;
+                    isChanged = true;
                 }
+
+                DragDrop.EndTarget(accept ? DragDropResult.AcceptByRect : DragDropResult.Reject);
             }
 
             return isChanged;

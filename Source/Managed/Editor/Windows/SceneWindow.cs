@@ -229,13 +229,13 @@ namespace March.Editor.Windows
                 return;
             }
 
-            if (DragDrop.Objects.All(obj => obj is GameObject))
+            if (DragDrop.Objects.All(obj => obj is ISceneDropHandler))
             {
                 if (DragDrop.IsDelivery)
                 {
-                    foreach (object obj in DragDrop.Objects)
+                    foreach (MarchObject obj in DragDrop.Objects)
                     {
-                        SceneManager.CurrentScene.AddRootGameObject(Instantiate((GameObject)obj));
+                        ((ISceneDropHandler)obj).Execute(SceneManager.CurrentScene);
                     }
                 }
 
