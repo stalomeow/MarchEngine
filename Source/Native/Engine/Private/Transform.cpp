@@ -124,16 +124,14 @@ namespace march
 
     XMVECTOR Transform::LoadPosition() const
     {
-        const Transform* trans = this;
-        XMVECTOR result = XMVectorZero();
+        XMVECTOR position = LoadLocalPosition();
 
-        while (trans != nullptr)
+        if (m_Parent != nullptr)
         {
-            result = XMVectorAdd(result, trans->LoadLocalPosition());
-            trans = trans->GetParent();
+            position = m_Parent->TransformPoint(position);
         }
 
-        return result;
+        return position;
     }
 
     XMVECTOR Transform::LoadRotation() const
@@ -235,10 +233,10 @@ namespace march
 
     XMVECTOR XM_CALLCONV Transform::TransformPoint(FXMVECTOR point) const
     {
-        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transform
-        // Vector3Transform ignores the w component of the input vector, and uses a value of 1 instead.
-        // The w component of the returned vector may be non-homogeneous (!= 1.0).
-        return XMVector3Transform(point, LoadLocalToWorldMatrix());
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transformcoord
+        // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
+        // The w component of the returned vector will always be 1.0.
+        return XMVector3TransformCoord(point, LoadLocalToWorldMatrix());
     }
 
     XMVECTOR XM_CALLCONV Transform::InverseTransformVector(FXMVECTOR vector) const
@@ -256,10 +254,10 @@ namespace march
 
     XMVECTOR XM_CALLCONV Transform::InverseTransformPoint(FXMVECTOR point) const
     {
-        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transform
-        // Vector3Transform ignores the w component of the input vector, and uses a value of 1 instead.
-        // The w component of the returned vector may be non-homogeneous (!= 1.0).
-        return XMVector3Transform(point, LoadWorldToLocalMatrix());
+        // https://learn.microsoft.com/en-us/windows/win32/api/directxmath/nf-directxmath-xmvector3transformcoord
+        // XMVector3TransformCoord ignores the w component of the input vector, and uses a value of 1.0 instead.
+        // The w component of the returned vector will always be 1.0.
+        return XMVector3TransformCoord(point, LoadWorldToLocalMatrix());
     }
 
     XMFLOAT4 Transform::EulerAnglesToQuaternion(XMFLOAT3 eulerAngles)
@@ -370,13 +368,11 @@ namespace march
 
     void TransformInternalUtility::SetPosition(Transform* transform, const XMFLOAT3& value)
     {
-        const Transform* trans = transform->GetParent();
         XMVECTOR result = XMLoadFloat3(&value);
 
-        while (trans != nullptr)
+        if (transform->m_Parent != nullptr)
         {
-            result = XMVectorSubtract(result, trans->LoadLocalPosition());
-            trans = trans->GetParent();
+            result = transform->m_Parent->InverseTransformPoint(result);
         }
 
         XMStoreFloat3(&transform->m_LocalPosition, result);
