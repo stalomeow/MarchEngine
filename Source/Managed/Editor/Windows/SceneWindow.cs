@@ -233,7 +233,7 @@ namespace March.Editor.Windows
             {
                 if (DragDrop.IsDelivery)
                 {
-                    Selection.Clear();
+                    Selection.Objects.Clear();
 
                     foreach (MarchObject obj in DragDrop.Objects)
                     {

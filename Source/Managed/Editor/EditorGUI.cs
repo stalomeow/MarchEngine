@@ -13,13 +13,6 @@ namespace March.Editor
 {
     public static unsafe partial class EditorGUI
     {
-        public enum MouseButton : int
-        {
-            Left = 0,
-            Right = 1,
-            Middle = 2,
-        }
-
         internal enum SelectionRequestType : int
         {
             Nop,
@@ -258,14 +251,12 @@ namespace March.Editor
         [NativeMethod]
         internal static partial bool IsTreeNodeOpen(StringLike id, bool defaultValue);
 
+        /// <summary>
+        /// 点到窗口的空白区域时返回 <see langword="true"/>
+        /// </summary>
+        /// <returns></returns>
         [NativeMethod]
-        public static partial bool IsWindowClicked(MouseButton button, bool ignorePopup);
-
-        public static bool IsWindowClicked()
-        {
-            return IsWindowClicked(MouseButton.Left, ignorePopup: false)
-                || IsWindowClicked(MouseButton.Right, ignorePopup: true); // 在 window 上打开 context menu 也算 click
-        }
+        public static partial bool IsNothingClickedOnWindow();
 
         internal static bool BeginPopupContextItem()
         {

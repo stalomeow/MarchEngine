@@ -14,8 +14,8 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/General/Project")]
     internal class ProjectWindow : EditorWindow
     {
-        private readonly ProjectTreeView m_ProjectTree = new(allowMoveFiles: true);
-        private readonly ProjectTreeView m_EngineFileTree = new(allowMoveFiles: false); // 不可以移动引擎内置资源的位置
+        private readonly ProjectTreeView m_ProjectTree = new("ProjectAssets", allowMoveFiles: true);
+        private readonly ProjectTreeView m_EngineFileTree = new("EngineAssets", allowMoveFiles: false); // 不可以移动引擎内置资源的位置
 
         public ProjectWindow() : base(FontAwesome6.Folder, "Project")
         {
@@ -55,6 +55,11 @@ namespace March.Editor.Windows
             m_ProjectTree.Draw();
             m_EngineFileTree.Draw();
             s_ContextMenu.ShowAsWindowContext();
+
+            if (EditorGUI.IsNothingClickedOnWindow())
+            {
+                Selection.Objects.Clear();
+            }
         }
 
         private void AddPath(AssetLocation location, bool isFolder)
@@ -131,7 +136,7 @@ namespace March.Editor.Windows
                     }
                 }
 
-                Selection.Clear();
+                Selection.Objects.Clear();
 
             }, enabled: (ref object? arg) => Selection.All<AssetImporter>());
 
@@ -149,7 +154,7 @@ namespace March.Editor.Windows
         }
     }
 
-    internal class ProjectTreeView(bool allowMoveFiles) : TreeView
+    internal class ProjectTreeView(string treeViewUniqueName, bool allowMoveFiles) : TreeView(treeViewUniqueName)
     {
         private interface INode
         {

@@ -48,7 +48,7 @@ namespace March.Editor
         public required TreeViewDropPosition Position { get; init; }
     }
 
-    public abstract class TreeView
+    public abstract class TreeView(string treeViewUniqueName)
     {
         private readonly struct ItemData
         {
@@ -75,6 +75,7 @@ namespace March.Editor
                 Vector2 originalSpacing = EditorGUI.ItemSpacing;
                 Vector2 tempSpacing = new(originalSpacing.X, 0);
 
+                using (new EditorGUI.IDScope(treeViewUniqueName))
                 using (new EditorGUI.ItemSpacingScope(tempSpacing))
                 using (new EditorGUI.TreeNodeMultiSelectScope(m_SelectionRequests))
                 {

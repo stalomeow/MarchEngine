@@ -82,7 +82,8 @@ namespace march
 
         static bool IsTreeNodeOpen(const std::string& id, bool defaultValue);
 
-        static bool IsWindowClicked(ImGuiMouseButton button = ImGuiMouseButton_Left, bool ignorePopup = false);
+        static bool IsWindowClicked(ImGuiMouseButton button);
+        static bool IsNothingClickedOnWindow();
         static bool BeginPopupContextWindow();
         static bool BeginPopupContextItem(const std::string& id = "");
 

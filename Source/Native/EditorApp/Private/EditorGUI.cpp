@@ -561,6 +561,7 @@ namespace march
         constexpr ImGuiMultiSelectFlags flags
             = ImGuiMultiSelectFlags_NoAutoClearOnReselect
             | ImGuiMultiSelectFlags_ClearOnClickVoid
+            | ImGuiMultiSelectFlags_ScopeRect // 一个 Window 里可能有多个 MultiSelect
             | ImGuiMultiSelectFlags_SelectOnClickRelease;
         return ImGui::BeginMultiSelect(flags);
     }
@@ -608,18 +609,22 @@ namespace march
         return storage->GetInt(ImGui::GetID(id.c_str()), defaultValue ? 1 : 0) != 0;
     }
 
-    bool EditorGUI::IsWindowClicked(ImGuiMouseButton button, bool ignorePopup)
+    bool EditorGUI::IsWindowClicked(ImGuiMouseButton button)
     {
-        // return ImGui::IsItemClicked(button);
-
-        ImGuiHoveredFlags hoveredFlags = ImGuiHoveredFlags_None;
-        if (ignorePopup) hoveredFlags |= ImGuiHoveredFlags_AllowWhenBlockedByPopup;
-
-        // return ImGui::IsMouseClicked(button) && ImGui::IsItemHovered(hoveredFlags);
-
         // https://github.com/ocornut/imgui/issues/7879
         // 实现 down -> release 再触发 click 的效果
-        return ImGui::IsMouseReleased(button) && !ImGui::IsMouseDragPastThreshold(button) && ImGui::IsWindowHovered(hoveredFlags);
+        return ImGui::IsMouseReleased(button)
+            && !ImGui::IsMouseDragPastThreshold(button)
+            && ImGui::IsWindowHovered();
+    }
+
+    bool EditorGUI::IsNothingClickedOnWindow()
+    {
+        ImGuiContext* context = ImGui::GetCurrentContext();
+
+        return (IsWindowClicked(ImGuiMouseButton_Left) || IsWindowClicked(ImGuiMouseButton_Right))
+            && context->ActiveId == 0
+            && context->HoveredId == 0;
     }
 
     bool EditorGUI::BeginPopupContextWindow()

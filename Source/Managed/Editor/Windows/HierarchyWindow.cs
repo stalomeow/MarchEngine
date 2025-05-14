@@ -91,12 +91,12 @@ namespace March.Editor.Windows
                     go.Dispose();
                 }
 
-                Selection.Clear();
+                Selection.Objects.Clear();
 
             }, enabled: (ref object? arg) => Selection.All<GameObject>());
         }
 
-        private readonly HierarchyTreeView m_TreeView = new();
+        private readonly HierarchyTreeView m_TreeView = new("GameObjectHierarchy");
 
         public HierarchyWindow() : base(FontAwesome6.BarsStaggered, "Hierarchy")
         {
@@ -117,10 +117,10 @@ namespace March.Editor.Windows
                 s_ContextMenu.ShowAsWindowContext();
                 enableDragDrop = true;
             }
-            else if (EditorGUI.IsWindowClicked())
+
+            if (EditorGUI.IsNothingClickedOnWindow())
             {
-                // 点在空白上取消选择，这样用户体验更好一点
-                Selection.Clear();
+                Selection.Objects.Clear();
             }
 
             HandleDragDrop(scene, enableDragDrop);
@@ -137,7 +137,7 @@ namespace March.Editor.Windows
             {
                 if (DragDrop.IsDelivery)
                 {
-                    Selection.Clear();
+                    Selection.Objects.Clear();
 
                     foreach (MarchObject obj in DragDrop.Objects)
                     {
@@ -157,7 +157,7 @@ namespace March.Editor.Windows
         }
     }
 
-    internal class HierarchyTreeView : TreeView
+    internal class HierarchyTreeView(string treeViewUniqueName) : TreeView(treeViewUniqueName)
     {
         protected override int GetChildCount(object? item)
         {
@@ -240,7 +240,7 @@ namespace March.Editor.Windows
         protected override void OnHandleExternalDrop(in TreeViewExternalDropData data)
         {
             Transform target = ((GameObject)data.TargetItem).transform;
-            Selection.Clear();
+            Selection.Objects.Clear();
 
             foreach (MarchObject obj in data.Objects)
             {

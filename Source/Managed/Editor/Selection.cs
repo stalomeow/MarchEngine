@@ -45,8 +45,13 @@ namespace March.Editor
             return false;
         }
 
-        public static bool All<T>() where T : MarchObject
+        public static bool All<T>(bool allowEmpty = false) where T : MarchObject
         {
+            if (!allowEmpty && Objects.Count == 0)
+            {
+                return false;
+            }
+
             foreach (MarchObject obj in Objects)
             {
                 if (obj is not T)
@@ -96,11 +101,6 @@ namespace March.Editor
         public static bool Contains(MarchObject obj)
         {
             return Objects.Contains(obj);
-        }
-
-        public static void Clear()
-        {
-            Objects.Clear();
         }
 
         public static void Set(MarchObject obj)
