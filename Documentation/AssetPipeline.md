@@ -4,7 +4,7 @@
 
 ## 项目资产
 
-项目的资产都在 `Assets/` 目录下，和 Unity 一样。提供路径时必须加上文件扩展名。
+和 Unity 一样，项目的资产都在 `Assets/` 目录下，但是提供路径时必须加上文件扩展名。
 
 ## 内置资产
 
@@ -21,7 +21,3 @@
 在 C# 中，可以使用 `AssetManager`。如果是 Editor 代码，还可以使用 `AssetDatabase`。
 
 在 C++ 中，使用 `asset_ptr`，使用方法和 `std::unique_ptr` 差不多，可以看 `RenderPipeline` 里是怎么使用的。
-
-## 导入方法
-
-将资产文件拖进 Project 窗口即可。

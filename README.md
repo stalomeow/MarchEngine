@@ -49,12 +49,10 @@ MarchEngine
 - 使用 C++ 模板实现了自定义的 Marshal 机制
 - 利用 C# 实现部分 C++ 类型的反射
 
-### AssetPipeline
+### Asset Pipeline
 
 - 类似 Unity 的 `AssetImporter` 和 `AssetDatabase`，`AssetImporter` 内部记录资产的弱引用，可以减少无用资产的内存占用
-- 使用 [`FileSystemWatcher`](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher) 监听资产变动
-- 资产的内容发生变化，或者资产的依赖发生变化时，自动重新导入，实现资产热重载
-- 支持资产拖拽赋值，拖拽实例化
+- 使用 [`FileSystemWatcher`](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher) 监听资产变动，资产的内容发生变化，或者资产的依赖发生变化时，自动重新导入，实现资产热重载
 
 下面是一段示例代码，用于导入项目中的 HLSL 资产，并正确设置依赖关系
 
@@ -85,8 +83,7 @@ public class ShaderIncludeImporter : AssetImporter
 - 视锥体剔除 / 材质合批（类似 Unity SRP Batcher）/ 自动 GPU Instancing / 支持 Odd Negative Scaling
 - 实现了 Linear Allocator 和 Buddy Allocator，并支持多种资源分配方式 Committed / Placed / Suballocation
 - 基于 [ANTLR4](https://www.antlr.org/) 实现了 Unity 的 ShaderLab 并利用 Shader 的反射数据自动绑定资源
-- 支持 `#pragma multi_compile` 创建 Shader 变体
-- 每个 Shader 最多 128 个 Keyword，这也是 [Unity 推荐的上限](https://docs.unity3d.com/6000.0/Documentation/Manual/shader-keywords.html)
+- 支持 `#pragma multi_compile` 创建 Shader 变体，每个 Shader 最多 128 个 Keyword，这也是 [Unity 推荐的上限](https://docs.unity3d.com/6000.0/Documentation/Manual/shader-keywords.html)
 - Shader 也支持热重载，IDE 里修改后，回到引擎立即生效
 - 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
@@ -96,7 +93,7 @@ public class ShaderIncludeImporter : AssetImporter
 
 <p align="center"><img src="Documentation/Attachments/gpu-crash-message.png"></p>
 
-在 GPU 崩溃时，会有弹窗提示崩溃原因
+在崩溃时，会有弹窗提示崩溃原因
 
 - 如果是 CPU 代码导致的错误，在有调试器附加时，会自动在相关位置设置断点，方便检查问题
 - 如果是 GPU 侧导致的错误，会在项目的 Logs 目录下生成 `nv-gpudmp` 文件，可以用 [NVIDIA Nsight Graphics](https://developer.nvidia.com/nsight-graphics) 打开来检查问题
@@ -107,7 +104,7 @@ public class ShaderIncludeImporter : AssetImporter
 
 <p align="center"><img src="Documentation/Attachments/gpu-crash-dump-details.png"></p>
 
-### RenderGraph
+### Render Graph
 
 - 自动计算资源的生命周期，并尽可能地复用资源
 - 自动剔除没用的 Pass
@@ -203,7 +200,7 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 
 <p align="center"><img src="Documentation/Attachments/async-compute-pix-timing.png"></p>
 
-### RenderPipeline
+### Render Pipeline
 
 - Linear Color Space Rendering
 - Reversed-Z Buffer
@@ -224,32 +221,21 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 - 基于 Spherical Harmonics 的 Diffuse 环境光，利用卷积的性质，只用一次积分就算出球谐系数
 - 基于 Split-Sum Approximation 的 Specular IBL
 
-### EditorGUI
+### Editor
 
-- 使用 [Dear ImGui](https://github.com/ocornut/imgui) 和 C# 反射实现了编辑器 UI
-- 使用自己封装的 D3D12RHI 重写了 ImGui 的 D3D12 Backend，解决了官方实现中只能使用一个 DescriptorHeap 的问题和无法在 Linear Color Space 渲染的问题
-- 封装了类似 Unity 的 `EditorWindow`
-- 支持绘制自定义的 Gizmos，例如点光源的 Gizmos
-
-    ``` csharp
-    protected override void OnDrawGizmos(bool isSelected)
-    {
-        base.OnDrawGizmos(isSelected);
-
-        if (isSelected)
-        {
-            using (new Gizmos.ColorScope(Color))
-            {
-                Gizmos.DrawWireSphere(transform.Position, AttenuationRadius);
-            }
-        }
-    }
-    ```
+- 使用自己 Fork 的 [Dear ImGui](https://github.com/stalomeow/imgui/tree/march-engine) 实现编辑器 UI
+- 利用 C# 反射自动绘制 Component Inspector
+- 支持绘制自定义的 Gizmos
+- 支持各种 Drag & Drop 操作
+  - 引擎外的文件拖拽到 Project 窗口的文件夹上即可导入
+  - 引擎内的资产可以通过拖拽进行赋值和实例化
+  - Hierarchy 中的 GameObject 可以通过拖拽调整层级和顺序
 
 ### Misc
 
 - 基于线程池的简易 JobSystem
+- 基于 `IEnumerator` 的简易 Coroutine
 - 主线程繁忙时，自动显示进度条，避免用户认为引擎卡死
-- 使用对象池和 `StringBuilder` 减少 GC 分配
+- 提供多种对象池减少 GC 分配
 
 [^1]: https://devblogs.microsoft.com/pix/gpu-captures/
