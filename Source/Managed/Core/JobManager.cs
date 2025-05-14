@@ -23,7 +23,7 @@ namespace March.Core
         private readonly ManualResetEventSlim m_Event = new(true);
 
         private ulong m_Id;
-        private ulong m_Countdown = 0;
+        private ulong m_Countdown;
         private Action<int>? m_ManagedJob;
         private nint m_NativeJob;
         private object? m_State;
@@ -35,11 +35,11 @@ namespace March.Core
                 throw new ArgumentException("Count must be greater than 0", nameof(count));
             }
 
-            Interlocked.Exchange(ref m_Id, id);
-            Interlocked.Exchange(ref m_Countdown, count);
-            Interlocked.Exchange(ref m_ManagedJob, managedJob);
-            Interlocked.Exchange(ref m_NativeJob, nativeJob);
-            Interlocked.Exchange(ref m_State, state);
+            m_Id = id;
+            m_Countdown = count;
+            m_ManagedJob = managedJob;
+            m_NativeJob = nativeJob;
+            m_State = state;
             m_Event.Reset();
         }
 
@@ -53,14 +53,18 @@ namespace March.Core
         {
             if (Interlocked.Decrement(ref m_Countdown) == 0)
             {
+                ulong id = m_Id;
+                object? state = m_State;
+
+                NativeJobUtility.Release(m_NativeJob);
+                m_ManagedJob = null;
+                m_NativeJob = nint.Zero;
+                m_State = null;
                 m_Event.Set();
 
-                onCompletedCallback?.Invoke(m_Id, m_State);
-                NativeJobUtility.Release(NativeJob);
-
-                Interlocked.Exchange(ref m_ManagedJob, null);
-                Interlocked.Exchange(ref m_NativeJob, nint.Zero);
-                Interlocked.Exchange(ref m_State, null);
+                // 必须在最后调用回调
+                // 调用回调以后，该对象可能会立刻被重新使用，如果在回调后清理旧字段的话，可能把新字段给覆盖了
+                onCompletedCallback?.Invoke(id, state);
             }
         }
 
