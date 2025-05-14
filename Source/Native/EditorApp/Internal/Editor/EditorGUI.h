@@ -82,25 +82,6 @@ namespace march
 
         static bool IsTreeNodeOpen(const std::string& id, bool defaultValue);
 
-        enum class ItemClickOptions
-        {
-            None = 0,
-            IgnorePopup = 1 << 0,
-            TreeNodeItem = 1 << 1,
-            TreeNodeIsOpen = 1 << 2,
-            TreeNodeIsLeaf = 1 << 3,
-            AllowWhenDisabled = 1 << 4,
-        };
-
-        enum class ItemClickResult
-        {
-            False = 0,
-            TreeNodeArrow = 1,
-            True = 2,
-        };
-
-        static bool HasItemClickOptions(ItemClickOptions options, ItemClickOptions checkOptions);
-        static ItemClickResult IsItemClicked(ImGuiMouseButton button = ImGuiMouseButton_Left, ItemClickOptions options = ItemClickOptions::None);
         static bool IsWindowClicked(ImGuiMouseButton button = ImGuiMouseButton_Left, bool ignorePopup = false);
         static bool BeginPopupContextWindow();
         static bool BeginPopupContextItem(const std::string& id = "");

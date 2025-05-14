@@ -2,18 +2,43 @@
 #include "Engine/Scripting/InteropServices.h"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include <string>
 
 static const char* DragDropType = "march_drag_drop";
 
-NATIVE_EXPORT_AUTO DragDrop_BeginSource()
+NATIVE_EXPORT_AUTO DragDrop_BeginSource(cs_bool isExternal)
 {
-    retcs ImGui::BeginDragDropSource();
+    ImGuiDragDropFlags flags = ImGuiDragDropFlags_None;
+    if (isExternal) flags |= ImGuiDragDropFlags_SourceExtern;
+
+    if (!ImGui::BeginDragDropSource(flags))
+    {
+        retcs false;
+    }
+
+    if (ImGui::GetCurrentContext()->DragDropSourceFlags == flags)
+    {
+        const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+
+        // 如果之前已经设置了 payload，那么没必要再设置一次
+        if (payload != nullptr && payload->IsDataType(DragDropType))
+        {
+            ImGui::TextUnformatted(static_cast<char*>(payload->Data)); // 显示 tooltip
+            ImGui::EndDragDropSource();
+            retcs false;
+        }
+    }
+
+    retcs true;
 }
 
-NATIVE_EXPORT_AUTO DragDrop_EndSource(cs_string tooltip)
+NATIVE_EXPORT_AUTO DragDrop_EndSource(cs_string csTooltip)
 {
+    const std::string& tooltip = csTooltip;
+
+    // 将 tooltip 保存进 payload，包括 '\0'
+    ImGui::SetDragDropPayload(DragDropType, tooltip.c_str(), tooltip.size() + 1, ImGuiCond_Always);
     ImGui::TextUnformatted(tooltip.c_str()); // 显示 tooltip
-    ImGui::SetDragDropPayload(DragDropType, nullptr, 0);
     ImGui::EndDragDropSource();
 }
 
@@ -54,16 +79,17 @@ enum class DragDropResult
 
 NATIVE_EXPORT_AUTO DragDrop_AcceptTarget(cs<DragDropResult> result)
 {
+    ImGuiContext* context = ImGui::GetCurrentContext();
     DragDropResult res = result;
 
     if (res == DragDropResult::AcceptByRect)
     {
-        ImGuiContext* context = ImGui::GetCurrentContext();
+        context->DragDropAcceptFrameCountActual = context->FrameCount; // 真正接受 payload 的帧
         ImGui::RenderDragDropTargetRect(context->DragDropTargetRect, context->DragDropTargetClipRect, /* render_as_line */ false);
     }
     else if (res == DragDropResult::AcceptByLine)
     {
-        ImGuiContext* context = ImGui::GetCurrentContext();
+        context->DragDropAcceptFrameCountActual = context->FrameCount; // 真正接受 payload 的帧
         ImGui::RenderDragDropTargetRect(context->DragDropTargetRect, context->DragDropTargetClipRect, /* render_as_line */ true);
     }
     else if (res == DragDropResult::Reject)

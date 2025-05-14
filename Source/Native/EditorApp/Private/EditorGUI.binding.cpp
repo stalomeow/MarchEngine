@@ -249,11 +249,6 @@ NATIVE_EXPORT_AUTO EditorGUI_IsTreeNodeOpen(cs_string id, cs_bool defaultValue)
     retcs EditorGUI::IsTreeNodeOpen(id, defaultValue);
 }
 
-NATIVE_EXPORT_AUTO EditorGUI_IsItemClicked(cs<ImGuiMouseButton> button, cs<EditorGUI::ItemClickOptions> options)
-{
-    retcs EditorGUI::IsItemClicked(button, options);
-}
-
 NATIVE_EXPORT_AUTO EditorGUI_IsWindowClicked(cs<ImGuiMouseButton> button, cs_bool ignorePopup)
 {
     retcs EditorGUI::IsWindowClicked(button, ignorePopup);

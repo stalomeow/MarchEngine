@@ -20,23 +20,6 @@ namespace March.Editor
             Middle = 2,
         }
 
-        public enum ItemClickOptions : int
-        {
-            None = 0,
-            IgnorePopup = 1 << 0,
-            TreeNodeItem = 1 << 1,
-            TreeNodeIsOpen = 1 << 2,
-            TreeNodeIsLeaf = 1 << 3,
-            AllowWhenDisabled = 1 << 4,
-        }
-
-        public enum ItemClickResult : int
-        {
-            False = 0,
-            TreeNodeArrow = 1,
-            True = 2,
-        }
-
         internal enum SelectionRequestType : int
         {
             Nop,
@@ -274,21 +257,6 @@ namespace March.Editor
 
         [NativeMethod]
         internal static partial bool IsTreeNodeOpen(StringLike id, bool defaultValue);
-
-        [NativeMethod]
-        public static partial ItemClickResult IsItemClicked(MouseButton button, ItemClickOptions options);
-
-        public static ItemClickResult IsTreeNodeClicked(bool isOpen, bool isLeaf, bool allowWhenDisabled = false)
-        {
-            ItemClickOptions options = ItemClickOptions.TreeNodeItem;
-            if (isOpen) options |= ItemClickOptions.TreeNodeIsOpen;
-            if (isLeaf) options |= ItemClickOptions.TreeNodeIsLeaf;
-            if (allowWhenDisabled) options |= ItemClickOptions.AllowWhenDisabled;
-
-            ItemClickResult result1 = IsItemClicked(MouseButton.Left, options);
-            ItemClickResult result2 = IsItemClicked(MouseButton.Right, options | ItemClickOptions.IgnorePopup); // 在 item 上打开 context menu 也算 click
-            return (ItemClickResult)Math.Max((int)result1, (int)result2);
-        }
 
         [NativeMethod]
         public static partial bool IsWindowClicked(MouseButton button, bool ignorePopup);

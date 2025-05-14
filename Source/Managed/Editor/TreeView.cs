@@ -5,6 +5,13 @@ using System.Text;
 
 namespace March.Editor
 {
+    public enum TreeViewDropPosition
+    {
+        AboveItem,
+        OnItem,
+        BelowItem,
+    }
+
     public readonly ref struct TreeViewItemDesc
     {
         public required bool IsDisabled { get; init; }
@@ -17,11 +24,28 @@ namespace March.Editor
         public bool IsOpenByDefault { get; init; }
     }
 
-    public enum TreeViewDropPosition
+    public readonly struct TreeViewItemMoveData
     {
-        AboveItem,
-        OnItem,
-        BelowItem,
+        public required object MovingItem { get; init; }
+
+        public required object TargetItem { get; init; }
+
+        public required TreeViewDropPosition Position { get; init; }
+    }
+
+    public readonly struct TreeViewExternalDropData
+    {
+        public required List<MarchObject> Objects { get; init; }
+
+        public required List<string> Paths { get; init; }
+
+        public required List<object> Extras { get; init; }
+
+        public required object? Context { get; init; }
+
+        public required object TargetItem { get; init; }
+
+        public required TreeViewDropPosition Position { get; init; }
     }
 
     public abstract class TreeView
@@ -35,19 +59,11 @@ namespace March.Editor
             public required MarchObject? EngineObject { get; init; }
         }
 
-        private readonly struct MoveRequest
-        {
-            public required object MovingItem { get; init; }
-
-            public required object AnchorItem { get; init; }
-
-            public required TreeViewDropPosition Position { get; init; }
-        }
-
         private readonly List<ItemData> m_Items = [];
         private readonly Dictionary<object, MarchObject> m_SelectionData = [];
         private readonly List<EditorGUI.SelectionRequest> m_SelectionRequests = [];
-        private readonly List<MoveRequest> m_MoveRequests = [];
+        private readonly List<TreeViewItemMoveData> m_MoveRequests = [];
+        private readonly List<TreeViewExternalDropData> m_ExternalDropRequests = [];
 
         public void Draw()
         {
@@ -77,9 +93,16 @@ namespace March.Editor
                 }
 
                 // 移动会使 Item 的索引失效，所以放在最后处理
-                foreach (MoveRequest request in m_MoveRequests)
+                foreach (TreeViewItemMoveData moveData in m_MoveRequests)
                 {
-                    OnMoveItem(request.MovingItem, request.AnchorItem, request.Position);
+                    OnMoveItem(in moveData);
+                }
+
+                // 外部拖拽也可能使 Item 的索引失效，所以放在最后处理
+                foreach (TreeViewExternalDropData dropData in m_ExternalDropRequests)
+                {
+                    OnHandleExternalDrop(in dropData);
+                    FreeExternalDropData(in dropData);
                 }
             }
             finally
@@ -88,6 +111,7 @@ namespace March.Editor
                 m_SelectionData.Clear();
                 m_SelectionRequests.Clear();
                 m_MoveRequests.Clear();
+                m_ExternalDropRequests.Clear();
             }
         }
 
@@ -195,38 +219,105 @@ namespace March.Editor
                 return;
             }
 
-            if (DragDrop.Context != this)
+            if (DragDrop.Context == this)
             {
-                bool accept = HandleExternalDrop(item, position);
-                DragDrop.EndTarget(accept ? acceptResult : DragDropResult.Reject);
-                return;
-            }
+                bool accept = true;
 
-            // 检查是否全部可以移动
-            foreach (object movingItem in DragDrop.Extras)
-            {
-                // 不允许将结点移动到自己或者子结点上
-                if (IsChildOf(itemIndex, movingItem) || !CanMoveItem(movingItem, item, position))
-                {
-                    DragDrop.EndTarget(DragDropResult.Reject);
-                    return;
-                }
-            }
-
-            if (DragDrop.IsDelivery)
-            {
+                // 检查是否全部可以移动
                 foreach (object movingItem in DragDrop.Extras)
                 {
-                    m_MoveRequests.Add(new MoveRequest
+                    var data = new TreeViewItemMoveData
                     {
-                        AnchorItem = item,
                         MovingItem = movingItem,
-                        Position = position,
-                    });
+                        TargetItem = item,
+                        Position = position
+                    };
+
+                    // 不允许将结点移动到自己或者子结点上
+                    if (IsChildOf(itemIndex, movingItem) || !CanMoveItem(data))
+                    {
+                        accept = false;
+                        break;
+                    }
+                }
+
+                if (accept)
+                {
+                    if (DragDrop.IsDelivery)
+                    {
+                        foreach (object movingItem in DragDrop.Extras)
+                        {
+                            m_MoveRequests.Add(new TreeViewItemMoveData
+                            {
+                                MovingItem = movingItem,
+                                TargetItem = item,
+                                Position = position
+                            });
+                        }
+                    }
+
+                    DragDrop.EndTarget(acceptResult);
+                }
+                else
+                {
+                    DragDrop.EndTarget(DragDropResult.Reject);
                 }
             }
+            else
+            {
+                var data = new TreeViewExternalDropData
+                {
+                    Objects = DragDrop.Objects,
+                    Paths = DragDrop.Paths,
+                    Extras = DragDrop.Extras,
+                    Context = DragDrop.Context,
+                    TargetItem = item,
+                    Position = position,
+                };
 
-            DragDrop.EndTarget(acceptResult);
+                if (CanHandleExternalDrop(in data))
+                {
+                    if (DragDrop.IsDelivery)
+                    {
+                        // 需要把数据复制一份，避免之后处理时数据失效
+                        m_ExternalDropRequests.Add(CopyExternalDropData(in data));
+                    }
+
+                    DragDrop.EndTarget(acceptResult);
+                }
+                else
+                {
+                    DragDrop.EndTarget(DragDropResult.Reject);
+                }
+            }
+        }
+
+        private static TreeViewExternalDropData CopyExternalDropData(in TreeViewExternalDropData data)
+        {
+            List<MarchObject> objects = ListPool<MarchObject>.Shared.Rent();
+            List<string> paths = ListPool<string>.Shared.Rent();
+            List<object> extras = ListPool<object>.Shared.Rent();
+
+            objects.AddRange(data.Objects);
+            paths.AddRange(data.Paths);
+            extras.AddRange(data.Extras);
+
+            return new TreeViewExternalDropData
+            {
+                Objects = objects,
+                Paths = paths,
+                Extras = extras,
+                Context = data.Context,
+                TargetItem = data.TargetItem,
+                Position = data.Position,
+            };
+        }
+
+        private static void FreeExternalDropData(in TreeViewExternalDropData data)
+        {
+            ListPool<MarchObject>.Shared.Return(data.Objects);
+            ListPool<string>.Shared.Return(data.Paths);
+            ListPool<object>.Shared.Return(data.Extras);
         }
 
         private bool IsChildOf(int childItemIndex, object parentItem)
@@ -333,18 +424,12 @@ namespace March.Editor
 
         protected abstract void GetDragTooltip(IReadOnlyList<object> items, StringBuilder tooltipBuilder);
 
-        protected virtual bool CanMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
-        {
-            return false;
-        }
+        protected virtual bool CanMoveItem(in TreeViewItemMoveData data) => false;
 
-        protected virtual void OnMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
-        {
-        }
+        protected virtual void OnMoveItem(in TreeViewItemMoveData data) { }
 
-        protected virtual bool HandleExternalDrop(object item, TreeViewDropPosition position)
-        {
-            return false;
-        }
+        protected virtual bool CanHandleExternalDrop(in TreeViewExternalDropData data) => false;
+
+        protected virtual void OnHandleExternalDrop(in TreeViewExternalDropData data) { }
     }
 }

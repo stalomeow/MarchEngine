@@ -31,6 +31,7 @@ namespace march
         { ManagedMethod::Texture_NativeGetDefault                 , { L"March.Core.Rendering.Texture,March.Core"     , L"NativeGetDefault"       } },
         { ManagedMethod::JobManager_NativeSchedule                , { L"March.Core.JobManager,March.Core"            , L"NativeSchedule"         } },
         { ManagedMethod::JobManager_NativeComplete                , { L"March.Core.JobManager,March.Core"            , L"NativeComplete"         } },
+        { ManagedMethod::DragDrop_HandleExternalFiles             , { L"March.Editor.DragDrop,March.Editor"          , L"HandleExternalFiles"    } },
     };
 
     const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";

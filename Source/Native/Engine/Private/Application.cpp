@@ -250,7 +250,7 @@ namespace march
     {
         std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
         std::wstring wMessage = StringUtils::Utf8ToUtf16(message);
-        MessageBoxW(NULL, wMessage.c_str(), wTitle.c_str(), MB_OK);
+        MessageBoxW(NULL, wMessage.c_str(), wTitle.c_str(), MB_OK | MB_ICONERROR);
 
 #if defined(_DEBUG)
         if (debugBreak && IsDebuggerPresent())
@@ -266,23 +266,10 @@ namespace march
 
     LRESULT Application::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
+        // 不处理 WM_ACTIVATE，失去焦点时也要继续渲染，否则无法处理 DragDrop 等交互
+
         switch (msg)
         {
-        case WM_ACTIVATE:
-        {
-            if (LOWORD(wParam) == WA_INACTIVE)
-            {
-                m_Timer->Stop();
-                OnPause();
-            }
-            else
-            {
-                m_Timer->Start();
-                OnResume();
-            }
-            return 0;
-        }
-
         case WM_DPICHANGED:
         {
             RECT* const prcNewWindow = (RECT*)lParam;
@@ -307,9 +294,22 @@ namespace march
 
         case WM_SIZE:
         {
-            if (wParam != SIZE_MINIMIZED)
+            if (wParam == SIZE_MINIMIZED)
             {
-                OnResize();
+                m_Timer->Stop();
+                OnPause();
+            }
+            else
+            {
+                if (m_Timer->GetIsRunning())
+                {
+                    OnResize();
+                }
+                else
+                {
+                    m_Timer->Start();
+                    OnResume();
+                }
             }
             return 0;
         }
@@ -320,7 +320,7 @@ namespace march
             // Don't beep when we alt-enter.
             return MAKELRESULT(0, MNC_CLOSE);
 
-            // Catch this message so to prevent the window from becoming too small.
+        // Catch this message so to prevent the window from becoming too small.
         case WM_GETMINMAXINFO:
             ((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
             ((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;

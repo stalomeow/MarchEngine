@@ -107,7 +107,7 @@ namespace March.Editor.Windows
         {
             base.OnDraw();
 
-            //bool enableDragDrop = false;
+            bool enableDragDrop = false;
             Scene scene = SceneManager.CurrentScene;
             using var sceneLabel = EditorGUIUtility.BuildIconText(SceneImporter.SceneIcon, scene.Name);
 
@@ -115,7 +115,7 @@ namespace March.Editor.Windows
             {
                 m_TreeView.Draw();
                 s_ContextMenu.ShowAsWindowContext();
-                //enableDragDrop = true;
+                enableDragDrop = true;
             }
             else if (EditorGUI.IsWindowClicked())
             {
@@ -123,29 +123,37 @@ namespace March.Editor.Windows
                 Selection.Clear();
             }
 
-            //HandleDragDrop(scene, enableDragDrop);
+            HandleDragDrop(scene, enableDragDrop);
         }
 
         private static void HandleDragDrop(Scene scene, bool enabled)
         {
-            //if (!DragDrop.BeginTarget(DragDropArea.Window))
-            //{
-            //    return;
-            //}
+            if (!DragDrop.BeginTarget(DragDropArea.Window))
+            {
+                return;
+            }
 
-            //if (enabled && data.Payload is GameObject go)
-            //{
-            //    if (data.IsDelivery)
-            //    {
-            //        scene.AddRootGameObject(Instantiate(go));
-            //    }
+            if (enabled && DragDrop.Objects.Count > 0 && DragDrop.Objects.All(obj => obj is IPrefabProvider))
+            {
+                if (DragDrop.IsDelivery)
+                {
+                    Selection.Clear();
 
-            //    DragDrop.EndTarget(DragDropResult.AcceptByRect);
-            //}
-            //else
-            //{
-            //    DragDrop.EndTarget(DragDropResult.Reject);
-            //}
+                    foreach (MarchObject obj in DragDrop.Objects)
+                    {
+                        GameObject prefab = ((IPrefabProvider)obj).GetPrefab();
+                        GameObject go = Instantiate(prefab);
+                        SceneManager.CurrentScene.AddRootGameObject(go);
+                        Selection.Objects.Add(go);
+                    }
+                }
+
+                DragDrop.EndTarget(DragDropResult.AcceptByRect);
+            }
+            else
+            {
+                DragDrop.EndTarget(DragDropResult.Reject);
+            }
         }
     }
 
@@ -212,31 +220,55 @@ namespace March.Editor.Windows
             }
         }
 
-        protected override bool CanMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
+        protected override bool CanMoveItem(in TreeViewItemMoveData data)
         {
             return true;
         }
 
-        protected override void OnMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
+        protected override void OnMoveItem(in TreeViewItemMoveData data)
         {
-            Transform moving = ((GameObject)movingItem).transform;
-            Transform anchor = ((GameObject)anchorItem).transform;
+            Transform moving = ((GameObject)data.MovingItem).transform;
+            Transform target = ((GameObject)data.TargetItem).transform;
+            HandleDropTransform(moving, target, data.Position);
+        }
 
+        protected override bool CanHandleExternalDrop(in TreeViewExternalDropData data)
+        {
+            return data.Objects.Count > 0 && data.Objects.All(obj => obj is IPrefabProvider);
+        }
+
+        protected override void OnHandleExternalDrop(in TreeViewExternalDropData data)
+        {
+            Transform target = ((GameObject)data.TargetItem).transform;
+            Selection.Clear();
+
+            foreach (MarchObject obj in data.Objects)
+            {
+                GameObject prefab = ((IPrefabProvider)obj).GetPrefab();
+                GameObject go = MarchObject.Instantiate(prefab);
+                SceneManager.CurrentScene.AddRootGameObject(go);
+                HandleDropTransform(go.transform, target, data.Position);
+                Selection.Objects.Add(go);
+            }
+        }
+
+        private static void HandleDropTransform(Transform transform, Transform target, TreeViewDropPosition position)
+        {
             switch (position)
             {
                 case TreeViewDropPosition.AboveItem:
-                    moving.SetParent(anchor.Parent);
-                    moving.SetSiblingIndex(anchor.GetSiblingIndex());
+                    transform.SetParent(target.Parent);
+                    transform.SetSiblingIndex(target.GetSiblingIndex());
                     break;
                 case TreeViewDropPosition.OnItem:
-                    moving.SetParent(anchor);
+                    transform.SetParent(target);
                     break;
                 case TreeViewDropPosition.BelowItem:
-                    moving.SetParent(anchor.Parent);
-                    moving.SetSiblingIndex(anchor.GetSiblingIndex() + 1);
+                    transform.SetParent(target.Parent);
+                    transform.SetSiblingIndex(target.GetSiblingIndex() + 1);
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(position));
+                    throw new NotSupportedException("Unexpected drop position: " + position);
             }
         }
     }

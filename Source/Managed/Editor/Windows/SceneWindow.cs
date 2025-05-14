@@ -229,13 +229,18 @@ namespace March.Editor.Windows
                 return;
             }
 
-            if (DragDrop.Objects.All(obj => obj is ISceneDropHandler))
+            if (DragDrop.Objects.Count > 0 && DragDrop.Objects.All(obj => obj is IPrefabProvider))
             {
                 if (DragDrop.IsDelivery)
                 {
+                    Selection.Clear();
+
                     foreach (MarchObject obj in DragDrop.Objects)
                     {
-                        ((ISceneDropHandler)obj).Execute(SceneManager.CurrentScene);
+                        GameObject prefab = ((IPrefabProvider)obj).GetPrefab();
+                        GameObject go = Instantiate(prefab);
+                        SceneManager.CurrentScene.AddRootGameObject(go);
+                        Selection.Objects.Add(go);
                     }
                 }
 

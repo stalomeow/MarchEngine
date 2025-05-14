@@ -112,6 +112,29 @@ namespace March.Editor.Windows
                 }
             });
 
+            s_ContextMenu.AddMenuItem("Delete", (ref object? arg) =>
+            {
+                foreach (MarchObject obj in Selection.Objects)
+                {
+                    if (obj is not AssetImporter importer)
+                    {
+                        continue;
+                    }
+
+                    if (AssetDatabase.IsFolder(importer))
+                    {
+                        Directory.Delete(importer.Location.AssetFullPath, recursive: true);
+                    }
+                    else
+                    {
+                        File.Delete(importer.Location.AssetFullPath);
+                    }
+                }
+
+                Selection.Clear();
+
+            }, enabled: (ref object? arg) => Selection.All<AssetImporter>());
+
             s_ContextMenu.AddMenuItem("Reimport", (ref object? arg) =>
             {
                 foreach (MarchObject obj in Selection.Objects)
@@ -133,20 +156,26 @@ namespace March.Editor.Windows
             string Name { get; }
 
             string Path { get; }
+
+            INode? Parent { get; }
         }
 
-        private class FileNode(string name, string path) : INode
+        private class FileNode(string name, string path, INode? parent) : INode
         {
             public string Name { get; } = name;
 
             public string Path { get; } = path;
+
+            public INode? Parent { get; } = parent;
         }
 
-        private class FolderNode(string name, string path) : INode
+        private class FolderNode(string name, string path, INode? parent) : INode
         {
             public string Name { get; } = name;
 
             public string Path { get; } = path;
+
+            public INode? Parent { get; } = parent;
 
             public SortedList<string, FolderNode> Folders { get; } = [];
 
@@ -176,7 +205,7 @@ namespace March.Editor.Windows
             }
         }
 
-        private readonly FolderNode m_RootNode = new("Root", string.Empty);
+        private readonly FolderNode m_RootNode = new("Root", string.Empty, null);
 
         public void AddFile(string path) => Add(path, false);
 
@@ -197,14 +226,14 @@ namespace March.Editor.Windows
                 {
                     if (!node.Folders.ContainsKey(name))
                     {
-                        node.Folders.Add(name, new FolderNode(name, path));
+                        node.Folders.Add(name, new FolderNode(name, path, node));
                     }
                 }
                 else
                 {
                     if (!node.Files.ContainsKey(name))
                     {
-                        node.Files.Add(name, new FileNode(name, path));
+                        node.Files.Add(name, new FileNode(name, path, node));
                     }
                 }
             }
@@ -251,7 +280,7 @@ namespace March.Editor.Windows
                         return false;
                     }
 
-                    n = new FolderNode(seg, string.Join('/', segments[..(i + 1)]));
+                    n = new FolderNode(seg, string.Join('/', segments[..(i + 1)]), node);
                     node.Folders.Add(seg, n);
                 }
 
@@ -362,15 +391,29 @@ namespace March.Editor.Windows
             }
         }
 
-        protected override bool CanMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
+        protected override bool CanMoveItem(in TreeViewItemMoveData data)
         {
             // 不允许调整文件的顺序，只能拖到某个文件夹上
-            return allowMoveFiles && position == TreeViewDropPosition.OnItem && anchorItem is FolderNode;
+            if (!allowMoveFiles || data.Position != TreeViewDropPosition.OnItem || data.TargetItem is not FolderNode)
+            {
+                return false;
+            }
+
+            INode movingNode = (INode)data.MovingItem;
+            INode targetNode = (INode)data.TargetItem;
+
+            // 不能移动到原本就在的文件夹里
+            if (movingNode.Parent == targetNode)
+            {
+                return false;
+            }
+
+            return true;
         }
 
-        protected override void OnMoveItem(object movingItem, object anchorItem, TreeViewDropPosition position)
+        protected override void OnMoveItem(in TreeViewItemMoveData data)
         {
-            INode srcNode = (INode)movingItem;
+            INode srcNode = (INode)data.MovingItem;
             string? srcFullPath = GetFullPath(srcNode.Path);
 
             if (srcFullPath == null)
@@ -379,7 +422,7 @@ namespace March.Editor.Windows
                 return;
             }
 
-            INode dstFolder = (INode)anchorItem;
+            INode dstFolder = (INode)data.TargetItem;
             string? dstFullPath = GetFullPath(dstFolder.Path);
 
             if (dstFullPath == null)
@@ -401,6 +444,68 @@ namespace March.Editor.Windows
             }
         }
 
+        protected override bool CanHandleExternalDrop(in TreeViewExternalDropData data)
+        {
+            // 只能拖到某个文件夹上
+            if (!allowMoveFiles || data.Position != TreeViewDropPosition.OnItem || data.TargetItem is not FolderNode dstFolder)
+            {
+                return false;
+            }
+
+            if (data.Paths.Count == 0)
+            {
+                return false;
+            }
+
+            string? dstFolderPath = GetFullPath(dstFolder.Path);
+
+            if (dstFolderPath == null)
+            {
+                Log.Message(LogLevel.Error, "Can not determine the full path of dstFolder", $"{dstFolder.Path}");
+                return false;
+            }
+
+            foreach (string path in data.Paths)
+            {
+                string name = Path.GetFileName(path);
+                string dstPath = Path.Combine(dstFolderPath, name);
+
+                if (File.Exists(dstPath) || Directory.Exists(dstPath))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        protected override void OnHandleExternalDrop(in TreeViewExternalDropData data)
+        {
+            INode dstFolder = (INode)data.TargetItem;
+            string? dstFolderPath = GetFullPath(dstFolder.Path);
+
+            if (dstFolderPath == null)
+            {
+                Log.Message(LogLevel.Error, "Can not determine the full path of dstFolder", $"{dstFolder.Path}");
+                return;
+            }
+
+            foreach (string path in data.Paths)
+            {
+                string name = Path.GetFileName(path);
+                string dstPath = Path.Combine(dstFolderPath, name);
+
+                if (Directory.Exists(path))
+                {
+                    CopyDirectory(path, dstPath, recursive: true);
+                }
+                else
+                {
+                    File.Copy(path, dstPath);
+                }
+            }
+        }
+
         private static string? GetFullPath(string path)
         {
             if (path.Equals("Assets", StringComparison.InvariantCultureIgnoreCase))
@@ -410,6 +515,42 @@ namespace March.Editor.Windows
 
             AssetLocation location = AssetLocation.FromPath(path);
             return location.Category == AssetCategory.Unknown ? null : location.AssetFullPath;
+        }
+
+        // Ref: https://learn.microsoft.com/en-us/dotnet/standard/io/how-to-copy-directories
+        private static void CopyDirectory(string sourceDir, string destinationDir, bool recursive)
+        {
+            // Get information about the source directory
+            var dir = new DirectoryInfo(sourceDir);
+
+            // Check if the source directory exists
+            if (!dir.Exists)
+            {
+                throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
+            }
+
+            // Cache directories before we start copying
+            DirectoryInfo[] dirs = dir.GetDirectories();
+
+            // Create the destination directory
+            Directory.CreateDirectory(destinationDir);
+
+            // Get the files in the source directory and copy to the destination directory
+            foreach (FileInfo file in dir.GetFiles())
+            {
+                string targetFilePath = Path.Combine(destinationDir, file.Name);
+                file.CopyTo(targetFilePath);
+            }
+
+            // If recursive and copying subdirectories, recursively call this method
+            if (recursive)
+            {
+                foreach (DirectoryInfo subDir in dirs)
+                {
+                    string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
+                    CopyDirectory(subDir.FullName, newDestinationDir, true);
+                }
+            }
         }
     }
 }

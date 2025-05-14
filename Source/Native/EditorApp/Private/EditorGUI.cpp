@@ -608,65 +608,6 @@ namespace march
         return storage->GetInt(ImGui::GetID(id.c_str()), defaultValue ? 1 : 0) != 0;
     }
 
-    bool EditorGUI::HasItemClickOptions(ItemClickOptions options, ItemClickOptions checkOptions)
-    {
-        int opts = static_cast<int>(options);
-        int check = static_cast<int>(checkOptions);
-        return (opts & check) == check;
-    }
-
-    EditorGUI::ItemClickResult EditorGUI::IsItemClicked(ImGuiMouseButton button, ItemClickOptions options)
-    {
-        ImGuiHoveredFlags hoveredFlags = ImGuiHoveredFlags_None;
-
-        if (HasItemClickOptions(options, ItemClickOptions::IgnorePopup))
-        {
-            hoveredFlags |= ImGuiHoveredFlags_AllowWhenBlockedByPopup;
-        }
-
-        if (HasItemClickOptions(options, ItemClickOptions::AllowWhenDisabled))
-        {
-            hoveredFlags |= ImGuiHoveredFlags_AllowWhenDisabled;
-        }
-
-        // https://github.com/ocornut/imgui/issues/7879
-        // 实现 down -> release 再触发 click 的效果
-        if (ImGui::IsMouseReleased(button) && !ImGui::IsMouseDragPastThreshold(button) && ImGui::IsItemHovered(hoveredFlags))
-        {
-            if (HasItemClickOptions(options, ItemClickOptions::TreeNodeItem))
-            {
-                // leaf 没有箭头
-                if (HasItemClickOptions(options, ItemClickOptions::TreeNodeIsLeaf))
-                {
-                    return ItemClickResult::True;
-                }
-
-                int depth = ImGui::GetCurrentWindow()->DC.TreeDepth;
-
-                // open 后有一个 tree push，要把它减掉
-                if (HasItemClickOptions(options, ItemClickOptions::TreeNodeIsOpen))
-                {
-                    depth--;
-                }
-
-                // https://github.com/ocornut/imgui/issues/1896
-                float indent = depth * ImGui::GetStyle().IndentSpacing;
-                float dist = ImGui::GetMousePos().x - ImGui::GetItemRectMin().x - indent;
-
-                if (dist < 0 || dist > ImGui::GetTreeNodeToLabelSpacing())
-                {
-                    return ItemClickResult::True;
-                }
-
-                return ItemClickResult::TreeNodeArrow;
-            }
-
-            return ItemClickResult::True;
-        }
-
-        return ItemClickResult::False;
-    }
-
     bool EditorGUI::IsWindowClicked(ImGuiMouseButton button, bool ignorePopup)
     {
         // return ImGui::IsItemClicked(button);

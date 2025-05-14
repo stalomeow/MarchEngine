@@ -18,6 +18,7 @@ namespace march
         Texture_NativeGetDefault,
         JobManager_NativeSchedule,
         JobManager_NativeComplete,
+        DragDrop_HandleExternalFiles,
 
         // 该成员仅用于记录方法的数量
         NumMethods,

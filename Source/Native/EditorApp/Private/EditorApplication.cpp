@@ -4,6 +4,7 @@
 #include "Editor/BusyProgressBar.h"
 #include "Editor/EditorGUI.h"
 #include "Editor/ConsoleWindow.h"
+#include "Editor/DragDrop.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderPipeline.h"
 #include "Engine/Rendering/Display.h"
@@ -128,6 +129,11 @@ namespace march
         m_ProgressBar = std::make_unique<BusyProgressBar>("March 7th is working", 300 /* ms */);
 
         Display::CreateMainDisplay(10, 10); // dummy display
+
+        if (!DropManager::Initialize(GetWindowHandle()))
+        {
+            CrashWithMessage("Error", "Failed to initialize drag and drop manager.");
+        }
 
         InitImGui();
     }
@@ -444,6 +450,18 @@ namespace march
 
     LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
+        if (msg == WM_DESTROY)
+        {
+            // 必须在 WindowHandle 被销毁之前调用
+            if (!DropManager::Uninitialize(GetWindowHandle()))
+            {
+                CrashWithMessage("Error", "Failed to uninitialize drag and drop manager.");
+            }
+
+            Quit(0);
+            return 0;
+        }
+
         if (ImGui_ImplWin32_WndProcHandler(GetWindowHandle(), msg, wParam, lParam))
         {
             return true;
