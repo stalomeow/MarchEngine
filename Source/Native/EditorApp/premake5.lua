@@ -8,7 +8,7 @@ project "EditorApp"
     proj.setup_cpp()
     vcpkg.setup()
 
-    uses { "Engine", "DotNetRuntimeBinaries", "NsightAftermathBinaries", "ImGuizmo", "ImOGuizmo" }
+    uses { "Engine", "DotNetRuntimeBinaries", "NsightAftermathBinaries", "ImGui", "ImGuizmo", "ImOGuizmo" }
 
     links {
         "Core",

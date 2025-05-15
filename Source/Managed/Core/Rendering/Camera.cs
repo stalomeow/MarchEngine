@@ -1,4 +1,3 @@
-using March.Core.IconFont;
 using March.Core.Interop;
 using March.Core.Serialization;
 using Newtonsoft.Json;
@@ -79,48 +78,6 @@ namespace March.Core.Rendering
         internal partial void SetCustomTargetDisplay(nint display);
 
         internal void ResetTargetDisplay() => SetCustomTargetDisplay(nint.Zero);
-
-        protected override void OnDrawGizmos(bool isSelected)
-        {
-            base.OnDrawGizmos(isSelected);
-
-            using (new Gizmos.ColorScope(isSelected ? Color.White : new Color(1, 1, 1, 0.6f)))
-            using (new Gizmos.MatrixScope(GizmosUtility.GetLocalToWorldMatrixWithoutScale(transform)))
-            {
-                float tanHalfVerticalFov = MathF.Tan(float.DegreesToRadians(VerticalFieldOfView * 0.5f));
-                float tanHalfHorizontalFov = MathF.Tan(float.DegreesToRadians(HorizontalFieldOfView * 0.5f));
-
-                Vector3 forwardNear = NearClipPlane * Vector3.UnitZ;
-                Vector3 forwardFar = FarClipPlane * Vector3.UnitZ;
-                Vector3 upNear = tanHalfVerticalFov * NearClipPlane * Vector3.UnitY;
-                Vector3 upFar = tanHalfVerticalFov * FarClipPlane * Vector3.UnitY;
-                Vector3 rightNear = tanHalfHorizontalFov * NearClipPlane * Vector3.UnitX;
-                Vector3 rightFar = tanHalfHorizontalFov * FarClipPlane * Vector3.UnitX;
-
-                Gizmos.DrawLine(forwardNear + upNear - rightNear, forwardNear + upNear + rightNear);
-                Gizmos.DrawLine(forwardNear - upNear - rightNear, forwardNear - upNear + rightNear);
-                Gizmos.DrawLine(forwardNear + upNear - rightNear, forwardNear - upNear - rightNear);
-                Gizmos.DrawLine(forwardNear + upNear + rightNear, forwardNear - upNear + rightNear);
-
-                Gizmos.DrawLine(forwardFar + upFar - rightFar, forwardFar + upFar + rightFar);
-                Gizmos.DrawLine(forwardFar - upFar - rightFar, forwardFar - upFar + rightFar);
-                Gizmos.DrawLine(forwardFar + upFar - rightFar, forwardFar - upFar - rightFar);
-                Gizmos.DrawLine(forwardFar + upFar + rightFar, forwardFar - upFar + rightFar);
-
-                Gizmos.DrawLine(forwardNear - upNear - rightNear, forwardFar - upFar - rightFar);
-                Gizmos.DrawLine(forwardNear + upNear - rightNear, forwardFar + upFar - rightFar);
-                Gizmos.DrawLine(forwardNear - upNear + rightNear, forwardFar - upFar + rightFar);
-                Gizmos.DrawLine(forwardNear + upNear + rightNear, forwardFar + upFar + rightFar);
-            }
-        }
-
-        protected override void OnDrawGizmosGUI(bool isSelected)
-        {
-            base.OnDrawGizmosGUI(isSelected);
-
-            // Icon
-            Gizmos.DrawText(gameObject.transform.Position, FontAwesome6.Video);
-        }
 
         [NativeMethod]
         private static partial nint New();

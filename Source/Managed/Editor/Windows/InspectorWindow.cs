@@ -1,5 +1,5 @@
 using March.Core;
-using March.Core.IconFont;
+using March.Editor.IconFont;
 using System.Numerics;
 
 namespace March.Editor.Windows
@@ -7,7 +7,7 @@ namespace March.Editor.Windows
     [EditorWindowMenu("Window/General/Inspector")]
     internal class InspectorWindow : EditorWindow
     {
-        private readonly DrawerCache<InspectorDrawer> m_DrawerCache = new(typeof(InspectorDrawerFor<>));
+        private static readonly DrawerCache<InspectorDrawer> s_DrawerCache = new(typeof(InspectorDrawerFor<>));
         private MarchObject? m_LastTarget;
         private InspectorDrawer? m_LastDrawer;
 
@@ -35,7 +35,7 @@ namespace March.Editor.Windows
             {
                 m_LastDrawer?.OnDestroy();
 
-                if (target != null && m_DrawerCache.TryGetType(target.GetType(), out Type? drawerType))
+                if (target != null && s_DrawerCache.TryGetType(target.GetType(), out Type? drawerType))
                 {
                     m_LastDrawer = (InspectorDrawer)Activator.CreateInstance(drawerType)!;
                     m_LastDrawer.Target = target;

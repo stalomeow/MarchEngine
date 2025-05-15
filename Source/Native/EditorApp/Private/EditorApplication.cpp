@@ -5,13 +5,14 @@
 #include "Editor/EditorGUI.h"
 #include "Editor/ConsoleWindow.h"
 #include "Editor/DragDrop.h"
+#include "Editor/Gizmos.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderPipeline.h"
 #include "Engine/Rendering/Display.h"
-#include "Engine/ImGui/IconsFontAwesome6.h"
-#include "Engine/ImGui/IconsFontAwesome6Brands.h"
-#include "Engine/ImGui/ImGuiBackend.h"
-#include "Engine/ImGui/ImGuiStyleManager.h"
+#include "Editor/IconsFontAwesome6.h"
+#include "Editor/IconsFontAwesome6Brands.h"
+#include "Editor/ImGuiBackend.h"
+#include "Editor/ImGuiStyleManager.h"
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Misc/PathUtils.h"
 #include "Engine/Misc/DeferFunc.h"
@@ -360,6 +361,7 @@ namespace march
                 DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
 
                 rp->Render();
+                Gizmos::Render();
                 ImGui::Render();
 
                 // Render ImGui to the back buffer and prepare for present

@@ -242,6 +242,21 @@ namespace march
         m_PrevNonJitteredViewProjectionMatrix = GetNonJitteredViewProjectionMatrix();
     }
 
+    void Camera::FillCameraData(CameraData& data) const
+    {
+        data.ViewMatrix = GetViewMatrix();
+        data.ProjectionMatrix = GetProjectionMatrix();
+        data.ViewProjectionMatrix = GetViewProjectionMatrix();
+
+        XMStoreFloat4x4(&data.InvViewMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&data.ViewMatrix)));
+        XMStoreFloat4x4(&data.InvProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&data.ProjectionMatrix)));
+        XMStoreFloat4x4(&data.InvViewProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&data.ViewProjectionMatrix)));
+
+        data.NonJitteredViewProjectionMatrix = GetNonJitteredViewProjectionMatrix();
+        data.PrevNonJitteredViewProjectionMatrix = GetPrevNonJitteredViewProjectionMatrix();
+        data.TAAParams.x = static_cast<float>(GetTAAFrameIndex());
+    }
+
     const std::vector<Camera*>& Camera::GetAllCameras()
     {
         return s_AllCameras;

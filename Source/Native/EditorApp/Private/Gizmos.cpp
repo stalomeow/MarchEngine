@@ -1,6 +1,7 @@
 #include "pch.h"
-#include "Engine/Rendering/Gizmos.h"
+#include "Editor/Gizmos.h"
 #include "Engine/Rendering/D3D12.h"
+#include "Engine/Rendering/Display.h"
 #include "Engine/Debug.h"
 #include "Engine/AssetManger.h"
 #include "Engine/Application.h"
@@ -37,6 +38,8 @@ namespace march
     static std::unique_ptr<GfxBasicMesh<GizmosVertex>> g_LineListMesh = nullptr;
     static asset_ptr<Shader> g_LineListShader = nullptr;
     static std::unique_ptr<Material> g_LineListMaterial = nullptr;
+    static asset_ptr<Shader> g_SceneViewGridShader = nullptr;
+    static std::unique_ptr<Material> g_SceneViewGridMaterial = nullptr;
 
     // ImGui
     static size_t g_GUIModeCounter = 0;
@@ -345,26 +348,67 @@ namespace march
         }
     }
 
-    bool Gizmos::CanRender()
+    static void RenderSingleCamera(GfxCommandContext* context, Camera* camera)
     {
-        return g_LineListMaterial != nullptr;
-    }
+        if (!camera->GetIsActiveAndEnabled() || !camera->GetEnableGizmos())
+        {
+            return;
+        }
 
-    void Gizmos::Render(RenderGraphContext& context)
-    {
-        FlushLineListIfNeeded(true);
+        Display* display = camera->GetTargetDisplay();
+        context->SetRenderTarget(display->GetColorBuffer(), display->GetDepthStencilBuffer());
+        context->SetDefaultViewport();
+        context->SetDefaultScissorRect();
+
+        GfxBufferDesc desc{};
+        desc.Stride = sizeof(CameraData);
+        desc.Count = 1;
+        desc.Usages = GfxBufferUsages::Constant;
+        desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
+
+        GfxBuffer cbCamera{ context->GetDevice(), "cbCamera", desc };
+        CameraData data{};
+        camera->FillCameraData(data);
+        cbCamera.SetData(&data);
+
+        static int32 cbCameraId = ShaderUtils::GetIdFromString("cbCamera");
+        context->SetBuffer(cbCameraId, &cbCamera);
 
         // Visible part
         for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
         {
-            context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
+            context->DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 0);
         }
 
         // Invisible part
         for (uint32_t i = 0; i < g_LineListMesh->GetSubMeshCount(); i++)
         {
-            context.DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
+            context->DrawMesh(g_LineListMesh->GetSubMeshDesc(i), g_LineListMaterial.get(), 1);
         }
+
+        // Grid
+        context->DrawMesh(GfxMeshGeometry::FullScreenTriangle, g_SceneViewGridMaterial.get(), 0);
+    }
+
+    void Gizmos::Render()
+    {
+        if (g_LineListMaterial == nullptr || g_SceneViewGridMaterial == nullptr || Camera::GetAllCameras().empty())
+        {
+            return;
+        }
+
+        FlushLineListIfNeeded(true);
+
+        GfxCommandContext* context = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
+        context->BeginEvent("DrawGizmos");
+
+        for (Camera* camera : Camera::GetAllCameras())
+        {
+            RenderSingleCamera(context, camera);
+        }
+
+        context->EndEvent();
+        context->SubmitAndRelease();
     }
 
     void GizmosManagedOnlyAPI::InitResources()
@@ -372,6 +416,8 @@ namespace march
         g_LineListMesh = std::make_unique<GfxBasicMesh<GizmosVertex>>(GfxBufferFlags::Dynamic);
         g_LineListShader.reset("Engine/Shaders/Gizmos.shader");
         g_LineListMaterial = std::make_unique<Material>(g_LineListShader.get());
+        g_SceneViewGridShader.reset("Engine/Shaders/SceneViewGrid.shader");
+        g_SceneViewGridMaterial = std::make_unique<Material>(g_SceneViewGridShader.get());
     }
 
     void GizmosManagedOnlyAPI::ReleaseResources()
@@ -379,5 +425,7 @@ namespace march
         g_LineListMesh.reset();
         g_LineListMaterial.reset();
         g_LineListShader.reset();
+        g_SceneViewGridMaterial.reset();
+        g_SceneViewGridShader.reset();
     }
 }

@@ -1,7 +1,8 @@
+using March.Core;
 using March.Core.Interop;
 using System.Numerics;
 
-namespace March.Core.Rendering
+namespace March.Editor
 {
     public static partial class Gizmos
     {

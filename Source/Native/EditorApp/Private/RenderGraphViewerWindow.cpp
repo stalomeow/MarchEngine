@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Editor/RenderGraphViewerWindow.h"
 #include "Engine/Misc/StringUtils.h"
-#include "Engine/ImGui/IconsFontAwesome6.h"
+#include "Editor/IconsFontAwesome6.h"
 #include "imgui.h"
 #include <DirectXMath.h>
 

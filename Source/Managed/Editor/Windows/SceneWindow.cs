@@ -1,7 +1,7 @@
 using March.Core;
-using March.Core.IconFont;
 using March.Core.Interop;
 using March.Core.Rendering;
+using March.Editor.IconFont;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System.Numerics;
@@ -214,7 +214,7 @@ namespace March.Editor.Windows
             try
             {
                 BeginGizmosGUI(m_SceneViewCamera);
-                SceneManager.CurrentScene.DrawGizmosGUI(selected: Selection.Contains);
+                EditorSceneManager.DrawGizmosGUI();
             }
             finally
             {

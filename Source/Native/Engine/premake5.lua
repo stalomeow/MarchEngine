@@ -8,7 +8,7 @@ project "Engine"
     vcpkg.setup()
 
     usage "PUBLIC"
-        uses { "DotNetRuntime", "ImGui", "NsightAftermath", "RenderDoc" }
+        uses { "DotNetRuntime", "NsightAftermath", "RenderDoc" }
 
         -- 允许给图形资源设置名称
         filter "configurations:Debug"

@@ -103,22 +103,6 @@ namespace March.Core
             }
         }
 
-        internal void TryDrawGizmos(bool isSelected)
-        {
-            if (m_IsMounted && IsActiveAndEnabled)
-            {
-                OnDrawGizmos(isSelected);
-            }
-        }
-
-        internal void TryDrawGizmosGUI(bool isSelected)
-        {
-            if (m_IsMounted && IsActiveAndEnabled)
-            {
-                OnDrawGizmosGUI(isSelected);
-            }
-        }
-
         /// <summary>
         /// 在组件被挂载且 <see cref="GameObject"/> 处于激活状态时被调用，只被调用一次；
         /// 即使 <see cref="Component"/> 没有被启用，这个方法也会被调用
@@ -143,12 +127,6 @@ namespace March.Core
 
         [NativeMethod]
         protected virtual partial void OnUpdate();
-
-        [NativeMethod]
-        protected virtual partial void OnDrawGizmos(bool isSelected);
-
-        [NativeMethod]
-        protected virtual partial void OnDrawGizmosGUI(bool isSelected);
 
         [NativeMethod]
         private static partial nint NewDefault();

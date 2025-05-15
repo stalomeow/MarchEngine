@@ -3,7 +3,6 @@
 #include "Engine/Rendering/Display.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
-#include "Engine/Rendering/Gizmos.h"
 #include "Engine/Misc/MathUtils.h"
 #include <vector>
 #include <random>
@@ -25,9 +24,6 @@ namespace march
 
         m_DeferredLitShader.reset("Engine/Shaders/DeferredLight.shader");
         m_DeferredLitMaterial = std::make_unique<Material>(m_DeferredLitShader.get());
-
-        m_SceneViewGridShader.reset("Engine/Shaders/SceneViewGrid.shader");
-        m_SceneViewGridMaterial = std::make_unique<Material>(m_SceneViewGridShader.get());
 
         m_CameraMotionVectorShader.reset("Engine/Shaders/CameraMotionVector.shader");
         m_CameraMotionVectorMaterial = std::make_unique<Material>(m_CameraMotionVectorShader.get());
@@ -144,12 +140,6 @@ namespace march
             DeferredLighting(shadowMatrix, depth2RadialScale);
             DrawSkybox();
 
-            if (camera->GetEnableGizmos())
-            {
-                DrawSceneViewGrid();
-                DrawGizmos();
-            }
-
             TAA();
             Postprocessing();
 
@@ -161,39 +151,18 @@ namespace march
         }
     }
 
-    struct CameraConstants
-    {
-        XMFLOAT4X4 ViewMatrix;
-        XMFLOAT4X4 ProjectionMatrix;
-        XMFLOAT4X4 ViewProjectionMatrix;
-        XMFLOAT4X4 InvViewMatrix;
-        XMFLOAT4X4 InvProjectionMatrix;
-        XMFLOAT4X4 InvViewProjectionMatrix;
-        XMFLOAT4X4 NonJitteredViewProjectionMatrix;
-        XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
-        XMFLOAT4 TAAParams; // x: TAAFrameIndex
-    };
-
     BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& name, Camera* camera)
     {
-        CameraConstants consts{};
-        consts.ViewMatrix = camera->GetViewMatrix();
-        consts.ProjectionMatrix = camera->GetProjectionMatrix();
-        consts.ViewProjectionMatrix = camera->GetViewProjectionMatrix();
-        XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ViewMatrix)));
-        XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ProjectionMatrix)));
-        XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, XMLoadFloat4x4(&consts.ViewProjectionMatrix)));
-        consts.NonJitteredViewProjectionMatrix = camera->GetNonJitteredViewProjectionMatrix();
-        consts.PrevNonJitteredViewProjectionMatrix = camera->GetPrevNonJitteredViewProjectionMatrix();
-        consts.TAAParams.x = static_cast<float>(camera->GetTAAFrameIndex());
+        CameraData data{};
+        camera->FillCameraData(data);
 
         GfxBufferDesc desc{};
-        desc.Stride = sizeof(CameraConstants);
+        desc.Stride = sizeof(CameraData);
         desc.Count = 1;
         desc.Usages = GfxBufferUsages::Constant;
         desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
-        return m_RenderGraph->RequestBufferWithContent(name, desc, &consts);
+        return m_RenderGraph->RequestBufferWithContent(name, desc, &data);
     }
 
     BufferHandle RenderPipeline::CreateCameraConstantBuffer(const std::string& name, const XMFLOAT4X4& viewMatrix, const XMFLOAT4X4& projectionMatrix)
@@ -202,23 +171,23 @@ namespace march
         XMMATRIX proj = XMLoadFloat4x4(&projectionMatrix);
         XMMATRIX viewProj = XMMatrixMultiply(view, proj); // DirectX 用的行向量
 
-        CameraConstants consts{};
-        XMStoreFloat4x4(&consts.ViewMatrix, view);
-        XMStoreFloat4x4(&consts.InvViewMatrix, XMMatrixInverse(nullptr, view));
-        XMStoreFloat4x4(&consts.ProjectionMatrix, proj);
-        XMStoreFloat4x4(&consts.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
-        XMStoreFloat4x4(&consts.ViewProjectionMatrix, viewProj);
-        XMStoreFloat4x4(&consts.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
+        CameraData data{};
+        XMStoreFloat4x4(&data.ViewMatrix, view);
+        XMStoreFloat4x4(&data.InvViewMatrix, XMMatrixInverse(nullptr, view));
+        XMStoreFloat4x4(&data.ProjectionMatrix, proj);
+        XMStoreFloat4x4(&data.InvProjectionMatrix, XMMatrixInverse(nullptr, proj));
+        XMStoreFloat4x4(&data.ViewProjectionMatrix, viewProj);
+        XMStoreFloat4x4(&data.InvViewProjectionMatrix, XMMatrixInverse(nullptr, viewProj));
 
         // 不设置 TAA 的参数
 
         GfxBufferDesc desc{};
-        desc.Stride = sizeof(CameraConstants);
+        desc.Stride = sizeof(CameraData);
         desc.Count = 1;
         desc.Usages = GfxBufferUsages::Constant;
         desc.Flags = GfxBufferFlags::Dynamic | GfxBufferFlags::Transient;
 
-        return m_RenderGraph->RequestBufferWithContent(name, desc, &consts);
+        return m_RenderGraph->RequestBufferWithContent(name, desc, &data);
     }
 
     void RenderPipeline::ClearAndDrawGBuffers(bool wireframe)
@@ -560,34 +529,6 @@ namespace march
         builder.SetRenderFunc([this](RenderGraphContext& context)
         {
             context.DrawMesh(GfxMeshGeometry::Sphere, m_SkyboxMaterial, 0);
-        });
-    }
-
-    void RenderPipeline::DrawGizmos()
-    {
-        if (!Gizmos::CanRender())
-        {
-            return;
-        }
-
-        auto builder = m_RenderGraph->AddPass("Gizmos");
-
-        builder.In(m_Resource.CbCamera);
-        builder.SetColorTarget(m_Resource.ColorTarget);
-        builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
-        builder.SetRenderFunc(Gizmos::Render);
-    }
-
-    void RenderPipeline::DrawSceneViewGrid()
-    {
-        auto builder = m_RenderGraph->AddPass("SceneViewGrid");
-
-        builder.In(m_Resource.CbCamera);
-        builder.SetColorTarget(m_Resource.ColorTarget);
-        builder.SetDepthStencilTarget(m_Resource.DepthStencilTarget);
-        builder.SetRenderFunc([this](RenderGraphContext& context)
-        {
-            context.DrawMesh(GfxMeshGeometry::FullScreenTriangle, m_SceneViewGridMaterial.get(), 0);
         });
     }
 

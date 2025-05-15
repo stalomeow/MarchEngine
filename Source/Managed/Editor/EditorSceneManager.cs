@@ -1,5 +1,6 @@
 using March.Core;
 using March.Core.Diagnostics;
+using March.Core.Pool;
 using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline;
@@ -26,7 +27,7 @@ namespace March.Editor
             CurrentScene.Update();
 
             Gizmos.Clear();
-            CurrentScene.DrawGizmos(selected: Selection.Contains);
+            DrawGizmos((drawer, component, isSelected) => drawer.Draw(component, isSelected));
         }
 
         private static void OnQuit()
@@ -34,6 +35,61 @@ namespace March.Editor
             SaveSettings();
             AssetDatabase.SaveAssetImmediately(CurrentScene);
             DeactivateCurrentScene();
+        }
+
+        private static readonly DrawerCache<IGizmoDrawer> s_GizmoDrawerCache = new(typeof(IGizmoDrawerFor<>));
+
+        public static void DrawGizmosGUI()
+        {
+            DrawGizmos((drawer, component, isSelected) => drawer.DrawGUI(component, isSelected));
+        }
+
+        private static void DrawGizmos(Action<IGizmoDrawer, Component, bool> action)
+        {
+            using var selections = HashSetPool<MarchObject>.Get();
+            selections.Value.UnionWith(Selection.Objects);
+
+            foreach (GameObject go in CurrentScene.RootGameObjects)
+            {
+                DrawGizmosRecursive(go, selections.Value, action);
+            }
+        }
+
+        private static void DrawGizmosRecursive(GameObject go, HashSet<MarchObject> selections, Action<IGizmoDrawer, Component, bool> action)
+        {
+            if (!go.IsActiveSelf)
+            {
+                return;
+            }
+
+            bool isSelected = selections.Contains(go);
+
+            DrawComponentGizmos(go.transform, isSelected, action);
+
+            foreach (var component in go.m_Components)
+            {
+                DrawComponentGizmos(component, isSelected, action);
+            }
+
+            for (int i = 0; i < go.transform.ChildCount; i++)
+            {
+                DrawGizmosRecursive(go.transform.GetChild(i).gameObject, selections, action);
+            }
+
+            static void DrawComponentGizmos(Component component, bool isSelected, Action<IGizmoDrawer, Component, bool> action)
+            {
+                if (!component.IsActiveAndEnabled)
+                {
+                    return;
+                }
+
+                if (!s_GizmoDrawerCache.TryGetSharedInstance(component.GetType(), out IGizmoDrawer? drawer))
+                {
+                    return;
+                }
+
+                action(drawer, component, isSelected);
+            }
         }
 
         public static void LoadScene(string path)

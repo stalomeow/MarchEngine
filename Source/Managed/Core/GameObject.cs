@@ -263,49 +263,5 @@ namespace March.Core
                 m_Transform.GetChild(i).gameObject.UpdateRecursive();
             }
         }
-
-        internal void DrawGizmosRecursive(Func<GameObject, bool> selected)
-        {
-            if (!m_IsAwaked)
-            {
-                return;
-            }
-
-            bool isSelected = selected(this);
-
-            m_Transform.TryDrawGizmos(isSelected);
-
-            foreach (var component in m_Components)
-            {
-                component.TryDrawGizmos(isSelected);
-            }
-
-            for (int i = 0; i < m_Transform.ChildCount; i++)
-            {
-                m_Transform.GetChild(i).gameObject.DrawGizmosRecursive(selected);
-            }
-        }
-
-        internal void DrawGizmosGUIRecursive(Func<GameObject, bool> selected)
-        {
-            if (!m_IsAwaked)
-            {
-                return;
-            }
-
-            bool isSelected = selected(this);
-
-            m_Transform.TryDrawGizmosGUI(isSelected);
-
-            foreach (var component in m_Components)
-            {
-                component.TryDrawGizmosGUI(isSelected);
-            }
-
-            for (int i = 0; i < m_Transform.ChildCount; i++)
-            {
-                m_Transform.GetChild(i).gameObject.DrawGizmosGUIRecursive(selected);
-            }
-        }
     }
 }

@@ -129,8 +129,6 @@ namespace march
         void DeferredLighting(const DirectX::XMFLOAT4X4& shadowMatrix, float depth2RadialScale);
         void DrawShadowCasters(DirectX::XMFLOAT4X4& shadowMatrix, float& depth2RadialScale);
         void ClearAndDrawGBuffers(bool wireframe);
-        void DrawGizmos();
-        void DrawSceneViewGrid();
         void DrawSkybox();
         void GenerateSSAORandomVectorMap();
         void SSAO();
@@ -152,9 +150,6 @@ namespace march
 
         asset_ptr<Shader> m_DeferredLitShader = nullptr;
         std::unique_ptr<Material> m_DeferredLitMaterial = nullptr;
-
-        asset_ptr<Shader> m_SceneViewGridShader = nullptr;
-        std::unique_ptr<Material> m_SceneViewGridMaterial = nullptr;
 
         asset_ptr<Shader> m_CameraMotionVectorShader = nullptr;
         std::unique_ptr<Material> m_CameraMotionVectorMaterial = nullptr;

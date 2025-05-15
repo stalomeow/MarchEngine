@@ -12,6 +12,19 @@ namespace march
     class Display;
     class CameraInternalUtility;
 
+    struct CameraData
+    {
+        DirectX::XMFLOAT4X4 ViewMatrix;
+        DirectX::XMFLOAT4X4 ProjectionMatrix;
+        DirectX::XMFLOAT4X4 ViewProjectionMatrix;
+        DirectX::XMFLOAT4X4 InvViewMatrix;
+        DirectX::XMFLOAT4X4 InvProjectionMatrix;
+        DirectX::XMFLOAT4X4 InvViewProjectionMatrix;
+        DirectX::XMFLOAT4X4 NonJitteredViewProjectionMatrix;
+        DirectX::XMFLOAT4X4 PrevNonJitteredViewProjectionMatrix;
+        DirectX::XMFLOAT4 TAAParams; // x: TAAFrameIndex
+    };
+
     class Camera : public Component
     {
         friend CameraInternalUtility;
@@ -57,6 +70,7 @@ namespace march
         DirectX::BoundingFrustum GetNonJitteredFrustum() const;
 
         void PrepareFrameData();
+        void FillCameraData(CameraData& data) const;
 
         static const std::vector<Camera*>& GetAllCameras();
 
