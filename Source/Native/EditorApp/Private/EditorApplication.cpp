@@ -440,7 +440,7 @@ namespace march
 
     void EditorApplication::OnPaint()
     {
-        OnTick(false);
+        Tick(/* willQuit */ false);
     }
 
     HICON EditorApplication::GetIcon()

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Engine/Application.h"
 #include "Engine/EngineTimer.h"
+#include "Engine/Misc/DeferFunc.h"
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Rendering/RenderPipeline.h"
 #include <WindowsX.h>
@@ -13,6 +14,7 @@ namespace march
 
     Application::Application()
         : m_IsStarted(false)
+        , m_IsTicking(false)
         , m_InstanceHandle(NULL)
         , m_WindowHandle(NULL)
     {
@@ -226,19 +228,32 @@ namespace march
             }
 
             msgCount = 0;
-
-            if (m_Timer->Tick())
-            {
-                OnTick(false);
-            }
+            Tick(/* willQuit */ false);
         }
 
-        // 强制 tick 一次
-        m_Timer->Tick();
-        OnTick(true);
-
+        Tick(/* willQuit */ true);
         OnQuit();
         return static_cast<int>(msg.wParam);
+    }
+
+    void Application::Tick(bool willQuit)
+    {
+        if (m_IsTicking)
+        {
+            return;
+        }
+
+        // 一些 C# 的线程同步工具在阻塞线程时会处理 Win32 消息，比如 WM_PAINT
+        // 如果在 Tick 中阻塞主线程，期间可能处理 WM_PAINT，而 WM_PAINT 中又调用 Tick 更新画面的话，会不停递归调用 Tick，一直 BeginFrame() 而没有 EndFrame()
+        // 必须避免递归调用 Tick
+        m_IsTicking = true;
+        DEFER_FUNC() { m_IsTicking = false; };
+
+        // 如果要退出的话，需要强制 Tick 一次
+        if (m_Timer->Tick() || willQuit)
+        {
+            OnTick(willQuit);
+        }
     }
 
     void Application::CrashWithMessage(const std::string& message, bool debugBreak)

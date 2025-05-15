@@ -54,6 +54,8 @@ namespace march
     protected:
         Application();
 
+        void Tick(bool willQuit);
+
         virtual void OnStart(const std::vector<std::string>& args) {}
         virtual void OnTick(bool willQuit) {}
         virtual void OnQuit() {}
@@ -82,6 +84,7 @@ namespace march
         static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
         bool m_IsStarted;
+        bool m_IsTicking;
         std::unique_ptr<EngineTimer> m_Timer;
         std::unique_ptr<RenderPipeline> m_RenderPipeline;
         HINSTANCE m_InstanceHandle;
