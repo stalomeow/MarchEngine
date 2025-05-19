@@ -87,7 +87,7 @@ public class ShaderIncludeImporter : AssetImporter
 - Shader 也支持热重载，IDE 里修改后，回到引擎立即生效
 - 支持在引擎启动时加载 [RenderDoc](https://renderdoc.org/) 或 [PIX](https://devblogs.microsoft.com/pix/introduction/)，点击编辑器上方的相机按钮就能截帧
 
-### GPU Crash
+### Crash Handling
 
 - 集成了 [NVIDIA Nsight Aftermath SDK](https://developer.nvidia.com/nsight-aftermath)
 
