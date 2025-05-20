@@ -20,6 +20,7 @@
 #include <memory>
 #include <unordered_map>
 #include <optional>
+#include <variant>
 
 namespace march
 {
@@ -347,4 +348,198 @@ namespace march
         void SetVertexBuffer(GfxBuffer* buffer);
         void SetIndexBuffer(GfxBuffer* buffer);
     };
+
+    namespace GfxCommands
+    {
+        struct BeginEvent
+        {
+            std::string Name;
+        };
+
+        struct EndEvent
+        {
+        };
+
+        struct FlushResourceBarriers
+        {
+            size_t Offset;
+            uint32_t Num;
+        };
+
+        struct SetRenderTargets
+        {
+            size_t ColorTargetOffset;
+            uint32_t ColorTargetCount;
+            std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> DepthStencilTarget;
+        };
+
+        struct ClearColorTarget
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE Target;
+            float Color[4];
+        };
+
+        struct ClearDepthStencilTarget
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE Target;
+            D3D12_CLEAR_FLAGS Flags;
+            float Depth;
+            uint8_t Stencil;
+        };
+
+        struct SetViewports
+        {
+            size_t Offset;
+            uint32_t Num;
+        };
+
+        struct SetScissorRects
+        {
+            size_t Offset;
+            uint32_t Num;
+        };
+
+        struct SetPredication
+        {
+            ID3D12Resource* Buffer;
+            uint32_t AlignedOffset;
+            D3D12_PREDICATION_OP Operation;
+        };
+
+        struct SetPipelineState
+        {
+            ID3D12PipelineState* State;
+        };
+
+        template <GfxPipelineType _PipelineType>
+        struct SetRootDescriptorTables
+        {
+            size_t OfflineDescriptorOffset;
+
+            size_t OfflineSrvUavTableDataOffset;
+            uint32_t TotalNumOfflineSrvUav;
+
+            size_t OfflineSamplerTableDataOffset;
+            uint32_t TotalNumOfflineSamplers;
+        };
+    }
+
+    struct GfxRootDescriptorTableDesc
+    {
+        const D3D12_CPU_DESCRIPTOR_HANDLE* OfflineDescriptors;
+        uint32_t NumDescriptors;
+        bool IsDirty;
+    };
+
+    class GfxCommandList final
+    {
+        using CommandType = std::variant<
+            GfxCommands::BeginEvent,
+            GfxCommands::EndEvent,
+            GfxCommands::FlushResourceBarriers,
+            GfxCommands::SetRenderTargets,
+            GfxCommands::ClearColorTarget,
+            GfxCommands::ClearDepthStencilTarget,
+            GfxCommands::SetViewports,
+            GfxCommands::SetScissorRects,
+            GfxCommands::SetPredication,
+            GfxCommands::SetPipelineState,
+            GfxCommands::SetRootDescriptorTables<GfxPipelineType::Graphics>,
+            GfxCommands::SetRootDescriptorTables<GfxPipelineType::Compute>
+        >;
+
+        std::vector<CommandType> m_Commands;
+
+        std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
+        size_t m_ResourceBarrierFlushOffset;
+
+        // 统一保存 SetRenderTargets / SetViewports / SetScissorRects 的参数，避免频繁创建销毁 vector
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_ColorTargets;
+        std::vector<D3D12_VIEWPORT> m_Viewports;
+        std::vector<D3D12_RECT> m_ScissorRects;
+
+        struct OfflineDescriptorTableData
+        {
+            uint32_t Num;
+            bool IsDirty;
+        };
+
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> m_OfflineDescriptors;
+        std::vector<OfflineDescriptorTableData> m_OfflineDescriptorTableData;
+
+        Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_Allocator;
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_List;
+
+        void* m_NsightAftermathHandle;
+
+    public:
+        void BeginEvent(const std::string& name);
+        void BeginEvent(std::string&& name);
+        void EndEvent();
+
+        void AddResourceBarrier(const D3D12_RESOURCE_BARRIER& barrier);
+        void FlushResourceBarriers();
+
+        void SetRenderTargets(uint32_t numColorTargets, const D3D12_CPU_DESCRIPTOR_HANDLE* colorTargets, const D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilTarget);
+        void ClearColorTarget(D3D12_CPU_DESCRIPTOR_HANDLE target, float color[4]);
+        void ClearDepthStencilTarget(D3D12_CPU_DESCRIPTOR_HANDLE target, D3D12_CLEAR_FLAGS flags, float depth, uint8_t stencil);
+
+        void SetViewports(uint32_t num, const D3D12_VIEWPORT* viewports);
+        void SetScissorRects(uint32_t num, const D3D12_RECT* rects);
+
+        void SetPredication(ID3D12Resource* buffer, uint32_t alignedOffset, D3D12_PREDICATION_OP operation);
+
+        void SetPipelineState(ID3D12PipelineState* state);
+
+        template <GfxPipelineType _PipelineType>
+        void SetRootDescriptorTables(
+            const GfxRootDescriptorTableDesc(&srvUav)[GfxPipelineTraits<_PipelineType>::NumProgramTypes],
+            const GfxRootDescriptorTableDesc(&samplers)[GfxPipelineTraits<_PipelineType>::NumProgramTypes]);
+
+    private:
+        void TranslateCommand(const GfxCommands::BeginEvent& cmd);
+        void TranslateCommand(const GfxCommands::EndEvent& cmd);
+        void TranslateCommand(const GfxCommands::FlushResourceBarriers& cmd);
+        void TranslateCommand(const GfxCommands::SetRenderTargets& cmd);
+        void TranslateCommand(const GfxCommands::ClearColorTarget& cmd);
+        void TranslateCommand(const GfxCommands::ClearDepthStencilTarget& cmd);
+        void TranslateCommand(const GfxCommands::SetViewports& cmd);
+        void TranslateCommand(const GfxCommands::SetScissorRects& cmd);
+        void TranslateCommand(const GfxCommands::SetPredication& cmd);
+        void TranslateCommand(const GfxCommands::SetPipelineState& cmd);
+    };
+
+    template <GfxPipelineType _PipelineType>
+    void GfxCommandList::SetRootDescriptorTables(
+        const GfxRootDescriptorTableDesc(&srvUav)[GfxPipelineTraits<_PipelineType>::NumProgramTypes],
+        const GfxRootDescriptorTableDesc(&samplers)[GfxPipelineTraits<_PipelineType>::NumProgramTypes])
+    {
+        using MyCommand = GfxCommands::SetRootDescriptorTables<_PipelineType>;
+        using PipelineTraits = GfxPipelineTraits<_PipelineType>;
+        constexpr size_t NumProgramTypes = PipelineTraits::NumProgramTypes;
+
+        auto set = [this](const GfxRootDescriptorTableDesc(&desc)[NumProgramTypes], size_t& tableDataOffset, uint32_t& totalNum)
+        {
+            tableDataOffset = m_OfflineDescriptorTableData.size();
+            totalNum = 0;
+
+            for (size_t i = 0; i < NumProgramTypes; i++)
+            {
+                OfflineDescriptorTableData& data = m_OfflineDescriptorTableData.emplace_back();
+                data.Num = desc[i].NumDescriptors;
+                data.IsDirty = desc[i].IsDirty;
+
+                const D3D12_CPU_DESCRIPTOR_HANDLE* descriptors = desc[i].OfflineDescriptors;
+                m_OfflineDescriptors.insert(m_OfflineDescriptors.end(), descriptors, descriptors + data.Num);
+
+                totalNum += data.Num;
+            }
+        };
+
+        MyCommand cmd{};
+        cmd.OfflineDescriptorOffset = m_OfflineDescriptors.size();
+        set(srvUav, cmd.OfflineSrvUavTableDataOffset, cmd.TotalNumOfflineSrvUav);
+        set(samplers, cmd.OfflineSamplerTableDataOffset, cmd.TotalNumOfflineSamplers);
+        m_Commands.emplace_back(cmd);
+    }
 }
