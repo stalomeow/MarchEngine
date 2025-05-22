@@ -170,7 +170,7 @@ namespace march
 
     GfxCommandContext* GfxDevice::RequestContext(GfxCommandType type)
     {
-        return m_CommandManager->RequestAndOpenContext(type);
+        return m_CommandManager->RequestContext(type);
     }
 
     uint64_t GfxDevice::GetCompletedFence()

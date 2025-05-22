@@ -112,7 +112,7 @@ namespace march
         return m_QueueData[static_cast<size_t>(type)].Queue.get();
     }
 
-    GfxCommandContext* GfxCommandManager::RequestAndOpenContext(GfxCommandType type)
+    GfxCommandContext* GfxCommandManager::RequestContext(GfxCommandType type)
     {
         std::queue<GfxCommandContext*>& q = m_QueueData[static_cast<size_t>(type)].FreeContexts;
         GfxCommandContext* result;
@@ -178,5 +178,42 @@ namespace march
         {
             m_CompletedFrameFence = std::min(m_CompletedFrameFence, data.FrameFence->GetCompletedValue());
         }
+    }
+
+    void GfxCommandManager::SyncOnRHIThread()
+    {
+        std::unique_lock<std::mutex> lock(m_RHIMutex);
+
+        // 等待 Main Thread 发送交换 Buffer 的通知
+        m_RHIThreadCVar.wait(lock, [this]() { return m_IsSwappingCmdListBuffers; });
+
+        // 回收在 RHI Thread 上执行完的 Command List
+        std::vector<GfxCommandList*>& rhiCmdLists = m_CmdListBuffers[m_RHIThreadCmdListBufferIndex];
+        for (GfxCommandList* list : rhiCmdLists)
+        {
+            GfxCommandType type = list->GetType();
+            m_QueueData[static_cast<size_t>(type)].FreeCmdLists.push(list);
+        }
+        rhiCmdLists.clear();
+
+        // 交换 Buffer
+        std::swap(m_MainThreadCmdListBufferIndex, m_RHIThreadCmdListBufferIndex);
+        m_CmdListBufferVersion++;
+
+        // 通知 Main Thread 交换完成
+        m_IsSwappingCmdListBuffers = false;
+        m_MainThreadCVar.notify_one();
+    }
+
+    void GfxCommandManager::SyncOnMainThread()
+    {
+        std::unique_lock<std::mutex> lock(m_RHIMutex);
+
+        // 通知 RHI 线程交换 Buffer
+        m_IsSwappingCmdListBuffers = true;
+        m_RHIThreadCVar.notify_one();
+
+        // 等待 RHI 线程交换完成
+        m_MainThreadCVar.wait(lock, [this]() { return !m_IsSwappingCmdListBuffers; });
     }
 }
