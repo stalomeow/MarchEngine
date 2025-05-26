@@ -13,6 +13,14 @@ namespace march
     static constexpr DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     static constexpr GfxCommandType CommandType = GfxCommandType::Direct;
 
+    static bool CheckTearingSupport(IDXGIFactory5* factory)
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/variable-refresh-rate-displays
+        BOOL allowTearing = FALSE;
+        HRESULT hr = factory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+        return SUCCEEDED(hr) && allowTearing;
+    }
+
     GfxSwapChain::GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height)
         : m_Device(device), m_BackBuffers{}, m_CurrentBackBufferIndex(0)
     {
@@ -33,13 +41,20 @@ namespace march
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
         swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.BufferCount = static_cast<UINT>(BackBufferCount);
+        swapChainDesc.BufferCount = static_cast<UINT>(GfxSettings::BackBufferCount);
         swapChainDesc.Scaling = DXGI_SCALING_NONE;
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
         swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-        IDXGIFactory4* factory = device->GetDXGIFactory();
+        IDXGIFactory5* factory = device->GetDXGIFactory();
+
+        if (m_SupportTearing = CheckTearingSupport(factory))
+        {
+            // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/ne-dxgi-dxgi_swap_chain_flag
+            swapChainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        }
+
         ID3D12CommandQueue* commandQueue = device->GetCommandManager()->GetQueue(CommandType)->GetQueue();
 
         // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgifactory-createswapchain
@@ -51,7 +66,7 @@ namespace march
         // https://developer.nvidia.com/blog/advanced-api-performance-swap-chains/
         ComPtr<IDXGISwapChain2> swapChain2;
         CHECK_HR(m_SwapChain.As(&swapChain2));
-        CHECK_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(MaxFrameLatency)));
+        CHECK_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(GfxSettings::MaxFrameLatency)));
         m_FrameLatencyHandle = swapChain2->GetFrameLatencyWaitableObject();
 
         CreateBackBuffers();
@@ -93,7 +108,7 @@ namespace march
                 // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
                 // You can't resize a swap chain unless you release all outstanding references to its back buffers.
                 // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
-                for (uint32_t i = 0; i < BackBufferCount; i++)
+                for (uint32_t i = 0; i < GfxSettings::BackBufferCount; i++)
                 {
                     m_BackBuffers[i].reset();
                 }
@@ -129,9 +144,28 @@ namespace march
         // 需要外部保证当前的 back buffer 是在 D3D12_RESOURCE_STATE_PRESENT 状态
         assert(GetBackBuffer()->GetUnderlyingResource()->AreAllStatesEqualTo(D3D12_RESOURCE_STATE_PRESENT));
 
-        // TODO VSync
-        CHECK_HR(m_SwapChain->Present(0, 0));
-        m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % BackBufferCount;
+        UINT syncInterval = static_cast<UINT>(GfxSettings::VerticalSyncInterval);
+        UINT flags = 0;
+
+        // TODO Handle Fullscreen
+        if (m_SupportTearing && syncInterval == 0)
+        {
+            flags |= DXGI_PRESENT_ALLOW_TEARING; // 禁用垂直同步
+        }
+
+        // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-present
+        // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi#multithread-considerations
+        // When you use DXGI in an application with multiple threads, you need to be careful to avoid creating a deadlock,
+        // where two different threads are waiting on each other to complete. There are two situations where this can occur.
+        // - The rendering thread is not the message-pump thread.
+        // - The thread executing a DXGI API is not the same thread that created the window.
+        // Be careful that you never have the message-pump thread wait on the render thread when you use full-screen swap chains.
+        // For instance, calling IDXGISwapChain1::Present1 (from the render thread) may cause the render thread to wait on the message-pump thread.
+        // When a mode change occurs, this scenario is possible if Present1 calls ::SetWindowPos() or ::SetWindowStyle() and either of these methods call ::SendMessage().
+        // In this scenario, if the message-pump thread has a critical section guarding it or if the render thread is blocked, then the two threads will deadlock.
+        CHECK_HR(m_SwapChain->Present(syncInterval, flags));
+
+        m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % GfxSettings::BackBufferCount;
     }
 
     void GfxSwapChain::CreateBackBuffers()
@@ -144,7 +178,7 @@ namespace march
         desc.Wrap = GfxTextureWrapMode::Clamp;
         desc.MipmapBias = 0.0f;
 
-        for (uint32_t i = 0; i < BackBufferCount; i++)
+        for (uint32_t i = 0; i < GfxSettings::BackBufferCount; i++)
         {
             ComPtr<ID3D12Resource> backBuffer = nullptr;
             CHECK_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));

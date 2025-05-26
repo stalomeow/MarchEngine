@@ -1,7 +1,8 @@
 #pragma once
 
+#include "Engine/Rendering/D3D12Impl/GfxSettings.h"
 #include <directx/d3dx12.h>
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <wrl.h>
 #include <Windows.h>
 #include <stdint.h>
@@ -26,15 +27,13 @@ namespace march
 
         GfxRenderTexture* GetBackBuffer() const { return m_BackBuffers[m_CurrentBackBufferIndex].get(); }
 
-        static constexpr uint32_t BackBufferCount = 2;
-        static constexpr uint32_t MaxFrameLatency = 3;
-
     private:
         GfxDevice* m_Device;
+        bool m_SupportTearing;
         Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain;
         HANDLE m_FrameLatencyHandle;
 
-        std::unique_ptr<GfxRenderTexture> m_BackBuffers[BackBufferCount];
+        std::unique_ptr<GfxRenderTexture> m_BackBuffers[GfxSettings::BackBufferCount];
         uint32_t m_CurrentBackBufferIndex;
 
         void CreateBackBuffers();

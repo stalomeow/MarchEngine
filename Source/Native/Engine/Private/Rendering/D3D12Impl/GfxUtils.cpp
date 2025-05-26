@@ -4,7 +4,7 @@
 #include "Engine/Misc/StringUtils.h"
 #include <cmath>
 #include <wrl.h>
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <dxgidebug.h>
 
 using namespace Microsoft::WRL;
