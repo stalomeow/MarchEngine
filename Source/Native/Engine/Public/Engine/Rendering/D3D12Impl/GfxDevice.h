@@ -2,7 +2,7 @@
 
 #include "Engine/Memory/RefCounting.h"
 #include <directx/d3dx12.h>
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 #include <wrl.h>
 #include <memory>
 #include <queue>
@@ -34,7 +34,7 @@ namespace march
         GfxDevice(const GfxDeviceDesc& desc);
         ~GfxDevice();
 
-        IDXGIFactory4* GetDXGIFactory() const { return m_Factory.Get(); }
+        IDXGIFactory5* GetDXGIFactory() const { return m_Factory.Get(); }
         ID3D12Device4* GetD3DDevice4() const { return m_Device.Get(); }
 
         void CleanupResources();
@@ -62,7 +62,7 @@ namespace march
         void LogAdapters(DXGI_FORMAT format);
 
     private:
-        Microsoft::WRL::ComPtr<IDXGIFactory4> m_Factory;
+        Microsoft::WRL::ComPtr<IDXGIFactory5> m_Factory;
         Microsoft::WRL::ComPtr<ID3D12Device4> m_Device;
         Microsoft::WRL::ComPtr<ID3D12InfoQueue1> m_DebugInfoQueue;
 

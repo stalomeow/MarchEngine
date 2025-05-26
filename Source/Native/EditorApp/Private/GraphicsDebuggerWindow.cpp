@@ -27,6 +27,8 @@ namespace march
             {
                 ImGui::BulletText("Color Space: Unknown");
             }
+
+            ImGui::BulletText(StringUtils::Format("VSync: {}", GfxSettings::VerticalSyncInterval).c_str());
         }
 
         if (ImGui::CollapsingHeader("Online Descriptor Allocator"))
