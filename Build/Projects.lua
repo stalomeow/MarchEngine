@@ -96,6 +96,18 @@ function proj.setup_cpp()
 
     include_dir_if_exists "Internal"
 
+    local proj_name = project().name
+
+    usage "PRIVATE"
+        defines {
+            string.format("%s_API=__declspec(dllexport)", string.upper(proj_name))
+        }
+
+    usage "INTERFACE"
+        defines {
+            string.format("%s_API=__declspec(dllimport)", string.upper(proj_name))
+        }
+
     usage "PUBLIC"
         include_dir_if_exists "Public"
 
