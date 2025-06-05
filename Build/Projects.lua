@@ -27,7 +27,6 @@ local function include_dir_if_exists(dir_path)
 end
 
 function proj.setup_workspace()
-    location (path.join(_MAIN_SCRIPT_DIR, "Output"))
     configurations { "Debug", "Release" }
     platforms { "Win64" }
 end
@@ -39,6 +38,8 @@ function proj.setup_csharp()
 end
 
 local function setup_common_cpp()
+    location (path.join(_MAIN_SCRIPT_DIR, "Output", "ProjectFiles"))
+
     language "C++"
     cppdialect "C++17"
 
@@ -122,6 +123,10 @@ function proj.setup_cpp_third_party()
 
     targetdir (path.join(_MAIN_SCRIPT_DIR, "Output/Binaries/ThirdParty/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
     objdir (path.join(_MAIN_SCRIPT_DIR, "Output/Intermediate/ThirdParty/%{prj.name}/%{cfg.buildcfg}/%{cfg.platform}"))
+end
+
+function proj.setup_shader()
+    location (path.join(_MAIN_SCRIPT_DIR, "Output", "ProjectFiles"))
 end
 
 return proj

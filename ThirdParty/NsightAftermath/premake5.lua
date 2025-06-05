@@ -1,4 +1,5 @@
 local cmd = require "Build/Commands"
+local proj = require "Build/Projects"
 
 local function get_binary_path(ext)
     local arch = "%{cfg.architecture == 'x86_64' and 'x64' or cfg.architecture}" -- 将 x86_64 替换为 x64
@@ -8,6 +9,8 @@ end
 
 project "NsightAftermath"
     kind "None" -- 纯头文件，不编译
+
+    proj.setup_cpp_third_party()
 
     files {
         "Source/GFSDK_Aftermath.h",

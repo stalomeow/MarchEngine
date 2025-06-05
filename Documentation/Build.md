@@ -30,7 +30,7 @@ cd MarchEngine
 premake5 install
 ```
 
-生成 Visual Studio 2022 Solution 到 Output 目录里
+生成 Visual Studio 2022 Solution
 
 ``` shell
 premake5 vs2022

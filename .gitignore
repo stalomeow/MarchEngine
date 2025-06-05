@@ -1,3 +1,6 @@
+/.vs/
 /Output/
 /Tools/env/
+
+*.sln
 *.csproj.user

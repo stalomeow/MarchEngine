@@ -19,6 +19,7 @@ newaction {
     description = "Remove all binaries and generated files",
     execute = function()
         os.rmdir(path.join(_MAIN_SCRIPT_DIR, "Output"))
+        os.remove(path.join(_MAIN_SCRIPT_DIR, "MarchEngine.sln"))
     end
 }
 

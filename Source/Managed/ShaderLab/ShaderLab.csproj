@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>$(SolutionDir)Binaries\Managed\ShaderLab\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(SolutionDir)Intermediate\Managed\ShaderLab\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(SolutionDir)Output\Binaries\Managed\ShaderLab\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Output\Intermediate\Managed\ShaderLab\</BaseIntermediateOutputPath>
     <CopyLocalLockFileAssemblies>True</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 

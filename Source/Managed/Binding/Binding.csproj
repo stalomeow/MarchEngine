@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>$(SolutionDir)Binaries\Managed\Binding\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(SolutionDir)Intermediate\Managed\Binding\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(SolutionDir)Output\Binaries\Managed\Binding\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(SolutionDir)Output\Intermediate\Managed\Binding\</BaseIntermediateOutputPath>
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
