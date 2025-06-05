@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/Gizmos.h"
+#include "Gizmos.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO Gizmos_GetIsGUIMode()

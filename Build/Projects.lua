@@ -91,10 +91,12 @@ function proj.setup_cpp()
         "**.rc",
     }
 
-    pchheader "pch.h"
-    pchsource "Private/pch.cpp"
+    include_dir_if_exists "Private"
 
-    include_dir_if_exists "Internal"
+    if os.isfile("Private/pch.h") and os.isfile("Private/pch.cpp") then
+        pchheader "pch.h"
+        pchsource "Private/pch.cpp"
+    end
 
     local proj_name = project().name
 

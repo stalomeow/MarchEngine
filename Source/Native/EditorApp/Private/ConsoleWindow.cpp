@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "Editor/ConsoleWindow.h"
-#include "Editor/EditorGUI.h"
+#include "ConsoleWindow.h"
+#include "EditorGUI.h"
 #include "Engine/Debug.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include <time.h>

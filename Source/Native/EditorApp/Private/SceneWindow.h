@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Editor/EditorWindow.h"
+#include "EditorWindow.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include <DirectXMath.h>

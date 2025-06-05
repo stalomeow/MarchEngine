@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Editor/EditorWindow.h"
+#include "EditorWindow.h"
 
 namespace march
 {

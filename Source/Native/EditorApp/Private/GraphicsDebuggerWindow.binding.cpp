@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/GraphicsDebuggerWindow.h"
+#include "GraphicsDebuggerWindow.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO GraphicsDebuggerWindow_New()

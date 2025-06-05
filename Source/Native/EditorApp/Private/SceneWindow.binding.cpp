@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/SceneWindow.h"
+#include "SceneWindow.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO SceneWindow_New()

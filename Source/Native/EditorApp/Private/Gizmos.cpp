@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/Gizmos.h"
+#include "Gizmos.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/Display.h"
 #include "Engine/Debug.h"

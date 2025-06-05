@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/EditorGUI.h"
+#include "EditorGUI.h"
 #include "Engine/Rendering/D3D12.h"
 #include "imgui_stdlib.h"
 #include "imgui_internal.h"

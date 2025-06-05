@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/ConsoleWindow.h"
+#include "ConsoleWindow.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO ConsoleWindow_New()

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/EditorApplication.h"
+#include "EditorApplication.h"
 #include "Engine/Misc/DeferFunc.h"
 #include <memory>
 #include <Windows.h>

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/BusyProgressBar.h"
+#include "BusyProgressBar.h"
 #include "Engine/Misc/StringUtils.h"
 #include <commctrl.h>
 #include <processthreadsapi.h>

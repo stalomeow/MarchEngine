@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Editor/EditorWindow.h"
+#include "EditorWindow.h"
 #include "Engine/Scripting/InteropServices.h"
 
 NATIVE_EXPORT_AUTO EditorWindow_NewDefault()

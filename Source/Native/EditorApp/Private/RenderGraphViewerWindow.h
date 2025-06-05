@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Editor/EditorWindow.h"
+#include "EditorWindow.h"
 #include "Engine/Ints.h"
 #include "Engine/Rendering/RenderGraph.h"
 #include <string>
