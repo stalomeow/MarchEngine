@@ -419,7 +419,7 @@ namespace march
                 }
             }
 
-            context->SubmitAndRelease().WaitOnCpu();
+            context->SubmitImmediateAndRelease().WaitOnCpu();
         }
     }
 

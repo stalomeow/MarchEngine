@@ -119,7 +119,7 @@ namespace march
         }
 
         // 如果要 Resize，则必须等待旧的 Back Buffer 使用完毕
-        m_Device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ needResize);
+        m_Device->GetCommandManager()->RefreshCompletedFrameFence(/* waitForLastFrame */ needResize);
         m_Device->CleanupResources();
 
         if (needResize)
@@ -136,36 +136,36 @@ namespace march
 
     void GfxSwapChain::Present(bool willQuit)
     {
-        if (willQuit)
-        {
-            return;
-        }
-
-        // 需要外部保证当前的 back buffer 是在 D3D12_RESOURCE_STATE_PRESENT 状态
-        assert(GetBackBuffer()->GetUnderlyingResource()->AreAllStatesEqualTo(D3D12_RESOURCE_STATE_PRESENT));
-
-        UINT syncInterval = static_cast<UINT>(GfxSettings::VerticalSyncInterval);
-        UINT flags = 0;
-
-        // TODO Handle Fullscreen
-        if (m_SupportTearing && syncInterval == 0)
-        {
-            flags |= DXGI_PRESENT_ALLOW_TEARING; // 禁用垂直同步
-        }
-
-        // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-present
-        // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi#multithread-considerations
-        // When you use DXGI in an application with multiple threads, you need to be careful to avoid creating a deadlock,
-        // where two different threads are waiting on each other to complete. There are two situations where this can occur.
-        // - The rendering thread is not the message-pump thread.
-        // - The thread executing a DXGI API is not the same thread that created the window.
-        // Be careful that you never have the message-pump thread wait on the render thread when you use full-screen swap chains.
-        // For instance, calling IDXGISwapChain1::Present1 (from the render thread) may cause the render thread to wait on the message-pump thread.
-        // When a mode change occurs, this scenario is possible if Present1 calls ::SetWindowPos() or ::SetWindowStyle() and either of these methods call ::SendMessage().
-        // In this scenario, if the message-pump thread has a critical section guarding it or if the render thread is blocked, then the two threads will deadlock.
-        CHECK_HR(m_SwapChain->Present(syncInterval, flags));
-
         m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % GfxSettings::BackBufferCount;
+
+        if (m_Device->GetCommandManager()->SyncOnMainThread())
+        {
+            if (!willQuit)
+            {
+                UINT syncInterval = static_cast<UINT>(GfxSettings::VerticalSyncInterval);
+                UINT flags = 0;
+
+                // TODO Handle Fullscreen
+                if (m_SupportTearing && syncInterval == 0)
+                {
+                    flags |= DXGI_PRESENT_ALLOW_TEARING; // 禁用垂直同步
+                }
+
+                // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-present
+                // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi#multithread-considerations
+                // When you use DXGI in an application with multiple threads, you need to be careful to avoid creating a deadlock,
+                // where two different threads are waiting on each other to complete. There are two situations where this can occur.
+                // - The rendering thread is not the message-pump thread.
+                // - The thread executing a DXGI API is not the same thread that created the window.
+                // Be careful that you never have the message-pump thread wait on the render thread when you use full-screen swap chains.
+                // For instance, calling IDXGISwapChain1::Present1 (from the render thread) may cause the render thread to wait on the message-pump thread.
+                // When a mode change occurs, this scenario is possible if Present1 calls ::SetWindowPos() or ::SetWindowStyle() and either of these methods call ::SendMessage().
+                // In this scenario, if the message-pump thread has a critical section guarding it or if the render thread is blocked, then the two threads will deadlock.
+                CHECK_HR(m_SwapChain->Present(syncInterval, flags));
+            }
+
+            m_Device->GetCommandManager()->SignalNextFrameFence();
+        }
     }
 
     void GfxSwapChain::CreateBackBuffers()

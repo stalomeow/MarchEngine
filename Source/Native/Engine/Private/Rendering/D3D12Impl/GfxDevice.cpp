@@ -150,7 +150,7 @@ namespace march
 
     GfxDevice::~GfxDevice()
     {
-        m_CommandManager->SignalNextFrameFence(/* waitForGpuIdle */ true);
+        m_CommandManager->RefreshCompletedFrameFence(/* waitForLastFrame */ true);
         CleanupResources();
         assert(m_ReleaseQueue.empty());
     }
@@ -162,8 +162,8 @@ namespace march
             m_ReleaseQueue.pop();
         }
 
-        m_OnlineViewAllocator->CleanUpAllocations();
-        m_OnlineSamplerAllocator->CleanUpAllocations();
+        //m_OnlineViewAllocator->CleanUpAllocations();
+        //m_OnlineSamplerAllocator->CleanUpAllocations();
         m_UploadHeapBufferSubAllocator->CleanUpAllocations();
         m_UploadHeapBufferSubAllocatorFastOneFrame->CleanUpAllocations();
     }

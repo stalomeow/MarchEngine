@@ -107,7 +107,7 @@ namespace march
         bool IsAsyncCompute = false;
         bool IsBatchedWithPrevious = false; // 两个连续的 async-compute pass 可以合并，后一个 pass 的 Resource Barrier 也会提前
         bool NeedSyncPoint = false;         // 如果当前 pass 是 async-compute，并且该值为 true，则会产生一个 sync point
-        GfxSyncPoint SyncPoint{};
+        GfxFutureSyncPoint SyncPoint{};
         std::optional<size_t> PassIndexToWait = std::nullopt; // 在执行当前 pass 前需要等待的 pass，利用 sync point 实现
     };
 
@@ -292,7 +292,7 @@ namespace march
         void New(GfxCommandType type, bool waitPreviousOneOnGpu);
         void Ensure(GfxCommandType type);
 
-        GfxSyncPoint UncheckedSubmit();
+        GfxFutureSyncPoint UncheckedSubmit();
         void Submit();
 
     public:

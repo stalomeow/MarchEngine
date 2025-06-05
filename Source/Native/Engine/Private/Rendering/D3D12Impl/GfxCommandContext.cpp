@@ -7,9 +7,9 @@
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
 #include "Engine/Profiling/NsightAftermath.h"
 #include "Engine/Misc/MathUtils.h"
+#include "Engine/Misc/DeferFunc.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
-#include <pix3.h>
 #include <assert.h>
 
 using namespace DirectX;
@@ -65,17 +65,11 @@ namespace march
         return desc;
     }
 
-    GfxCommandContext::GfxCommandContext(GfxDevice* device, GfxCommandType type)
+    GfxCommandContext::GfxCommandContext(GfxDevice* device)
         : m_Device(device)
-        , m_Type(type)
-        , m_CommandAllocator(nullptr)
         , m_CommandList(nullptr)
-        , m_ResourceBarriers{}
-        , m_SyncPointsToWait{}
         , m_GraphicsViewCache(device)
         , m_ComputeViewCache(device)
-        , m_ViewHeap(nullptr)
-        , m_SamplerHeap(nullptr)
         , m_ColorTargets{}
         , m_DepthStencilTarget{}
         , m_NumViewports(0)
@@ -94,64 +88,19 @@ namespace march
         , m_GlobalTextures{}
         , m_GlobalBuffers{}
         , m_InstanceBuffer{ device, "_InstanceBuffer" }
-        , m_NsightAftermathHandle(nullptr)
     {
     }
 
-    GfxCommandContext::~GfxCommandContext()
+    void GfxCommandContext::Open(GfxCommandList* commandList)
     {
-        NsightAftermath::ReleaseContextHandle(m_NsightAftermathHandle);
-        m_NsightAftermathHandle = nullptr;
+        m_CommandList = commandList;
     }
 
-    void GfxCommandContext::Open()
+    void GfxCommandContext::Reset()
     {
-        assert(m_CommandAllocator == nullptr);
-
-        GfxCommandQueue* queue = m_Device->GetCommandManager()->GetQueue(m_Type);
-        m_CommandAllocator = queue->RequestCommandAllocator();
-
-        if (m_CommandList == nullptr)
-        {
-            CHECK_HR(m_Device->GetD3DDevice4()->CreateCommandList(0, queue->GetType(),
-                m_CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_CommandList)));
-
-            m_NsightAftermathHandle = NsightAftermath::CreateContextHandle(m_CommandList.Get());
-        }
-        else
-        {
-            CHECK_HR(m_CommandList->Reset(m_CommandAllocator.Get(), nullptr));
-        }
-    }
-
-    GfxSyncPoint GfxCommandContext::SubmitAndRelease()
-    {
-        GfxCommandManager* manager = m_Device->GetCommandManager();
-        GfxCommandQueue* queue = manager->GetQueue(m_Type);
-
-        // 准备好所有命令，然后关闭
-        FlushResourceBarriers();
-        CHECK_HR(m_CommandList->Close());
-
-        // 等待其他 queue 上的异步操作，例如 async compute, async copy
-        for (const GfxSyncPoint& syncPoint : m_SyncPointsToWait)
-        {
-            queue->WaitOnGpu(syncPoint);
-        }
-
-        // 正式提交
-        ID3D12CommandList* commandLists[] = { m_CommandList.Get() };
-        queue->GetQueue()->ExecuteCommandLists(static_cast<UINT>(std::size(commandLists)), commandLists);
-        GfxSyncPoint syncPoint = queue->ReleaseCommandAllocator(m_CommandAllocator);
-
-        // 清除状态、释放临时资源
-        m_CommandAllocator = nullptr;
-        m_ResourceBarriers.clear();
-        m_SyncPointsToWait.clear();
+        m_CommandList = nullptr;
         m_GraphicsViewCache.Reset();
         m_ComputeViewCache.Reset();
-        m_ViewHeap = nullptr;
-        m_SamplerHeap = nullptr;
         memset(m_ColorTargets, 0, sizeof(m_ColorTargets));
         m_DepthStencilTarget = RenderTargetData{};
         m_NumViewports = 0;
@@ -168,22 +117,47 @@ namespace march
         m_GlobalTextures.clear();
         m_GlobalBuffers.clear();
         m_InstanceBuffer.ReleaseResource();
+    }
 
-        // 回收
-        manager->RecycleContext(this);
-        return syncPoint;
+    GfxFutureSyncPoint GfxCommandContext::SubmitAndRelease()
+    {
+        GfxCommandManager* manager = m_Device->GetCommandManager();
+
+        DEFER_FUNC()
+        {
+            Reset();
+            manager->RecycleContext(this);
+        };
+
+        return manager->Execute(m_CommandList);
+    }
+
+    GfxSyncPoint GfxCommandContext::SubmitImmediateAndRelease()
+    {
+        GfxCommandManager* manager = m_Device->GetCommandManager();
+
+        DEFER_FUNC()
+        {
+            Reset();
+            manager->RecycleContext(this);
+        };
+
+        return manager->ExecuteImmediate(m_CommandList);
     }
 
     void GfxCommandContext::BeginEvent(const std::string& name)
     {
-        PIXBeginEvent(m_CommandList.Get(), 0, name.c_str());
-        NsightAftermath::SetEventMarker(m_NsightAftermathHandle, name);
+        m_CommandList->BeginEvent(name);
+    }
+
+    void GfxCommandContext::BeginEvent(std::string&& name)
+    {
+        m_CommandList->BeginEvent(std::move(name));
     }
 
     void GfxCommandContext::EndEvent()
     {
-        PIXEndEvent(m_CommandList.Get());
-        NsightAftermath::SetEventMarker(m_NsightAftermathHandle, "EndEvent");
+        m_CommandList->EndEvent();
     }
 
     static bool NeedTransition(D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
@@ -209,7 +183,7 @@ namespace march
             if (NeedTransition(stateBefore, stateAfter))
             {
                 ID3D12Resource* res = resource->GetD3DResource();
-                m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter));
+                m_CommandList->AddResourceBarrier(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter));
                 resource->SetState(stateAfter);
             }
         }
@@ -224,7 +198,7 @@ namespace march
                 if (stateBefore != stateAfter)
                 {
                     ID3D12Resource* res = resource->GetD3DResource();
-                    m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter, static_cast<UINT>(i)));
+                    m_CommandList->AddResourceBarrier(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter, static_cast<UINT>(i)));
                 }
             }
 
@@ -240,26 +214,24 @@ namespace march
         if (NeedTransition(stateBefore, stateAfter))
         {
             ID3D12Resource* res = resource->GetD3DResource();
-            m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter, static_cast<UINT>(subresource)));
+            m_CommandList->AddResourceBarrier(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter, static_cast<UINT>(subresource)));
             resource->SetState(stateAfter, subresource);
         }
     }
 
     void GfxCommandContext::FlushResourceBarriers()
     {
-        // 尽量合并后一起提交
-
-        if (!m_ResourceBarriers.empty())
-        {
-            UINT count = static_cast<UINT>(m_ResourceBarriers.size());
-            m_CommandList->ResourceBarrier(count, m_ResourceBarriers.data());
-            m_ResourceBarriers.clear();
-        }
+        m_CommandList->FlushResourceBarriers();
     }
 
     void GfxCommandContext::WaitOnGpu(const GfxSyncPoint& syncPoint)
     {
-        m_SyncPointsToWait.push_back(syncPoint);
+        m_CommandList->WaitOnGpu(syncPoint);
+    }
+
+    void GfxCommandContext::WaitOnGpu(const GfxFutureSyncPoint& syncPoint)
+    {
+        m_CommandList->WaitOnGpu(syncPoint);
     }
 
     void GfxCommandContext::SetTexture(const std::string& name, GfxTexture* value, GfxTextureElement element, std::optional<uint32_t> mipSlice)
@@ -392,7 +364,7 @@ namespace march
             m_OutputDesc.MarkDirty();
 
             const D3D12_CPU_DESCRIPTOR_HANDLE* pDsv = (depthStencilTarget != nullptr) ? &dsv : nullptr;
-            m_CommandList->OMSetRenderTargets(static_cast<UINT>(numColorTargets), rtv, FALSE, pDsv);
+            m_CommandList->SetRenderTargets(numColorTargets, rtv, pDsv);
         }
     }
 
@@ -434,13 +406,13 @@ namespace march
             {
                 for (uint32_t i = 0; i < m_OutputDesc.NumRTV; i++)
                 {
-                    m_CommandList->ClearRenderTargetView(m_ColorTargets[i].RtvDsv, color, 0, nullptr);
+                    m_CommandList->ClearColorTarget(m_ColorTargets[i].RtvDsv, color);
                 }
             }
 
             if (clearDepthStencil != 0)
             {
-                m_CommandList->ClearDepthStencilView(m_DepthStencilTarget.RtvDsv, clearDepthStencil, depth, static_cast<UINT8>(stencil), 0, nullptr);
+                m_CommandList->ClearDepthStencilTarget(m_DepthStencilTarget.RtvDsv, clearDepthStencil, depth, stencil);
             }
         }
     }
@@ -455,7 +427,7 @@ namespace march
 
         FlushResourceBarriers();
 
-        m_CommandList->ClearRenderTargetView(m_ColorTargets[index].RtvDsv, color, 0, nullptr);
+        m_CommandList->ClearColorTarget(m_ColorTargets[index].RtvDsv, color);
     }
 
     void GfxCommandContext::ClearDepthStencilTarget(float depth, uint8_t stencil)
@@ -469,7 +441,7 @@ namespace march
         FlushResourceBarriers();
 
         constexpr D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL;
-        m_CommandList->ClearDepthStencilView(m_DepthStencilTarget.RtvDsv, flags, depth, static_cast<UINT8>(stencil), 0, nullptr);
+        m_CommandList->ClearDepthStencilTarget(m_DepthStencilTarget.RtvDsv, flags, depth, stencil);
     }
 
     void GfxCommandContext::SetViewport(const D3D12_VIEWPORT& viewport)
@@ -488,7 +460,7 @@ namespace march
             m_NumViewports = numViewports;
             memcpy(m_Viewports, viewports, sizeInBytes);
 
-            m_CommandList->RSSetViewports(static_cast<UINT>(numViewports), viewports);
+            m_CommandList->SetViewports(numViewports, viewports);
         }
     }
 
@@ -508,7 +480,7 @@ namespace march
             m_NumScissorRects = numRects;
             memcpy(m_ScissorRects, rects, sizeInBytes);
 
-            m_CommandList->RSSetScissorRects(static_cast<UINT>(numRects), rects);
+            m_CommandList->SetScissorRects(numRects, rects);
         }
     }
 
@@ -588,11 +560,11 @@ namespace march
                 TransitionResource(buffer->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PREDICATION);
                 FlushResourceBarriers();
 
-                m_CommandList->SetPredication(buffer->GetUnderlyingD3DResource(), static_cast<UINT64>(alignedOffset), operation);
+                m_CommandList->SetPredication(buffer->GetUnderlyingD3DResource(), alignedOffset, operation);
             }
             else
             {
-                m_CommandList->SetPredication(nullptr, static_cast<UINT64>(alignedOffset), operation);
+                m_CommandList->SetPredication(nullptr, alignedOffset, operation);
             }
         }
     }
@@ -732,7 +704,7 @@ namespace march
             }
         });
 
-        m_GraphicsViewCache.Apply(m_CommandList.Get(), &m_ViewHeap, &m_SamplerHeap);
+        m_GraphicsViewCache.Apply(m_CommandList);
     }
 
     void GfxCommandContext::SetAndApplyComputePipelineParameters(ID3D12PipelineState* pso, ComputeShader* shader, size_t kernelIndex)
@@ -777,7 +749,7 @@ namespace march
             }
         });
 
-        m_ComputeViewCache.Apply(m_CommandList.Get(), &m_ViewHeap, &m_SamplerHeap);
+        m_ComputeViewCache.Apply(m_CommandList);
     }
 
     void GfxCommandContext::SetResolvedRenderState(const ShaderPassRenderState& state)
@@ -793,7 +765,7 @@ namespace march
         if (m_CurrentStencilRef != value)
         {
             m_CurrentStencilRef = value;
-            m_CommandList->OMSetStencilRef(value);
+            m_CommandList->SetStencilRef(value);
         }
     }
 
@@ -802,7 +774,7 @@ namespace march
         if (m_CurrentPrimitiveTopology != value)
         {
             m_CurrentPrimitiveTopology = value;
-            m_CommandList->IASetPrimitiveTopology(value);
+            m_CommandList->SetPrimitiveTopology(value);
         }
     }
 
@@ -817,7 +789,7 @@ namespace march
             m_CurrentVertexBuffer.StrideInBytes != vbv.StrideInBytes)
         {
             m_CurrentVertexBuffer = vbv;
-            m_CommandList->IASetVertexBuffers(0, 1, &vbv);
+            m_CommandList->SetVertexBuffers(0, 1, &vbv);
         }
     }
 
@@ -832,7 +804,7 @@ namespace march
             m_CurrentIndexBuffer.Format != ibv.Format)
         {
             m_CurrentIndexBuffer = ibv;
-            m_CommandList->IASetIndexBuffer(&ibv);
+            m_CommandList->SetIndexBuffer(&ibv);
         }
     }
 
@@ -876,10 +848,10 @@ namespace march
         FlushResourceBarriers();
 
         m_CommandList->DrawIndexedInstanced(
-            static_cast<UINT>(subMesh.SubMesh.IndexCount),
-            static_cast<UINT>(1),
-            static_cast<UINT>(subMesh.SubMesh.StartIndexLocation),
-            static_cast<INT>(subMesh.SubMesh.BaseVertexLocation),
+            subMesh.SubMesh.IndexCount,
+            1,
+            subMesh.SubMesh.StartIndexLocation,
+            subMesh.SubMesh.BaseVertexLocation,
             0);
     }
 
@@ -973,10 +945,10 @@ namespace march
 
             const GfxSubMesh& subMesh = drawCall.Mesh->GetSubMesh(drawCall.SubMeshIndex);
             m_CommandList->DrawIndexedInstanced(
-                static_cast<UINT>(subMesh.IndexCount),
-                static_cast<UINT>(instanceCount),
-                static_cast<UINT>(subMesh.StartIndexLocation),
-                static_cast<INT>(subMesh.BaseVertexLocation),
+                subMesh.IndexCount,
+                instanceCount,
+                subMesh.StartIndexLocation,
+                subMesh.BaseVertexLocation,
                 0);
         }
 
@@ -1002,10 +974,7 @@ namespace march
         SetAndApplyComputePipelineParameters(shader->GetPSO(kernelIndex), shader, kernelIndex);
         FlushResourceBarriers();
 
-        m_CommandList->Dispatch(
-            static_cast<UINT>(threadGroupCountX),
-            static_cast<UINT>(threadGroupCountY),
-            static_cast<UINT>(threadGroupCountZ));
+        m_CommandList->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
     }
 
     void GfxCommandContext::DispatchComputeByThreadCount(ComputeShader* shader, const std::string& kernelName, uint32_t threadCountX, uint32_t threadCountY, uint32_t threadCountZ)
@@ -1089,10 +1058,10 @@ namespace march
 
         m_CommandList->CopyBufferRegion(
             destinationBuffer->GetUnderlyingD3DResource(),
-            static_cast<UINT64>(dstOffset),
+            dstOffset,
             sourceBuffer->GetUnderlyingD3DResource(),
-            static_cast<UINT64>(srcOffset),
-            static_cast<UINT64>(sizeInBytes));
+            srcOffset,
+            sizeInBytes);
     }
 
     void GfxCommandContext::UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData)
@@ -1111,13 +1080,12 @@ namespace march
         TransitionResource(destination, D3D12_RESOURCE_STATE_COPY_DEST);
         FlushResourceBarriers();
 
-        ::UpdateSubresources(
-            m_CommandList.Get(),
+        m_CommandList->UpdateSubresources(
             destination->GetD3DResource(),
             tempBuffer.GetUnderlyingD3DResource(),
-            static_cast<UINT64>(tempBuffer.GetOffsetInBytes(GfxBufferElement::RawData)),
-            static_cast<UINT>(firstSubresource),
-            static_cast<UINT>(numSubresources),
+            tempBuffer.GetOffsetInBytes(GfxBufferElement::RawData),
+            firstSubresource,
+            numSubresources,
             srcData);
     }
 
@@ -1140,7 +1108,7 @@ namespace march
 
         CD3DX12_TEXTURE_COPY_LOCATION src(sourceTexture->GetUnderlyingD3DResource(), static_cast<UINT>(srcSubresource));
         CD3DX12_TEXTURE_COPY_LOCATION dst(destinationTexture->GetUnderlyingD3DResource(), static_cast<UINT>(dstSubresource));
-        m_CommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+        m_CommandList->CopyTextureRegion(dst, src);
     }
 
     void GfxCommandContext::CopyTexture(
@@ -1164,7 +1132,7 @@ namespace march
 
         CD3DX12_TEXTURE_COPY_LOCATION src(sourceTexture->GetUnderlyingD3DResource(), static_cast<UINT>(srcSubresource));
         CD3DX12_TEXTURE_COPY_LOCATION dst(destinationTexture->GetUnderlyingD3DResource(), static_cast<UINT>(dstSubresource));
-        m_CommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+        m_CommandList->CopyTextureRegion(dst, src);
     }
 
     void GfxCommandContext::CopyTexture(GfxTexture* sourceTexture, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, uint32_t destinationArraySlice, uint32_t destinationMipSlice)

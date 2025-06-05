@@ -938,7 +938,7 @@ namespace march
         context->UpdateSubresources(GetUnderlyingResource(),
             0, static_cast<uint32_t>(subresources.size()), subresources.data());
         context->TransitionResource(GetUnderlyingResource(), D3D12_RESOURCE_STATE_GENERIC_READ); // 方便后续读取，尤其是 AsyncCompute
-        context->SubmitAndRelease().WaitOnCpu();
+        context->SubmitImmediateAndRelease().WaitOnCpu();
 
         // 外部导入的资源，始终保持 GENERIC_READ，不允许修改状态
         GetUnderlyingResource()->LockState(true);

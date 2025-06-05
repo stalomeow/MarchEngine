@@ -2,6 +2,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxCommand.h"
 #include "Engine/Profiling/NsightAftermath.h"
 #include "Engine/Misc/DeferFunc.h"
+#include "Engine/Debug.h"
 #include <pix3.h>
 
 using Microsoft::WRL::ComPtr;
@@ -38,7 +39,7 @@ namespace march
         }
     }
 
-    GfxSyncPoint GfxCommandList::Execute()
+    GfxSyncPoint GfxCommandList::Execute(bool isImmediateMode)
     {
         // 清理临时资源
         DEFER_FUNC()
@@ -59,6 +60,11 @@ namespace march
             m_SamplerHeap = nullptr;
         };
 
+        if (!m_FutureSyncPointsToWait.empty())
+        {
+            LOG_WARNING("CommandList has {} unresolved future sync points. They will be ignored.", m_FutureSyncPointsToWait.size());
+        }
+
         ComPtr<ID3D12CommandAllocator> allocator = m_Queue->RequestCommandAllocator();
 
         if (m_List == nullptr)
@@ -77,10 +83,16 @@ namespace march
 
         for (const auto& cmd : m_Commands)
         {
-            std::visit([this](auto&& arg) { TranslateCommand(arg); }, cmd);
+            std::visit([this, isImmediateMode](auto&& arg) { TranslateCommand(arg, isImmediateMode); }, cmd);
         }
 
         CHECK_HR(m_List->Close());
+
+        // 等待其他 queue 上的异步操作，例如 async compute, async copy
+        for (const GfxSyncPoint& syncPoint : m_SyncPointsToWait)
+        {
+            m_Queue->WaitOnGpu(syncPoint);
+        }
 
         // 正式执行
         ID3D12CommandList* lists[] = { m_List.Get() };
@@ -153,7 +165,7 @@ namespace march
         m_Commands.emplace_back(cmd);
     }
 
-    void GfxCommandList::ClearColorTarget(D3D12_CPU_DESCRIPTOR_HANDLE target, float color[4])
+    void GfxCommandList::ClearColorTarget(D3D12_CPU_DESCRIPTOR_HANDLE target, const float color[4])
     {
         m_Commands.emplace_back(GfxCommands::ClearColorTarget{ target, { color[0], color[1], color[2], color[3] } });
     }
@@ -244,76 +256,76 @@ namespace march
         m_Commands.emplace_back(GfxCommands::CopyTextureRegion{ dst, src });
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::BeginEvent& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::BeginEvent& cmd, bool isImmediateMode)
     {
         NsightAftermath::SetEventMarker(m_NsightAftermathHandle, cmd.Name);
         PIXBeginEvent(m_List.Get(), 0, cmd.Name.c_str());
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::EndEvent& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::EndEvent& cmd, bool isImmediateMode)
     {
         PIXEndEvent(m_List.Get());
         NsightAftermath::SetEventMarker(m_NsightAftermathHandle, "EndEvent");
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::FlushResourceBarriers& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::FlushResourceBarriers& cmd, bool isImmediateMode)
     {
         m_List->ResourceBarrier(static_cast<UINT>(cmd.Num), m_ResourceBarriers.data() + cmd.Offset);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetRenderTargets& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetRenderTargets& cmd, bool isImmediateMode)
     {
         const D3D12_CPU_DESCRIPTOR_HANDLE* pRtv = m_ColorTargets.data() + cmd.ColorTargetOffset;
         const D3D12_CPU_DESCRIPTOR_HANDLE* pDsv = cmd.DepthStencilTarget.has_value() ? &cmd.DepthStencilTarget.value() : nullptr;
         m_List->OMSetRenderTargets(static_cast<UINT>(cmd.ColorTargetCount), pRtv, FALSE, pDsv);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::ClearColorTarget& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::ClearColorTarget& cmd, bool isImmediateMode)
     {
         m_List->ClearRenderTargetView(cmd.Target, cmd.Color, 0, nullptr);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::ClearDepthStencilTarget& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::ClearDepthStencilTarget& cmd, bool isImmediateMode)
     {
         m_List->ClearDepthStencilView(cmd.Target, cmd.Flags, cmd.Depth, static_cast<UINT8>(cmd.Stencil), 0, nullptr);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetViewports& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetViewports& cmd, bool isImmediateMode)
     {
         m_List->RSSetViewports(static_cast<UINT>(cmd.Num), m_Viewports.data() + cmd.Offset);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetScissorRects& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetScissorRects& cmd, bool isImmediateMode)
     {
         m_List->RSSetScissorRects(static_cast<UINT>(cmd.Num), m_ScissorRects.data() + cmd.Offset);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetPredication& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetPredication& cmd, bool isImmediateMode)
     {
         m_List->SetPredication(cmd.Buffer, static_cast<UINT64>(cmd.AlignedOffset), cmd.Operation);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetPipelineState& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetPipelineState& cmd, bool isImmediateMode)
     {
         m_List->SetPipelineState(cmd.State);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetStencilRef& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetStencilRef& cmd, bool isImmediateMode)
     {
         m_List->OMSetStencilRef(static_cast<UINT>(cmd.StencilRef));
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetPrimitiveTopology& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetPrimitiveTopology& cmd, bool isImmediateMode)
     {
         m_List->IASetPrimitiveTopology(cmd.Topology);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetVertexBuffers& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetVertexBuffers& cmd, bool isImmediateMode)
     {
         m_List->IASetVertexBuffers(static_cast<UINT>(cmd.StartSlot), static_cast<UINT>(cmd.Num), m_VertexBufferViews.data() + cmd.Offset);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::SetIndexBuffer& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::SetIndexBuffer& cmd, bool isImmediateMode)
     {
         if (cmd.View.has_value())
         {
@@ -325,7 +337,7 @@ namespace march
         }
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::DrawIndexedInstanced& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::DrawIndexedInstanced& cmd, bool isImmediateMode)
     {
         m_List->DrawIndexedInstanced(
             static_cast<UINT>(cmd.IndexCountPerInstance),
@@ -335,7 +347,7 @@ namespace march
             static_cast<UINT>(cmd.StartInstanceLocation));
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::Dispatch& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::Dispatch& cmd, bool isImmediateMode)
     {
         m_List->Dispatch(
             static_cast<UINT>(cmd.ThreadGroupCountX),
@@ -343,7 +355,7 @@ namespace march
             static_cast<UINT>(cmd.ThreadGroupCountZ));
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::ResolveSubresource& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::ResolveSubresource& cmd, bool isImmediateMode)
     {
         m_List->ResolveSubresource(
             cmd.DstResource,
@@ -353,7 +365,7 @@ namespace march
             cmd.Format);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::UpdateSubresources& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::UpdateSubresources& cmd, bool isImmediateMode)
     {
         ::UpdateSubresources(
             m_List.Get(),
@@ -365,7 +377,7 @@ namespace march
             m_SubresourceData.data() + cmd.SrcDataOffset);
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::CopyBufferRegion& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::CopyBufferRegion& cmd, bool isImmediateMode)
     {
         m_List->CopyBufferRegion(
             cmd.DstBuffer,
@@ -375,7 +387,7 @@ namespace march
             static_cast<UINT64>(cmd.NumBytes));
     }
 
-    void GfxCommandList::TranslateCommand(const GfxCommands::CopyTextureRegion& cmd)
+    void GfxCommandList::TranslateCommand(const GfxCommands::CopyTextureRegion& cmd, bool isImmediateMode)
     {
         m_List->CopyTextureRegion(&cmd.Dst, 0, 0, 0, &cmd.Src, nullptr);
     }

@@ -628,10 +628,7 @@ namespace march
         {
             // 需要等待某个 sync point，所以要新建一个 context
             context.New(GfxCommandType::Direct, /* waitPreviousOneOnGpu */ false);
-
-            const GfxSyncPoint& syncPoint = m_Passes[*pass.PassIndexToWait].SyncPoint;
-            assert(syncPoint.IsValid());
-            context.GetCommandContext()->WaitOnGpu(syncPoint);
+            context.GetCommandContext()->WaitOnGpu(m_Passes[*pass.PassIndexToWait].SyncPoint);
         }
         else
         {
@@ -831,18 +828,19 @@ namespace march
 
         context.Submit();
 
+        // TODO
         // 保证所有 async compute pass 都执行完
-        if (m_PassIndexToWaitFallback)
-        {
-            const GfxSyncPoint& syncPoint = m_Passes[*m_PassIndexToWaitFallback].SyncPoint;
+        //if (m_PassIndexToWaitFallback)
+        //{
+        //    const GfxSyncPoint& syncPoint = m_Passes[*m_PassIndexToWaitFallback].SyncPoint;
 
-            if (syncPoint.IsValid())
-            {
-                GfxCommandManager* cmdManager = GetGfxDevice()->GetCommandManager();
-                GfxCommandQueue* cmdQueue = cmdManager->GetQueue(GfxCommandType::Direct);
-                cmdQueue->WaitOnGpu(syncPoint);
-            }
-        }
+        //    if (syncPoint.IsValid())
+        //    {
+        //        GfxCommandManager* cmdManager = GetGfxDevice()->GetCommandManager();
+        //        GfxCommandQueue* cmdQueue = cmdManager->GetQueue(GfxCommandType::Direct);
+        //        cmdQueue->WaitOnGpu(syncPoint);
+        //    }
+        //}
     }
 
     RenderGraphBuilder RenderGraph::AddPass()
@@ -936,24 +934,25 @@ namespace march
 
     void RenderGraphContext::New(GfxCommandType type, bool waitPreviousOneOnGpu)
     {
-        GfxSyncPoint prevSyncPoint{};
+        bool needWait = false;
+        GfxFutureSyncPoint syncPoint{};
 
         if (m_Cmd != nullptr)
         {
-            GfxSyncPoint syncPoint = m_Cmd->SubmitAndRelease();
-
             // 不在一个 command queue 里的才需要等待
             if (waitPreviousOneOnGpu && m_Cmd->GetType() != type)
             {
-                prevSyncPoint = syncPoint;
+                needWait = true;
             }
+
+            syncPoint = m_Cmd->SubmitAndRelease();
         }
 
         m_Cmd = GetGfxDevice()->RequestContext(type);
 
-        if (prevSyncPoint.IsValid())
+        if (needWait)
         {
-            m_Cmd->WaitOnGpu(prevSyncPoint);
+            m_Cmd->WaitOnGpu(syncPoint);
         }
     }
 
@@ -971,7 +970,7 @@ namespace march
         }
     }
 
-    GfxSyncPoint RenderGraphContext::UncheckedSubmit()
+    GfxFutureSyncPoint RenderGraphContext::UncheckedSubmit()
     {
         return std::exchange(m_Cmd, nullptr)->SubmitAndRelease();
     }
