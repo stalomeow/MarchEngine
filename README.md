@@ -23,7 +23,7 @@
 ### Build Tool
 
 - 使用 Lua 配置 C++ 和 C# 项目
-- 使用自己 Fork 的 [Premake](https://github.com/stalomeow/premake-core/tree/march-engine) 生成 IDE 项目文件
+- 使用自己 Fork 的 [Premake](https://github.com/stalomeow/premake-core/tree/march-engine) 生成 IDE 项目文件，新增 Solution Items、Source Generators、Runtime Dependencies 等功能
 
 ### Scripting
 

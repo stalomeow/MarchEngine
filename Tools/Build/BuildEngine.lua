@@ -102,15 +102,30 @@ local function nativeModule(m)
             pchsource "Private/pch.cpp"
         end
 
-        defines { string.format("%s_API=__declspec(dllexport)", string.upper(m.name)) }
-
-        usage "INTERFACE"
-            defines { string.format("%s_API=__declspec(dllimport)", string.upper(m.name)) }
+        if m.kind == "StaticLib" then
+            usage "PUBLIC"
+                defines { string.format("%s_API", string.upper(m.name)) }
+        elseif m.kind == "SharedLib" then
+            defines { string.format("%s_API=__declspec(dllexport)", string.upper(m.name)) }
+            usage "INTERFACE"
+                defines { string.format("%s_API=__declspec(dllimport)", string.upper(m.name)) }
+        end
 
         if os.isdir("Public") then
             usage "PUBLIC"
                 includedirs { "Public" }
         end
+    end
+
+    if m.kind == "StaticLib" then
+        usage "INTERFACE"
+            links { m.name }
+
+            if m.wholeArchive then
+                filter "action:vs*"
+                    -- TODO 这里没考虑 targetprefix targetname targetsuffix targetextension
+                    linkoptions { string.format("/WHOLEARCHIVE:%s.lib", m.name) }
+            end
     end
 end
 
@@ -129,6 +144,7 @@ function marchmodule(config)
         name            = config.name,
         type            = config.type,
         kind            = config.kind,
+        wholeArchive    = config.wholeArchive or false,
         isThirdParty    = thirdPartyModuleGroup,
         projectFileDir  = path.join(ENGINE_DIR, "Generated/ProjectFiles"),
         binaryDir       = path.join(ENGINE_DIR, "Generated/Binaries", config.name, "%{cfg.buildcfg}/%{cfg.platform}"),

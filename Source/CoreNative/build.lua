@@ -2,6 +2,7 @@ local m = marchmodule {
     name = "CoreNative",
     type = "Native",
     kind = "StaticLib",
+    wholeArchive = true, -- C++ 通过导出函数来给 C# 调用，所以要确保所有函数都被链接到
 }
 
 usage "PUBLIC"
@@ -23,12 +24,7 @@ usage "PUBLIC"
 
 usage "INTERFACE"
     links {
-        "CoreNative",
         "d3d12.lib",
         "dxgi.lib",
         "dxguid.lib",
     }
-
-    -- C++ 通过导出函数来给 C# 调用，所以要确保所有函数都被链接到
-    filter "action:vs*"
-        linkoptions { "/WHOLEARCHIVE:CoreNative.lib" }

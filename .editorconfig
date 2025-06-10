@@ -9,7 +9,7 @@ insert_final_newline = true
 indent_style = space
 indent_size = 4
 
-[*.{csproj,json}]
+[*.{json}]
 indent_style = space
 indent_size = 2
 

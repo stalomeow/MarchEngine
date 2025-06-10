@@ -14,6 +14,3 @@ files {
 usage "PUBLIC"
     uses { "ImGui" }
     includedirs { "Source" }
-
-usage "INTERFACE"
-    links { "ImGuizmo" }

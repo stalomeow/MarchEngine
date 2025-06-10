@@ -39,6 +39,3 @@ usage "PUBLIC"
         "Source/misc/cpp",
         "Source/backends",
     }
-
-usage "INTERFACE"
-    links { "ImGui" }

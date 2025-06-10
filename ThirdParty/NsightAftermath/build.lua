@@ -23,4 +23,6 @@ usage "PUBLIC"
     }
 
 usage "INTERFACE"
-    links { path.join("bin", arch, libName) }
+    links {
+        path.join("bin", arch, libName),
+    }
