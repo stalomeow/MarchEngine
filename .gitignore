@@ -1,6 +1,9 @@
+# Visual Studio
 /.vs/
-/Output/
-/Tools/env/
 
-*.sln
-*.csproj.user
+# Generated Files
+/Generated/
+/MarchEngine.sln
+
+# Python Virtual Environment
+/Tools/Scripts/env/

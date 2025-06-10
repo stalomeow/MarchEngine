@@ -8,28 +8,6 @@
 
 ~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，所以给引擎起名叫 March Engine，然后刚好又是在三月份把代码对外公开。~~
 
-## 目录结构
-
-``` shell
-MarchEngine
-├─ Build           # 构建脚本
-├─ Documentation   # 文档
-├─ Output          # 构建结果和临时文件（不参与版本控制）
-├─ Resources       # 引擎内置资源
-├─ Source
-│  ├─ Managed
-│  │  ├─ Binding   # C# Binding 生成器
-│  │  ├─ Core      # 引擎核心的 C# 代码
-│  │  ├─ Editor    # 编辑器的 C# 代码
-│  │  └─ ShaderLab # ShaderLab 编译器
-│  ├─ Native
-│  │  ├─ EditorApp # 编辑器 App
-│  │  └─ Engine    # 引擎核心的 C++ 代码
-│  └─ Shaders      # 引擎内置的 Shader
-├─ ThirdParty      # 部分第三方库
-└─ Tools           # 可能有用的工具
-```
-
 ## 文档
 
 - [Build](Documentation/Build.md)
@@ -41,6 +19,11 @@ MarchEngine
 ## 已实现的功能
 
 暂时不接受 pull requests。
+
+### Build Tool
+
+- 使用 Lua 配置 C++ 和 C# 项目
+- 使用自己 Fork 的 [Premake](https://github.com/stalomeow/premake-core/tree/march-engine) 生成 IDE 项目文件
 
 ### Scripting
 

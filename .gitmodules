@@ -10,3 +10,7 @@
 	path = ThirdParty/ImOGuizmo/Source
 	url = https://github.com/stalomeow/imoguizmo.git
 	branch = march-engine
+[submodule "Tools/Build/Premake"]
+	path = Tools/Build/Premake
+	url = https://github.com/stalomeow/premake-core.git
+	branch = march-engine

@@ -1,18 +1,16 @@
 * text=auto
 
-Source/Managed/ShaderLab/Internal/** linguist-generated
-Resources/Meta/**                    linguist-generated
+*.h        linguist-language=cpp
+*.hpp      linguist-language=cpp
+*.cpp      linguist-language=cpp
+*.cxx      linguist-language=cpp
+*.compute  linguist-language=hlsl
+*.shader   linguist-language=shaderlab
+*.manifest linguist-language=xml
 
-*.h                                        linguist-language=cpp
-*.hpp                                      linguist-language=cpp
-*.cpp                                      linguist-language=cpp
-*.cxx                                      linguist-language=cpp
-*.compute                                  linguist-language=hlsl
-*.shader                                   linguist-language=shaderlab
-Source/Native/EditorApp/EditorApp.manifest linguist-language=xml
-
-*.csproj                          text eol=crlf
-vcpkg.json                        text eol=lf
-vcpkg-configuration.json          text eol=lf
+Resources/Meta/**                 linguist-generated
 Resources/FontAwesome/LICENSE.txt text eol=lf
 Resources/Fonts/Inter-LICENSE.txt text eol=lf
+
+/ThirdParty/**            linguist-vendored
+/ThirdParty/**/build.lua -linguist-vendored
