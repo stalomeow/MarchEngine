@@ -4,6 +4,8 @@ local m = marchmodule {
     kind = "None", -- 纯头文件，不编译
 }
 
+-- 当前版本：2025.1.0.25009
+
 files {
     "include/GFSDK_Aftermath.h",
     "include/GFSDK_Aftermath_Defines.h",
