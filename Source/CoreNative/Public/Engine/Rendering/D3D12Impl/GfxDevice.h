@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Memory/RefCounting.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <dxgi1_5.h>
 #include <wrl.h>
 #include <memory>

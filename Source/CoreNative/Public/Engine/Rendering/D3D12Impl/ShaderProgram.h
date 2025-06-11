@@ -7,7 +7,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
 #include "Engine/Rendering/D3D12Impl/ShaderKeyword.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <d3d12shader.h> // Shader reflection
 #include <dxcapi.h>
 #include <wrl.h>

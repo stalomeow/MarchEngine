@@ -11,7 +11,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
 #include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <assert.h>
 #include <vector>
 #include <bitset>

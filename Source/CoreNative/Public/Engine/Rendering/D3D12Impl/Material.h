@@ -3,7 +3,7 @@
 #include "Engine/Object.h"
 #include "Engine/Rendering/D3D12Impl/GfxPipeline.h"
 #include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <DirectXMath.h>
 #include <stdint.h>
 #include <unordered_map>

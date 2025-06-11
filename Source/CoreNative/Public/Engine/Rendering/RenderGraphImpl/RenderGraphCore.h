@@ -4,7 +4,7 @@
 #include "Engine/InlineArray.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderGraphImpl/RenderGraphResource.h"
-#include <directx/d3d12.h>
+#include <d3dx12.h>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>

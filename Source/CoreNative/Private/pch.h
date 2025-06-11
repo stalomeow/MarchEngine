@@ -3,7 +3,7 @@
 #include "Engine/Ints.h"
 #include "Engine/Object.h"
 
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <dxgi1_5.h>
 #include <DirectXCollision.h>
 #include <DirectXColors.h>

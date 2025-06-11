@@ -7,7 +7,7 @@ local m = marchmodule {
 
 usage "PUBLIC"
     uses {
-        "DirectXHeaders",
+        "DirectX12Agility",
         "DirectXMath",
         "DirectXShaderCompiler",
         "DirectXTex",
@@ -21,10 +21,3 @@ usage "PUBLIC"
     -- 允许给图形资源设置名称
     filter "configurations:Debug"
         defines { "ENABLE_GFX_DEBUG_NAME" }
-
-usage "INTERFACE"
-    links {
-        "d3d12.lib",
-        "dxgi.lib",
-        "dxguid.lib",
-    }

@@ -23,7 +23,7 @@ files {
 local arch = "%{cfg.architecture == 'x86_64' and 'x64' or cfg.architecture}" -- 将 x86_64 替换为 x64
 
 usage "PUBLIC"
-    uses { "DirectXHeaders", "DirectXMath" }
+    uses { "DirectX12Agility", "DirectXMath" }
     includedirs { "include" }
 
     filter "configurations:Debug"

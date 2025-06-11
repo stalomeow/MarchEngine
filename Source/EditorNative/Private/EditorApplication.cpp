@@ -23,7 +23,7 @@
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "ImGuizmo.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <algorithm>
 #include <stdexcept>
 #include <filesystem>

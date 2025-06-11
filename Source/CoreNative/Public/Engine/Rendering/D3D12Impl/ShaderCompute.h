@@ -4,7 +4,7 @@
 #include "Engine/Object.h"
 #include "Engine/Rendering/D3D12Impl/ShaderKeyword.h"
 #include "Engine/Rendering/D3D12Impl/ShaderProgram.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <vector>
 #include <string>
 #include <memory>

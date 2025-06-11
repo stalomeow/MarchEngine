@@ -3,7 +3,7 @@
 #include "Engine/Object.h"
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <stdint.h>
 #include <DirectXMath.h>
 #include <DirectXCollision.h>

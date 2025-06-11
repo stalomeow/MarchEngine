@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Rendering/D3D12Impl/GfxSettings.h"
-#include <directx/d3d12.h>
+#include <d3dx12.h>
 #include <string>
 
 namespace march

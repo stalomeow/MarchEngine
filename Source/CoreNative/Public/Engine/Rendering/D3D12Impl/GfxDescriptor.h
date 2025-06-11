@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Memory/Allocator.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <wrl.h>
 #include <stdint.h>
 #include <string>

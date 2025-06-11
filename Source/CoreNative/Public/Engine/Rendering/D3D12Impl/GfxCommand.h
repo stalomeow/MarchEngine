@@ -9,7 +9,7 @@
 #include "Engine/Rendering/D3D12Impl/ShaderGraphics.h"
 #include "Engine/Rendering/D3D12Impl/ShaderCompute.h"
 #include "Engine/Rendering/D3D12Impl/MeshRenderer.h"
-#include <directx/d3dx12.h>
+#include <d3dx12.h>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
 #include <wrl.h>
