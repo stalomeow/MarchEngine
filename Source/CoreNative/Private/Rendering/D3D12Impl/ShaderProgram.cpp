@@ -352,6 +352,10 @@ namespace march
 
                     break;
                 }
+
+                case D3D_SIT_RTACCELERATIONSTRUCTURE:
+                case D3D_SIT_UAV_FEEDBACKTEXTURE:
+                    break;
                 }
             }
 

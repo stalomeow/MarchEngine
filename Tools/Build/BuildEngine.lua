@@ -48,6 +48,9 @@ local function nativeModule(m)
     language "C++"
     cppdialect "C++17"
 
+    toolset "clang"
+    warnings "High" -- Warning Level 4
+
     rtti "Off"
     conformancemode "Off"
     characterset "Unicode"
@@ -81,7 +84,18 @@ local function nativeModule(m)
 
     filter {} -- 还原到默认的状态
 
-    if not m.isThirdParty then
+    if m.isThirdParty then
+        -- 忽略第三方库的所有警告
+        disablewarnings {
+            "everything",
+        }
+    else
+        disablewarnings {
+            "return-type-c-linkage",
+            "format-security",
+            "unused-parameter",
+        }
+
         files {
             "**.h",
             "**.hpp",
@@ -124,7 +138,7 @@ local function nativeModule(m)
             if m.wholeArchive then
                 filter "action:vs*"
                     -- TODO 这里没考虑 targetprefix targetname targetsuffix targetextension
-                    linkoptions { string.format("/WHOLEARCHIVE:%s.lib", m.name) }
+                    linkoptions { string.format("/WHOLEARCHIVE:%s.lib", path.translate(path.join(m.binaryDir, m.name), "\\")) }
             end
     end
 end

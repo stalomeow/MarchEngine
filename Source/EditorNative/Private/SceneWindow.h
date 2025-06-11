@@ -34,7 +34,7 @@ namespace march
 
     class SceneWindow : public EditorWindow
     {
-        using base = typename EditorWindow;
+        using base = EditorWindow;
         friend SceneWindowInternalUtility;
 
     public:

@@ -88,9 +88,9 @@ namespace march
             throw std::runtime_error("Failed to load hostfxr.dll");
         }
 
-        auto initFunc = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(GetProcAddress(hostfxr, "hostfxr_initialize_for_runtime_config"));
-        auto getDelegateFunc = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(GetProcAddress(hostfxr, "hostfxr_get_runtime_delegate"));
-        auto closeFunc = reinterpret_cast<hostfxr_close_fn>(GetProcAddress(hostfxr, "hostfxr_close"));
+        auto initFunc = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(reinterpret_cast<void*>(GetProcAddress(hostfxr, "hostfxr_initialize_for_runtime_config")));
+        auto getDelegateFunc = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(reinterpret_cast<void*>(GetProcAddress(hostfxr, "hostfxr_get_runtime_delegate")));
+        auto closeFunc = reinterpret_cast<hostfxr_close_fn>(reinterpret_cast<void*>(GetProcAddress(hostfxr, "hostfxr_close")));
         if (initFunc == nullptr || getDelegateFunc == nullptr || closeFunc == nullptr)
         {
             FreeLibrary(hostfxr);

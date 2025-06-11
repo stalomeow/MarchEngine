@@ -154,7 +154,8 @@ namespace march
 
     XMVECTOR Transform::LoadEulerAngles() const
     {
-        return XMLoadFloat3(&GetEulerAngles());
+        XMFLOAT3 eulerAngles = GetEulerAngles();
+        return XMLoadFloat3(&eulerAngles);
     }
 
     XMVECTOR Transform::LoadLossyScale() const

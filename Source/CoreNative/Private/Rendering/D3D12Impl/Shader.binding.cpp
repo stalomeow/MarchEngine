@@ -230,7 +230,7 @@ namespace march
             pShader->m_Passes.clear();
             pShader->m_Passes.resize(static_cast<size_t>(passes.size()));
 
-            for (int32_t i = 0; i < pShader->m_Passes.size(); i++)
+            for (int32_t i = 0; i < static_cast<int32_t>(pShader->m_Passes.size()); i++)
             {
                 const auto& src = passes[i];
                 pShader->m_Passes[i] = std::make_unique<ShaderPass>();
@@ -245,7 +245,7 @@ namespace march
                     pass->m_Tags[t.Key] = t.Value;
                 }
 
-                for (int32_t j = 0; j < std::size(pass->m_Programs); j++)
+                for (int32_t j = 0; j < static_cast<int32_t>(std::size(pass->m_Programs)); j++)
                 {
                     pass->m_Programs[j].clear();
                 }
@@ -328,7 +328,7 @@ namespace march
                 pass->m_RenderState.Cull = UnpackShaderPassVar(src.Cull);
 
                 pass->m_RenderState.Blends.resize(src.Blends.size());
-                for (int32_t j = 0; j < pass->m_RenderState.Blends.size(); j++)
+                for (int32_t j = 0; j < static_cast<int32_t>(pass->m_RenderState.Blends.size()); j++)
                 {
                     const auto& blend = src.Blends[j];
                     pass->m_RenderState.Blends[j].Enable = blend.Enable;
@@ -384,7 +384,7 @@ namespace march
             {
                 warnings->assign(static_cast<int32_t>(warningBuffer.size()));
 
-                for (int32_t i = 0; i < warningBuffer.size(); i++)
+                for (int32_t i = 0; i < static_cast<int32_t>(warningBuffer.size()); i++)
                 {
                     (*warnings)[i].assign(std::move(warningBuffer[i]));
                 }
@@ -402,7 +402,7 @@ namespace march
         {
             passes->assign(static_cast<int32_t>(pShader->GetPassCount()));
 
-            for (int32_t i = 0; i < pShader->GetPassCount(); i++)
+            for (int32_t i = 0; i < static_cast<int32_t>(pShader->GetPassCount()); i++)
             {
                 ShaderPass* pass = pShader->GetPass(i);
                 CSharpShaderPass& dest = (*passes)[i];
@@ -436,7 +436,7 @@ namespace march
                         std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywordStringsInSpace();
                         p.Keywords.assign(static_cast<int32_t>(keywords.size()));
 
-                        for (int32_t k = 0; k < keywords.size(); k++)
+                        for (int32_t k = 0; k < static_cast<int32_t>(keywords.size()); k++)
                         {
                             p.Keywords[k].assign(std::move(keywords[k]));
                         }
@@ -504,7 +504,7 @@ namespace march
 
                 dest.Cull = PackShaderPassVar(pass->m_RenderState.Cull);
                 dest.Blends.assign(static_cast<int32_t>(pass->m_RenderState.Blends.size()));
-                for (int32_t j = 0; j < pass->m_RenderState.Blends.size(); j++)
+                for (int32_t j = 0; j < static_cast<int32_t>(pass->m_RenderState.Blends.size()); j++)
                 {
                     auto& blend = dest.Blends[j];
                     blend.Enable.assign(pass->m_RenderState.Blends[j].Enable);
@@ -686,7 +686,7 @@ namespace march
         {
             kernels->assign(static_cast<int32_t>(s->GetKernelCount()));
 
-            for (int32_t i = 0; i < s->GetKernelCount(); i++)
+            for (int32_t i = 0; i < static_cast<int32_t>(s->GetKernelCount()); i++)
             {
                 ComputeShaderKernel* kernel = s->m_Kernels[i].get();
                 CSharpComputeShaderKernel& dest = (*kernels)[i];
@@ -711,7 +711,7 @@ namespace march
                         std::vector<std::string> keywords = program->m_Keywords.GetEnabledKeywordStringsInSpace();
                         p.Keywords.assign(static_cast<int32_t>(keywords.size()));
 
-                        for (int32_t k = 0; k < keywords.size(); k++)
+                        for (int32_t k = 0; k < static_cast<int32_t>(keywords.size()); k++)
                         {
                             p.Keywords[k].assign(std::move(keywords[k]));
                         }
@@ -785,7 +785,7 @@ namespace march
             s->m_Kernels.clear();
             s->m_Kernels.resize(static_cast<size_t>(kernels.size()));
 
-            for (int32_t i = 0; i < s->m_Kernels.size(); i++)
+            for (int32_t i = 0; i < static_cast<int32_t>(s->m_Kernels.size()); i++)
             {
                 const auto& src = kernels[i];
                 s->m_Kernels[i] = std::make_unique<ComputeShaderKernel>();
@@ -793,7 +793,7 @@ namespace march
 
                 kernel->m_Name = src.Name;
 
-                for (int32_t j = 0; j < std::size(kernel->m_Programs); j++)
+                for (int32_t j = 0; j < static_cast<int32_t>(std::size(kernel->m_Programs)); j++)
                 {
                     kernel->m_Programs[j].clear();
                 }
@@ -893,7 +893,7 @@ namespace march
             {
                 warnings->assign(static_cast<int32_t>(warningBuffer.size()));
 
-                for (int32_t i = 0; i < warningBuffer.size(); i++)
+                for (int32_t i = 0; i < static_cast<int32_t>(warningBuffer.size()); i++)
                 {
                     (*warnings)[i].assign(std::move(warningBuffer[i]));
                 }

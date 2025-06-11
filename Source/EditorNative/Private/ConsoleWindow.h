@@ -12,7 +12,7 @@ namespace march
 
     class ConsoleWindow : public EditorWindow
     {
-        using base = typename EditorWindow;
+        using base = EditorWindow;
         friend ConsoleWindowInternalUtility;
 
     public:

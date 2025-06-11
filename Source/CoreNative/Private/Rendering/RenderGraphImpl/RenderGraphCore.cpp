@@ -245,7 +245,7 @@ namespace march
         size_t asyncComputeDeadlineIndexExclusive = m_Passes.size();
 
         // 注意 size_t 是无符号的，所以不能用 passIndex >= 0
-        for (size_t passIndex = m_Passes.size() - 1; passIndex != -1; passIndex--)
+        for (size_t passIndex = m_Passes.size() - 1; passIndex != static_cast<size_t>(-1); passIndex--)
         {
             CullPass(passIndex, asyncComputeDeadlineIndexExclusive);
         }

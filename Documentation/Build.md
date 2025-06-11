@@ -6,7 +6,7 @@
 
 - Windows x64
 - Windows SDK 10.0
-- [Visual Studio 2022](https://visualstudio.microsoft.com/zh-hans/vs/) 及必要的 C++ 和 C# 组件
+- [Visual Studio 2022](https://visualstudio.microsoft.com/zh-hans/vs/) 及必要的 C++、C# 和 [Clang/LLVM](https://learn.microsoft.com/en-us/cpp/build/clang-support-msbuild) 组件
 
 ## 生成项目
 

@@ -100,7 +100,9 @@ namespace march
     }
 
     GfxOutputDesc::GfxOutputDesc()
-        : NumRTV(0)
+        : m_IsDirty(true)
+        , m_Hash(0)
+        , NumRTV(0)
         , RTVFormats{}
         , DSVFormat(DXGI_FORMAT_UNKNOWN)
         , SampleCount(1)
@@ -109,8 +111,6 @@ namespace march
         , DepthBiasClamp(D3D12_DEFAULT_DEPTH_BIAS_CLAMP)
         , SlopeScaledDepthBias(D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS)
         , Wireframe(false)
-        , m_IsDirty(true)
-        , m_Hash(0)
     {
     }
 

@@ -12,7 +12,7 @@ namespace march
 {
     class RenderGraphViewerWindow : public EditorWindow, public IRenderGraphCompiledEventListener
     {
-        using base = typename EditorWindow;
+        using base = EditorWindow;
 
         enum class PassStatus
         {

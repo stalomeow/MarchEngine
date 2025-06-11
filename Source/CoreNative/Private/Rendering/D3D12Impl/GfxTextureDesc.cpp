@@ -231,6 +231,8 @@ namespace march
                 return DXGI_FORMAT_D24_UNORM_S8_UINT;
             case GfxTextureFormat::D16_UNorm:
                 return DXGI_FORMAT_D16_UNORM;
+            default:
+                break;
             }
         }
         else
@@ -261,6 +263,8 @@ namespace march
                     return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
                 case GfxTextureFormat::D16_UNorm:
                     return DXGI_FORMAT_R16_UNORM;
+                default:
+                    break;
                 }
             }
             else if (element == GfxTextureElement::Stencil)
@@ -271,6 +275,8 @@ namespace march
                     return DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
                 case GfxTextureFormat::D24_UNorm_S8_UInt:
                     return DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+                default:
+                    break;
                 }
             }
         }

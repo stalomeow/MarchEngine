@@ -389,6 +389,8 @@ namespace march
             case SceneGizmoOperation::Scale:
                 snap = &m_GizmoScaleSnapValue;
                 break;
+            case SceneGizmoOperation::Pan:
+                break;
             }
         }
 

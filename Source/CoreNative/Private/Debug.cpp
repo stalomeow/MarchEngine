@@ -60,7 +60,7 @@ namespace march
     {
         std::lock_guard<std::mutex> lock(s_Mutex);
 
-        if (i < 0 || i >= s_Entries.size())
+        if (i < 0 || static_cast<size_t>(i) >= s_Entries.size())
         {
             return false;
         }

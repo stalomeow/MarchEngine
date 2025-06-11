@@ -5,6 +5,10 @@
 
 namespace march
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#pragma clang diagnostic ignored "-Wunused-private-field"
+
     class JobHandle
     {
     public:
@@ -13,6 +17,8 @@ namespace march
     private:
         uint64 m_GroupId;
     };
+
+#pragma clang diagnostic pop
 
     struct JobData final
     {

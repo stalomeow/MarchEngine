@@ -6,7 +6,7 @@ namespace march
 {
     class GraphicsDebuggerWindow : public EditorWindow
     {
-        using base = typename EditorWindow;
+        using base = EditorWindow;
 
         void DrawOnlineViewDescriptorAllocatorInfo();
         void DrawOnlineSamplerDescriptorAllocatorInfo();

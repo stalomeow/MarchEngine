@@ -348,7 +348,8 @@ namespace march
 
             uint8_t* pMappedData = nullptr;
             ID3D12Resource* d3dResource = m_Resource->GetD3DResource();
-            CHECK_HR(d3dResource->Map(0, &CD3DX12_RANGE(0, 0), reinterpret_cast<void**>(&pMappedData))); // Write-Only
+            D3D12_RANGE readRange = CD3DX12_RANGE(0, 0);
+            CHECK_HR(d3dResource->Map(0, &readRange, reinterpret_cast<void**>(&pMappedData))); // Write-Only
 
             if (pData)
             {
@@ -512,7 +513,8 @@ namespace march
 
             UINT64 width = static_cast<UINT64>(sizeInBytes);
             D3D12_RESOURCE_FLAGS flags = m_Desc.AllowUnorderedAccess() ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
-            m_Resource = allocator->Allocate(m_Name, &CD3DX12_RESOURCE_DESC::Buffer(width, flags), D3D12_RESOURCE_STATE_GENERIC_READ);
+            D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(width, flags);
+            m_Resource = allocator->Allocate(m_Name, &desc, D3D12_RESOURCE_STATE_GENERIC_READ);
         }
 
         m_DataOffsetInBytes = resourceOffsetInBytes + dataOffsetInResource;
@@ -574,8 +576,9 @@ namespace march
             UINT64 pageWidth = static_cast<UINT64>(sizeInBytes);
             std::string pageName = m_Allocator->GetName() + "Page";
             D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
+            D3D12_RESOURCE_DESC pageDesc = CD3DX12_RESOURCE_DESC::Buffer(pageWidth);
             RefCountPtr<GfxResource>& page = m_Pages.emplace_back(
-                pageAllocator->Allocate(pageName, &CD3DX12_RESOURCE_DESC::Buffer(pageWidth), pageState));
+                pageAllocator->Allocate(pageName, &pageDesc, pageState));
             page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
         };
 
@@ -654,8 +657,8 @@ namespace march
 
                 UINT64 pageWidth = static_cast<UINT64>(sizeInBytes);
                 D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
-                RefCountPtr<GfxResource>& page = pages.emplace_back(
-                    allocator->Allocate(pageName, &CD3DX12_RESOURCE_DESC::Buffer(pageWidth), pageState));
+                D3D12_RESOURCE_DESC pageDesc = CD3DX12_RESOURCE_DESC::Buffer(pageWidth);
+                RefCountPtr<GfxResource>& page = pages.emplace_back(allocator->Allocate(pageName, &pageDesc, pageState));
                 page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
             }
 

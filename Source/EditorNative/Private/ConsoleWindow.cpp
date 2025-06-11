@@ -37,7 +37,8 @@ namespace march
     static std::string GetLogTimePrefix(time_t t)
     {
         char tmp[32] = { 0 };
-        strftime(tmp, sizeof(tmp), "[%H:%M:%S]", &TimeUtils::GetLocalTime(t));
+        tm localTime = TimeUtils::GetLocalTime(t);
+        strftime(tmp, sizeof(tmp), "[%H:%M:%S]", &localTime);
         return std::string(tmp);
     }
 
@@ -134,7 +135,7 @@ namespace march
 
         if (ImGui::BeginChild("DetailedRegion", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_None))
         {
-            bool success = Log::ReadAt(m_SelectedLog, [this](const LogEntry& entry)
+            bool success = Log::ReadAt(m_SelectedLog, [](const LogEntry& entry)
             {
                 ImGui::PushTextWrapPos();
                 ImGui::TextUnformatted(entry.Message.c_str());

@@ -49,7 +49,7 @@ namespace march
 
         IDXGIFactory5* factory = device->GetDXGIFactory();
 
-        if (m_SupportTearing = CheckTearingSupport(factory))
+        if ((m_SupportTearing = CheckTearingSupport(factory)))
         {
             // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/ne-dxgi-dxgi_swap_chain_flag
             swapChainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;

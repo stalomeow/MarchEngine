@@ -9,8 +9,12 @@
 #include "Engine/Misc/MathUtils.h"
 #include "Engine/Debug.h"
 #include "Engine/Transform.h"
-#include <pix3.h>
 #include <assert.h>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#include <pix3.h>
+#pragma clang diagnostic pop
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -722,7 +726,7 @@ namespace march
 
         m_GraphicsViewCache.TransitionResources([this](auto resource, auto subresourceIndex, auto state) -> void
         {
-            if (subresourceIndex == -1)
+            if (subresourceIndex == static_cast<uint32_t>(-1))
             {
                 TransitionResource(resource, state);
             }
@@ -767,7 +771,7 @@ namespace march
 
         m_ComputeViewCache.TransitionResources([this](auto resource, auto subresourceIndex, auto state) -> void
         {
-            if (subresourceIndex == -1)
+            if (subresourceIndex == static_cast<uint32_t>(-1))
             {
                 TransitionResource(resource, state);
             }

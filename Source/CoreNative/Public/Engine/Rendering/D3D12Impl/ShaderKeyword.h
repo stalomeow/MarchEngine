@@ -66,12 +66,12 @@ namespace march
             m_Keywords.reset();
         }
 
-        size_t ShaderKeywordSet::GetNumEnabledKeywords() const
+        size_t GetNumEnabledKeywords() const
         {
             return m_Keywords.count();
         }
 
-        size_t ShaderKeywordSet::GetNumMatchingKeywords(const ShaderKeywordSet& other) const
+        size_t GetNumMatchingKeywords(const ShaderKeywordSet& other) const
         {
             if (m_Space != other.m_Space)
             {

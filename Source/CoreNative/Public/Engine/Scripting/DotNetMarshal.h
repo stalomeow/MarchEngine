@@ -18,7 +18,7 @@ namespace march
     template<typename T>
     struct cs<T, std::enable_if_t<is_blittable_v<T>>> final
     {
-        using managed_type = typename T;
+        using managed_type = T;
 
         T data;
 

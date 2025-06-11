@@ -93,5 +93,5 @@ namespace march
         }
     };
 
-    using DefaultHash = typename FNV1Hash;
+    using DefaultHash = FNV1Hash;
 }

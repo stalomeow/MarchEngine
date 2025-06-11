@@ -130,7 +130,7 @@ namespace march
         if (ImGui::BeginTable("RenderGraphTable", numColumns, tableFlags))
         {
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_None, 200); // 额外的一列显示资源名
-            for (int i = 0; i < m_Passes.size(); i++)
+            for (size_t i = 0; i < m_Passes.size(); i++)
             {
                 ImGui::TableSetupColumn(m_Passes[i].ShortName.c_str(), columnFlags);
             }
@@ -162,7 +162,7 @@ namespace march
                 else
                 {
                     const PassData& pass = m_Passes[passIndex];
-                    char* passIcon;
+                    const char* passIcon;
                     tooltips.clear();
 
                     switch (pass.Status)
@@ -212,7 +212,7 @@ namespace march
             }
 
             // 绘制资源行
-            for (int row = 0; row < m_Resources.size(); row++)
+            for (int row = 0; row < static_cast<int>(m_Resources.size()); row++)
             {
                 const ResourceData& res = m_Resources[row];
 

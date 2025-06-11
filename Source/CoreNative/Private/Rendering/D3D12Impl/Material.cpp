@@ -465,12 +465,12 @@ namespace march
                 return false;
             };
 
-            auto resolveFloat = [this](int32_t id)
-            {
-                if (float f = 0.0f; GetFloat(id, &f)) return f;
-                if (int32_t i = 0; GetInt(id, &i)) return static_cast<float>(i);
-                return 0.0f;
-            };
+            //auto resolveFloat = [this](int32_t id)
+            //{
+            //    if (float f = 0.0f; GetFloat(id, &f)) return f;
+            //    if (int32_t i = 0; GetInt(id, &i)) return static_cast<float>(i);
+            //    return 0.0f;
+            //};
 
             DefaultHash hash{};
             ShaderPassRenderState rs = m_Shader->GetPass(passIndex)->GetRenderState(); // 拷贝一份
@@ -552,6 +552,13 @@ namespace march
         case D3D12_COMPARISON_FUNC_GREATER_EQUAL:
             depthStencil.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
             break;
+
+        case D3D12_COMPARISON_FUNC_NONE:
+        case D3D12_COMPARISON_FUNC_NEVER:
+        case D3D12_COMPARISON_FUNC_EQUAL:
+        case D3D12_COMPARISON_FUNC_NOT_EQUAL:
+        case D3D12_COMPARISON_FUNC_ALWAYS:
+            break;
         }
     }
 
@@ -605,7 +612,7 @@ namespace march
 
             psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
             psoDesc.BlendState.IndependentBlendEnable = rs.Blends.size() > 1 ? TRUE : FALSE;
-            for (int i = 0; i < rs.Blends.size(); i++)
+            for (size_t i = 0; i < rs.Blends.size(); i++)
             {
                 const ShaderPassBlendState& b = rs.Blends[i];
                 D3D12_RENDER_TARGET_BLEND_DESC& blendDesc = psoDesc.BlendState.RenderTarget[i];

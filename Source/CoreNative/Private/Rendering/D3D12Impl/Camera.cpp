@@ -169,7 +169,8 @@ namespace march
 
     XMMATRIX Camera::LoadProjectionMatrix() const
     {
-        XMVECTOR jitterVec = XMLoadFloat2(&SequenceUtils::Halton(GetTAAFrameIndex()));
+        XMFLOAT2 halton = SequenceUtils::Halton(GetTAAFrameIndex());
+        XMVECTOR jitterVec = XMLoadFloat2(&halton);
         jitterVec = XMVectorMultiplyAdd(jitterVec, XMVectorReplicate(2.0f), XMVectorReplicate(-1.0f)); // [-1, 1]
 
         float width = static_cast<float>(GetPixelWidth());

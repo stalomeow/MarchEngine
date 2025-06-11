@@ -32,7 +32,7 @@ namespace march
                 return false;
             }
 
-            auto RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(GetProcAddress(hModule, "RENDERDOC_GetAPI"));
+            auto RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(reinterpret_cast<void*>(GetProcAddress(hModule, "RENDERDOC_GetAPI")));
             int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_5_0, reinterpret_cast<void**>(&pApi));
 
             if (ret != 1)

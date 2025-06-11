@@ -21,6 +21,8 @@ namespace march
         case D3D12_RESOURCE_DIMENSION_UNKNOWN:
         case D3D12_RESOURCE_DIMENSION_BUFFER:
             return 1;
+        default:
+            break;
         }
 
         uint32_t mipLevels = static_cast<uint32_t>(desc.MipLevels);

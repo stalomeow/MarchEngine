@@ -144,7 +144,7 @@ namespace march
     {
         if (m_UseColorTemperature != value)
         {
-            if (m_UseColorTemperature = value)
+            if ((m_UseColorTemperature = value))
             {
                 m_Color = CorrelatedColorTemperatureToRGB(m_ColorTemperature);
             }
