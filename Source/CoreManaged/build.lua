@@ -7,13 +7,6 @@ local m = marchmodule {
 assemblyname "March.Core"
 namespace "March.Core"
 
-vsprops {
-    EnableDynamicLoading = "true",
-    ServerGarbageCollection = "true",
-    ConcurrentGarbageCollection = "true",
-    GarbageCollectionAdaptationMode = "1",
-}
-
 uses {
     "BindingGenerator",
 }
@@ -25,6 +18,5 @@ nuget {
 
 usage "PUBLIC"
     runtimedeps {
-        ["March.Core.runtimeconfig.json"] = path.join(m.binaryDir, "March.Core.runtimeconfig.json"),
         ["Newtonsoft.Json.dll"] = path.join(m.binaryDir, "Newtonsoft.Json.dll"),
     }

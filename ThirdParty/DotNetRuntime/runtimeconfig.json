@@ -1,0 +1,15 @@
+{
+  "runtimeOptions": {
+    "tfm": "net9.0",
+    "rollForward": "LatestMinor",
+    "framework": {
+      "name": "Microsoft.NETCore.App",
+      "version": "9.0.1"
+    },
+    "configProperties": {
+      "System.GC.Server": true,
+      "System.GC.Concurrent": true,
+      "System.GC.DynamicAdaptationMode": 1
+    }
+  }
+}

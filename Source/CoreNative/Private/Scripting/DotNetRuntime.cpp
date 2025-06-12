@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <memory>
 
+// https://learn.microsoft.com/en-us/dotnet/core/tutorials/netcore-hosting
+
 namespace march
 {
     // 为了可读性，这里不用数组
@@ -34,19 +36,11 @@ namespace march
         { ManagedMethod::DragDrop_HandleExternalFiles             , { L"March.Editor.DragDrop,March.Editor"          , L"HandleExternalFiles"    } },
     };
 
-    const LPCWSTR g_ManagedRuntimeConfigFile = L"March.Core.runtimeconfig.json";
-
-    const LPCWSTR g_ManagedAssemblies[] =
+    constexpr LPCWSTR g_ManagedAssemblies[] =
     {
         L"March.Core.dll",
         L"March.Editor.dll",
     };
-
-    static std::wstring GetHostfxrPath()
-    {
-        std::wstring dir = PathUtils::GetWorkingDirectoryUtf16();
-        return dir + L"\\Runtime\\host\\fxr\\9.0.1\\hostfxr.dll";
-    }
 
     static std::wstring GetManagedFilePath(const LPCWSTR fileName)
     {
@@ -82,7 +76,7 @@ namespace march
     DotNetRuntimeImpl::DotNetRuntimeImpl() : m_Methods{}
     {
         // Load hostfxr and get desired exports
-        HMODULE hostfxr = LoadLibraryW(GetHostfxrPath().c_str());
+        HMODULE hostfxr = LoadLibraryW(GetManagedFilePath(DOTNET_HOSTFXR_PATH).c_str());
         if (hostfxr == NULL)
         {
             throw std::runtime_error("Failed to load hostfxr.dll");
@@ -99,7 +93,7 @@ namespace march
 
         // Load .NET
         hostfxr_handle contextHandle = nullptr;
-        int32_t rc = initFunc(GetManagedFilePath(g_ManagedRuntimeConfigFile).c_str(), nullptr, &contextHandle);
+        int32_t rc = initFunc(GetManagedFilePath(DOTNET_RUNTIME_CONFIG_PATH).c_str(), nullptr, &contextHandle);
         if (rc != 0 || contextHandle == nullptr)
         {
             closeFunc(contextHandle);

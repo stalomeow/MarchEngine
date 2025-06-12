@@ -577,8 +577,7 @@ namespace march
             std::string pageName = m_Allocator->GetName() + "Page";
             D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
             D3D12_RESOURCE_DESC pageDesc = CD3DX12_RESOURCE_DESC::Buffer(pageWidth);
-            RefCountPtr<GfxResource>& page = m_Pages.emplace_back(
-                pageAllocator->Allocate(pageName, &pageDesc, pageState));
+            RefCountPtr<GfxResource>& page = m_Pages.emplace_back(pageAllocator->Allocate(pageName, &pageDesc, pageState));
             page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
         };
 

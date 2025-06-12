@@ -13,10 +13,6 @@ disablewarnings {
     "3021",
 }
 
-uses {
-    "BindingGenerator",
-}
-
 nuget {
     "Antlr4.Runtime.Standard:4.13.1",
     "Newtonsoft.Json:13.0.3",
