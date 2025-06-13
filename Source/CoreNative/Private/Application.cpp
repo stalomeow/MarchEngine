@@ -5,6 +5,7 @@
 #include "Engine/Misc/StringUtils.h"
 #include "Engine/Rendering/RenderPipeline.h"
 #include <WindowsX.h>
+#include <dwmapi.h>
 #include <stdexcept>
 #include <assert.h>
 
@@ -169,6 +170,11 @@ namespace march
             CrashWithMessage("Create Window Failed");
             return false;
         }
+
+        // Dark Mode Window
+        // https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
+        BOOL dark = TRUE;
+        DwmSetWindowAttribute(m_WindowHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
 
         // ShowWindow(m_WindowHandle, nCmdShow);
         ShowWindow(m_WindowHandle, SW_SHOWMAXIMIZED); // 强制最大化显示
