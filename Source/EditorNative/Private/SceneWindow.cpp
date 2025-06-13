@@ -43,63 +43,116 @@ namespace march
     {
     }
 
-    ImGuiWindowFlags SceneWindow::GetWindowFlags() const
+    bool SceneWindow::Begin()
     {
-        return base::GetWindowFlags() | ImGuiWindowFlags_MenuBar;
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+        bool ret = base::Begin();
+        ImGui::PopStyleVar();
+        return ret;
     }
 
-    void SceneWindow::DrawMenuBar()
+    static constexpr float g_FloatingToolBarMargin = 10.0f;
+
+    void SceneWindow::DrawFloatingToolBar()
     {
-        if (!ImGui::BeginMenuBar())
+        auto pushStyleColorAlpha = [](ImGuiCol idx, float alpha)
         {
-            return;
+            ImVec4 color = ImGui::GetStyleColorVec4(idx);
+            color.w = alpha;
+            ImGui::PushStyleColor(idx, color);
+        };
+
+        const ImRect rect = GetSceneViewImageRect();
+        ImGui::SetCursorScreenPos(ImVec2(rect.Min.x + g_FloatingToolBarMargin, rect.Min.y + g_FloatingToolBarMargin));
+
+        pushStyleColorAlpha(ImGuiCol_Button, 0.7f);
+        pushStyleColorAlpha(ImGuiCol_FrameBg, 0.7f);
+
+        if (ToggleButton(ICON_FA_GEAR, "Settings", m_WindowMode == SceneWindowMode::Settings))
+        {
+            m_WindowMode = (m_WindowMode == SceneWindowMode::Settings) ?
+                SceneWindowMode::SceneView : SceneWindowMode::Settings;
         }
 
-        DrawMenuGizmoModeCombo();
+        if (m_WindowMode == SceneWindowMode::SceneView)
+        {
+            ImGui::SameLine();
+            DrawSceneViewTools();
+        }
 
-        ImGui::TextUnformatted("Tool");
+        ImGui::PopStyleColor(2);
+    }
+
+    void SceneWindow::DrawSceneViewTools()
+    {
+        DrawGizmoModeComboTool();
+
+        ImGui::SameLine();
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-
-        if (ToggleButton(ICON_FA_HAND, "View Tool", m_GizmoOperation == SceneGizmoOperation::Pan))
         {
-            m_GizmoOperation = SceneGizmoOperation::Pan;
-        }
+            if (ToggleButton(ICON_FA_HAND, "View", m_GizmoOperation == SceneGizmoOperation::Pan, 1.5f, ImDrawFlags_RoundCornersLeft))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Pan;
+            }
 
-        if (ToggleButton(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, "Move Tool", m_GizmoOperation == SceneGizmoOperation::Translate))
-        {
-            m_GizmoOperation = SceneGizmoOperation::Translate;
-        }
+            ImGui::SameLine();
 
-        if (ToggleButton(ICON_FA_ARROWS_ROTATE, "Rotate Tool", m_GizmoOperation == SceneGizmoOperation::Rotate))
-        {
-            m_GizmoOperation = SceneGizmoOperation::Rotate;
-        }
+            if (ToggleButton(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, "Move", m_GizmoOperation == SceneGizmoOperation::Translate, 1.5f, ImDrawFlags_RoundCornersNone))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Translate;
+            }
 
-        if (ToggleButton(ICON_FA_UP_RIGHT_AND_DOWN_LEFT_FROM_CENTER, "Scale Tool", m_GizmoOperation == SceneGizmoOperation::Scale))
-        {
-            m_GizmoOperation = SceneGizmoOperation::Scale;
-        }
+            ImGui::SameLine();
 
+            if (ToggleButton(ICON_FA_ARROWS_ROTATE, "Rotate", m_GizmoOperation == SceneGizmoOperation::Rotate, 1.5f, ImDrawFlags_RoundCornersNone))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Rotate;
+            }
+
+            ImGui::SameLine();
+
+            if (ToggleButton(ICON_FA_UP_RIGHT_AND_DOWN_LEFT_FROM_CENTER, "Scale", m_GizmoOperation == SceneGizmoOperation::Scale, 1.5f, ImDrawFlags_RoundCornersRight))
+            {
+                m_GizmoOperation = SceneGizmoOperation::Scale;
+            }
+        }
         ImGui::PopStyleVar();
 
-        ImGui::Spacing();
-        ImGui::TextUnformatted("Snap");
+        ImGui::SameLine();
 
         if (IsForceGizmoSnapByKeyboardShortcut())
         {
             ImGui::BeginDisabled();
-            ToggleButton(ICON_FA_MAGNET, "", true);
+            ToggleButton(ICON_FA_MAGNET, "Snap", true);
             ImGui::EndDisabled();
         }
-        else if (ToggleButton(ICON_FA_MAGNET, "", m_GizmoSnap))
+        else if (ToggleButton(ICON_FA_MAGNET, "Snap", m_GizmoSnap))
         {
             m_GizmoSnap = !m_GizmoSnap;
         }
+    }
 
-        DrawMenuRightButtons();
+    void SceneWindow::DrawGizmoModeComboTool()
+    {
+        std::string localLabel = ICON_FA_CUBE + std::string(" Local");
+        std::string worldLabel = ICON_FA_GLOBE + std::string(" Global");
 
-        ImGui::EndMenuBar();
+        float w1 = ImGui::CalcTextSize(localLabel.c_str()).x;
+        float w2 = ImGui::CalcTextSize(worldLabel.c_str()).x;
+        float comboWidth = std::max(w1, w2) * 2.0f + ImGui::GetStyle().FramePadding.x * 2.0f;
+
+        int current = static_cast<int>(m_GizmoMode);
+        const char* labels[] = { localLabel.c_str(), worldLabel.c_str() };
+        ImGui::SetNextItemWidth(comboWidth);
+
+        bool changed = ImGui::Combo("##GizmoMode", &current, labels, std::size(labels));
+        ImGui::SetItemTooltip("Mode");
+
+        if (changed)
+        {
+            m_GizmoMode = static_cast<SceneGizmoMode>(current);
+        }
     }
 
     Display* SceneWindow::UpdateDisplay()
@@ -422,8 +475,7 @@ namespace march
 
     void SceneWindow::DrawWindowSettings()
     {
-        EditorGUI::SeparatorText("Settings");
-        EditorGUI::Space();
+        ImGui::Dummy(ImVec2(0, g_FloatingToolBarMargin * 2 + ImGui::GetFrameHeight()));
 
         if (EditorGUI::Foldout("Display", ""))
         {
@@ -466,44 +518,12 @@ namespace march
         EditorGUI::Space();
     }
 
-    void SceneWindow::DrawMenuGizmoModeCombo()
-    {
-        ImGui::TextUnformatted("Mode");
-
-        std::string localLabel = ICON_FA_CUBE + std::string(" Local");
-        std::string worldLabel = ICON_FA_GLOBE + std::string(" Global");
-
-        float w1 = ImGui::CalcTextSize(localLabel.c_str()).x;
-        float w2 = ImGui::CalcTextSize(worldLabel.c_str()).x;
-        float comboWidth = std::max(w1, w2) * 2.0f + ImGui::GetStyle().FramePadding.x * 2.0f;
-
-        int current = static_cast<int>(m_GizmoMode);
-        const char* labels[] = { localLabel.c_str(), worldLabel.c_str() };
-        ImGui::SetNextItemWidth(comboWidth);
-
-        if (ImGui::Combo("##GizmoMode", &current, labels, std::size(labels)))
-        {
-            m_GizmoMode = static_cast<SceneGizmoMode>(current);
-        }
-    }
-
-    void SceneWindow::DrawMenuRightButtons()
-    {
-        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - CalcToggleButtonWidth(ICON_FA_GEAR));
-
-        if (ToggleButton(ICON_FA_GEAR, "", m_WindowMode == SceneWindowMode::Settings))
-        {
-            m_WindowMode = (m_WindowMode == SceneWindowMode::Settings) ?
-                SceneWindowMode::SceneView : SceneWindowMode::Settings;
-        }
-    }
-
     float SceneWindow::CalcToggleButtonWidth(const std::string& name, float widthScale)
     {
         return EditorGUI::CalcButtonWidth(name.c_str()) * widthScale;
     }
 
-    bool SceneWindow::ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale)
+    bool SceneWindow::ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale, ImDrawFlags drawFlags)
     {
         float width = CalcToggleButtonWidth(name, widthScale);
         ImVec2 size = ImVec2(width, ImGui::GetFrameHeight());
@@ -513,12 +533,12 @@ namespace march
         if (isOn)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-            isClicked = ImGui::Button(name.c_str(), size);
+            isClicked = ImGui::ButtonEx(name.c_str(), size, ImGuiButtonFlags_None, drawFlags);
             ImGui::PopStyleColor();
         }
         else
         {
-            isClicked = ImGui::Button(name.c_str(), size);
+            isClicked = ImGui::ButtonEx(name.c_str(), size, ImGuiButtonFlags_None, drawFlags);
         }
 
         if (!tooltip.empty())
@@ -598,9 +618,9 @@ namespace march
         return ImGui::GetCurrentWindowRead()->ContentRegionRect;
     }
 
-    void SceneWindowInternalUtility::DrawMenuBar(SceneWindow* window)
+    void SceneWindowInternalUtility::DrawFloatingToolBar(SceneWindow* window)
     {
-        window->DrawMenuBar();
+        window->DrawFloatingToolBar();
     }
 
     Display* SceneWindowInternalUtility::UpdateDisplay(SceneWindow* window)

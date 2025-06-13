@@ -695,25 +695,45 @@ namespace march
 
     bool EditorGUI::BeginMainMenuBar()
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        bool ret = ImGui::BeginMainMenuBar();
-        ImGui::PopStyleVar();
-        return ret;
+        ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImGui::GetStyleColorVec4(ImGuiCol_DockingEmptyBg));
+        bool sideBar = BeginMainViewportSideBar("##MainMenuBar", ImGuiDir_Up, ImGui::GetFrameHeight(), ImGuiWindowFlags_MenuBar);
+        ImGui::PopStyleColor();
+
+        if (!sideBar)
+        {
+            EndMainViewportSideBar();
+            return false;
+        }
+
+        if (!ImGui::BeginMenuBar())
+        {
+            EndMainViewportSideBar();
+            return false;
+        }
+
+        return true;
     }
 
     void EditorGUI::EndMainMenuBar()
     {
-        ImGui::EndMainMenuBar();
+        ImGui::EndMenuBar();
+        EndMainViewportSideBar();
     }
 
-    bool EditorGUI::BeginMainViewportSideBar(const std::string& name, ImGuiDir dir, float contentHeight)
+    bool EditorGUI::BeginMainViewportSideBar(const std::string& name, ImGuiDir dir, float contentHeight, ImGuiWindowFlags extraFlags)
     {
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetStyleColorVec4(ImGuiCol_DockingEmptyBg));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         float height = contentHeight + ImGui::GetStyle().WindowPadding.y * 2;
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
+
+        ImGuiWindowFlags flags
+            = ImGuiWindowFlags_NoDecoration
+            | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoMove
+            | extraFlags;
 
         bool ret = ImGui::BeginViewportSideBar(name.c_str(), viewport, dir, height, flags);
 

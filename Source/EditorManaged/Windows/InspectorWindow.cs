@@ -1,4 +1,5 @@
 using March.Core;
+using March.Core.Interop;
 using March.Editor.IconFont;
 using System.Numerics;
 
@@ -20,11 +21,12 @@ namespace March.Editor.Windows
         {
             base.OnDraw();
 
+            bool isMultiSelection = false;
             MarchObject? target = null;
 
             if (Selection.Count > 1)
             {
-                EditorGUI.LabelField("##Error", string.Empty, "Multiple selection is not supported.");
+                isMultiSelection = true;
             }
             else
             {
@@ -49,7 +51,24 @@ namespace March.Editor.Windows
                 m_LastTarget = target;
             }
 
-            m_LastDrawer?.Draw();
+            if (m_LastDrawer != null)
+            {
+                m_LastDrawer.Draw();
+            }
+            else if (isMultiSelection)
+            {
+                DisplayMessage("Multiple selection is not supported");
+            }
+            else
+            {
+                DisplayMessage("Select an object to inspect");
+            }
+
+            static void DisplayMessage(StringLike message)
+            {
+                EditorGUI.Space();
+                EditorGUI.CenterText(message);
+            }
         }
         protected override void OnClose()
         {

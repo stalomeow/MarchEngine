@@ -2,7 +2,6 @@ using March.Core;
 using March.Core.Diagnostics;
 using March.Core.Interop;
 using March.Core.Pool;
-using March.Core.Rendering;
 using March.Core.Serialization;
 using March.Editor.AssetPipeline;
 using March.Editor.Windows;
@@ -26,7 +25,7 @@ namespace March.Editor
         }
 
         private static readonly WindowData s_WindowData = new();
-        private static readonly GenericMenu s_WindowMenu = new("EditorWindowMenu");
+        private static readonly GenericMenu s_MainMenu = new("EditorMainMenu");
         private static int? s_LastTypeCacheVersion;
 
         [UnmanagedCallersOnly]
@@ -44,7 +43,7 @@ namespace March.Editor
 
             OnTick += () =>
             {
-                ShowWindowMenu();
+                ShowMainMenu();
                 DrawWindows();
             };
 
@@ -155,13 +154,13 @@ namespace March.Editor
             window.Dispose();
         }
 
-        private static void ShowWindowMenu()
+        private static void ShowMainMenu()
         {
-            RebuildWindowMenuIfNeeded();
-            s_WindowMenu.ShowInMainMenuBar();
+            RebuildMainMenuIfNeeded();
+            s_MainMenu.ShowInMainMenuBar();
         }
 
-        private static void RebuildWindowMenuIfNeeded()
+        private static void RebuildMainMenuIfNeeded()
         {
             if (s_LastTypeCacheVersion == TypeCache.Version)
             {
@@ -169,7 +168,7 @@ namespace March.Editor
             }
 
             s_LastTypeCacheVersion = TypeCache.Version;
-            s_WindowMenu.Clear();
+            s_MainMenu.Clear();
 
             using var types = ListPool<KeyValuePair<string, Type>>.Get();
 
@@ -199,11 +198,28 @@ namespace March.Editor
                 return x.Key.CompareTo(y.Key);
             });
 
+            s_MainMenu.AddMenuItem("File/New");
+            s_MainMenu.AddMenuItem("File/Open");
+
+            s_MainMenu.AddMenuItem("Edit/Undo");
+            s_MainMenu.AddMenuItem("Edit/Redo");
+            s_MainMenu.AddSeparator("Edit");
+            s_MainMenu.AddMenuItem("Edit/Cut");
+            s_MainMenu.AddMenuItem("Edit/Copy");
+            s_MainMenu.AddMenuItem("Edit/Paste");
+
             foreach (KeyValuePair<string, Type> kv in types.Value)
             {
                 Type windowType = kv.Value;
-                s_WindowMenu.AddMenuItem(kv.Key, callback: (ref object? _) => OpenWindow(windowType));
+                s_MainMenu.AddMenuItem(kv.Key, callback: (ref object? _) => OpenWindow(windowType));
             }
+
+            s_MainMenu.AddMenuItem("Help/Documentation/Build", (ref object? _) => OpenURL("https://github.com/stalomeow/MarchEngine/blob/main/Documentation/Build.md"));
+            s_MainMenu.AddMenuItem("Help/Documentation/Conventions", (ref object? _) => OpenURL("https://github.com/stalomeow/MarchEngine/blob/main/Documentation/Conventions.md"));
+            s_MainMenu.AddMenuItem("Help/Documentation/Asset Pipeline", (ref object? _) => OpenURL("https://github.com/stalomeow/MarchEngine/blob/main/Documentation/AssetPipeline.md"));
+            s_MainMenu.AddMenuItem("Help/Documentation/Rendering", (ref object? _) => OpenURL("https://github.com/stalomeow/MarchEngine/blob/main/Documentation/Rendering.md"));
+            s_MainMenu.AddMenuItem("Help/Documentation/Debugging Shaders", (ref object? _) => OpenURL("https://github.com/stalomeow/MarchEngine/blob/main/Documentation/DebuggingShaders.md"));
+            s_MainMenu.AddMenuItem("Help/GitHub", (ref object? _) => OpenURL("https://github.com/stalomeow/MarchEngine"));
         }
 
         private static string GetWindowDataFilePath()
@@ -223,25 +239,29 @@ namespace March.Editor
             {
                 // 默认窗口
                 var scene = new SceneWindow();
-                var inspector = new InspectorWindow();
                 var hierarchy = new HierarchyWindow();
                 var project = new ProjectWindow();
+                var inspector = new InspectorWindow();
+                var debugger = new GraphicsDebuggerWindow();
 
                 EditorWindow.SplitDockNodeHorizontal(EditorWindow.MainViewportDockSpaceNode, 0.65f, out uint sceneNode, out uint rightNode);
-                EditorWindow.SplitDockNodeHorizontal(rightNode, 0.5f, out uint leftNode, out uint inspectorNode);
-                EditorWindow.SplitDockNodeVertical(leftNode, 0.5f, out uint hierarchyNode, out uint projectNode);
+                EditorWindow.SplitDockNodeHorizontal(rightNode, 0.5f, out uint rightLeftNode, out uint rightRightNode);
+                EditorWindow.SplitDockNodeVertical(rightLeftNode, 0.5f, out uint hierarchyNode, out uint projectNode);
+                EditorWindow.SplitDockNodeVertical(rightRightNode, 0.7f, out uint inspectorNode, out uint debuggerNode);
 
                 scene.DockIntoNode(sceneNode);
-                inspector.DockIntoNode(inspectorNode);
                 hierarchy.DockIntoNode(hierarchyNode);
                 project.DockIntoNode(projectNode);
+                inspector.DockIntoNode(inspectorNode);
+                debugger.DockIntoNode(debuggerNode);
 
                 EditorWindow.ApplyModificationsInChildDockNodes(EditorWindow.MainViewportDockSpaceNode);
 
                 s_WindowData.Windows.Add(scene);
-                s_WindowData.Windows.Add(inspector);
                 s_WindowData.Windows.Add(hierarchy);
                 s_WindowData.Windows.Add(project);
+                s_WindowData.Windows.Add(inspector);
+                s_WindowData.Windows.Add(debugger);
             }
         }
 

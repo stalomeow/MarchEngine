@@ -1,6 +1,7 @@
 using March.Core.Interop;
 using March.Core.Rendering;
 using System.Collections;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 #pragma warning disable IDE0051 // Remove unused private members
@@ -127,6 +128,15 @@ namespace March.Core
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
+        }
+
+        public static void OpenURL(string url)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true, // 必须设置为 true 才能在现代 Windows 上打开浏览器
+            });
         }
 
         #region Coroutine

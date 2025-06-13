@@ -23,6 +23,10 @@ namespace march
         m_DeltaTime = 0;
 
         m_FrameCount = 0;
+
+        m_FPSCounterElapsedTime = 0;
+        m_FPSCounterFrameCount = 0;
+        m_FPSCounterFPS = 0;
     }
 
     void EngineTimer::Start()
@@ -52,6 +56,7 @@ namespace march
         if (!m_IsRunning)
         {
             m_DeltaTime = 0;
+            m_FPSCounterFPS = 0;
             return false;
         }
 
@@ -66,6 +71,18 @@ namespace march
         m_LastTickTimestamp = timestamp;
 
         m_FrameCount++;
+        m_FPSCounterFrameCount++;
+
+        // Compute averages over one second period.
+        if ((m_ElapsedTime - m_FPSCounterElapsedTime) >= 1.0f)
+        {
+            m_FPSCounterFPS = m_FPSCounterFrameCount; // fps = frameCnt / 1
+
+            // Reset for next average.
+            m_FPSCounterFrameCount = 0;
+            m_FPSCounterElapsedTime += 1.0f;
+        }
+
         return true;
     }
 }

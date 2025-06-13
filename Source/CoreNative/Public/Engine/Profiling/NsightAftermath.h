@@ -5,8 +5,17 @@
 
 namespace march
 {
+    enum class NsightAftermathState
+    {
+        Uninitialized,
+        MinimalFeatures,
+        FullFeatures
+    };
+
     struct NsightAftermath
     {
+        static NsightAftermathState GetState();
+
         static void InitializeBeforeDeviceCreation(bool fullFeatures);
         static void InitializeDevice(ID3D12Device* device);
 

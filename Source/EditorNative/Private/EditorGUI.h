@@ -103,7 +103,7 @@ namespace march
         // only call EndMainMenuBar() if BeginMainMenuBar() returns true!
         static void EndMainMenuBar();
 
-        static bool BeginMainViewportSideBar(const std::string& name, ImGuiDir dir, float contentHeight);
+        static bool BeginMainViewportSideBar(const std::string& name, ImGuiDir dir, float contentHeight, ImGuiWindowFlags extraFlags = ImGuiWindowFlags_None);
         // always call EndMainViewportSideBar() after BeginMainViewportSideBar()
         static void EndMainViewportSideBar();
 

@@ -19,6 +19,7 @@ namespace march
         float GetDeltaTime() const { return m_DeltaTime; }
         float GetElapsedTime() const { return m_ElapsedTime; }
         uint64_t GetFrameCount() const { return m_FrameCount; }
+        uint32_t GetFPS() const { return m_FPSCounterFPS; }
         bool GetIsRunning() const { return m_IsRunning; }
 
     private:
@@ -32,5 +33,9 @@ namespace march
         float m_DeltaTime;
 
         uint64_t m_FrameCount;
+
+        float m_FPSCounterElapsedTime;
+        uint32_t m_FPSCounterFrameCount;
+        uint32_t m_FPSCounterFPS;
     };
 }

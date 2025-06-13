@@ -180,7 +180,12 @@ namespace march
         m_EngineShaderPath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
 #endif
 
-        SetWindowTitle(StringUtils::Format("March Engine <DX12> - {}", m_DataPath));
+#ifdef _DEBUG
+        SetWindowTitle(StringUtils::Format("{} - March Engine [Debug]", m_ProjectName));
+#else
+        SetWindowTitle(StringUtils::Format("{} - March Engine [Release]", m_ProjectName));
+#endif
+
         LOG_INFO("Welcome to March Engine!");
     }
 
@@ -266,53 +271,66 @@ namespace march
 
     void EditorApplication::DrawBaseImGui()
     {
-        // Main Menu Bar 占位
-        if (EditorGUI::BeginMainMenuBar())
+        auto drawCenterToolButtons = [](float buttonHeight)
         {
-            EditorGUI::EndMainMenuBar();
-        }
-
-        if (EditorGUI::BeginMainViewportSideBar("##SingleLineToolbar", ImGuiDir_Up, ImGui::GetFrameHeight()))
-        {
-            // Frame Stats
-            DrawFrameStats();
-            ImGui::SameLine();
-
-            // Center Buttons
             float width1 = EditorGUI::CalcButtonWidth(ICON_FA_PLAY) * 1.8f;
             float width2 = EditorGUI::CalcButtonWidth(ICON_FA_PAUSE) * 1.8f;
             float width3 = EditorGUI::CalcButtonWidth(ICON_FA_FORWARD_STEP) * 1.8f;
             float width4 = EditorGUI::CalcButtonWidth(ICON_FA_CAMERA) * 1.8f;
-            float buttonWidth = width1 + width2 + width3 + width4;
-            float contentTotalWidth = ImGui::GetContentRegionMax().x;
-            ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - (contentTotalWidth + buttonWidth) * 0.5f);
 
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3, 0));
+            float buttonWidths = width1 + width2 + width3 + width4;
+            ImGui::SetCursorPosX((ImGui::GetContentRegionMax().x - buttonWidths) * 0.5f);
 
-            ImGui::BeginDisabled();
-            ImGui::Button(ICON_FA_PLAY, ImVec2(width1, ImGui::GetFrameHeight()));
-            ImGui::SameLine();
-            ImGui::Button(ICON_FA_PAUSE, ImVec2(width2, ImGui::GetFrameHeight()));
-            ImGui::SameLine();
-            ImGui::Button(ICON_FA_FORWARD_STEP, ImVec2(width3, ImGui::GetFrameHeight()));
-            ImGui::EndDisabled();
-
-            ImGui::SameLine();
-
-            if (FrameDebugger::IsCaptureAvailable() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
             {
-                FrameDebugger::Capture();
+                ImGui::BeginDisabled();
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(141, 193, 76, 255)); // 播放按钮显示为绿色
+                ImGui::ButtonEx(ICON_FA_PLAY, ImVec2(width1, buttonHeight), ImGuiButtonFlags_None, ImDrawFlags_RoundCornersLeft);
+                ImGui::PopStyleColor();
+                ImGui::SetItemTooltip("Play");
+                ImGui::SameLine();
+                ImGui::ButtonEx(ICON_FA_PAUSE, ImVec2(width2, buttonHeight), ImGuiButtonFlags_None, ImDrawFlags_RoundCornersNone);
+                ImGui::SetItemTooltip("Pause");
+                ImGui::SameLine();
+                ImGui::ButtonEx(ICON_FA_FORWARD_STEP, ImVec2(width3, buttonHeight), ImGuiButtonFlags_None, ImDrawFlags_RoundCornersNone);
+                ImGui::SetItemTooltip("Step");
+                ImGui::EndDisabled();
+
+                ImGui::SameLine();
+
+                if (FrameDebugger::IsCaptureAvailable() && ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_C, ImGuiInputFlags_RouteAlways))
+                {
+                    FrameDebugger::Capture();
+                }
+
+                ImGui::BeginDisabled(!FrameDebugger::IsCaptureAvailable());
+                bool capture = ImGui::ButtonEx(ICON_FA_CAMERA, ImVec2(width4, buttonHeight), ImGuiButtonFlags_None, ImDrawFlags_RoundCornersRight);
+                ImGui::SetItemTooltip("Capture Frame (Alt+C)");
+                if (capture) FrameDebugger::Capture();
+                ImGui::EndDisabled();
             }
-
-            ImGui::BeginDisabled(!FrameDebugger::IsCaptureAvailable());
-            bool capture = ImGui::Button(ICON_FA_CAMERA, ImVec2(width4, ImGui::GetFrameHeight()));
-            ImGui::SetItemTooltip("Capture Frames (Alt+C)");
-            if (capture) FrameDebugger::Capture();
-            ImGui::EndDisabled();
-
             ImGui::PopStyleVar();
+        };
+
+        if (EditorGUI::BeginMainMenuBar())
+        {
+            // 替换 MenuBar 的 Clip Rect
+            ImRect rect = ImGui::GetCurrentWindow()->Rect();
+            ImGui::PushClipRect(rect.Min, rect.Max, false);
+
+            // 替换 MenuBar 的 PosY
+            float buttonHeight = ImGui::GetFrameHeight();
+            ImVec2 initialCursorPos = ImGui::GetCursorPos();
+            ImGui::SetCursorPosY((rect.GetHeight() - buttonHeight) * 0.5f);
+
+            drawCenterToolButtons(buttonHeight);
+
+            // 恢复原本 MenuBar 的设置
+            ImGui::SetCursorPos(initialCursorPos);
+            ImGui::PopClipRect();
+
+            EditorGUI::EndMainMenuBar();
         }
-        EditorGUI::EndMainViewportSideBar();
 
         ConsoleWindow::DrawMainViewportSideBarConsole();
     }
@@ -470,56 +488,6 @@ namespace march
         }
 
         return Application::HandleMessage(msg, wParam, lParam);
-    }
-
-    void EditorApplication::DrawFrameStats()
-    {
-        // Code computes the average frames per second, and also the average time it takes to render one frame.
-        // These stats are appended to the window caption bar.
-
-        static int fps = 0;
-        static int frameCnt = 0;
-        static float timeElapsed = 0.0f;
-
-        frameCnt++;
-
-        // Compute averages over one second period.
-        if ((GetElapsedTime() - timeElapsed) >= 1.0f)
-        {
-            fps = frameCnt; // fps = frameCnt / 1
-
-            // Reset for next average.
-            frameCnt = 0;
-            timeElapsed += 1.0f;
-        }
-
-        constexpr auto fpsLabel = "FPS:";
-        constexpr auto fpsSlash = "/";
-        std::string fpsText = std::to_string(fps);
-        std::string mspfText = StringUtils::Format("{:.1f} ms", 1000.0f / fps);
-
-        float width
-            = ImGui::CalcTextSize(fpsLabel).x
-            + ImGui::CalcTextSize(fpsText.c_str()).x
-            + ImGui::CalcTextSize(fpsSlash).x
-            + ImGui::CalcTextSize(mspfText.c_str()).x
-            + ImGui::GetStyle().ItemSpacing.x * 3;
-        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - width);
-
-        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        ImGui::TextUnformatted(fpsLabel);
-        ImGui::PopStyleColor();
-
-        ImGui::SameLine();
-        ImGui::TextUnformatted(fpsText.c_str());
-        ImGui::SameLine();
-
-        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        ImGui::TextUnformatted(fpsSlash);
-        ImGui::PopStyleColor();
-
-        ImGui::SameLine();
-        ImGui::TextUnformatted(mspfText.c_str());
     }
 
     std::string EditorApplication::SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const

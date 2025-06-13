@@ -42,10 +42,13 @@ namespace march
         virtual ~SceneWindow() = default;
 
     protected:
-        ImGuiWindowFlags GetWindowFlags() const override;
+        bool Begin() override;
 
     private:
-        void DrawMenuBar();
+        void DrawFloatingToolBar();
+        void DrawSceneViewTools();
+        void DrawGizmoModeComboTool();
+
         Display* UpdateDisplay();
         void DrawSceneView();
         void TravelScene(DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);
@@ -54,11 +57,9 @@ namespace march
         void BeginGizmosGUI(const Camera* camera);
         void EndGizmosGUI();
         void DrawWindowSettings();
-        void DrawMenuGizmoModeCombo();
-        void DrawMenuRightButtons();
 
         static float CalcToggleButtonWidth(const std::string& name, float widthScale = 1.5f);
-        static bool ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale = 1.5f);
+        static bool ToggleButton(const std::string& name, const std::string& tooltip, bool isOn, float widthScale = 1.5f, ImDrawFlags drawFlags = ImDrawFlags_None);
         static bool IsForceGizmoSnapByKeyboardShortcut();
         static bool AllowFocusingWindow();
         static bool IsMouseDraggingAndFromSceneViewImage(ImGuiMouseButton button);
@@ -92,7 +93,7 @@ namespace march
     class SceneWindowInternalUtility
     {
     public:
-        static void DrawMenuBar(SceneWindow* window);
+        static void DrawFloatingToolBar(SceneWindow* window);
         static Display* UpdateDisplay(SceneWindow* window);
         static void DrawSceneView(SceneWindow* window);
         static void TravelScene(SceneWindow* window, DirectX::XMFLOAT3& cameraPosition, DirectX::XMFLOAT4& cameraRotation);

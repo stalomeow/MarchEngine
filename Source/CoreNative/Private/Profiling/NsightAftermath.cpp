@@ -46,6 +46,16 @@ namespace march
     static uint32_t g_FeatureFlags;
     static bool g_IsInitialized = false;
 
+    NsightAftermathState NsightAftermath::GetState()
+    {
+        if (!g_IsInitialized)
+        {
+            return NsightAftermathState::Uninitialized;
+        }
+
+        return g_FeatureFlags == FullFeatureFlags ? NsightAftermathState::FullFeatures : NsightAftermathState::MinimalFeatures;
+    }
+
     void NsightAftermath::InitializeBeforeDeviceCreation(bool fullFeatures)
     {
         if (g_IsInitialized)

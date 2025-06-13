@@ -22,20 +22,19 @@ namespace march
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        constexpr ImVec4 dockingEmptyBgColor = ColorFromBytes(18, 18, 18);
-        constexpr ImVec4 bgColor = ColorFromBytes(25, 25, 26);
-        constexpr ImVec4 menuColor = ColorFromBytes(35, 35, 36);
-        constexpr ImVec4 lightBgColor = ColorFromBytes(90, 90, 92);
-        constexpr ImVec4 veryLightBgColor = ColorFromBytes(110, 110, 115);
+        constexpr ImVec4 dockingEmptyBgColor = ColorFromBytes(21, 21, 21);
+        constexpr ImVec4 bgColor = ColorFromBytes(31, 31, 31);
+        constexpr ImVec4 lightColor = ColorFromBytes(90, 90, 90);
+        constexpr ImVec4 veryLightColor = ColorFromBytes(110, 110, 110);
 
-        constexpr ImVec4 panelColor = ColorFromBytes(55, 55, 59);
+        constexpr ImVec4 panelColor = ColorFromBytes(50, 50, 50);
         constexpr ImVec4 panelHoverColor = ColorFromBytes(35, 80, 142);
-        constexpr ImVec4 panelActiveColor = ColorFromBytes(0, 95, 170);
+        constexpr ImVec4 panelActiveColor = ColorFromBytes(0, 112, 223);
+        constexpr ImVec4 panelActiveDimmedColor = ColorFromBytes(58, 77, 98);
 
         constexpr ImVec4 textColor = ColorFromBytes(230, 230, 230);
         constexpr ImVec4 textHighlightColor = ColorFromBytes(255, 255, 255);
         constexpr ImVec4 textDisabledColor = ColorFromBytes(151, 151, 151);
-        constexpr ImVec4 borderColor = ColorFromBytes(58, 58, 58);
 
         colors[ImGuiCol_Text] = textColor;
         colors[ImGuiCol_TextDisabled] = textDisabledColor;
@@ -43,19 +42,19 @@ namespace march
         colors[ImGuiCol_WindowBg] = bgColor;
         colors[ImGuiCol_ChildBg] = bgColor;
         colors[ImGuiCol_PopupBg] = bgColor;
-        colors[ImGuiCol_Border] = borderColor;
-        colors[ImGuiCol_BorderShadow] = borderColor;
+        colors[ImGuiCol_Border] = panelColor;
+        colors[ImGuiCol_BorderShadow] = panelColor;
         colors[ImGuiCol_FrameBg] = panelColor;
         colors[ImGuiCol_FrameBgHovered] = panelHoverColor;
         colors[ImGuiCol_FrameBgActive] = panelActiveColor;
         colors[ImGuiCol_TitleBg] = dockingEmptyBgColor;
         colors[ImGuiCol_TitleBgActive] = dockingEmptyBgColor;
         colors[ImGuiCol_TitleBgCollapsed] = dockingEmptyBgColor;
-        colors[ImGuiCol_MenuBarBg] = menuColor;
+        colors[ImGuiCol_MenuBarBg] = panelColor;
         colors[ImGuiCol_ScrollbarBg] = panelColor;
-        colors[ImGuiCol_ScrollbarGrab] = lightBgColor;
-        colors[ImGuiCol_ScrollbarGrabHovered] = veryLightBgColor;
-        colors[ImGuiCol_ScrollbarGrabActive] = veryLightBgColor;
+        colors[ImGuiCol_ScrollbarGrab] = lightColor;
+        colors[ImGuiCol_ScrollbarGrabHovered] = veryLightColor;
+        colors[ImGuiCol_ScrollbarGrabActive] = veryLightColor;
         colors[ImGuiCol_CheckMark] = textColor;
         colors[ImGuiCol_SliderGrab] = WithAlpha(textColor, 0.4f);
         colors[ImGuiCol_SliderGrabActive] = WithAlpha(textHighlightColor, 0.4f);
@@ -65,7 +64,8 @@ namespace march
         colors[ImGuiCol_Header] = panelColor;
         colors[ImGuiCol_HeaderHovered] = panelHoverColor;
         colors[ImGuiCol_HeaderActive] = panelActiveColor;
-        colors[ImGuiCol_Separator] = borderColor;
+        colors[ImGuiCol_HeaderActiveDimmed] = panelActiveDimmedColor;
+        colors[ImGuiCol_Separator] = panelColor;
         colors[ImGuiCol_SeparatorHovered] = panelHoverColor;
         colors[ImGuiCol_SeparatorActive] = panelActiveColor;
         colors[ImGuiCol_ResizeGrip] = bgColor;

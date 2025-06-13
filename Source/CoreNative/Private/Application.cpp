@@ -97,6 +97,11 @@ namespace march
         return m_Timer->GetFrameCount();
     }
 
+    uint32_t Application::GetFPS() const
+    {
+        return m_Timer->GetFPS();
+    }
+
     int Application::Run(HINSTANCE hInstance, LPWSTR lpCmdLine, int nCmdShow)
     {
         m_InstanceHandle = hInstance;

@@ -94,6 +94,7 @@ local function nativeModule(m)
             "return-type-c-linkage",
             "format-security",
             "unused-parameter",
+            "unused-function",
         }
 
         files {

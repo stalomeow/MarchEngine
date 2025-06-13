@@ -360,7 +360,7 @@ namespace March.Editor.Windows
         {
             INode node = (INode)item;
             AssetImporter? importer = AssetDatabase.GetAssetImporter(node.Path);
-            bool isOpenByDefault = importer == null;
+            bool isOpenByDefault = !node.Path.Contains('/'); // 默认打开最顶层的目录
 
             string icon;
             using var id = EditorGUIUtility.BuildId(node.Name);

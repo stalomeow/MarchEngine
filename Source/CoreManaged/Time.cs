@@ -13,5 +13,8 @@ namespace March.Core
 
         [NativeProperty]
         public static partial ulong FrameCount { get; }
+
+        [NativeProperty]
+        public static partial uint FPS { get; }
     }
 }

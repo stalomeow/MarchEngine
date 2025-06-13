@@ -17,6 +17,11 @@ NATIVE_EXPORT_AUTO Application_GetFrameCount()
     retcs GetApp()->GetFrameCount();
 }
 
+NATIVE_EXPORT_AUTO Application_GetFPS()
+{
+    retcs GetApp()->GetFPS();
+}
+
 NATIVE_EXPORT_AUTO Application_GetProjectName()
 {
     retcs GetApp()->GetProjectName();

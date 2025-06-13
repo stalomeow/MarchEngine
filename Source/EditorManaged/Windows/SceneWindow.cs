@@ -154,7 +154,6 @@ namespace March.Editor.Windows
         protected override void OnDraw()
         {
             base.OnDraw();
-            DrawMenuBar();
 
             m_SceneViewCamera.SetCustomTargetDisplay(UpdateDisplay());
 
@@ -178,6 +177,8 @@ namespace March.Editor.Windows
                     }
                 }
             }
+
+            DrawFloatingToolBar();
         }
 
         private void TravelScene()
@@ -256,7 +257,7 @@ namespace March.Editor.Windows
         private static partial nint New();
 
         [NativeMethod]
-        private partial void DrawMenuBar();
+        private partial void DrawFloatingToolBar();
 
         [NativeMethod]
         private partial nint UpdateDisplay();

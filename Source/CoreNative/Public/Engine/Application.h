@@ -34,6 +34,7 @@ namespace march
         float GetDeltaTime() const;
         float GetElapsedTime() const;
         uint64_t GetFrameCount() const;
+        uint32_t GetFPS() const;
 
         void CrashWithMessage(const std::string& message, bool debugBreak = false);
         virtual void CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak = false);

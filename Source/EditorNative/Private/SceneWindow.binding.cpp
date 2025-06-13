@@ -7,9 +7,9 @@ NATIVE_EXPORT_AUTO SceneWindow_New()
     retcs MARCH_NEW SceneWindow();
 }
 
-NATIVE_EXPORT_AUTO SceneWindow_DrawMenuBar(cs<SceneWindow*> w)
+NATIVE_EXPORT_AUTO SceneWindow_DrawFloatingToolBar(cs<SceneWindow*> w)
 {
-    SceneWindowInternalUtility::DrawMenuBar(w);
+    SceneWindowInternalUtility::DrawFloatingToolBar(w);
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_UpdateDisplay(cs<SceneWindow*> w)

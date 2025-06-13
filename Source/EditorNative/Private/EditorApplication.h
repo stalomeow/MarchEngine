@@ -40,7 +40,6 @@ namespace march
         void InitProject(const std::string& path);
         void InitImGui();
         void DrawBaseImGui();
-        void DrawFrameStats();
         void ReloadFonts();
 
         std::unique_ptr<GfxSwapChain> m_SwapChain;
