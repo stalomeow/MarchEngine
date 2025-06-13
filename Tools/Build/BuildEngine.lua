@@ -95,6 +95,7 @@ local function nativeModule(m)
             "format-security",
             "unused-parameter",
             "unused-function",
+            "unused-variable",
         }
 
         files {

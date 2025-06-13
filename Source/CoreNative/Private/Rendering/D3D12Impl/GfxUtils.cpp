@@ -34,8 +34,6 @@ namespace march
     {
 #ifdef ENABLE_GFX_DEBUG_NAME
         CHECK_HR(obj->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
-#else
-        (name);
 #endif
     }
 }
