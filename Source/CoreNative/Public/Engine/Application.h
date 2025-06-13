@@ -76,6 +76,7 @@ namespace march
         virtual void OnKeyUp(WPARAM btnState) { }
 
         virtual HICON GetIcon() { return NULL; }
+        virtual COLORREF GetBackgroundColor() { return RGB(255, 255, 255); }
 
         virtual LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
 

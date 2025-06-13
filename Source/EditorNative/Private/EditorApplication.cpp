@@ -468,6 +468,12 @@ namespace march
         return LoadIconW(GetModuleHandleW(NULL), MAKEINTRESOURCE(IDI_ICON_MARCH_7TH));
     }
 
+    COLORREF EditorApplication::GetBackgroundColor()
+    {
+        ImVec4 color = ImGuiStyleManager::GetSystemWindowBackgroundColor();
+        return RGB(color.x * 255, color.y * 255, color.z * 255);
+    }
+
     LRESULT EditorApplication::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
         if (msg == WM_DESTROY)

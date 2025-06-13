@@ -14,6 +14,8 @@ namespace march
         return ImVec4(color.x, color.y, color.z, alpha);
     }
 
+    static constexpr ImVec4 g_SystemWindowBackgroundColor = ColorFromBytes(21, 21, 21);
+
     void ImGuiStyleManager::ApplyDefaultStyle()
     {
         // https://github.com/ocornut/imgui/issues/707
@@ -22,8 +24,8 @@ namespace march
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        constexpr ImVec4 dockingEmptyBgColor = ColorFromBytes(21, 21, 21);
-        constexpr ImVec4 bgColor = ColorFromBytes(31, 31, 31);
+        constexpr ImVec4 dockingEmptyBgColor = g_SystemWindowBackgroundColor;
+        constexpr ImVec4 imGuiWindowBgColor = ColorFromBytes(31, 31, 31);
         constexpr ImVec4 lightColor = ColorFromBytes(90, 90, 90);
         constexpr ImVec4 veryLightColor = ColorFromBytes(110, 110, 110);
 
@@ -39,9 +41,9 @@ namespace march
         colors[ImGuiCol_Text] = textColor;
         colors[ImGuiCol_TextDisabled] = textDisabledColor;
         colors[ImGuiCol_TextSelectedBg] = panelActiveColor;
-        colors[ImGuiCol_WindowBg] = bgColor;
-        colors[ImGuiCol_ChildBg] = bgColor;
-        colors[ImGuiCol_PopupBg] = bgColor;
+        colors[ImGuiCol_WindowBg] = imGuiWindowBgColor;
+        colors[ImGuiCol_ChildBg] = imGuiWindowBgColor;
+        colors[ImGuiCol_PopupBg] = imGuiWindowBgColor;
         colors[ImGuiCol_Border] = panelColor;
         colors[ImGuiCol_BorderShadow] = panelColor;
         colors[ImGuiCol_FrameBg] = panelColor;
@@ -68,21 +70,21 @@ namespace march
         colors[ImGuiCol_Separator] = panelColor;
         colors[ImGuiCol_SeparatorHovered] = panelHoverColor;
         colors[ImGuiCol_SeparatorActive] = panelActiveColor;
-        colors[ImGuiCol_ResizeGrip] = bgColor;
+        colors[ImGuiCol_ResizeGrip] = imGuiWindowBgColor;
         colors[ImGuiCol_ResizeGripHovered] = panelHoverColor;
         colors[ImGuiCol_ResizeGripActive] = panelActiveColor;
         colors[ImGuiCol_PlotLines] = panelActiveColor;
         colors[ImGuiCol_PlotLinesHovered] = panelHoverColor;
         colors[ImGuiCol_PlotHistogram] = panelActiveColor;
         colors[ImGuiCol_PlotHistogramHovered] = panelHoverColor;
-        colors[ImGuiCol_ModalWindowDimBg] = bgColor;
+        colors[ImGuiCol_ModalWindowDimBg] = imGuiWindowBgColor;
         colors[ImGuiCol_DragDropTarget] = panelActiveColor;
-        colors[ImGuiCol_NavHighlight] = bgColor;
+        colors[ImGuiCol_NavHighlight] = imGuiWindowBgColor;
         colors[ImGuiCol_DockingPreview] = panelActiveColor;
         colors[ImGuiCol_DockingEmptyBg] = dockingEmptyBgColor;
-        colors[ImGuiCol_Tab] = bgColor;
+        colors[ImGuiCol_Tab] = imGuiWindowBgColor;
         colors[ImGuiCol_TabActive] = panelColor;
-        colors[ImGuiCol_TabUnfocused] = bgColor;
+        colors[ImGuiCol_TabUnfocused] = imGuiWindowBgColor;
         colors[ImGuiCol_TabUnfocusedActive] = panelColor;
         colors[ImGuiCol_TabHovered] = panelColor;
         colors[ImGuiCol_TabDimmedSelected] = panelColor;
@@ -102,5 +104,10 @@ namespace march
         style.TabBarOverlineSize = 2.0f;
         style.DockingSeparatorSize = 1.0f;
         style.ItemSpacing.y = 5.0f;
+    }
+
+    ImVec4 ImGuiStyleManager::GetSystemWindowBackgroundColor()
+    {
+        return g_SystemWindowBackgroundColor;
     }
 }

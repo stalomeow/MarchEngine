@@ -35,6 +35,7 @@ namespace march
         void OnDisplayScaleChange() override;
         void OnPaint() override;
         HICON GetIcon() override;
+        COLORREF GetBackgroundColor() override;
 
     private:
         void InitProject(const std::string& path);
