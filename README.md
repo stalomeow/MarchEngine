@@ -6,6 +6,8 @@
 
 <p align="center"><img src="Documentation/Attachments/overview2.png"></p>
 
+~~我刚开始写这个项目时，恰逢某位少女在罗浮学剑，就给引擎起名叫 March Engine。~~
+
 ## 文档
 
 - [Build](Documentation/Build.md)
@@ -207,7 +209,7 @@ RenderGraph 会针对该 Pass 计算 Read Write Hazard 和并行程度，最后�
 - 使用自己 Fork 的 [Dear ImGui](https://github.com/stalomeow/imgui/tree/march-engine) 实现编辑器 UI
 - 利用 C# 反射自动绘制 Component Inspector
 - 支持绘制自定义的 Gizmos
-- 支持各种 Drag & Drop 操作
+- 支持多选和各种 Drag & Drop 操作
   - 引擎外的文件拖拽到 Project 窗口的文件夹上即可导入
   - 引擎内的资产可以通过拖拽进行赋值和实例化
   - Hierarchy 中的 GameObject 可以通过拖拽调整层级和顺序
