@@ -59,8 +59,7 @@ namespace march
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
-        constexpr auto programName = "EditorApp";
-        argparse::ArgumentParser program(programName, "1.0", argparse::default_arguments::none);
+        argparse::ArgumentParser program(EDITOR_APP_NAME, EDITOR_APP_VERSION, argparse::default_arguments::none);
 
         program.add_argument("--project").metavar("PATH").help("Specify the project path").required();
 
@@ -74,7 +73,7 @@ namespace march
         try
         {
             std::vector<std::string> fullArgs{};
-            fullArgs.push_back(programName); // argparse 要求第一个参数是程序名称，但是 Windows 传给我们的参数列表没有程序名称
+            fullArgs.push_back(EDITOR_APP_NAME); // argparse 要求第一个参数是程序名称，但是 Windows 传给我们的参数列表没有程序名称
             fullArgs.insert(fullArgs.end(), args.begin(), args.end());
             program.parse_args(fullArgs);
         }

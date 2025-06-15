@@ -17,9 +17,9 @@ namespace march
     public:
         constexpr asset_ptr() noexcept : m_Asset(nullptr) {}
 
-        constexpr asset_ptr(nullptr_t) noexcept : m_Asset(nullptr) {}
+        constexpr asset_ptr(std::nullptr_t) noexcept : m_Asset(nullptr) {}
 
-        asset_ptr& operator=(nullptr_t) noexcept
+        asset_ptr& operator=(std::nullptr_t) noexcept
         {
             reset();
             return *this;
@@ -56,9 +56,9 @@ namespace march
 
         T& operator*() const noexcept { return *m_Asset; }
 
-        bool operator==(nullptr_t) const noexcept { return m_Asset == nullptr; }
+        bool operator==(std::nullptr_t) const noexcept { return m_Asset == nullptr; }
 
-        bool operator!=(nullptr_t) const noexcept { return m_Asset != nullptr; }
+        bool operator!=(std::nullptr_t) const noexcept { return m_Asset != nullptr; }
 
         operator bool() const noexcept { return m_Asset != nullptr; }
 
