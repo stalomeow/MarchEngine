@@ -1,6 +1,9 @@
 # Visual Studio
 /.vs/
 
+# Rider
+/.idea/
+
 # Generated Files
 /Generated/
 /MarchEngine.sln

@@ -66,6 +66,13 @@ mar # 这实际上是 mar vs2022 的简写
 
 只有加载完 .NET Runtime，`Mixed (.NET Core)` 调试器才能正常工作，如果在这之前的 C++ 代码出错了需要调试，可以临时改用 `Native Only` 调试器。
 
+## IDE 支持
+
+- [Visual Studio 2022](https://visualstudio.microsoft.com/zh-hans/vs/)
+- [Rider](https://www.jetbrains.com/rider/)，需要 2024.3 或更高版本来支持 .NET 9 和 C# 13
+
+提示：无论使用什么 IDE 来开发，一开始提到的 Visual Studio 2022 和相关组件都是必须安装的！
+
 ## 其他
 
 在开发环境中，`mar` 命令还有其他用法：
