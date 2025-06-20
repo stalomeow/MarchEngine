@@ -129,9 +129,4 @@ namespace march
         entry.Message = message;
         entry.StackTrace = std::move(stackTrace);
     }
-
-    void Log::Message(LogLevel level, const std::wstring& message, std::vector<LogStackFrame>&& stackTrace)
-    {
-        Message(level, StringUtils::Utf16ToUtf8(message), std::move(stackTrace));
-    }
 }

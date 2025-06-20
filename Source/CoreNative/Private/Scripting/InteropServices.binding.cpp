@@ -3,7 +3,7 @@
 
 NATIVE_EXPORT_AUTO NativeString_Marshal(cs<cs_char_t*> p, cs_int len)
 {
-    retcs Utf16ToUtf8(p, len);
+    retcs StringUtils::Utf16ToUtf8(std::u16string_view(p, len));
 }
 
 NATIVE_EXPORT_AUTO NativeString_Unmarshal(cs_string s, cs<cs_byte_t**> ppOutData, cs<cs_int_t*> pOutLen)
@@ -19,7 +19,7 @@ NATIVE_EXPORT_AUTO NativeString_New(cs_int len)
 
 NATIVE_EXPORT_AUTO NativeString_SetData(cs_string s, cs_int offset, cs<cs_char_t*> p, cs_int count)
 {
-    s.data->replace(static_cast<size_t>(offset), static_cast<size_t>(count), Utf16ToUtf8(p.data, count));
+    s.data->replace(static_cast<size_t>(offset), static_cast<size_t>(count), StringUtils::Utf16ToUtf8(std::u16string_view(p.data, count)));
 }
 
 NATIVE_EXPORT_AUTO NativeString_Free(cs_string s)

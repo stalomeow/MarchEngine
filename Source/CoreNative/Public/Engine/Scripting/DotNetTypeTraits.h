@@ -24,7 +24,7 @@ namespace march
 
     // https://learn.microsoft.com/en-us/cpp/cpp/fundamental-types-cpp?view=msvc-170#sizes-of-built-in-types
     template<> inline constexpr bool is_blittable_v<bool> = false; // 开 Optimization 后，C++ 和 C# 的 bool 返回值行为不一致
-    template<> inline constexpr bool is_blittable_v<wchar_t> = std::bool_constant<sizeof(wchar_t) == 2>::value;
+    template<> inline constexpr bool is_blittable_v<char16_t> = true;
 
     // 指针
     template<typename T>

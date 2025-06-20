@@ -90,7 +90,7 @@ namespace march
 
         static void Capture(uint32_t numFrames)
         {
-            fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Logs");
+            fs::path path = fs::u8path(GetApp()->GetDataPath() + "/Logs");
 
             if (!fs::exists(path) && !fs::create_directories(path))
             {
@@ -98,7 +98,7 @@ namespace march
                 return;
             }
 
-            path /= StringUtils::Format(L"Capture-{:%Y-%m-%d-%H-%M-%S}.wpix", TimeUtils::GetLocalTime());
+            path /= fs::u8path(StringUtils::Format("Capture-{:%Y-%m-%d-%H-%M-%S}.wpix", TimeUtils::GetLocalTime()));
 
             if (SUCCEEDED(PIXGpuCaptureNextFrames(path.c_str(), static_cast<UINT32>(numFrames))))
             {

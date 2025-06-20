@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
-#include "Engine/Misc/StringUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include <cmath>
 #include <wrl.h>
 #include <dxgi1_5.h>
@@ -33,7 +33,7 @@ namespace march
     void GfxUtils::SetName(ID3D12Object* obj, const std::string& name)
     {
 #ifdef ENABLE_GFX_DEBUG_NAME
-        CHECK_HR(obj->SetName(StringUtils::Utf8ToUtf16(name).c_str()));
+        CHECK_HR(obj->SetName(PlatformUtils::Windows::Utf8ToWide(name).c_str()));
 #endif
     }
 }

@@ -11,7 +11,7 @@ namespace march
 {
     class BusyProgressBar
     {
-        const std::wstring m_Title;
+        const std::string m_Title;
         const uint32_t m_CheckIntervalMilliseconds;
 
         std::atomic_int m_EnableCounter; // 允许小于 0，表示强制关闭

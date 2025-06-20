@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "BusyProgressBar.h"
 #include "Engine/Misc/StringUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include <commctrl.h>
-#include <processthreadsapi.h>
 
 namespace march
 {
@@ -69,7 +69,7 @@ namespace march
     }
 
     BusyProgressBar::BusyProgressBar(const std::string& title, uint32_t checkIntervalMilliseconds)
-        : m_Title(StringUtils::Utf8ToUtf16(title))
+        : m_Title(title)
         , m_CheckIntervalMilliseconds(checkIntervalMilliseconds)
         , m_EnableCounter(0)
         , m_IsUserAlive(false)
@@ -118,7 +118,7 @@ namespace march
 
     void BusyProgressBar::ThreadProc()
     {
-        SetThreadDescription(GetCurrentThread(), L"BusyProgressBar");
+        PlatformUtils::SetCurrentThreadName("BusyProgressBar");
 
         auto checkAlive = [this](std::chrono::steady_clock::time_point& lastTime, bool force)
         {
@@ -177,7 +177,8 @@ namespace march
 
             if (duration.count() > 0)
             {
-                SetWindowTextW(m_WindowHandle, StringUtils::Format(L"{} (busy for {}s) ...", m_Title, duration.count()).c_str());
+                std::string title = StringUtils::Format("{} (busy for {}s) ...", m_Title, duration.count());
+                SetWindowTextW(m_WindowHandle, PlatformUtils::Windows::Utf8ToWide(title).c_str());
             }
         }
         else
@@ -187,7 +188,7 @@ namespace march
             m_WindowHandle = CreateWindowExW(
                 WS_EX_NOACTIVATE | WS_EX_TOPMOST,
                 BusyProgressBarWindowClassName,
-                StringUtils::Format(L"{} ...", m_Title).c_str(),
+                PlatformUtils::Windows::Utf8ToWide(StringUtils::Format("{} ...", m_Title)).c_str(),
                 WS_OVERLAPPED | WS_CAPTION, // 有标题栏，无关闭按钮
                 CW_USEDEFAULT,
                 CW_USEDEFAULT,

@@ -38,6 +38,9 @@ local function managedModule(m)
         symbols "On"
         optimize "Full"
 
+    filter "platforms:Win64"
+        defines { "PLATFORM_WINDOWS" }
+
     filter {} -- 还原到默认的状态
 
     usage "INTERFACE"
@@ -76,6 +79,7 @@ local function nativeModule(m)
         optimize "Full"
 
     filter "platforms:Win64"
+        defines { "PLATFORM_WINDOWS" }
         system "Windows"
         architecture "x86_64"
 

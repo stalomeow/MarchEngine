@@ -14,7 +14,7 @@
 #include "ImGuiBackend.h"
 #include "ImGuiStyleManager.h"
 #include "Engine/Misc/StringUtils.h"
-#include "Engine/Misc/PathUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include "Engine/Misc/DeferFunc.h"
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Profiling/FrameDebugger.h"
@@ -170,13 +170,13 @@ namespace march
 #ifdef ENGINE_RESOURCE_UNIX_PATH
         m_EngineResourcePath = ENGINE_RESOURCE_UNIX_PATH;
 #else
-        m_EngineResourcePath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Resources";
+        m_EngineResourcePath = PlatformUtils::GetExecutableDirectory() + "/Resources";
 #endif
 
 #ifdef ENGINE_SHADER_UNIX_PATH
         m_EngineShaderPath = ENGINE_SHADER_UNIX_PATH;
 #else
-        m_EngineShaderPath = PathUtils::GetWorkingDirectoryUtf8(PathStyle::Unix) + "/Shaders";
+        m_EngineShaderPath = PlatformUtils::GetExecutableDirectory() + "/Shaders";
 #endif
 
 #ifdef _DEBUG
@@ -497,11 +497,11 @@ namespace march
 
     std::string EditorApplication::SaveFilePanelInProject(const std::string& title, const std::string& defaultName, const std::string& extension, const std::string& path) const
     {
-        std::wstring wBasePathWinStyle = StringUtils::Utf8ToUtf16(GetDataPath());
+        std::wstring wBasePathWinStyle = PlatformUtils::Windows::Utf8ToWide(GetDataPath());
         if (!path.empty())
         {
             wBasePathWinStyle += L'\\';
-            wBasePathWinStyle += StringUtils::Utf8ToUtf16(path);
+            wBasePathWinStyle += PlatformUtils::Windows::Utf8ToWide(path);
 
             if (wBasePathWinStyle.back() == L'\\' || wBasePathWinStyle.back() == L'/')
             {
@@ -510,7 +510,7 @@ namespace march
         }
         std::replace(wBasePathWinStyle.begin(), wBasePathWinStyle.end(), L'/', L'\\');
 
-        std::wstring wExtension = StringUtils::Utf8ToUtf16(extension);
+        std::wstring wExtension = PlatformUtils::Windows::Utf8ToWide(extension);
 
         std::vector<wchar_t> filter{};
         filter.insert(filter.end(), wExtension.begin(), wExtension.end());
@@ -526,10 +526,10 @@ namespace march
         filter.push_back(L'\0');
         filter.push_back(L'\0');
 
-        std::wstring fileNameBuffer = StringUtils::Utf8ToUtf16(defaultName);
+        std::wstring fileNameBuffer = PlatformUtils::Windows::Utf8ToWide(defaultName);
         fileNameBuffer.resize(MAX_PATH);
 
-        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
+        std::wstring wTitle = PlatformUtils::Windows::Utf8ToWide(title);
 
         OPENFILENAMEW ofn = {};
         ofn.lStructSize = sizeof(ofn);
@@ -544,7 +544,8 @@ namespace march
 
         if (GetSaveFileNameW(&ofn) && fileNameBuffer.find(wBasePathWinStyle) != std::wstring::npos)
         {
-            std::string result = StringUtils::Utf16ToUtf8(fileNameBuffer.c_str()); // 使用 c_str 忽略 buffer 后面大量 '\0'
+            const auto resultStr = fileNameBuffer.c_str(); // 使用 c_str 忽略 buffer 后面大量 '\0'
+            std::string result = PlatformUtils::Windows::WideToUtf8(resultStr);
             std::replace(result.begin(), result.end(), '\\', '/');
             return result.substr(GetDataPath().size() + 1); // 返回相对 Data 目录的路径
         }

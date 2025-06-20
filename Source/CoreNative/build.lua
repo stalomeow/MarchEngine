@@ -15,6 +15,7 @@ usage "PUBLIC"
         "Fmt",
         "NsightAftermath",
         "RenderDoc",
+        "UTFCPP",
         "WinPixEvent",
     }
 

@@ -51,7 +51,6 @@ namespace march
 
         static void Message(LogLevel level, std::string&& message, std::vector<LogStackFrame>&& stackTrace);
         static void Message(LogLevel level, const std::string& message, std::vector<LogStackFrame>&& stackTrace);
-        static void Message(LogLevel level, const std::wstring& message, std::vector<LogStackFrame>&& stackTrace);
 
     private:
         static LogLevel s_MinimumLevel;

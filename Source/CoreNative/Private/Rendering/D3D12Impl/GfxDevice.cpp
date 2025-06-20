@@ -5,6 +5,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include "Engine/Debug.h"
 #include <assert.h>
 
@@ -272,7 +273,7 @@ namespace march
             DXGI_ADAPTER_DESC desc;
             CHECK_HR(adapter->GetDesc(&desc));
 
-            LOG_INFO(L"***Adapter: {}", desc.Description);
+            LOG_INFO("***Adapter: {}", PlatformUtils::Windows::WideToUtf8(desc.Description));
 
             LogAdapterOutputs(adapter, format);
             adapter->Release();
@@ -289,7 +290,7 @@ namespace march
             DXGI_OUTPUT_DESC desc;
             CHECK_HR(output->GetDesc(&desc));
 
-            LOG_INFO(L"***Output: {}", desc.DeviceName);
+            LOG_INFO("***Output: {}", PlatformUtils::Windows::WideToUtf8(desc.DeviceName));
 
             LogOutputDisplayModes(output, format);
             output->Release();
@@ -314,7 +315,7 @@ namespace march
             UINT n = x.RefreshRate.Numerator;
             UINT d = x.RefreshRate.Denominator;
 
-            LOG_INFO(L"Width = {}, Height = {}, Refresh = {}/{}", x.Width, x.Height, n, d);
+            LOG_INFO("Width = {}, Height = {}, Refresh = {}/{}", x.Width, x.Height, n, d);
         }
     }
 

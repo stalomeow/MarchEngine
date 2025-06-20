@@ -8,7 +8,6 @@
 #include <DirectXCollision.h>
 #include <DirectXColors.h>
 #include <DirectXMath.h>
-#include <Windows.h>
 #include <wrl.h>
 
 #include <vector>

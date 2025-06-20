@@ -18,4 +18,3 @@ namespace march
 
 using namespace DirectX;
 using namespace march;
-using namespace march::StringUtils;

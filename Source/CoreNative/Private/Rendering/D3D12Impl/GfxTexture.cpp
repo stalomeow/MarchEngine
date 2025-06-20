@@ -8,7 +8,7 @@
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Scripting/DotNetMarshal.h"
 #include "Engine/Misc/HashUtils.h"
-#include "Engine/Misc/StringUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include "Engine/Debug.h"
 #include <DirectXColors.h>
 //#include <DirectXTexEXR.h>
@@ -761,7 +761,7 @@ namespace march
         desc.Wrap = args.Wrap;
         desc.MipmapBias = args.MipmapBias;
 
-        std::wstring wFilePath = StringUtils::Utf8ToUtf16(filePath);
+        std::wstring wFilePath = PlatformUtils::Windows::Utf8ToWide(filePath);
         fs::path ext = fs::path(filePath).extension();
 
         if (ext == ".dds")

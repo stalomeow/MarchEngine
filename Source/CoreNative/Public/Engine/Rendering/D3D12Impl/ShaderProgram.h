@@ -7,6 +7,7 @@
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/ShaderUtils.h"
 #include "Engine/Rendering/D3D12Impl/ShaderKeyword.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include <d3dx12.h>
 #include <d3d12shader.h> // Shader reflection
 #include <dxcapi.h>
@@ -348,8 +349,8 @@ namespace march
                 return false;
             }
 
-            context.FileName = StringUtils::Utf8ToUtf16(filename);
-            context.IncludePath = StringUtils::Utf8ToUtf16(GetApp()->GetEngineShaderPath());
+            context.FileName = PlatformUtils::Windows::Utf8ToWide(filename);
+            context.IncludePath = PlatformUtils::Windows::Utf8ToWide(GetApp()->GetEngineShaderPath());
             context.Source.Ptr = source.data();
             context.Source.Size = static_cast<SIZE_T>(source.size());
             context.Source.Encoding = DXC_CP_UTF8;
@@ -588,8 +589,8 @@ namespace march
                 continue;
             }
 
-            std::wstring wEntrypoint = StringUtils::Utf8ToUtf16(context.Config.Entrypoints[i]);
-            std::wstring wTargetProfile = StringUtils::Utf8ToUtf16(GetTargetProfile(context.Config.ShaderModel, i));
+            std::wstring wEntrypoint = PlatformUtils::Windows::Utf8ToWide(context.Config.Entrypoints[i]);
+            std::wstring wTargetProfile = PlatformUtils::Windows::Utf8ToWide(GetTargetProfile(context.Config.ShaderModel, i));
             Microsoft::WRL::ComPtr<IDxcResult> pResults = CompileEntrypoint(context, wEntrypoint, wTargetProfile, i);
 
             // 编译失败
@@ -644,14 +645,14 @@ namespace march
         };
 
         std::vector<std::wstring> defines{};
-        defines.push_back(StringUtils::Utf8ToUtf16(GetProgramTypePreprocessorMacro(programType)));
+        defines.push_back(PlatformUtils::Windows::Utf8ToWide(GetProgramTypePreprocessorMacro(programType)));
         ShaderCompilationInternalUtils::AppendEngineMacros(defines);
 
         for (const std::string& kw : context.Keywords)
         {
             if (!kw.empty())
             {
-                defines.push_back(StringUtils::Utf8ToUtf16(kw) + L"=1");
+                defines.push_back(PlatformUtils::Windows::Utf8ToWide(kw) + L"=1");
             }
         }
 

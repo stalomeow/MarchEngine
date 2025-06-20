@@ -412,7 +412,7 @@ namespace march
     using cs_int = cs<int32_t>;
     using cs_ulong = cs<uint64_t>;
     using cs_long = cs<int64_t>;
-    using cs_char = cs<wchar_t>;
+    using cs_char = cs<char16_t>;
     using cs_float = cs<float>;
     using cs_double = cs<double>;
     using cs_bool = cs<bool>;

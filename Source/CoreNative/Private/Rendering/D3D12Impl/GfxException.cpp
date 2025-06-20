@@ -2,10 +2,9 @@
 #include "Engine/Rendering/D3D12Impl/GfxException.h"
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Application.h"
-#include "Engine/Misc/StringUtils.h"
 #include "Engine/Profiling/NsightAftermath.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include <assert.h>
-#include <comdef.h>
 #include <sstream>
 
 namespace march
@@ -13,7 +12,7 @@ namespace march
     static std::string GetErrorMessage(HRESULT hr, const std::string& expr, const std::string& filename, int line)
     {
         std::ostringstream ss{};
-        ss << StringUtils::Utf16ToUtf8(_com_error(hr).ErrorMessage()) << "\n\n";
+        ss << PlatformUtils::Windows::GetHRErrorMessage(hr) << "\n\n";
         ss << "Expression: " << expr << "\n";
         ss << "File: " << filename << "\n";
         ss << "Line: " << line << "\n";

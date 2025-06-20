@@ -25,8 +25,8 @@ usage "PUBLIC"
     includedirs { "Source" }
 
     defines {
-        string.format('DOTNET_RUNTIME_CONFIG_PATH=L"%s"', runtimeConfigFile),
-        string.format('DOTNET_HOSTFXR_PATH=L"Runtime\\\\host\\\\fxr\\\\%s\\\\hostfxr.dll"', getDotNetVersion()),
+        string.format('DOTNET_RUNTIME_CONFIG_PATH="%s"', runtimeConfigFile),
+        string.format('DOTNET_HOSTFXR_PATH="Runtime/host/fxr/%s/hostfxr.dll"', getDotNetVersion()),
     }
 
     runtimedeps {

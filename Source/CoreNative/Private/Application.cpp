@@ -2,7 +2,7 @@
 #include "Engine/Application.h"
 #include "Engine/EngineTimer.h"
 #include "Engine/Misc/DeferFunc.h"
-#include "Engine/Misc/StringUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include "Engine/Rendering/RenderPipeline.h"
 #include <WindowsX.h>
 #include <dwmapi.h>
@@ -79,7 +79,7 @@ namespace march
 
     void Application::SetWindowTitle(const std::string& title) const
     {
-        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
+        std::wstring wTitle = PlatformUtils::Windows::Utf8ToWide(title);
         SetWindowTextW(m_WindowHandle, wTitle.c_str());
     }
 
@@ -197,7 +197,7 @@ namespace march
 
         for (int i = 0; i < numArgs; i++)
         {
-            results[i] = StringUtils::Utf16ToUtf8(args[i], static_cast<int32_t>(wcslen(args[i])));
+            results[i] = PlatformUtils::Windows::WideToUtf8(args[i]);
         }
 
         LocalFree(args);
@@ -275,8 +275,8 @@ namespace march
 
     void Application::CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak)
     {
-        std::wstring wTitle = StringUtils::Utf8ToUtf16(title);
-        std::wstring wMessage = StringUtils::Utf8ToUtf16(message);
+        std::wstring wTitle = PlatformUtils::Windows::Utf8ToWide(title);
+        std::wstring wMessage = PlatformUtils::Windows::Utf8ToWide(message);
         MessageBoxW(NULL, wMessage.c_str(), wTitle.c_str(), MB_OK | MB_ICONERROR);
 
 #if defined(_DEBUG)
@@ -341,8 +341,8 @@ namespace march
             return 0;
         }
 
-        // The WM_MENUCHAR message is sent when a menu is active and the user presses 
-        // a key that does not correspond to any mnemonic or accelerator key. 
+        // The WM_MENUCHAR message is sent when a menu is active and the user presses
+        // a key that does not correspond to any mnemonic or accelerator key.
         case WM_MENUCHAR:
             // Don't beep when we alt-enter.
             return MAKELRESULT(0, MNC_CLOSE);

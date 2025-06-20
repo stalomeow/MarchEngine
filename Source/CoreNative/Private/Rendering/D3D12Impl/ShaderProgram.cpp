@@ -4,6 +4,8 @@
 #include "Engine/Rendering/D3D12Impl/GfxSettings.h"
 #include "Engine/Rendering/D3D12Impl/GfxDevice.h"
 #include "Engine/Rendering/D3D12Impl/GfxUtils.h"
+#include "Engine/Misc/StringUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include "Engine/Application.h"
 #include "Engine/Debug.h"
 #include <vector>
@@ -428,7 +430,7 @@ namespace march
         const std::string debugName = GetShaderProgramDebugName(hash);
         const std::string basePath = GetShaderCacheBasePath(debugName, /* createIfNotExist */ false);
 
-        std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
+        std::wstring path = PlatformUtils::Windows::Utf8ToWide(StringUtils::Format("{}/{}.cso", basePath, debugName));
         CHECK_HR(ShaderUtils::GetDxcUtils()->LoadFile(path.c_str(), DXC_CP_ACP, reinterpret_cast<IDxcBlobEncoding**>(ppBlob)));
     }
 
@@ -458,8 +460,7 @@ namespace march
         const std::string debugName = GetShaderProgramDebugName(hash);
         const std::string basePath = GetShaderCacheBasePath(debugName, /* createIfNotExist */ false);
 
-        std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
-        return fs::exists(path);
+        return fs::exists(fs::u8path(StringUtils::Format("{}/{}.cso", basePath, debugName)));
     }
 
     void ShaderUtils::DeleteCachedShaderProgram(const std::vector<uint8_t>& hash)
@@ -469,14 +470,12 @@ namespace march
 
         // Binary
         {
-            std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.cso", basePath, debugName));
-            fs::remove(path);
+            fs::remove(fs::u8path(StringUtils::Format("{}/{}.cso", basePath, debugName)));
         }
 
         // PDB
         {
-            std::wstring path = StringUtils::Utf8ToUtf16(StringUtils::Format("{}/{}.pdb", basePath, debugName));
-            fs::remove(path);
+            fs::remove(fs::u8path(StringUtils::Format("{}/{}.pdb", basePath, debugName)));
         }
     }
 }

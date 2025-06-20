@@ -1,10 +1,9 @@
 #include "pch.h"
 #include "Engine/Scripting/DotNetRuntime.h"
-#include "Engine/Misc/PathUtils.h"
+#include "Engine/Misc/PlatformUtils.h"
 #include "Engine/Misc/StringUtils.h"
 #include "hostfxr.h"
 #include "coreclr_delegates.h"
-#include <Windows.h>
 #include <string>
 #include <unordered_map>
 #include <stdint.h>
@@ -13,46 +12,51 @@
 
 // https://learn.microsoft.com/en-us/dotnet/core/tutorials/netcore-hosting
 
+#ifdef PLATFORM_WINDOWS
+#define DOTNET_C_STR(s) ::march::PlatformUtils::Windows::Utf8ToWide(s).c_str()
+#else
+#define DOTNET_C_STR(s) (s).c_str()
+#endif
+
 namespace march
 {
     // 为了可读性，这里不用数组
     // pair.first 是 type name，pair.second 是 method name
-    const std::unordered_map<ManagedMethod, std::pair<LPCWSTR, LPCWSTR>> g_ManagedMethodConfig =
+    const std::unordered_map<ManagedMethod, std::pair<LPCSTR, LPCSTR>> g_ManagedMethodConfig =
     {
-        { ManagedMethod::Application_Initialize                   , { L"March.Core.Application,March.Core"           , L"Initialize"             } },
-        { ManagedMethod::Application_PostInitialize               , { L"March.Core.Application,March.Core"           , L"PostInitialize"         } },
-        { ManagedMethod::Application_Tick                         , { L"March.Core.Application,March.Core"           , L"Tick"                   } },
-        { ManagedMethod::Application_Quit                         , { L"March.Core.Application,March.Core"           , L"Quit"                   } },
-        { ManagedMethod::Application_FullGC                       , { L"March.Core.Application,March.Core"           , L"FullGC"                 } },
-        { ManagedMethod::EditorApplication_Initialize             , { L"March.Editor.EditorApplication,March.Editor" , L"Initialize"             } },
-        { ManagedMethod::EditorApplication_PostInitialize         , { L"March.Editor.EditorApplication,March.Editor" , L"PostInitialize"         } },
-        { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { L"March.Editor.EditorApplication,March.Editor" , L"OpenConsoleWindowIfNot" } },
-        { ManagedMethod::AssetManager_NativeLoadAsset             , { L"March.Core.AssetManager,March.Core"          , L"NativeLoadAsset"        } },
-        { ManagedMethod::AssetManager_NativeUnloadAsset           , { L"March.Core.AssetManager,March.Core"          , L"NativeUnloadAsset"      } },
-        { ManagedMethod::Mesh_NativeGetGeometry                   , { L"March.Core.Rendering.Mesh,March.Core"        , L"NativeGetGeometry"      } },
-        { ManagedMethod::Texture_NativeGetDefault                 , { L"March.Core.Rendering.Texture,March.Core"     , L"NativeGetDefault"       } },
-        { ManagedMethod::JobManager_NativeSchedule                , { L"March.Core.JobManager,March.Core"            , L"NativeSchedule"         } },
-        { ManagedMethod::JobManager_NativeComplete                , { L"March.Core.JobManager,March.Core"            , L"NativeComplete"         } },
-        { ManagedMethod::DragDrop_HandleExternalFiles             , { L"March.Editor.DragDrop,March.Editor"          , L"HandleExternalFiles"    } },
+        { ManagedMethod::Application_Initialize                   , { "March.Core.Application,March.Core"           , "Initialize"             } },
+        { ManagedMethod::Application_PostInitialize               , { "March.Core.Application,March.Core"           , "PostInitialize"         } },
+        { ManagedMethod::Application_Tick                         , { "March.Core.Application,March.Core"           , "Tick"                   } },
+        { ManagedMethod::Application_Quit                         , { "March.Core.Application,March.Core"           , "Quit"                   } },
+        { ManagedMethod::Application_FullGC                       , { "March.Core.Application,March.Core"           , "FullGC"                 } },
+        { ManagedMethod::EditorApplication_Initialize             , { "March.Editor.EditorApplication,March.Editor" , "Initialize"             } },
+        { ManagedMethod::EditorApplication_PostInitialize         , { "March.Editor.EditorApplication,March.Editor" , "PostInitialize"         } },
+        { ManagedMethod::EditorApplication_OpenConsoleWindowIfNot , { "March.Editor.EditorApplication,March.Editor" , "OpenConsoleWindowIfNot" } },
+        { ManagedMethod::AssetManager_NativeLoadAsset             , { "March.Core.AssetManager,March.Core"          , "NativeLoadAsset"        } },
+        { ManagedMethod::AssetManager_NativeUnloadAsset           , { "March.Core.AssetManager,March.Core"          , "NativeUnloadAsset"      } },
+        { ManagedMethod::Mesh_NativeGetGeometry                   , { "March.Core.Rendering.Mesh,March.Core"        , "NativeGetGeometry"      } },
+        { ManagedMethod::Texture_NativeGetDefault                 , { "March.Core.Rendering.Texture,March.Core"     , "NativeGetDefault"       } },
+        { ManagedMethod::JobManager_NativeSchedule                , { "March.Core.JobManager,March.Core"            , "NativeSchedule"         } },
+        { ManagedMethod::JobManager_NativeComplete                , { "March.Core.JobManager,March.Core"            , "NativeComplete"         } },
+        { ManagedMethod::DragDrop_HandleExternalFiles             , { "March.Editor.DragDrop,March.Editor"          , "HandleExternalFiles"    } },
     };
 
-    constexpr LPCWSTR g_ManagedAssemblies[] =
+    constexpr LPCSTR g_ManagedAssemblies[] =
     {
-        L"March.Core.dll",
-        L"March.Editor.dll",
+        "March.Core.dll",
+        "March.Editor.dll",
     };
 
-    static std::wstring GetManagedFilePath(const LPCWSTR fileName)
+    static std::string GetDotNetFilePath(const LPCSTR fileName)
     {
-        std::wstring dir = PathUtils::GetWorkingDirectoryUtf16();
-        return dir + L"\\" + fileName;
+        return PlatformUtils::GetExecutableDirectory() + "/" + fileName;
     }
 
     class DotNetRuntimeImpl : public IDotNetRuntime
     {
     public:
         DotNetRuntimeImpl();
-        ~DotNetRuntimeImpl() = default;
+        ~DotNetRuntimeImpl() override = default;
 
         DotNetRuntimeImpl(const DotNetRuntimeImpl&) = delete;
         DotNetRuntimeImpl& operator=(const DotNetRuntimeImpl&) = delete;
@@ -76,24 +80,26 @@ namespace march
     DotNetRuntimeImpl::DotNetRuntimeImpl() : m_Methods{}
     {
         // Load hostfxr and get desired exports
-        HMODULE hostfxr = LoadLibraryW(GetManagedFilePath(DOTNET_HOSTFXR_PATH).c_str());
-        if (hostfxr == NULL)
+        void* hostfxr = PlatformUtils::GetDllHandle(GetDotNetFilePath(DOTNET_HOSTFXR_PATH));
+
+        if (hostfxr == nullptr)
         {
-            throw std::runtime_error("Failed to load hostfxr.dll");
+            throw std::runtime_error("Failed to load hostfxr");
         }
 
-        auto initFunc = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(reinterpret_cast<void*>(GetProcAddress(hostfxr, "hostfxr_initialize_for_runtime_config")));
-        auto getDelegateFunc = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(reinterpret_cast<void*>(GetProcAddress(hostfxr, "hostfxr_get_runtime_delegate")));
-        auto closeFunc = reinterpret_cast<hostfxr_close_fn>(reinterpret_cast<void*>(GetProcAddress(hostfxr, "hostfxr_close")));
+        auto initFunc = reinterpret_cast<hostfxr_initialize_for_runtime_config_fn>(PlatformUtils::GetDllExport(hostfxr, "hostfxr_initialize_for_runtime_config"));
+        auto getDelegateFunc = reinterpret_cast<hostfxr_get_runtime_delegate_fn>(PlatformUtils::GetDllExport(hostfxr, "hostfxr_get_runtime_delegate"));
+        auto closeFunc = reinterpret_cast<hostfxr_close_fn>(PlatformUtils::GetDllExport(hostfxr, "hostfxr_close"));
+
         if (initFunc == nullptr || getDelegateFunc == nullptr || closeFunc == nullptr)
         {
-            FreeLibrary(hostfxr);
-            throw std::runtime_error("Failed to get exports from hostfxr.dll");
+            PlatformUtils::FreeDllHandle(hostfxr);
+            throw std::runtime_error("Failed to get exports from hostfxr");
         }
 
         // Load .NET
         hostfxr_handle contextHandle = nullptr;
-        int32_t rc = initFunc(GetManagedFilePath(DOTNET_RUNTIME_CONFIG_PATH).c_str(), nullptr, &contextHandle);
+        int32_t rc = initFunc(DOTNET_C_STR(GetDotNetFilePath(DOTNET_RUNTIME_CONFIG_PATH)), nullptr, &contextHandle);
         if (rc != 0 || contextHandle == nullptr)
         {
             closeFunc(contextHandle);
@@ -101,24 +107,21 @@ namespace march
         }
 
         // Get the load assembly function pointer
-        rc = getDelegateFunc(contextHandle, hdt_load_assembly_and_get_function_pointer,
-            reinterpret_cast<void**>(&m_LoadAssemblyAndGetFunctionPointer));
+        rc = getDelegateFunc(contextHandle, hdt_load_assembly_and_get_function_pointer, reinterpret_cast<void**>(&m_LoadAssemblyAndGetFunctionPointer));
         if (rc != 0 || m_LoadAssemblyAndGetFunctionPointer == nullptr)
         {
             closeFunc(contextHandle);
             throw std::runtime_error("Failed to get hdt_load_assembly_and_get_function_pointer");
         }
 
-        rc = getDelegateFunc(contextHandle, hdt_get_function_pointer,
-            reinterpret_cast<void**>(&m_GetFunctionPointer));
+        rc = getDelegateFunc(contextHandle, hdt_get_function_pointer, reinterpret_cast<void**>(&m_GetFunctionPointer));
         if (rc != 0 || m_GetFunctionPointer == nullptr)
         {
             closeFunc(contextHandle);
             throw std::runtime_error("Failed to get hdt_get_function_pointer");
         }
 
-        rc = getDelegateFunc(contextHandle, hdt_load_assembly,
-            reinterpret_cast<void**>(&m_LoadAssembly));
+        rc = getDelegateFunc(contextHandle, hdt_load_assembly, reinterpret_cast<void**>(&m_LoadAssembly));
         if (rc != 0 || m_LoadAssembly == nullptr)
         {
             closeFunc(contextHandle);
@@ -130,13 +133,13 @@ namespace march
 
     void DotNetRuntimeImpl::LoadAssemblies() const
     {
-        for (LPCWSTR assembly : g_ManagedAssemblies)
+        for (LPCSTR assembly : g_ManagedAssemblies)
         {
-            std::wstring path = GetManagedFilePath(assembly);
+            std::string path = GetDotNetFilePath(assembly);
 
-            if (m_LoadAssembly(path.c_str(), nullptr, nullptr) != 0)
+            if (m_LoadAssembly(DOTNET_C_STR(path), nullptr, nullptr) != 0)
             {
-                throw std::runtime_error("Failed to load assembly: " + StringUtils::Utf16ToUtf8(path));
+                throw std::runtime_error("Failed to load assembly: " + path);
             }
         }
     }
@@ -153,10 +156,10 @@ namespace march
                 throw std::runtime_error("Invalid managed method");
             }
 
-            LPCWSTR typeName = it->second.first;
-            LPCWSTR methodName = it->second.second;
+            LPCSTR typeName = it->second.first;
+            LPCSTR methodName = it->second.second;
 
-            int rc = m_GetFunctionPointer(typeName, methodName, UNMANAGEDCALLERSONLY_METHOD,
+            int rc = m_GetFunctionPointer(DOTNET_C_STR(typeName), DOTNET_C_STR(methodName), UNMANAGEDCALLERSONLY_METHOD,
                 nullptr, nullptr, &m_Methods[index]);
             if (rc != 0 || m_Methods[index] == nullptr)
             {

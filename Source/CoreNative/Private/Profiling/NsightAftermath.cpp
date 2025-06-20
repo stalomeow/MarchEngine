@@ -137,7 +137,7 @@ namespace march
 
     static std::string GetCrashDumpFilePath()
     {
-        fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Logs");
+        fs::path path = fs::u8path(GetApp()->GetDataPath() + "/Logs");
 
         if (!fs::exists(path) && !fs::create_directories(path))
         {
@@ -146,7 +146,7 @@ namespace march
         }
 
         // Write the crash dump data to a file using the .nv-gpudmp extension registered with Nsight Graphics.
-        path /= StringUtils::Format(L"Crash-{:%Y-%m-%d-%H-%M-%S}.nv-gpudmp", TimeUtils::GetLocalTime());
+        path /= fs::u8path(StringUtils::Format("Crash-{:%Y-%m-%d-%H-%M-%S}.nv-gpudmp", TimeUtils::GetLocalTime()));
         return path.string();
     }
 
@@ -166,7 +166,7 @@ namespace march
 
     static std::string GetShaderDebugInfoFilePath(const GFSDK_Aftermath_ShaderDebugInfoIdentifier& identifier)
     {
-        fs::path path = StringUtils::Utf8ToUtf16(GetApp()->GetDataPath() + "/Logs/ShaderDebugInfo");
+        fs::path path = fs::u8path(GetApp()->GetDataPath() + "/Logs/ShaderDebugInfo");
 
         if (!fs::exists(path) && !fs::create_directories(path))
         {
@@ -175,7 +175,7 @@ namespace march
         }
 
         // uint64_t 转大写 16 进制，并保留前导 0
-        path /= StringUtils::Format(L"{:016X}-{:016X}.nvdbg", identifier.id[0], identifier.id[1]);
+        path /= fs::u8path(StringUtils::Format("{:016X}-{:016X}.nvdbg", identifier.id[0], identifier.id[1]));
         return path.string();
     }
 
