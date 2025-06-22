@@ -247,7 +247,7 @@ namespace march
         return m_UploadHeapBufferSubAllocator.get();
     }
 
-    void GfxDevice::DeferredRelease(RefCountPtr<ThreadSafeRefCountedObject> obj)
+    void GfxDevice::DeferredRelease(RefCountPtr<RefCountedObject> obj)
     {
         m_ReleaseQueue.emplace(m_CommandManager->GetNextFrameFence(), obj);
     }

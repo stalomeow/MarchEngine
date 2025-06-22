@@ -5,39 +5,24 @@
 
 namespace march
 {
-    class ThreadSafeRefCountedObject
+    class RefCountedObject
     {
+        template <typename T>
+        friend class RefCountPtr;
+
+        std::atomic<uint32> m_RefCount;
+
     public:
-        uint32 AddRef() noexcept
-        {
-            return ++m_RefCount;
-        }
+        RefCountedObject(const RefCountedObject&) = delete;
+        RefCountedObject& operator=(const RefCountedObject&) = delete;
 
-        uint32 Release() noexcept
-        {
-            uint32 refCount = --m_RefCount;
+        RefCountedObject(RefCountedObject&&) = delete;
+        RefCountedObject& operator=(RefCountedObject&&) = delete;
 
-            if (refCount == 0)
-            {
-                delete this;
-            }
-
-            return refCount;
-        }
-
-        ThreadSafeRefCountedObject(const ThreadSafeRefCountedObject&) = delete;
-        ThreadSafeRefCountedObject& operator=(const ThreadSafeRefCountedObject&) = delete;
-
-        ThreadSafeRefCountedObject(ThreadSafeRefCountedObject&&) = delete;
-        ThreadSafeRefCountedObject& operator=(ThreadSafeRefCountedObject&&) = delete;
-
-        virtual ~ThreadSafeRefCountedObject() = default;
+        virtual ~RefCountedObject() = default;
 
     protected:
-        ThreadSafeRefCountedObject() noexcept : m_RefCount(1) {}
-
-    private:
-        std::atomic<uint32> m_RefCount;
+        RefCountedObject() noexcept : m_RefCount(1) {}
     };
 
     template <typename T>
@@ -219,26 +204,25 @@ namespace march
     private:
         T* m_Ptr;
 
-        using IsTypeAllowed = std::is_base_of<ThreadSafeRefCountedObject, T>;
-
         void InternalAddRef() const noexcept
         {
-            static_assert(IsTypeAllowed::value, "T must derive from ThreadSafeRefCountedObject");
-
             if (m_Ptr != nullptr)
             {
-                m_Ptr->AddRef();
+                m_Ptr->m_RefCount.fetch_add(1, std::memory_order_relaxed);
             }
         }
 
         void InternalRelease() noexcept
         {
-            static_assert(IsTypeAllowed::value, "T must derive from ThreadSafeRefCountedObject");
-
             if (T* temp = m_Ptr; temp != nullptr)
             {
                 m_Ptr = nullptr;
-                temp->Release();
+
+                if (temp->m_RefCount.fetch_sub(1, std::memory_order_release) == 1)
+                {
+                    std::atomic_thread_fence(std::memory_order_acquire);
+                    delete temp;
+                }
             }
         }
     };
@@ -256,4 +240,3 @@ struct std::hash<march::RefCountPtr<T>>
         return std::hash<T*>{}(ptr.Get());
     }
 };
-
