@@ -395,7 +395,11 @@ namespace march
         }
 
         ImGui::EndFrame();
-        m_SwapChain->Present();
+
+        if (!willQuit)
+        {
+            m_SwapChain->Present();
+        }
 
         device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ false);
         device->CleanupResources();
