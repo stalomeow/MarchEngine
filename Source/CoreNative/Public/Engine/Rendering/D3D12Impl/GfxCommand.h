@@ -198,7 +198,9 @@ namespace march
         void EndEvent();
 
         void TransitionResource(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter);
+        void TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
         void TransitionSubresource(RefCountPtr<GfxResource> resource, uint32_t subresource, D3D12_RESOURCE_STATES stateAfter);
+        void TransitionSubresource(ID3D12Resource* resource, uint32_t subresource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
         void FlushResourceBarriers();
 
         void WaitOnGpu(const GfxSyncPoint& syncPoint);
@@ -256,10 +258,9 @@ namespace march
         void CopyTexture(GfxTexture* sourceTexture, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
         void CopyTexture(GfxTexture* sourceTexture, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
 
-        void PrepareForPresent(GfxRenderTexture* texture);
-
         GfxDevice* GetDevice() const { return m_Device; }
         GfxCommandType GetType() const { return m_Type; }
+        ID3D12GraphicsCommandList* GetList() const { return m_CommandList.Get(); }
 
     private:
         GfxDevice* m_Device;

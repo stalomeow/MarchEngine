@@ -58,16 +58,9 @@ namespace march
             && MipmapBias == other.MipmapBias;
     }
 
-    static DXGI_FORMAT GetResDXGIFormat(GfxTextureFormat format, bool sRGB, bool swapChain) noexcept
+    static DXGI_FORMAT GetResDXGIFormat(GfxTextureFormat format, bool sRGB) noexcept
     {
-        if constexpr (GfxSettings::ColorSpace == GfxColorSpace::Linear)
-        {
-            // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
-            // SwapChain Resource 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
-
-            sRGB &= !swapChain;
-        }
-        else
+        if constexpr (GfxSettings::ColorSpace != GfxColorSpace::Linear)
         {
             sRGB = false; // 强制关闭 sRGB 转换
         }
@@ -213,8 +206,7 @@ namespace march
     DXGI_FORMAT GfxTextureDesc::GetResDXGIFormat() const noexcept
     {
         bool sRGB = HasFlag(GfxTextureFlags::SRGB);
-        bool swapChain = HasFlag(GfxTextureFlags::SwapChain);
-        return ::march::GetResDXGIFormat(Format, sRGB, swapChain);
+        return ::march::GetResDXGIFormat(Format, sRGB);
     }
 
     DXGI_FORMAT GfxTextureDesc::GetRtvDsvDXGIFormat() const noexcept
@@ -237,11 +229,8 @@ namespace march
         }
         else
         {
-            // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
-            // SwapChain Resource 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
-
             bool sRGB = HasFlag(GfxTextureFlags::SRGB);
-            return ::march::GetResDXGIFormat(Format, sRGB, /* swapChain */ false);
+            return ::march::GetResDXGIFormat(Format, sRGB);
         }
 
         return DXGI_FORMAT_UNKNOWN;

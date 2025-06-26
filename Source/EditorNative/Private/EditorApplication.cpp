@@ -339,7 +339,13 @@ namespace march
         m_ProgressBar->BeginEnabledScope();
         DEFER_FUNC() { m_ProgressBar->EndEnabledScope(); };
 
-        m_SwapChain->NewFrame(GetClientWidth(), GetClientHeight(), willQuit);
+        GfxDevice* device = GetGfxDevice();
+
+        if (!willQuit)
+        {
+            m_SwapChain->WaitForFrameLatency();
+            m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
+        }
 
         // Start the Dear ImGui frame
         ImGui_ImplDX12_NewFrame();
@@ -382,16 +388,17 @@ namespace march
                 ImGui::Render();
 
                 // Render ImGui to the back buffer and prepare for present
-                GfxCommandContext* context = GetGfxDevice()->RequestContext(GfxCommandType::Direct);
-                GfxRenderTexture* backBuffer = m_SwapChain->GetBackBuffer();
-                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context, backBuffer);
-                context->PrepareForPresent(backBuffer);
+                GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
+                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context, m_SwapChain->GetBackBuffer());
                 context->SubmitAndRelease();
             }
         }
 
         ImGui::EndFrame();
-        m_SwapChain->Present(willQuit);
+        m_SwapChain->Present();
+
+        device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ false);
+        device->CleanupResources();
     }
 
     static std::string GetFontPath(Application* app, std::string fontName)

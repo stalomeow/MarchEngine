@@ -94,7 +94,6 @@ namespace march
         SRGB = 1 << 0,
         Mipmaps = 1 << 1,
         UnorderedAccess = 1 << 2,
-        SwapChain = 1 << 3,
     };
 
     DEFINE_ENUM_FLAG_OPERATORS(GfxTextureFlags);
@@ -328,21 +327,10 @@ namespace march
         DirectX::ScratchImage m_Image;
     };
 
-    struct GfxTextureResourceDesc
-    {
-        bool IsCube;
-        D3D12_RESOURCE_STATES State;
-        GfxTextureFlags Flags;
-        GfxTextureFilterMode Filter;
-        GfxTextureWrapMode Wrap;
-        float MipmapBias;
-    };
-
     class GfxRenderTexture : public GfxTexture
     {
     public:
         GfxRenderTexture(GfxDevice* device, const std::string& name, const GfxTextureDesc& desc, GfxTextureAllocStrategy allocationStrategy);
-        GfxRenderTexture(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc);
 
         bool IsReadOnly() const override { return false; }
     };

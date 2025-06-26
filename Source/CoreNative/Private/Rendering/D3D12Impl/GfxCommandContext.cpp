@@ -237,6 +237,11 @@ namespace march
         }
     }
 
+    void GfxCommandContext::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+    {
+        m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, stateBefore, stateAfter));
+    }
+
     void GfxCommandContext::TransitionSubresource(RefCountPtr<GfxResource> resource, uint32_t subresource, D3D12_RESOURCE_STATES stateAfter)
     {
         D3D12_RESOURCE_STATES stateBefore = resource->GetState(subresource);
@@ -247,6 +252,11 @@ namespace march
             m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(res, stateBefore, stateAfter, static_cast<UINT>(subresource)));
             resource->SetState(stateAfter, subresource);
         }
+    }
+
+    void GfxCommandContext::TransitionSubresource(ID3D12Resource* resource, uint32_t subresource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+    {
+        m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, stateBefore, stateAfter, static_cast<UINT>(subresource)));
     }
 
     void GfxCommandContext::FlushResourceBarriers()
@@ -1179,10 +1189,5 @@ namespace march
     void GfxCommandContext::CopyTexture(GfxTexture* sourceTexture, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice)
     {
         CopyTexture(sourceTexture, GfxTextureElement::Default, sourceFace, sourceArraySlice, sourceMipSlice, destinationTexture, GfxTextureElement::Default, destinationFace, destinationArraySlice, destinationMipSlice);
-    }
-
-    void GfxCommandContext::PrepareForPresent(GfxRenderTexture* texture)
-    {
-        TransitionResource(texture->GetUnderlyingResource(), D3D12_RESOURCE_STATE_PRESENT);
     }
 }

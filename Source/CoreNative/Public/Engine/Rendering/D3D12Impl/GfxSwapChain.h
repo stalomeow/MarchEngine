@@ -21,11 +21,11 @@ namespace march
 
         uint32_t GetPixelWidth() const;
         uint32_t GetPixelHeight() const;
+        GfxRenderTexture* GetBackBuffer() const;
 
-        void NewFrame(uint32_t width, uint32_t height, bool willQuit);
-        void Present(bool willQuit);
-
-        GfxRenderTexture* GetBackBuffer() const { return m_BackBuffers[m_CurrentBackBufferIndex].get(); }
+        void WaitForFrameLatency() const;
+        void Present();
+        void Resize(uint32_t width, uint32_t height);
 
     private:
         GfxDevice* m_Device;
@@ -33,9 +33,11 @@ namespace march
         Microsoft::WRL::ComPtr<IDXGISwapChain1> m_SwapChain;
         HANDLE m_FrameLatencyHandle;
 
-        std::unique_ptr<GfxRenderTexture> m_BackBuffers[GfxSettings::BackBufferCount];
-        uint32_t m_CurrentBackBufferIndex;
+        std::unique_ptr<GfxRenderTexture> m_PublicBackBuffer;
+        Microsoft::WRL::ComPtr<ID3D12Resource> m_PrivateBackBuffers[GfxSettings::BackBufferCount];
+        uint32_t m_CurrentPrivateBackBufferIndex;
 
-        void CreateBackBuffers();
+        void PrepareCurrentPrivateBackBuffer();
+        void CreateBackBuffers(uint32_t width, uint32_t height);
     };
 }

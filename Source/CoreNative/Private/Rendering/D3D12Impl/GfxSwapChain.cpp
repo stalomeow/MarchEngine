@@ -10,6 +10,8 @@ using namespace Microsoft::WRL;
 
 namespace march
 {
+    // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space
+    // SwapChain Resource 的 Format 不能有 _SRGB 后缀，只能在创建 RTV 时加上 _SRGB
     static constexpr DXGI_FORMAT BackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     static constexpr GfxCommandType CommandType = GfxCommandType::Direct;
 
@@ -22,7 +24,10 @@ namespace march
     }
 
     GfxSwapChain::GfxSwapChain(GfxDevice* device, HWND hWnd, uint32_t width, uint32_t height)
-        : m_Device(device), m_BackBuffers{}, m_CurrentBackBufferIndex(0)
+        : m_Device(device)
+        , m_PublicBackBuffer(nullptr)
+        , m_PrivateBackBuffers{}
+        , m_CurrentPrivateBackBufferIndex(0)
     {
         // https://github.com/microsoft/DirectXTK/wiki/Line-drawing-and-anti-aliasing#technical-note
         // The ability to create an MSAA DXGI swap chain is only supported for the older "bit-blt" style presentation modes,
@@ -55,13 +60,13 @@ namespace march
             swapChainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
         }
 
-        ID3D12CommandQueue* commandQueue = device->GetCommandManager()->GetQueue(CommandType)->GetQueue();
+        ID3D12CommandQueue* queue = device->GetCommandManager()->GetQueue(CommandType)->GetQueue();
 
         // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgifactory-createswapchain
         // Starting with Direct3D 11.1, we recommend not to use CreateSwapChain anymore to create a swap chain.
         // Instead, use CreateSwapChainForHwnd, CreateSwapChainForCoreWindow,
         // or CreateSwapChainForComposition depending on how you want to create the swap chain.
-        CHECK_HR(factory->CreateSwapChainForHwnd(commandQueue, hWnd, &swapChainDesc, nullptr, nullptr, &m_SwapChain));
+        CHECK_HR(factory->CreateSwapChainForHwnd(queue, hWnd, &swapChainDesc, nullptr, nullptr, &m_SwapChain));
 
         // https://developer.nvidia.com/blog/advanced-api-performance-swap-chains/
         ComPtr<IDXGISwapChain2> swapChain2;
@@ -69,7 +74,7 @@ namespace march
         CHECK_HR(swapChain2->SetMaximumFrameLatency(static_cast<UINT>(GfxSettings::MaxFrameLatency)));
         m_FrameLatencyHandle = swapChain2->GetFrameLatencyWaitableObject();
 
-        CreateBackBuffers();
+        CreateBackBuffers(width, height);
     }
 
     GfxSwapChain::~GfxSwapChain()
@@ -79,70 +84,32 @@ namespace march
 
     uint32_t GfxSwapChain::GetPixelWidth() const
     {
-        return m_BackBuffers[0]->GetDesc().Width;
+        return m_PublicBackBuffer->GetDesc().Width;
     }
 
     uint32_t GfxSwapChain::GetPixelHeight() const
     {
-        return m_BackBuffers[0]->GetDesc().Height;
+        return m_PublicBackBuffer->GetDesc().Height;
     }
 
-    void GfxSwapChain::NewFrame(uint32_t width, uint32_t height, bool willQuit)
+    GfxRenderTexture* GfxSwapChain::GetBackBuffer() const
     {
-        bool needResize;
+        // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
+        // You can't resize a swap chain unless you release all outstanding references to its back buffers.
+        // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
 
-        if (willQuit)
-        {
-            needResize = false;
-        }
-        else
-        {
-            if (width == GetPixelWidth() && height == GetPixelHeight())
-            {
-                needResize = false;
-            }
-            else
-            {
-                needResize = true;
-
-                // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
-                // You can't resize a swap chain unless you release all outstanding references to its back buffers.
-                // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
-                for (uint32_t i = 0; i < GfxSettings::BackBufferCount; i++)
-                {
-                    m_BackBuffers[i].reset();
-                }
-            }
-
-            // Wait for frame latency
-            WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
-        }
-
-        // 如果要 Resize，则必须等待旧的 Back Buffer 使用完毕
-        m_Device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ needResize);
-        m_Device->CleanupResources();
-
-        if (needResize)
-        {
-            DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-            CHECK_HR(m_SwapChain->GetDesc1(&swapChainDesc));
-            CHECK_HR(m_SwapChain->ResizeBuffers(swapChainDesc.BufferCount,
-                static_cast<UINT>(width), static_cast<UINT>(height), swapChainDesc.Format, swapChainDesc.Flags));
-
-            m_CurrentBackBufferIndex = 0;
-            CreateBackBuffers();
-        }
+        // 为了方便 Resize，这里不会把 SwapChain 的 Back Buffer 暴露出去，而是返回一个自己创建的 Back Buffer
+        return m_PublicBackBuffer.get();
     }
 
-    void GfxSwapChain::Present(bool willQuit)
+    void GfxSwapChain::WaitForFrameLatency() const
     {
-        if (willQuit)
-        {
-            return;
-        }
+        WaitForSingleObjectEx(m_FrameLatencyHandle, INFINITE, FALSE);
+    }
 
-        // 需要外部保证当前的 back buffer 是在 D3D12_RESOURCE_STATE_PRESENT 状态
-        assert(GetBackBuffer()->GetUnderlyingResource()->AreAllStatesEqualTo(D3D12_RESOURCE_STATE_PRESENT));
+    void GfxSwapChain::Present()
+    {
+        PrepareCurrentPrivateBackBuffer();
 
         UINT syncInterval = static_cast<UINT>(GfxSettings::VerticalSyncInterval);
         UINT flags = 0;
@@ -165,26 +132,90 @@ namespace march
         // In this scenario, if the message-pump thread has a critical section guarding it or if the render thread is blocked, then the two threads will deadlock.
         CHECK_HR(m_SwapChain->Present(syncInterval, flags));
 
-        m_CurrentBackBufferIndex = (m_CurrentBackBufferIndex + 1) % GfxSettings::BackBufferCount;
+        m_CurrentPrivateBackBufferIndex = (m_CurrentPrivateBackBufferIndex + 1) % GfxSettings::BackBufferCount;
     }
 
-    void GfxSwapChain::CreateBackBuffers()
+    void GfxSwapChain::PrepareCurrentPrivateBackBuffer()
     {
-        GfxTextureResourceDesc desc{};
-        desc.IsCube = false;
-        desc.State = D3D12_RESOURCE_STATE_COMMON;
-        desc.Flags = GfxTextureFlags::SRGB | GfxTextureFlags::SwapChain;
+        ComPtr<ID3D12Resource>& privateBackBuffer = m_PrivateBackBuffers[m_CurrentPrivateBackBufferIndex];
+
+        GfxCommandContext* cmd = m_Device->RequestContext(CommandType);
+        cmd->BeginEvent("PrepareBackBuffer");
+
+        {
+            cmd->TransitionResource(m_PublicBackBuffer->GetUnderlyingResource(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+            cmd->TransitionResource(privateBackBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd->FlushResourceBarriers();
+
+            // 将 Public Back Buffer 的内容复制到 Private Back Buffer
+            cmd->GetList()->CopyResource(privateBackBuffer.Get(), m_PublicBackBuffer->GetUnderlyingD3DResource());
+
+            cmd->TransitionResource(privateBackBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
+            cmd->FlushResourceBarriers();
+        }
+
+        cmd->EndEvent();
+        cmd->SubmitAndRelease();
+    }
+
+    void GfxSwapChain::Resize(uint32_t width, uint32_t height)
+    {
+        if (width == GetPixelWidth() && height == GetPixelHeight())
+        {
+            return;
+        }
+
+        // https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers
+        // You can't resize a swap chain unless you release all outstanding references to its back buffers.
+        // You must release all of its direct and indirect references on the back buffers in order for ResizeBuffers to succeed.
+
+        // Private Back Buffer 没有暴露给外部，只在这个 queue 上使用过
+        GfxCommandQueue* queue = m_Device->GetCommandManager()->GetQueue(CommandType);
+
+        // 等待一下，确保使用完毕
+        queue->CreateSyncPoint().WaitOnCpu();
+
+        // 释放引用
+        for (ComPtr<ID3D12Resource>& backBuffer : m_PrivateBackBuffers)
+        {
+            backBuffer = nullptr;
+        }
+
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+        CHECK_HR(m_SwapChain->GetDesc1(&swapChainDesc));
+        CHECK_HR(m_SwapChain->ResizeBuffers(
+            swapChainDesc.BufferCount,
+            static_cast<UINT>(width),
+            static_cast<UINT>(height),
+            swapChainDesc.Format,
+            swapChainDesc.Flags));
+
+        CreateBackBuffers(width, height);
+    }
+
+    void GfxSwapChain::CreateBackBuffers(uint32_t width, uint32_t height)
+    {
+        GfxTextureDesc desc{};
+        desc.SetResDXGIFormat(BackBufferFormat, /* updateFlags */ false);
+        desc.Flags = GfxTextureFlags::SRGB;
+        desc.Dimension = GfxTextureDimension::Tex2D;
+        desc.Width = width;
+        desc.Height = height;
+        desc.DepthOrArraySize = 1;
+        desc.MSAASamples = 1;
         desc.Filter = GfxTextureFilterMode::Point;
         desc.Wrap = GfxTextureWrapMode::Clamp;
         desc.MipmapBias = 0.0f;
 
+        m_PublicBackBuffer = std::make_unique<GfxRenderTexture>(m_Device, "PublicBackBuffer", desc, GfxTextureAllocStrategy::DefaultHeapCommitted);
+
         for (uint32_t i = 0; i < GfxSettings::BackBufferCount; i++)
         {
-            ComPtr<ID3D12Resource> backBuffer = nullptr;
+            ComPtr<ID3D12Resource>& backBuffer = m_PrivateBackBuffers[i];
             CHECK_HR(m_SwapChain->GetBuffer(static_cast<UINT>(i), IID_PPV_ARGS(&backBuffer)));
-            GfxUtils::SetName(backBuffer.Get(), "BackBuffer" + std::to_string(i));
-
-            m_BackBuffers[i] = std::make_unique<GfxRenderTexture>(m_Device, backBuffer, desc);
+            GfxUtils::SetName(backBuffer.Get(), "PrivateBackBuffer" + std::to_string(i));
         }
+
+        m_CurrentPrivateBackBufferIndex = 0;
     }
 }

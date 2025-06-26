@@ -89,9 +89,6 @@ namespace March.Core.Rendering
 
         [HideInInspector]
         UnorderedAccess = 1 << 2,
-
-        [HideInInspector]
-        SwapChain = 1 << 3,
     }
 
     public enum TextureDimension

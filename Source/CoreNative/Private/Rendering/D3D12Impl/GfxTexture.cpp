@@ -1025,43 +1025,4 @@ namespace march
 
         Reset(desc, allocator->Allocate(name, &resDesc, initialState, &clearValue));
     }
-
-    GfxRenderTexture::GfxRenderTexture(GfxDevice* device, ComPtr<ID3D12Resource> resource, const GfxTextureResourceDesc& resDesc)
-        : GfxTexture(device)
-    {
-        D3D12_RESOURCE_DESC d3d12Desc = resource->GetDesc();
-
-        GfxTextureDesc desc{};
-        desc.SetResDXGIFormat(d3d12Desc.Format);
-        desc.Flags = resDesc.Flags;
-        desc.Width = static_cast<uint32_t>(d3d12Desc.Width);
-        desc.Height = static_cast<uint32_t>(d3d12Desc.Height);
-        desc.DepthOrArraySize = static_cast<uint32_t>(d3d12Desc.DepthOrArraySize);
-        desc.MSAASamples = static_cast<uint32_t>(d3d12Desc.SampleDesc.Count);
-        desc.Filter = resDesc.Filter;
-        desc.Wrap = resDesc.Wrap;
-        desc.MipmapBias = resDesc.MipmapBias;
-
-        switch (d3d12Desc.Dimension)
-        {
-        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
-            if (resDesc.IsCube)
-            {
-                desc.DepthOrArraySize /= 6u;
-                desc.Dimension = desc.DepthOrArraySize > 1 ? GfxTextureDimension::CubeArray : GfxTextureDimension::Cube;
-            }
-            else
-            {
-                desc.Dimension = desc.DepthOrArraySize > 1 ? GfxTextureDimension::Tex2DArray : GfxTextureDimension::Tex2D;
-            }
-            break;
-        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-            desc.Dimension = GfxTextureDimension::Tex3D;
-            break;
-        default:
-            throw GfxException("Invalid resource dimension");
-        }
-
-        Reset(desc, MARCH_MAKE_REF(GfxResource, device, resource, resDesc.State));
-    }
 }
