@@ -32,6 +32,7 @@ namespace march
         void OnStart(const std::vector<std::string>& args) override;
         void OnQuit() override;
         void OnTick(bool willQuit) override;
+        void OnResize() override;
         void OnDisplayScaleChange() override;
         void OnPaint() override;
         HICON GetIcon() override;

@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <filesystem>
+#include <sstream>
 #include <argparse/argparse.hpp>
 
 using namespace DirectX;
@@ -217,15 +218,20 @@ namespace march
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
-        io.IniFilename = m_ImGuiIniFilename.c_str();
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
         io.ConfigWindowsMoveFromTitleBarOnly = true;
-        io.ConfigDockingAlwaysTabBar = true;
+        io.ConfigDockingTransparentPayload = true; // https://github.com/ocornut/imgui/issues/2361
+        io.ConfigViewportsNoAutoMerge = true;
+        io.ConfigViewportsNoTaskBarIcon = true;
+        io.ConfigViewportsNoDecoration = true;
+        io.ConfigViewportsNoDefaultParent = false;
+        io.IniFilename = m_ImGuiIniFilename.c_str();
 
         ImGui_ImplWin32_Init(GetWindowHandle());
         ImGuiStyleManager::ApplyDefaultStyle();
         ReloadFonts();
 
-        ImGui_ImplDX12_Init(GetGfxDevice(), "Engine/Shaders/DearImGui.shader");
+        ImGui_ImplDX12_Init(GetGfxDevice());
 
         // Scene View Gizmo Style
         ImGuizmo::Style& style = ImGuizmo::GetStyle();
@@ -339,68 +345,54 @@ namespace march
         m_ProgressBar->BeginEnabledScope();
         DEFER_FUNC() { m_ProgressBar->EndEnabledScope(); };
 
-        GfxDevice* device = GetGfxDevice();
-
-        if (!willQuit)
-        {
-            m_SwapChain->WaitForFrameLatency();
-            m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
-        }
-
         // Start the Dear ImGui frame
         ImGui_ImplDX12_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        // C# 在第一次初始化 EditorWindow 时要用到 ImGui 的 DockSpace
+        EditorWindow::DockSpaceOverMainViewport();
+
+        if (!m_IsInitialized)
         {
-            // C# 在第一次初始化 EditorWindow 时要用到 ImGui 的 DockSpace
-            EditorWindow::DockSpaceOverMainViewport();
+            // Initialization
+            DotNet::RuntimeInvoke(ManagedMethod::Application_Initialize);
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_Initialize);
 
-            if (!m_IsInitialized)
-            {
-                // Initialization
-                DotNet::RuntimeInvoke(ManagedMethod::Application_Initialize);
-                DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_Initialize);
+            // Post Initialization
+            DotNet::RuntimeInvoke(ManagedMethod::Application_PostInitialize);
+            DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_PostInitialize);
 
-                // Post Initialization
-                DotNet::RuntimeInvoke(ManagedMethod::Application_PostInitialize);
-                DotNet::RuntimeInvoke(ManagedMethod::EditorApplication_PostInitialize);
-
-                m_IsInitialized = true;
-            }
-
-            if (willQuit)
-            {
-                DotNet::RuntimeInvoke(ManagedMethod::Application_Quit);
-            }
-            else
-            {
-                m_ProgressBar->ReportAlive();
-                RenderPipeline* rp = GetRenderPipeline();
-
-                rp->PrepareFrameData();
-                DrawBaseImGui();
-
-                DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
-
-                rp->Render();
-                Gizmos::Render();
-                ImGui::Render();
-
-                // Render ImGui to the back buffer and prepare for present
-                GfxCommandContext* context = device->RequestContext(GfxCommandType::Direct);
-                ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context, m_SwapChain->GetBackBuffer());
-                context->SubmitAndRelease();
-            }
+            m_IsInitialized = true;
         }
-
-        ImGui::EndFrame();
 
         if (!willQuit)
         {
-            m_SwapChain->Present();
+            m_SwapChain->WaitForFrameLatency();
+            m_ProgressBar->ReportAlive();
+
+            RenderPipeline* rp = GetRenderPipeline();
+
+            rp->PrepareFrameData();
+            DrawBaseImGui();
+
+            DotNet::RuntimeInvoke(ManagedMethod::Application_Tick);
+
+            rp->Render();
+            Gizmos::Render();
+
+            ImGui::Render();
+            ImGui_ImplDX12_RenderAndPresent(m_SwapChain.get());
+        }
+        else
+        {
+            DotNet::RuntimeInvoke(ManagedMethod::Application_Quit);
+
+            // Skip rendering
+            ImGui::EndFrame();
         }
 
+        GfxDevice* device = GetGfxDevice();
         device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ false);
         device->CleanupResources();
     }
@@ -458,6 +450,11 @@ namespace march
             &iconConfig, fabIconsRanges);
 
         io.Fonts->Build();
+    }
+
+    void EditorApplication::OnResize()
+    {
+        m_SwapChain->Resize(GetClientWidth(), GetClientHeight());
     }
 
     void EditorApplication::OnDisplayScaleChange()

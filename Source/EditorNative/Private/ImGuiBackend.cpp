@@ -12,9 +12,8 @@ namespace march
     class ImGuiBackendData final
     {
     public:
-        ImGuiBackendData(GfxDevice* device, const std::string& shaderAssetPath)
+        ImGuiBackendData(GfxDevice* device)
             : m_Device(device)
-            , m_ShaderAssetPath(shaderAssetPath)
             , m_FontTexture(nullptr)
             , m_Shader(nullptr)
             , m_Material(nullptr)
@@ -53,7 +52,7 @@ namespace march
         {
             if (m_Material == nullptr)
             {
-                m_Shader.reset(m_ShaderAssetPath);
+                m_Shader.reset("Engine/Shaders/DearImGui.shader");
                 m_Material = std::make_unique<Material>(m_Shader.get());
             }
 
@@ -64,7 +63,6 @@ namespace march
 
     private:
         GfxDevice* m_Device;
-        std::string m_ShaderAssetPath;
 
         std::unique_ptr<GfxExternalTexture> m_FontTexture;
 
@@ -94,11 +92,18 @@ namespace march
     class ImGuiViewportData
     {
     public:
-        ImGuiViewportData(GfxDevice* device)
-            : m_Mesh(GfxBufferFlags::Dynamic | GfxBufferFlags::Transient)
+        explicit ImGuiViewportData(GfxDevice* device)
+            : m_Device(device)
+            , m_Mesh(GfxBufferFlags::Dynamic | GfxBufferFlags::Transient)
             , m_ConstantBuffer(device, "ImGuiConstants")
             , m_Intermediate(nullptr)
+            , m_SwapChain(nullptr)
         {
+        }
+
+        void CreateSwapChain(HWND hWnd, uint32_t width, uint32_t height)
+        {
+            m_SwapChain = std::make_unique<GfxSwapChain>(m_Device, hWnd, width, height);
         }
 
         GfxBasicMesh<ImGuiVertex>& GetMesh()
@@ -145,11 +150,21 @@ namespace march
             return m_Intermediate.get();
         }
 
+        GfxSwapChain* GetSwapChain() const { return m_SwapChain.get(); }
+
+        GfxDevice* GetDevice() const { return m_Device; }
+
     private:
+        GfxDevice* m_Device;
         GfxBasicMesh<ImGuiVertex> m_Mesh;
         GfxBuffer m_ConstantBuffer;
         std::unique_ptr<GfxRenderTexture> m_Intermediate;
+        std::unique_ptr<GfxSwapChain> m_SwapChain;
     };
+
+    // Forward Declarations
+    static void ImGui_ImplDX12_InitPlatformInterface();
+    static void ImGui_ImplDX12_ShutdownPlatformInterface();
 
     // Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts
     // It is STRONGLY preferred that you use docking branch with multi-viewports (== single Dear ImGui context + multiple windows) instead of multiple Dear ImGui contexts.
@@ -158,17 +173,23 @@ namespace march
         return ImGui::GetCurrentContext() ? static_cast<ImGuiBackendData*>(ImGui::GetIO().BackendRendererUserData) : nullptr;
     }
 
-    void ImGui_ImplDX12_Init(GfxDevice* device, const std::string& shaderAssetPath)
+    void ImGui_ImplDX12_Init(GfxDevice* device)
     {
         ImGuiIO& io = ImGui::GetIO();
         IMGUI_CHECKVERSION();
         IM_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
 
         // Setup backend capabilities flags
-        ImGuiBackendData* bd = IM_NEW(ImGuiBackendData)(device, shaderAssetPath);
+        ImGuiBackendData* bd = IM_NEW(ImGuiBackendData)(device);
         io.BackendRendererUserData = (void*)bd;
         io.BackendRendererName = "imgui_march_dx12";
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
+
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui_ImplDX12_InitPlatformInterface();
+        }
 
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
         mainViewport->RendererUserData = IM_NEW(ImGuiViewportData)(device);
@@ -182,16 +203,18 @@ namespace march
 
         // Manually delete main viewport render resources in-case we haven't initialized for viewports
         ImGuiViewport* mainViewport = ImGui::GetMainViewport();
-        if (ImGuiViewportData* vd = (ImGuiViewportData*)mainViewport->RendererUserData)
+        if (ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(mainViewport->RendererUserData))
         {
             IM_DELETE(vd);
             mainViewport->RendererUserData = nullptr;
         }
 
+        ImGui_ImplDX12_ShutdownPlatformInterface();
+
         io.Fonts->SetTexID(0);
         io.BackendRendererName = nullptr;
         io.BackendRendererUserData = nullptr;
-        io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasViewports);
         IM_DELETE(bd);
     }
 
@@ -235,11 +258,13 @@ namespace march
         buffer.SetData(desc, &constants);
     }
 
-    void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxCommandContext* context, GfxRenderTexture* target)
+    static void ImGui_ImplDX12_RenderDrawData(ImDrawData* drawData, GfxCommandContext* context, GfxRenderTexture* target, bool isMainViewport)
     {
         // Avoid rendering when minimized
         if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
+        {
             return;
+        }
 
         ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
         ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(drawData->OwnerViewport->RendererUserData);
@@ -297,12 +322,17 @@ namespace march
                 context->SetColorTarget(intermediate);
                 context->SetViewport(vp);
                 context->SetDefaultScissorRect();
-                context->ClearRenderTargets(GfxClearFlags::Color);
                 context->SetBuffer(cbufferId, &cbuffer);
             };
 
             uint32_t subMeshIndex = 0;
             setRenderState();
+
+            // imgui_impl_dx12.cpp 中绘制 Main Viewport 时没有 Clear，这里和它保持一致
+            if (!isMainViewport && !(drawData->OwnerViewport->Flags & ImGuiViewportFlags_NoRendererClear))
+            {
+                context->ClearRenderTargets(GfxClearFlags::Color);
+            }
 
             for (int n = 0; n < drawData->CmdListsCount; n++)
             {
@@ -354,4 +384,97 @@ namespace march
         }
         context->EndEvent();
     }
+
+    void ImGui_ImplDX12_RenderAndPresent(GfxSwapChain* mainSwapChain)
+    {
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+
+        // Render the main window to the back buffer
+        GfxCommandContext* context = bd->GetDevice()->RequestContext(GfxCommandType::Direct);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), context, mainSwapChain->GetBackBuffer(), /* isMainViewport */ true);
+        context->SubmitAndRelease();
+
+        // https://github.com/ocornut/imgui/wiki/Multi-Viewports
+        // Update and Render additional Platform Windows
+        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
+
+        mainSwapChain->Present();
+    }
+
+    //--------------------------------------------------------------------------------------------------------
+    // MULTI-VIEWPORT / PLATFORM INTERFACE SUPPORT
+    // This is an _advanced_ and _optional_ feature, allowing the backend to create and handle multiple viewports simultaneously.
+    // If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
+    //--------------------------------------------------------------------------------------------------------
+
+    static void ImGui_ImplDX12_CreateWindow(ImGuiViewport* viewport)
+    {
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+        ImGuiViewportData* vd = IM_NEW(ImGuiViewportData)(bd->GetDevice());
+
+        // PlatformHandleRaw should always be a HWND, whereas PlatformHandle might be a higher-level handle (e.g. GLFWWindow*, SDL_Window*).
+        // Some backends will leave PlatformHandleRaw == 0, in which case we assume PlatformHandle will contain the HWND.
+        HWND hWnd = static_cast<HWND>(viewport->PlatformHandleRaw ? viewport->PlatformHandleRaw : viewport->PlatformHandle);
+        IM_ASSERT(hWnd != nullptr);
+
+        uint32_t width = static_cast<uint32_t>(viewport->Size.x);
+        uint32_t height = static_cast<uint32_t>(viewport->Size.y);
+
+        vd->CreateSwapChain(hWnd, width, height);
+        viewport->RendererUserData = vd;
+    }
+
+    static void ImGui_ImplDX12_DestroyWindow(ImGuiViewport* viewport)
+    {
+        ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+
+        IM_DELETE(vd);
+        viewport->RendererUserData = nullptr;
+    }
+
+    static void ImGui_ImplDX12_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
+    {
+        ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+
+        uint32_t width = static_cast<uint32_t>(size.x);
+        uint32_t height = static_cast<uint32_t>(size.y);
+        vd->GetSwapChain()->Resize(width, height);
+    }
+
+    static void ImGui_ImplDX12_RenderWindow(ImGuiViewport* viewport, void*)
+    {
+        ImGuiBackendData* bd = ImGui_ImplDX12_GetBackendData();
+        ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+
+        GfxCommandContext* context = bd->GetDevice()->RequestContext(GfxCommandType::Direct);
+        ImGui_ImplDX12_RenderDrawData(viewport->DrawData, context, vd->GetSwapChain()->GetBackBuffer(), /* isMainViewport */ false);
+        context->SubmitAndRelease();
+    }
+
+    static void ImGui_ImplDX12_SwapBuffers(ImGuiViewport* viewport, void*)
+    {
+        ImGuiViewportData* vd = static_cast<ImGuiViewportData*>(viewport->RendererUserData);
+        vd->GetSwapChain()->Present();
+    }
+
+    static void ImGui_ImplDX12_InitPlatformInterface()
+    {
+        ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+        platformIO.Renderer_CreateWindow = ImGui_ImplDX12_CreateWindow;
+        platformIO.Renderer_DestroyWindow = ImGui_ImplDX12_DestroyWindow;
+        platformIO.Renderer_SetWindowSize = ImGui_ImplDX12_SetWindowSize;
+        platformIO.Renderer_RenderWindow = ImGui_ImplDX12_RenderWindow;
+        platformIO.Renderer_SwapBuffers = ImGui_ImplDX12_SwapBuffers;
+    }
+
+    static void ImGui_ImplDX12_ShutdownPlatformInterface()
+    {
+        ImGui::DestroyPlatformWindows();
+    }
+
+    //-----------------------------------------------------------------------------
 }
