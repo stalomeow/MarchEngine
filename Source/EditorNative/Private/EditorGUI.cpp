@@ -540,7 +540,8 @@ namespace march
             = ImGuiTreeNodeFlags_OpenOnArrow
             | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | ImGuiTreeNodeFlags_SpanFullWidth
-            | ImGuiTreeNodeFlags_HideNavCursor;
+            | ImGuiTreeNodeFlags_HideNavCursor
+            | ImGuiTreeNodeFlags_DrawLinesToNodes;
 
         if (isLeaf)      flags |= ImGuiTreeNodeFlags_Leaf;
         if (selected)    flags |= ImGuiTreeNodeFlags_Selected;
