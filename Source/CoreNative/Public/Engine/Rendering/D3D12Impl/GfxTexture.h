@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Object.h"
-#include "Engine/Memory/RefCounting.h"
+#include "Engine/STL/RefCount.h"
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
 #include <d3dx12.h>
@@ -231,7 +231,7 @@ namespace march
         uint32_t GetSubresourceIndex(GfxTextureElement element, GfxCubemapFace face, uint32_t arraySlice, uint32_t mipSlice) const;
 
         GfxDevice* GetDevice() const { return m_Device; }
-        RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
+        stl::RefCountPtr<GfxResource> GetUnderlyingResource() const { return m_Resource; }
         ID3D12Resource* GetUnderlyingD3DResource() const { return m_Resource->GetD3DResource(); }
 
         const GfxTextureDesc& GetDesc() const { return m_Desc; }
@@ -251,12 +251,12 @@ namespace march
     protected:
         GfxTexture(GfxDevice* device);
 
-        void Reset(const GfxTextureDesc& desc, RefCountPtr<GfxResource> resource);
+        void Reset(const GfxTextureDesc& desc, stl::RefCountPtr<GfxResource> resource);
 
     private:
         GfxDevice* m_Device;
 
-        RefCountPtr<GfxResource> m_Resource;
+        stl::RefCountPtr<GfxResource> m_Resource;
         GfxTextureDesc m_Desc;
         uint32_t m_MipLevels;
         uint32_t m_SampleQuality;

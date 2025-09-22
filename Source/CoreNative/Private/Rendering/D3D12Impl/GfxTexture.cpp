@@ -112,7 +112,7 @@ namespace march
         m_SamplerDescriptor.reset();
     }
 
-    void GfxTexture::Reset(const GfxTextureDesc& desc, RefCountPtr<GfxResource> resource)
+    void GfxTexture::Reset(const GfxTextureDesc& desc, stl::RefCountPtr<GfxResource> resource)
     {
         ReleaseResource();
 
@@ -929,7 +929,7 @@ namespace march
         GfxUtils::SetName(resource.Get(), m_Name);
 
         // CreateTextureEx 使用 D3D12_RESOURCE_STATE_COMMON
-        Reset(desc, MARCH_MAKE_REF(GfxResource, device, resource, D3D12_RESOURCE_STATE_COMMON));
+        Reset(desc, stl::make_ref<GfxResource>(MemoryLabel::Default, device, resource, D3D12_RESOURCE_STATE_COMMON));
 
         std::vector<D3D12_SUBRESOURCE_DATA> subresources{};
         CHECK_HR(PrepareUpload(d3dDevice, m_Image.GetImages(), m_Image.GetImageCount(), m_Image.GetMetadata(), subresources));

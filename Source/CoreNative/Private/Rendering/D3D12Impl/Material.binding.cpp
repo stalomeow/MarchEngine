@@ -5,7 +5,7 @@
 
 NATIVE_EXPORT_AUTO Material_New()
 {
-    retcs MARCH_NEW Material();
+    retcs MARCH_NEW(Material, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO Material_Reset(cs<Material*> pMaterial)

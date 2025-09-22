@@ -4,5 +4,5 @@
 
 NATIVE_EXPORT_AUTO GraphicsDebuggerWindow_New()
 {
-    retcs MARCH_NEW GraphicsDebuggerWindow();
+    retcs MARCH_NEW(GraphicsDebuggerWindow, MemoryLabel::Default)();
 }

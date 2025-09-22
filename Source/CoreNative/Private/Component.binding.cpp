@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO Component_NewDefault()
 {
-    retcs MARCH_NEW Component();
+    retcs MARCH_NEW(Component, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO Component_GetIsActiveAndEnabled(cs<Component*> component)

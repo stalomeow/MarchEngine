@@ -38,7 +38,7 @@ namespace march
     ULONG DropManager::Release()
     {
         ULONG count = InterlockedDecrement(&m_RefCount);
-        if (count == 0) delete this;
+        if (count == 0) MARCH_DELETE(this, MemoryLabel::Default);
         return count;
     }
 
@@ -111,7 +111,7 @@ namespace march
     bool DropManager::Initialize(HWND hWnd)
     {
         ComPtr<DropManager> manager;
-        manager.Attach(MARCH_NEW DropManager(hWnd));
+        manager.Attach(MARCH_NEW(DropManager, MemoryLabel::Default)(hWnd));
         return SUCCEEDED(RegisterDragDrop(hWnd, manager.Get()));
     }
 

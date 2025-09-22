@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <string>
 #include <string_view>
@@ -21,6 +21,8 @@ namespace march
         static void FreeDllHandle(void* dllHandle);
 
         static void SetCurrentThreadName(std::string_view name);
+
+        static void DebugOutput(std::string_view s);
 
 #ifdef PLATFORM_WINDOWS
         struct Windows

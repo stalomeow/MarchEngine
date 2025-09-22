@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO Camera_New()
 {
-    retcs MARCH_NEW Camera();
+    retcs MARCH_NEW(Camera, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO Camera_GetPixelWidth(cs<Camera*> camera)

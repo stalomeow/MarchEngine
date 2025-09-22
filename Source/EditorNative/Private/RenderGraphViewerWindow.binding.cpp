@@ -4,5 +4,5 @@
 
 NATIVE_EXPORT_AUTO RenderGraphViewerWindow_New()
 {
-    retcs MARCH_NEW RenderGraphViewerWindow();
+    retcs MARCH_NEW(RenderGraphViewerWindow, MemoryLabel::Default)();
 }

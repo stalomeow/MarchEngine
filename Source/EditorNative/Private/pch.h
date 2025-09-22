@@ -2,6 +2,7 @@
 
 #include "Engine/Ints.h"
 #include "Engine/Object.h"
+#include "Engine/Memory/MemoryManager.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"

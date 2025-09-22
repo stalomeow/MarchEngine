@@ -4,5 +4,5 @@
 
 NATIVE_EXPORT_AUTO NativeMarchObject_Delete(cs<MarchObject*> ptr)
 {
-    delete ptr;
+    MARCH_DELETE(ptr.data, MemoryLabel::Default);
 }

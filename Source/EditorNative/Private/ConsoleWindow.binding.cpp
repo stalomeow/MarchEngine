@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO ConsoleWindow_New()
 {
-    retcs MARCH_NEW ConsoleWindow();
+    retcs MARCH_NEW(ConsoleWindow, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO ConsoleWindow_GetLogTypeFilter(cs<ConsoleWindow*> w)

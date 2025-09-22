@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Memory/Allocator.h"
-#include "Engine/Memory/RefCounting.h"
+#include "Engine/STL/RefCount.h"
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
 #include <d3dx12.h>
@@ -128,7 +128,7 @@ namespace march
         uint32_t GetOffsetInBytes(GfxBufferElement element);
         uint32_t GetSizeInBytes(GfxBufferElement element) const;
 
-        RefCountPtr<GfxResource> GetUnderlyingResource();
+        stl::RefCountPtr<GfxResource> GetUnderlyingResource();
         ID3D12Resource* GetUnderlyingD3DResource();
 
         // 为了灵活性，Buffer 不提供 CBV 和 SRV，请使用 RootCBV 和 RootSRV
@@ -164,7 +164,7 @@ namespace march
         std::string m_Name;
         GfxBufferDesc m_Desc;
 
-        RefCountPtr<GfxResource> m_Resource;
+        stl::RefCountPtr<GfxResource> m_Resource;
         uint32_t m_DataOffsetInBytes;
         uint32_t m_CounterOffsetInBytes; // 可能没有 Counter
 
@@ -183,7 +183,7 @@ namespace march
     public:
         virtual ~GfxBufferSubAllocator() = default;
 
-        virtual RefCountPtr<GfxResource> Allocate(
+        virtual stl::RefCountPtr<GfxResource> Allocate(
             uint32_t sizeInBytes,
             uint32_t dataPlacementAlignment,
             uint32_t* pOutOffsetInBytes,
@@ -211,7 +211,7 @@ namespace march
             const GfxBufferMultiBuddySubAllocatorDesc& desc,
             GfxResourceAllocator* pageAllocator);
 
-        RefCountPtr<GfxResource> Allocate(
+        stl::RefCountPtr<GfxResource> Allocate(
             uint32_t sizeInBytes,
             uint32_t dataPlacementAlignment,
             uint32_t* pOutOffsetInBytes,
@@ -224,7 +224,7 @@ namespace march
     private:
         GfxDevice* m_Device;
         std::unique_ptr<MultiBuddyAllocator> m_Allocator;
-        std::vector<RefCountPtr<GfxResource>> m_Pages;
+        std::vector<stl::RefCountPtr<GfxResource>> m_Pages;
         std::queue<std::pair<uint64_t, GfxBufferSubAllocation>> m_ReleaseQueue;
     };
 
@@ -243,7 +243,7 @@ namespace march
             GfxResourceAllocator* pageAllocator,
             GfxResourceAllocator* largePageAllocator);
 
-        RefCountPtr<GfxResource> Allocate(
+        stl::RefCountPtr<GfxResource> Allocate(
             uint32_t sizeInBytes,
             uint32_t dataPlacementAlignment,
             uint32_t* pOutOffsetInBytes,
@@ -256,8 +256,8 @@ namespace march
     private:
         GfxDevice* m_Device;
         std::unique_ptr<LinearAllocator> m_Allocator;
-        std::vector<RefCountPtr<GfxResource>> m_Pages;
-        std::vector<RefCountPtr<GfxResource>> m_LargePages;
-        std::queue<std::pair<uint64_t, RefCountPtr<GfxResource>>> m_ReleaseQueue;
+        std::vector<stl::RefCountPtr<GfxResource>> m_Pages;
+        std::vector<stl::RefCountPtr<GfxResource>> m_LargePages;
+        std::queue<std::pair<uint64_t, stl::RefCountPtr<GfxResource>>> m_ReleaseQueue;
     };
 }

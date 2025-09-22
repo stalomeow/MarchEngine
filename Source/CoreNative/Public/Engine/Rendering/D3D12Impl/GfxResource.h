@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Memory/Allocator.h"
-#include "Engine/Memory/RefCounting.h"
+#include "Engine/STL/RefCount.h"
 #include <d3dx12.h>
 #include <wrl.h>
 #include <stdint.h>
@@ -20,7 +20,7 @@ namespace march
         BuddyAllocation Buddy;
     };
 
-    class GfxResource final : public RefCountedObject
+    class GfxResource final : public stl::RefCountedObject
     {
         GfxDevice* m_Device;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_Resource;
@@ -37,8 +37,8 @@ namespace march
         void* m_NsightAftermathHandle;
 
     public:
-        GfxResource(GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
-        GfxResource(GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
+        GfxResource(MemoryLabel label, GfxDevice* device, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
+        GfxResource(MemoryLabel label, GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, Microsoft::WRL::ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state);
         ~GfxResource();
 
         bool IsHeapCpuAccessible() const;
@@ -65,7 +65,7 @@ namespace march
     public:
         virtual ~GfxResourceAllocator() = default;
 
-        virtual RefCountPtr<GfxResource> Allocate(
+        virtual stl::RefCountPtr<GfxResource> Allocate(
             const std::string& name,
             const D3D12_RESOURCE_DESC* pDesc,
             D3D12_RESOURCE_STATES initialState,
@@ -80,7 +80,7 @@ namespace march
     protected:
         GfxResourceAllocator(GfxDevice* device, D3D12_HEAP_TYPE heapType, D3D12_HEAP_FLAGS heapFlags);
 
-        RefCountPtr<GfxResource> MakeResource(
+        stl::RefCountPtr<GfxResource> MakeResource(
             const std::string& name,
             Microsoft::WRL::ComPtr<ID3D12Resource> resource,
             D3D12_RESOURCE_STATES initialState,
@@ -103,7 +103,7 @@ namespace march
     public:
         GfxCommittedResourceAllocator(GfxDevice* device, const GfxCommittedResourceAllocatorDesc& desc);
 
-        RefCountPtr<GfxResource> Allocate(
+        stl::RefCountPtr<GfxResource> Allocate(
             const std::string& name,
             const D3D12_RESOURCE_DESC* pDesc,
             D3D12_RESOURCE_STATES initialState,
@@ -125,7 +125,7 @@ namespace march
     public:
         GfxPlacedResourceAllocator(GfxDevice* device, const std::string& name, const GfxPlacedResourceAllocatorDesc& desc);
 
-        RefCountPtr<GfxResource> Allocate(
+        stl::RefCountPtr<GfxResource> Allocate(
             const std::string& name,
             const D3D12_RESOURCE_DESC* pDesc,
             D3D12_RESOURCE_STATES initialState,

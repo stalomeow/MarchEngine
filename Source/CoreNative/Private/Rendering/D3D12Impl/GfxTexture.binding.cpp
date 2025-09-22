@@ -58,7 +58,7 @@ NATIVE_EXPORT_AUTO GfxTexture_GetIsReadOnly(cs<GfxTexture*> t)
 
 NATIVE_EXPORT_AUTO GfxExternalTexture_New()
 {
-    retcs MARCH_NEW GfxExternalTexture(GetGfxDevice());
+    retcs MARCH_NEW(GfxExternalTexture, MemoryLabel::Default)(GetGfxDevice());
 }
 
 NATIVE_EXPORT_AUTO GfxExternalTexture_GetName(cs<GfxExternalTexture*> t)

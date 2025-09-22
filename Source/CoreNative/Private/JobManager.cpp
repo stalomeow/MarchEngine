@@ -13,7 +13,7 @@ namespace march
 
     JobHandle JobManager::Schedule(size_t totalSize, size_t batchSize, const std::function<void(size_t)>& func)
     {
-        JobData* data = MARCH_NEW JobData{ func };
+        JobData* data = MARCH_NEW(JobData, MemoryLabel::Default){ func };
         JobHandle handle{};
 
         cs<JobHandle*> arg0;

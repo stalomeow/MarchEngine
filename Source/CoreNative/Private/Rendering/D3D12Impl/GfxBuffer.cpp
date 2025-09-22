@@ -200,7 +200,7 @@ namespace march
         return m_Desc.GetSizeInBytes(element);
     }
 
-    RefCountPtr<GfxResource> GfxBuffer::GetUnderlyingResource()
+    stl::RefCountPtr<GfxResource> GfxBuffer::GetUnderlyingResource()
     {
         AllocateResourceIfNot();
         return m_Resource;
@@ -494,7 +494,7 @@ namespace march
             // 布局：Counter [Padding] Data
             // Padding 用于对齐 Data，可能没有
 
-            dataOffsetInResource = MathUtils::AlignUp(4, dataPlacementAlignment);
+            dataOffsetInResource = MathUtils::AlignUp<uint32_t>(4, dataPlacementAlignment);
             sizeInBytes += dataOffsetInResource;
             dataPlacementAlignment = std::max<uint32_t>(dataPlacementAlignment, D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT);
         }
@@ -577,14 +577,14 @@ namespace march
             std::string pageName = m_Allocator->GetName() + "Page";
             D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
             D3D12_RESOURCE_DESC pageDesc = CD3DX12_RESOURCE_DESC::Buffer(pageWidth);
-            RefCountPtr<GfxResource>& page = m_Pages.emplace_back(pageAllocator->Allocate(pageName, &pageDesc, pageState));
+            stl::RefCountPtr<GfxResource>& page = m_Pages.emplace_back(pageAllocator->Allocate(pageName, &pageDesc, pageState));
             page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
         };
 
         m_Allocator = std::make_unique<MultiBuddyAllocator>(name, desc.MinBlockSize, desc.DefaultMaxBlockSize, appendPageFunc);
     }
 
-    RefCountPtr<GfxResource> GfxBufferMultiBuddySubAllocator::Allocate(
+    stl::RefCountPtr<GfxResource> GfxBufferMultiBuddySubAllocator::Allocate(
         uint32_t sizeInBytes,
         uint32_t dataPlacementAlignment,
         uint32_t* pOutOffsetInBytes,
@@ -627,7 +627,7 @@ namespace march
     {
         auto requestPageFunc = [this, pageAllocator, largePageAllocator](uint32_t sizeInBytes, bool large, bool* pOutIsNew) -> size_t
         {
-            std::vector<RefCountPtr<GfxResource>>& pages = large ? m_LargePages : m_Pages;
+            std::vector<stl::RefCountPtr<GfxResource>>& pages = large ? m_LargePages : m_Pages;
 
             if (!large && !m_ReleaseQueue.empty() && m_Device->IsFenceCompleted(m_ReleaseQueue.front().first))
             {
@@ -657,7 +657,7 @@ namespace march
                 UINT64 pageWidth = static_cast<UINT64>(sizeInBytes);
                 D3D12_RESOURCE_STATES pageState = D3D12_RESOURCE_STATE_GENERIC_READ;
                 D3D12_RESOURCE_DESC pageDesc = CD3DX12_RESOURCE_DESC::Buffer(pageWidth);
-                RefCountPtr<GfxResource>& page = pages.emplace_back(allocator->Allocate(pageName, &pageDesc, pageState));
+                stl::RefCountPtr<GfxResource>& page = pages.emplace_back(allocator->Allocate(pageName, &pageDesc, pageState));
                 page->LockState(true); // 所有子资源会共享一个状态，所以禁止修改
             }
 
@@ -667,7 +667,7 @@ namespace march
         m_Allocator = std::make_unique<LinearAllocator>(name, desc.PageSize, requestPageFunc);
     }
 
-    RefCountPtr<GfxResource> GfxBufferLinearSubAllocator::Allocate(
+    stl::RefCountPtr<GfxResource> GfxBufferLinearSubAllocator::Allocate(
         uint32_t sizeInBytes,
         uint32_t dataPlacementAlignment,
         uint32_t* pOutOffsetInBytes,
@@ -688,7 +688,7 @@ namespace march
     {
         uint64_t nextFence = m_Device->GetNextFence();
 
-        for (RefCountPtr<GfxResource>& page : m_Pages)
+        for (stl::RefCountPtr<GfxResource>& page : m_Pages)
         {
             m_ReleaseQueue.emplace(nextFence, std::move(page));
         }

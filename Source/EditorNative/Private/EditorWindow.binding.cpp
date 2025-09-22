@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO EditorWindow_NewDefault()
 {
-    retcs MARCH_NEW EditorWindow();
+    retcs MARCH_NEW(EditorWindow, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO EditorWindow_GetTitle(cs<EditorWindow*> w)

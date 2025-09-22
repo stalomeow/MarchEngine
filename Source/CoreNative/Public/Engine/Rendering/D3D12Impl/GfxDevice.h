@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Memory/RefCounting.h"
+#include "Engine/STL/RefCount.h"
 #include <d3dx12.h>
 #include <dxgi1_5.h>
 #include <wrl.h>
@@ -55,7 +55,7 @@ namespace march
         GfxResourceAllocator* GetDefaultHeapPlacedTextureAllocator(bool render, bool msaa) const;
         GfxBufferSubAllocator* GetUploadHeapBufferSubAllocator(bool fastOneFrame) const;
 
-        void DeferredRelease(RefCountPtr<RefCountedObject> obj);
+        void DeferredRelease(stl::RefCountPtr<stl::RefCountedObject> obj);
 
         uint32_t GetMSAAQuality(DXGI_FORMAT format, uint32_t sampleCount);
 
@@ -82,7 +82,7 @@ namespace march
         std::unique_ptr<GfxBufferSubAllocator> m_UploadHeapBufferSubAllocator;
         std::unique_ptr<GfxBufferSubAllocator> m_UploadHeapBufferSubAllocatorFastOneFrame;
 
-        std::queue<std::pair<uint64_t, RefCountPtr<RefCountedObject>>> m_ReleaseQueue;
+        std::queue<std::pair<uint64_t, stl::RefCountPtr<stl::RefCountedObject>>> m_ReleaseQueue;
 
         void LogAdapterOutputs(IDXGIAdapter* adapter, DXGI_FORMAT format);
         void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);

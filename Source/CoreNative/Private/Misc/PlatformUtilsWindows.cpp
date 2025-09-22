@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 
 #ifdef PLATFORM_WINDOWS
 
@@ -80,6 +80,12 @@ namespace march
         {
             throw std::runtime_error("Failed to set current thread name: " + Windows::GetHRErrorMessage(hr));
         }
+    }
+
+    void PlatformUtils::DebugOutput(std::string_view s)
+    {
+        std::wstring ws = Windows::Utf8ToWide(s);
+        OutputDebugStringW(ws.c_str());
     }
 
     // https://learn.microsoft.com/en-us/cpp/cpp/char-wchar-t-char16-t-char32-t?view=msvc-170

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Scripting/DotNetTypeTraits.h"
+#include "Engine/Memory/MemoryManager.h"
 #include "Engine/Debug.h"
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
@@ -269,22 +270,22 @@ namespace march
 
         static managed_type create_data()
         {
-            return MARCH_NEW typename std::remove_pointer_t<managed_type>();
+            return MARCH_NEW(typename std::remove_pointer_t<managed_type>, MemoryLabel::Default)();
         }
 
         static managed_type create_data(const std::string& value)
         {
-            return MARCH_NEW typename std::remove_pointer_t<managed_type>(value);
+            return MARCH_NEW(typename std::remove_pointer_t<managed_type>, MemoryLabel::Default)(value);
         }
 
         static managed_type create_data(std::string&& value)
         {
-            return MARCH_NEW typename std::remove_pointer_t<managed_type>(value);
+            return MARCH_NEW(typename std::remove_pointer_t<managed_type>, MemoryLabel::Default)(value);
         }
 
         static void destroy(cs value)
         {
-            delete value.data;
+            MARCH_DELETE(value.data, MemoryLabel::Default);
         }
     };
 
@@ -334,7 +335,7 @@ namespace march
         static managed_type create_data(int32_t length)
         {
             int32_t byteCount = sizeof(T) * length;
-            auto result = reinterpret_cast<managed_type>(MARCH_NEW uint8_t[sizeof(int32_t) + static_cast<size_t>(byteCount)]);
+            auto result = reinterpret_cast<managed_type>(MARCH_NEW_ARRAY(uint8_t, MemoryLabel::Default, sizeof(int32_t) + static_cast<size_t>(byteCount)));
 
             if (result != nullptr)
             {
@@ -348,7 +349,8 @@ namespace march
         {
             if (value.data != nullptr)
             {
-                delete[] reinterpret_cast<uint8_t*>(value.data);
+                int32_t byteCount = value.data->count;
+                MARCH_DELETE_ARRAY(reinterpret_cast<uint8_t*>(value.data), MemoryLabel::Default, sizeof(int32_t) + static_cast<size_t>(byteCount));
             }
         }
     };

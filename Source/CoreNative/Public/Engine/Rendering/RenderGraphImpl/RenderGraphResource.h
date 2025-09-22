@@ -255,7 +255,7 @@ namespace march
 
         void SetDefaultVariable(GfxCommandContext* cmd);
 
-        RefCountPtr<GfxResource> GetUnderlyingResource();
+        stl::RefCountPtr<GfxResource> GetUnderlyingResource();
 
         void RequestResource();
         void ReleaseResource();
@@ -348,7 +348,7 @@ namespace march
 
         void SetDefaultVariable(size_t resourceIndex, GfxCommandContext* cmd);
 
-        RefCountPtr<GfxResource> GetUnderlyingResource(size_t resourceIndex);
+        stl::RefCountPtr<GfxResource> GetUnderlyingResource(size_t resourceIndex);
 
         void RequestResource(size_t resourceIndex);
         void ReleaseResource(size_t resourceIndex);

@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO Transform_New()
 {
-    retcs MARCH_NEW Transform();
+    retcs MARCH_NEW(Transform, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO Transform_SetParent(cs<Transform*> transform, cs<Transform*> parent)

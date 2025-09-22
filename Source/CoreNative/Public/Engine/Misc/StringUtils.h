@@ -25,5 +25,17 @@ namespace march
         {
             return ::fmt::format(format, std::forward<Args>(args)...);
         }
+
+        static std::string FormatSize(size_t sizeInBytes)
+        {
+            if (sizeInBytes < 1024)
+                return Format("{} B", sizeInBytes);
+            else if (sizeInBytes < 1024 * 1024)
+                return Format("{:.2f} KB", sizeInBytes / 1024.0);
+            else if (sizeInBytes < 1024 * 1024 * 1024)
+                return Format("{:.2f} MB", sizeInBytes / (1024.0 * 1024.0));
+            else
+                return Format("{:.2f} GB", sizeInBytes / (1024.0 * 1024.0 * 1024.0));
+        }
     };
 }

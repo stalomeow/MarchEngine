@@ -19,6 +19,7 @@
 #include "Engine/Scripting/DotNetRuntime.h"
 #include "Engine/Profiling/FrameDebugger.h"
 #include "Engine/Profiling/NsightAftermath.h"
+#include "Engine/Memory/MemoryManager.h"
 #include "Engine/Debug.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -60,6 +61,8 @@ namespace march
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
+        MemoryManager::Initialize();
+
         argparse::ArgumentParser program(EDITOR_APP_NAME, EDITOR_APP_VERSION, argparse::default_arguments::none);
 
         program.add_argument("--project").metavar("PATH").help("Specify the project path").required();
@@ -256,6 +259,8 @@ namespace march
 
         DestroyGfxDevice();
         GfxUtils::ReportLiveObjects();
+
+        MemoryManager::LogActiveAllocations(/* reportAsLeak */ true);
     }
 
     void EditorApplication::CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak)

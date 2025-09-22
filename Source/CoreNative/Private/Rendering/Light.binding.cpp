@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO Light_New()
 {
-    retcs MARCH_NEW Light();
+    retcs MARCH_NEW(Light, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO Light_GetType(cs<Light*> pLight)

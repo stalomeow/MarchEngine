@@ -204,7 +204,7 @@ namespace march
         }
     }
 
-    void GfxCommandContext::TransitionResource(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter)
+    void GfxCommandContext::TransitionResource(stl::RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter)
     {
         if (resource->AreAllSubresourceStatesSame())
         {
@@ -242,7 +242,7 @@ namespace march
         m_ResourceBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, stateBefore, stateAfter));
     }
 
-    void GfxCommandContext::TransitionSubresource(RefCountPtr<GfxResource> resource, uint32_t subresource, D3D12_RESOURCE_STATES stateAfter)
+    void GfxCommandContext::TransitionSubresource(stl::RefCountPtr<GfxResource> resource, uint32_t subresource, D3D12_RESOURCE_STATES stateAfter)
     {
         D3D12_RESOURCE_STATES stateBefore = resource->GetState(subresource);
 
@@ -1109,7 +1109,7 @@ namespace march
             static_cast<UINT64>(sizeInBytes));
     }
 
-    void GfxCommandContext::UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData)
+    void GfxCommandContext::UpdateSubresources(stl::RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData)
     {
         UINT64 tempBufferSize = GetRequiredIntermediateSize(destination->GetD3DResource(), static_cast<UINT>(firstSubresource), static_cast<UINT>(numSubresources));
 

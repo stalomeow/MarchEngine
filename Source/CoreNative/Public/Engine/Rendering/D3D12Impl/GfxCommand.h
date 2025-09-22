@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Memory/RefCounting.h"
+#include "Engine/STL/RefCount.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
 #include "Engine/Rendering/D3D12Impl/GfxPipeline.h"
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
@@ -197,9 +197,9 @@ namespace march
         void BeginEvent(const std::string& name);
         void EndEvent();
 
-        void TransitionResource(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter);
+        void TransitionResource(stl::RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES stateAfter);
         void TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
-        void TransitionSubresource(RefCountPtr<GfxResource> resource, uint32_t subresource, D3D12_RESOURCE_STATES stateAfter);
+        void TransitionSubresource(stl::RefCountPtr<GfxResource> resource, uint32_t subresource, D3D12_RESOURCE_STATES stateAfter);
         void TransitionSubresource(ID3D12Resource* resource, uint32_t subresource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
         void FlushResourceBarriers();
 
@@ -252,7 +252,7 @@ namespace march
         void ResolveTexture(GfxTexture* source, GfxTexture* destination);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement);
         void CopyBuffer(GfxBuffer* sourceBuffer, GfxBufferElement sourceElement, uint32_t sourceOffsetInBytes, GfxBuffer* destinationBuffer, GfxBufferElement destinationElement, uint32_t destinationOffsetInBytes, uint32_t sizeInBytes);
-        void UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData);
+        void UpdateSubresources(stl::RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData);
         void CopyTexture(GfxTexture* sourceTexture, GfxTextureElement sourceElement, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxTextureElement destinationElement, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
         void CopyTexture(GfxTexture* sourceTexture, GfxTextureElement sourceElement, GfxCubemapFace sourceFace, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, GfxTextureElement destinationElement, GfxCubemapFace destinationFace, uint32_t destinationArraySlice, uint32_t destinationMipSlice);
         void CopyTexture(GfxTexture* sourceTexture, uint32_t sourceArraySlice, uint32_t sourceMipSlice, GfxTexture* destinationTexture, uint32_t destinationArraySlice, uint32_t destinationMipSlice);

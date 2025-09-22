@@ -4,7 +4,7 @@
 
 NATIVE_EXPORT_AUTO SceneWindow_New()
 {
-    retcs MARCH_NEW SceneWindow();
+    retcs MARCH_NEW(SceneWindow, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO SceneWindow_DrawFloatingToolBar(cs<SceneWindow*> w)

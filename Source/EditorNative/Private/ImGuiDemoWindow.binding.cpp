@@ -4,5 +4,5 @@
 
 NATIVE_EXPORT_AUTO ImGuiDemoWindow_New()
 {
-    retcs MARCH_NEW ImGuiDemoWindow();
+    retcs MARCH_NEW(ImGuiDemoWindow, MemoryLabel::Default)();
 }

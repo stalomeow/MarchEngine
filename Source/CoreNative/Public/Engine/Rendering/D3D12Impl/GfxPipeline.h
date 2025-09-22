@@ -2,7 +2,7 @@
 
 #include "Engine/Ints.h"
 #include "Engine/Misc/StringUtils.h"
-#include "Engine/Memory/RefCounting.h"
+#include "Engine/STL/RefCount.h"
 #include "Engine/Rendering/D3D12Impl/GfxResource.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
@@ -258,7 +258,7 @@ namespace march
 
         struct ResourceStateKey
         {
-            RefCountPtr<GfxResource> Resource;
+            stl::RefCountPtr<GfxResource> Resource;
             uint32_t SubresourceIndex; // -1 表示整个资源
 
             bool operator ==(const ResourceStateKey& other) const
@@ -271,7 +271,7 @@ namespace march
         {
             size_t operator()(const ResourceStateKey& key) const
             {
-                return std::hash<RefCountPtr<GfxResource>>()(key.Resource) ^ std::hash<uint32_t>()(key.SubresourceIndex);
+                return std::hash<stl::RefCountPtr<GfxResource>>()(key.Resource) ^ std::hash<uint32_t>()(key.SubresourceIndex);
             }
         };
 
@@ -281,7 +281,7 @@ namespace march
         static constexpr bool AllowPixelProgram = PipelineTraits::PixelProgramType < NumProgramTypes;
         static constexpr bool IsPixelProgram(size_t type) { return type == PipelineTraits::PixelProgramType; }
 
-        void StageResourceState(RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES state)
+        void StageResourceState(stl::RefCountPtr<GfxResource> resource, D3D12_RESOURCE_STATES state)
         {
             uint32_t subresourceIndex = -1;
             m_StagedResourceStates[ResourceStateKey{ resource, subresourceIndex }] |= state;
@@ -290,7 +290,7 @@ namespace march
         void StageTextureMipSliceSubresourceState(GfxTexture* texture, GfxTextureElement element, uint32_t mipSlice, D3D12_RESOURCE_STATES state)
         {
             GfxTextureDimension dimension = texture->GetDesc().Dimension;
-            RefCountPtr<GfxResource> resource = texture->GetUnderlyingResource();
+            stl::RefCountPtr<GfxResource> resource = texture->GetUnderlyingResource();
 
             for (uint32_t arraySlice = 0; arraySlice < texture->GetDesc().DepthOrArraySize; arraySlice++)
             {

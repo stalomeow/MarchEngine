@@ -1,15 +1,17 @@
 #pragma once
 
 #include "Engine/Ints.h"
+#include "Engine/Memory/MemoryManager.h"
 #include <atomic>
 
-namespace march
+namespace march::stl
 {
     class RefCountedObject
     {
         template <typename T>
         friend class RefCountPtr;
 
+        MemoryLabel m_MemoryLabel;
         std::atomic<uint32> m_RefCount;
 
     public:
@@ -22,7 +24,9 @@ namespace march
         virtual ~RefCountedObject() = default;
 
     protected:
-        RefCountedObject() noexcept : m_RefCount(1) {}
+        RefCountedObject(MemoryLabel label) noexcept : m_MemoryLabel(label), m_RefCount(1) {}
+
+        MemoryLabel GetMemoryLabel() const { return m_MemoryLabel; }
     };
 
     template <typename T>
@@ -221,21 +225,24 @@ namespace march
                 if (temp->m_RefCount.fetch_sub(1, std::memory_order_release) == 1)
                 {
                     std::atomic_thread_fence(std::memory_order_acquire);
-                    delete temp;
+                    MemoryLabel label = temp->m_MemoryLabel;
+                    MARCH_DELETE(temp, label);
                 }
             }
         }
     };
+
+    template <typename T, typename... Args>
+    inline RefCountPtr<T> make_ref(MemoryLabel label, Args&&... args)
+    {
+        return RefCountPtr<T>().Attach(MARCH_NEW(T, label)(label, std::forward<Args>(args)...));
+    }
 }
 
-#include "Engine/Object.h"
-
-#define MARCH_MAKE_REF(T, ...) ::march::RefCountPtr<T>().Attach(MARCH_NEW T(__VA_ARGS__))
-
 template <typename T>
-struct std::hash<march::RefCountPtr<T>>
+struct std::hash<march::stl::RefCountPtr<T>>
 {
-    auto operator()(const march::RefCountPtr<T>& ptr) const noexcept
+    auto operator()(const march::stl::RefCountPtr<T>& ptr) const noexcept
     {
         return std::hash<T*>{}(ptr.Get());
     }

@@ -570,7 +570,7 @@ namespace march
 
 NATIVE_EXPORT_AUTO Shader_New()
 {
-    retcs MARCH_NEW Shader();
+    retcs MARCH_NEW(Shader, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO Shader_GetName(cs<Shader*> pShader)
@@ -911,7 +911,7 @@ namespace march
 
 NATIVE_EXPORT_AUTO ComputeShader_New()
 {
-    retcs MARCH_NEW ComputeShader();
+    retcs MARCH_NEW(ComputeShader, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO ComputeShader_GetName(cs<ComputeShader*> s)

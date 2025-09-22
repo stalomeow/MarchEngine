@@ -30,7 +30,7 @@ namespace march
         }, m_Resource);
     }
 
-    __forceinline static bool AllowGenericRead(RefCountPtr<GfxResource> resource)
+    __forceinline static bool AllowGenericRead(stl::RefCountPtr<GfxResource> resource)
     {
         // 允许把状态改为 GENERIC_READ 的也算
         return resource->HasAllStates(D3D12_RESOURCE_STATE_GENERIC_READ) || !resource->IsStateLocked();
@@ -130,15 +130,15 @@ namespace march
         }, m_Resource);
     }
 
-    RefCountPtr<GfxResource> RenderGraphResourceData::GetUnderlyingResource()
+    stl::RefCountPtr<GfxResource> RenderGraphResourceData::GetUnderlyingResource()
     {
         return std::visit(overloaded{
-            [](RenderGraphResourceTempBuffer& b) -> RefCountPtr<GfxResource> { return b.Buffer.GetUnderlyingResource(); },
-            [](RenderGraphResourcePooledBuffer& b) -> RefCountPtr<GfxResource> { return b.Buffer->GetUnderlyingResource(); },
-            [](RenderGraphResourceExternalBuffer& b) -> RefCountPtr<GfxResource> { return b.Buffer->GetUnderlyingResource(); },
-            [](RenderGraphResourcePooledTexture& t) -> RefCountPtr<GfxResource> { return t.Texture->GetUnderlyingResource(); },
-            [](RenderGraphResourceExternalTexture& t) -> RefCountPtr<GfxResource> { return t.Texture->GetUnderlyingResource(); },
-            [](auto&&) -> RefCountPtr<GfxResource> { throw std::runtime_error("Resource is not a buffer or texture"); },
+            [](RenderGraphResourceTempBuffer& b) -> stl::RefCountPtr<GfxResource> { return b.Buffer.GetUnderlyingResource(); },
+            [](RenderGraphResourcePooledBuffer& b) -> stl::RefCountPtr<GfxResource> { return b.Buffer->GetUnderlyingResource(); },
+            [](RenderGraphResourceExternalBuffer& b) -> stl::RefCountPtr<GfxResource> { return b.Buffer->GetUnderlyingResource(); },
+            [](RenderGraphResourcePooledTexture& t) -> stl::RefCountPtr<GfxResource> { return t.Texture->GetUnderlyingResource(); },
+            [](RenderGraphResourceExternalTexture& t) -> stl::RefCountPtr<GfxResource> { return t.Texture->GetUnderlyingResource(); },
+            [](auto&&) -> stl::RefCountPtr<GfxResource> { throw std::runtime_error("Resource is not a buffer or texture"); },
         }, m_Resource);
     }
 
@@ -323,7 +323,7 @@ namespace march
         m_Resources[resourceIndex].SetDefaultVariable(cmd);
     }
 
-    RefCountPtr<GfxResource> RenderGraphResourceManager::GetUnderlyingResource(size_t resourceIndex)
+    stl::RefCountPtr<GfxResource> RenderGraphResourceManager::GetUnderlyingResource(size_t resourceIndex)
     {
         return m_Resources[resourceIndex].GetUnderlyingResource();
     }

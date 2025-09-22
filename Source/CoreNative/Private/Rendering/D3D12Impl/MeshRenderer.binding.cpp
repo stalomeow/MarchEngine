@@ -5,7 +5,7 @@
 
 NATIVE_EXPORT_AUTO MeshRenderer_New()
 {
-    retcs MARCH_NEW MeshRenderer();
+    retcs MARCH_NEW(MeshRenderer, MemoryLabel::Default)();
 }
 
 NATIVE_EXPORT_AUTO MeshRenderer_SetMesh(cs<MeshRenderer*> self, cs<GfxMesh*> pMesh)

@@ -19,9 +19,10 @@ namespace march::MathUtils
         return I;
     }
 
-    inline uint32_t AlignUp(uint32_t size, uint32_t alignment)
+    template <typename T>
+    inline T AlignUp(T size, T alignment)
     {
-        uint32_t mask = alignment - 1;
+        T mask = alignment - 1;
         assert((alignment & mask) == 0); // ensure power of 2
         return (size + mask) & ~mask;
     }

@@ -31,8 +31,9 @@ namespace march
         return mipLevels * arraySize * planeCount;
     }
 
-    GfxResource::GfxResource(GfxDevice* device, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state)
-        : m_Device(device)
+    GfxResource::GfxResource(MemoryLabel label, GfxDevice* device, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state)
+        : stl::RefCountedObject(label)
+        , m_Device(device)
         , m_Resource(resource)
         , m_Allocator(nullptr)
         , m_Allocation{}
@@ -46,8 +47,9 @@ namespace march
         assert(m_SubresourceCount >= 1);
     }
 
-    GfxResource::GfxResource(GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state)
-        : m_Device(allocator->GetDevice())
+    GfxResource::GfxResource(MemoryLabel label, GfxResourceAllocator* allocator, const GfxResourceAllocation& allocation, ComPtr<ID3D12Resource> resource, D3D12_RESOURCE_STATES state)
+        : stl::RefCountedObject(label)
+        , m_Device(allocator->GetDevice())
         , m_Resource(resource)
         , m_Allocator(allocator)
         , m_Allocation(allocation)
@@ -224,14 +226,14 @@ namespace march
     {
     }
 
-    RefCountPtr<GfxResource> GfxResourceAllocator::MakeResource(
+    stl::RefCountPtr<GfxResource> GfxResourceAllocator::MakeResource(
         const std::string& name,
         ComPtr<ID3D12Resource> resource,
         D3D12_RESOURCE_STATES initialState,
         const GfxResourceAllocation& allocation)
     {
         GfxUtils::SetName(resource.Get(), name);
-        return MARCH_MAKE_REF(GfxResource, this, allocation, resource, initialState);
+        return stl::make_ref<GfxResource>(MemoryLabel::Default, this, allocation, resource, initialState);
     }
 
     GfxCommittedResourceAllocator::GfxCommittedResourceAllocator(GfxDevice* device, const GfxCommittedResourceAllocatorDesc& desc)
@@ -239,7 +241,7 @@ namespace march
     {
     }
 
-    RefCountPtr<GfxResource> GfxCommittedResourceAllocator::Allocate(
+    stl::RefCountPtr<GfxResource> GfxCommittedResourceAllocator::Allocate(
         const std::string& name,
         const D3D12_RESOURCE_DESC* pDesc,
         D3D12_RESOURCE_STATES initialState,
@@ -285,7 +287,7 @@ namespace march
         m_Allocator = std::make_unique<MultiBuddyAllocator>(name, minBlockSize, desc.DefaultMaxBlockSize, appendPageFunc);
     }
 
-    RefCountPtr<GfxResource> GfxPlacedResourceAllocator::Allocate(
+    stl::RefCountPtr<GfxResource> GfxPlacedResourceAllocator::Allocate(
         const std::string& name,
         const D3D12_RESOURCE_DESC* pDesc,
         D3D12_RESOURCE_STATES initialState,

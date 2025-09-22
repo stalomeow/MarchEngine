@@ -376,7 +376,7 @@ namespace march
             m_Cmd->CopyBuffer(sourceBuffer, sourceElement, sourceOffsetInBytes, destinationBuffer, destinationElement, destinationOffsetInBytes, sizeInBytes);
         }
 
-        void UpdateSubresources(RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData)
+        void UpdateSubresources(stl::RefCountPtr<GfxResource> destination, uint32_t firstSubresource, uint32_t numSubresources, const D3D12_SUBRESOURCE_DATA* srcData)
         {
             m_Cmd->UpdateSubresources(destination, firstSubresource, numSubresources, srcData);
         }
