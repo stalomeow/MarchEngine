@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdalign.h>
+#include <type_traits>
 
 namespace march
 {
@@ -40,7 +41,8 @@ namespace march
         {
             if (ptr)
             {
-                ptr->~T();
+                if constexpr (!std::is_trivially_destructible_v<T>)
+                    ptr->~T();
                 MemoryManager::Release(ptr, label);
             }
         }
@@ -48,11 +50,11 @@ namespace march
         template <typename T>
         inline void DeleteInternal(T* ptr, MemoryLabel label, size_t size)
         {
-            // TODO remove useless destructor call
             if (ptr)
             {
-                for (size_t i = 0; i < size; i++)
-                    ptr[i].~T();
+                if constexpr (!std::is_trivially_destructible_v<T>)
+                    for (size_t i = 0; i < size; i++)
+                        ptr[i].~T();
                 MemoryManager::Release(ptr, label);
             }
         }
