@@ -72,7 +72,7 @@ namespace march
 
     GfxCommandManager::GfxCommandManager(GfxDevice* device)
         : m_Device(device)
-        , m_ContextStore{}
+        , m_ContextStore(MemoryLabel::Graphics)
         , m_CompletedFrameFence(0)
     {
         GfxCommandQueueDesc queueDesc{};
@@ -101,9 +101,9 @@ namespace march
                 throw std::runtime_error("Unsupported command type");
             }
 
-            m_QueueData[i].Queue = std::make_unique<GfxCommandQueue>(device, queueName, queueDesc);
-            m_QueueData[i].FrameFence = std::make_unique<GfxFence>(device, queueName + "FrameFence", m_CompletedFrameFence);
-            m_QueueData[i].FreeContexts = {};
+            m_QueueData[i].Queue = stl::make_unique<GfxCommandQueue>(MemoryLabel::Graphics, device, queueName, queueDesc);
+            m_QueueData[i].FrameFence = stl::make_unique<GfxFence>(MemoryLabel::Graphics, device, queueName + "FrameFence", m_CompletedFrameFence);
+            m_QueueData[i].FreeContexts = stl::queue<GfxCommandContext*>(MemoryLabel::Graphics);
         }
     }
 
@@ -114,7 +114,7 @@ namespace march
 
     GfxCommandContext* GfxCommandManager::RequestAndOpenContext(GfxCommandType type)
     {
-        std::queue<GfxCommandContext*>& q = m_QueueData[static_cast<size_t>(type)].FreeContexts;
+        stl::queue<GfxCommandContext*>& q = m_QueueData[static_cast<size_t>(type)].FreeContexts;
         GfxCommandContext* result;
 
         if (!q.empty())
@@ -124,7 +124,7 @@ namespace march
         }
         else
         {
-            m_ContextStore.push_back(std::make_unique<GfxCommandContext>(m_Device, type));
+            m_ContextStore.push_back(stl::make_unique<GfxCommandContext>(MemoryLabel::Graphics, m_Device, type));
             result = m_ContextStore.back().get();
         }
 

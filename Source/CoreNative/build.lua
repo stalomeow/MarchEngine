@@ -13,6 +13,7 @@ usage "PUBLIC"
         "DirectXTex",
         "DotNetRuntime",
         "Fmt",
+        "MiMalloc",
         "NsightAftermath",
         "RenderDoc",
         "UTFCPP",

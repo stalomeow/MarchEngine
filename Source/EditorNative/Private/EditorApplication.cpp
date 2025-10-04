@@ -210,11 +210,22 @@ namespace march
 #endif
     }
 
+    static void* ImGuiAlloc(size_t size, void*)
+    {
+        return MemoryManager::Allocate(size, MemoryLabel::ImGui, __FILE__, __LINE__);
+    }
+
+    static void ImGuiFree(void* ptr, void*)
+    {
+        MemoryManager::Release(ptr, MemoryLabel::ImGui);
+    }
+
     void EditorApplication::InitImGui()
     {
         m_ImGuiIniFilename = GetDataPath() + "/ProjectSettings/imgui.ini";
 
         // Setup Dear ImGui context
+        ImGui::SetAllocatorFunctions(ImGuiAlloc, ImGuiFree);
         ImGui::CreateContext();
 
         ImGuiIO& io = ImGui::GetIO();
@@ -260,7 +271,16 @@ namespace march
         DestroyGfxDevice();
         GfxUtils::ReportLiveObjects();
 
-        MemoryManager::LogActiveAllocations(/* reportAsLeak */ true);
+        for (const MemoryAllocation& alloc : MemoryManager::GetActiveAllocations())
+        {
+            PlatformUtils::DebugOutput(StringUtils::Format("Leaked Memory: Ptr={}, Size={}, Alignment={}, Label={}, Location={}({})\n",
+                alloc.Pointer,
+                StringUtils::FormatSize(alloc.SizeInBytes),
+                alloc.Alignment,
+                alloc.Label,
+                alloc.File,
+                alloc.Line));
+        }
     }
 
     void EditorApplication::CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak)

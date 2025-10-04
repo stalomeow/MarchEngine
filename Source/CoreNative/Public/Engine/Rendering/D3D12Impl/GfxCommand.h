@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/STL/RefCount.h"
+#include "Engine/STL/Core.h"
 #include "Engine/Rendering/D3D12Impl/GfxDescriptor.h"
 #include "Engine/Rendering/D3D12Impl/GfxPipeline.h"
 #include "Engine/Rendering/D3D12Impl/GfxBuffer.h"
@@ -143,15 +144,15 @@ namespace march
     private:
         struct QueueData
         {
-            std::unique_ptr<GfxCommandQueue> Queue;
-            std::unique_ptr<GfxFence> FrameFence;
-            std::queue<GfxCommandContext*> FreeContexts;
+            stl::unique_ptr<GfxCommandQueue> Queue;
+            stl::unique_ptr<GfxFence> FrameFence;
+            stl::queue<GfxCommandContext*> FreeContexts;
         };
 
         QueueData m_QueueData[static_cast<size_t>(GfxCommandType::NumTypes)];
 
         GfxDevice* m_Device;
-        std::vector<std::unique_ptr<GfxCommandContext>> m_ContextStore; // 保存所有分配的 command context，用于释放资源
+        stl::vector<stl::unique_ptr<GfxCommandContext>> m_ContextStore; // 保存所有分配的 command context，用于释放资源
         uint64_t m_CompletedFrameFence; // cache
     };
 
@@ -269,8 +270,8 @@ namespace march
         Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_CommandAllocator;
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
 
-        std::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
-        std::vector<GfxSyncPoint> m_SyncPointsToWait;
+        stl::vector<D3D12_RESOURCE_BARRIER> m_ResourceBarriers;
+        stl::vector<GfxSyncPoint> m_SyncPointsToWait;
 
         GfxPipelineParameterCache<GfxPipelineType::Graphics> m_GraphicsViewCache;
         GfxPipelineParameterCache<GfxPipelineType::Compute> m_ComputeViewCache;
@@ -318,8 +319,8 @@ namespace march
             GfxBufferElement Element;
         };
 
-        std::unordered_map<int32_t, GlobalTextureData> m_GlobalTextures;
-        std::unordered_map<int32_t, GlobalBufferData> m_GlobalBuffers;
+        stl::unordered_map<int32_t, GlobalTextureData> m_GlobalTextures;
+        stl::unordered_map<int32_t, GlobalBufferData> m_GlobalBuffers;
 
         GfxBuffer m_InstanceBuffer;
 

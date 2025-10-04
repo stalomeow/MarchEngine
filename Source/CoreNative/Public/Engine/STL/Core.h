@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Engine/Memory/MemoryManager.h"
+#include <stdint.h>
+#include <stdexcept>
 #include <array>
 #include <vector>
 #include <deque>
@@ -17,25 +19,72 @@
 
 namespace march::stl
 {
+    // Ref: https://en.cppreference.com/w/cpp/named_req/Allocator
     template <typename T>
     struct allocator
     {
+        using value_type = T;
+        using pointer = T*;
+
+        using size_type = std::size_t;
+        using difference_type = std::ptrdiff_t;
+
+        using propagate_on_container_copy_assignment = std::true_type;
+        using propagate_on_container_move_assignment = std::true_type;
+        using propagate_on_container_swap = std::true_type;
+        using is_always_equal = std::false_type;
+
+        template <typename U>
+        struct rebind { using other = allocator<U>; };
+
         MemoryLabel Label;
 
-        allocator() : Label(MemoryLabel::Default) {}
-        allocator(MemoryLabel label) : Label(label) {}
+        constexpr allocator() noexcept : Label(MemoryLabel::Default) {}
+        constexpr allocator(MemoryLabel label) noexcept : Label(label) {}
 
-        using value_type = T;
+        template <typename U>
+        constexpr allocator(const allocator<U>& other) noexcept : Label(other.Label) {}
 
-        T* allocate(size_t n)
+        // 移动后不改变自己的 Label
+        template <typename U>
+        constexpr allocator(allocator<U>&& other) noexcept : Label(other.Label) {}
+
+        template <typename U>
+        constexpr allocator& operator=(const allocator<U>& other) noexcept
         {
-            return MemoryManager::Allocate(n * sizeof(T), static_cast<size_t>(alignof(T)), Label, __FILE__, __LINE__);
+            Label = other.Label;
+            return *this;
         }
 
-        void deallocate(T* p, size_t n)
+        template <typename U>
+        constexpr allocator& operator=(allocator<U>&& other) noexcept
+        {
+            // 移动后不改变自己的 Label
+            Label = other.Label;
+            return *this;
+        }
+
+        pointer allocate(size_type n)
+        {
+            if (n > max_size())
+                throw std::bad_array_new_length();
+            size_t sizeInBytes = n * sizeof(T);
+            size_t alignment = static_cast<size_t>(alignof(T));
+            return static_cast<pointer>(MemoryManager::Allocate(sizeInBytes, alignment, Label, __FILE__, __LINE__));
+        }
+
+        void deallocate(pointer p, size_type)
         {
             MemoryManager::Release(p, Label);
         }
+
+        constexpr size_type max_size() const noexcept { return static_cast<size_type>(-1) / sizeof(T); }
+
+        template <typename U>
+        friend constexpr bool operator==(const allocator& a, const allocator<U>& b) noexcept { return a.Label == b.Label; }
+
+        template <typename U>
+        friend constexpr bool operator!=(const allocator& a, const allocator<U>& b) noexcept { return a.Label != b.Label; }
     };
 
     template <typename T, size_t N>
@@ -93,7 +142,10 @@ namespace march::stl
     struct unique_ptr_deleter
     {
         MemoryLabel Label;
+        unique_ptr_deleter() : Label(MemoryLabel::Default) {}
         unique_ptr_deleter(MemoryLabel label) : Label(label) {}
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+        unique_ptr_deleter(const unique_ptr_deleter<U>& other) : Label(other.Label) {}
         void operator()(T* ptr) const { MARCH_DELETE(ptr, Label); }
     };
 
@@ -102,7 +154,10 @@ namespace march::stl
     {
         MemoryLabel Label;
         size_t Size;
+        unique_ptr_deleter() : Label(MemoryLabel::Default), Size(0) {}
         unique_ptr_deleter(MemoryLabel label, size_t size) : Label(label), Size(size) {}
+        template <typename U, typename = std::enable_if_t<std::is_convertible_v<U(*)[], T(*)[]>>>
+        unique_ptr_deleter(const unique_ptr_deleter<U[]>& other) : Label(other.Label), Size(other.Size) {}
         void operator()(T* ptr) const { MARCH_DELETE_ARRAY(ptr, Label, Size); }
     };
 
@@ -115,7 +170,7 @@ namespace march::stl
         return unique_ptr<T>(MARCH_NEW(T, label)(std::forward<Args>(args)...), unique_ptr_deleter<T>(label));
     }
 
-    template <typename T, std::enable_if_t<std::is_array_v<T>&& std::extent_v<T> == 0, int> = 0>
+    template <typename T, std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0, int> = 0>
     inline unique_ptr<T> make_unique(MemoryLabel label, size_t size)
     {
         using Elem = std::remove_extent_t<T>;

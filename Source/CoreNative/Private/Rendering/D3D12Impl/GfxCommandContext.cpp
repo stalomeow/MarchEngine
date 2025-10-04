@@ -74,8 +74,8 @@ namespace march
         , m_Type(type)
         , m_CommandAllocator(nullptr)
         , m_CommandList(nullptr)
-        , m_ResourceBarriers{}
-        , m_SyncPointsToWait{}
+        , m_ResourceBarriers(MemoryLabel::Graphics)
+        , m_SyncPointsToWait(MemoryLabel::Graphics)
         , m_GraphicsViewCache(device)
         , m_ComputeViewCache(device)
         , m_ViewHeap(nullptr)
@@ -95,8 +95,8 @@ namespace march
         , m_CurrentVertexBuffer{}
         , m_CurrentIndexBuffer{}
         , m_CurrentStencilRef(std::nullopt)
-        , m_GlobalTextures{}
-        , m_GlobalBuffers{}
+        , m_GlobalTextures(MemoryLabel::Graphics)
+        , m_GlobalBuffers(MemoryLabel::Graphics)
         , m_InstanceBuffer{ device, "_InstanceBuffer" }
         , m_NsightAftermathHandle(nullptr)
     {
