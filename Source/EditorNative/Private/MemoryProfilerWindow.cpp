@@ -13,7 +13,7 @@ namespace march
         if (ImGui::CollapsingHeader("System", ImGuiTreeNodeFlags_DefaultOpen))
         {
             size_t physicalSize = PlatformUtils::GetProcessPhysicalMemorySizeInBytes(PlatformUtils::GetCurrentProcessHandle());
-            ImGui::BulletText("%s", StringUtils::Format("Physical Memory: {}", StringUtils::FormatSize(physicalSize)).c_str());
+            ImGui::BulletText("%s", StringUtils::Format("Physical Memory: {}", StringUtils::FormatSize(MemoryLabel::Temp, physicalSize)).c_str());
         }
 
         if (ImGui::CollapsingHeader("Native Memory Manager", ImGuiTreeNodeFlags_DefaultOpen))
@@ -31,9 +31,9 @@ namespace march
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::TextUnformatted(StringUtils::ToString(label).c_str());
+                    ImGui::TextUnformatted(StringUtils::ToString(MemoryLabel::Temp, label).c_str());
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::TextUnformatted(StringUtils::FormatSize(size).c_str());
+                    ImGui::TextUnformatted(StringUtils::FormatSize(MemoryLabel::Temp, size).c_str());
                 }
 
                 ImGui::EndTable();
@@ -47,7 +47,7 @@ namespace march
                 {
                     LOG_INFO("Alloc: Ptr={}, Size={}, Alignment={}, Label={}, Location={}({})",
                         alloc.Pointer,
-                        StringUtils::FormatSize(alloc.SizeInBytes),
+                        StringUtils::FormatSize(MemoryLabel::Temp, alloc.SizeInBytes),
                         alloc.Alignment,
                         alloc.Label,
                         alloc.File,

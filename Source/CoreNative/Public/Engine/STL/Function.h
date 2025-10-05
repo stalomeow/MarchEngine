@@ -2,6 +2,8 @@
 
 #include "Engine/STL/Core.h"
 #include <stdexcept>
+#include <utility>
+#include <functional>
 
 namespace march::stl
 {
@@ -46,7 +48,7 @@ namespace march::stl
 
         operator bool() const { return m_Callable != nullptr; }
 
-        Ret operator()(Args... args)
+        Ret operator()(Args... args) const
         {
             if (m_Callable == nullptr)
                 throw std::bad_function_call();

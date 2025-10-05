@@ -1,14 +1,12 @@
 #pragma once
 
-#include <string>
+#include "Engine/STL/Core.h"
+#include "Engine/Misc/StringUtils.h"
+#include "Engine/Memory/MemoryManager.h"
 #include <time.h>
-#include <vector>
 #include <stdint.h>
 #include <mutex>
-#include <deque>
 #include <functional>
-#include <fmt/core.h>
-#include <fmt/xchar.h>
 
 namespace march
 {
@@ -23,8 +21,8 @@ namespace march
 
     struct LogStackFrame
     {
-        std::string Function{};
-        std::string Filename{};
+        stl::string Function{};
+        stl::string Filename{};
         int32_t Line{};
     };
 
@@ -32,13 +30,12 @@ namespace march
     {
         LogLevel Level{};
         time_t Time{};
-        std::string Message{};
-        std::vector<LogStackFrame> StackTrace{};
+        stl::string Message{};
+        stl::vector<LogStackFrame> StackTrace{};
     };
 
-    class Log
+    struct Log
     {
-    public:
         static LogLevel GetMinimumLevel();
         static void SetMinimumLevel(LogLevel level);
         static bool IsLevelEnabled(LogLevel level);
@@ -49,20 +46,14 @@ namespace march
         static bool ReadAt(int32_t i, const std::function<void(const LogEntry&)>& action);
         static bool ReadLast(const std::function<void(const LogEntry&)>& action);
 
-        static void Message(LogLevel level, std::string&& message, std::vector<LogStackFrame>&& stackTrace);
-        static void Message(LogLevel level, const std::string& message, std::vector<LogStackFrame>&& stackTrace);
-
-    private:
-        static LogLevel s_MinimumLevel;
-        static std::deque<LogEntry> s_Entries;
-        static uint32_t s_Counts[static_cast<int32_t>(LogLevel::Error) + 1];
-        static std::mutex s_Mutex;
+        static void Message(LogLevel level, stl::string&& message, stl::vector<LogStackFrame>&& stackTrace);
+        static void Message(LogLevel level, const stl::string& message, stl::vector<LogStackFrame>&& stackTrace);
     };
 }
 
 #define LOG_MSG(level, f, ...) \
     if (::march::Log::IsLevelEnabled(level)) \
-        ::march::Log::Message(level, ::fmt::format(f, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
+        ::march::Log::Message(level, ::march::StringUtils::Format(::march::MemoryLabel::Debug, f, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
 
 #define LOG_TRACE(format, ...)   LOG_MSG(::march::LogLevel::Trace, format, __VA_ARGS__)
 #define LOG_DEBUG(format, ...)   LOG_MSG(::march::LogLevel::Debug, format, __VA_ARGS__)

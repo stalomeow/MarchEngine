@@ -12,6 +12,8 @@ namespace march
     enum class MemoryLabel
     {
         Default,
+        Temp,
+        Debug,
         Graphics,
         ImGui,
         _Count
@@ -29,8 +31,6 @@ namespace march
 
     struct MemoryManager
     {
-        static void Initialize();
-
         static void* Allocate(size_t sizeInBytes, MemoryLabel label, const char* file, int line);
         static void* Allocate(size_t sizeInBytes, size_t alignment, MemoryLabel label, const char* file, int line);
         static void Release(void* ptr, MemoryLabel label);
@@ -84,6 +84,8 @@ struct fmt::formatter<march::MemoryLabel> : formatter<string_view>
         switch (label)
         {
         case march::MemoryLabel::Default:  name = "Default";  break;
+        case march::MemoryLabel::Temp:     name = "Temp";     break;
+        case march::MemoryLabel::Debug:    name = "Debug";    break;
         case march::MemoryLabel::Graphics: name = "Graphics"; break;
         case march::MemoryLabel::ImGui:    name = "ImGui";    break;
         default:                           name = "Unknown";  break;

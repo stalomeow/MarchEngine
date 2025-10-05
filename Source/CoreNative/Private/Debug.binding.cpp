@@ -32,15 +32,16 @@ NATIVE_EXPORT_AUTO Log_Clear()
 
 NATIVE_EXPORT_AUTO Log_Message(cs<LogLevel> level, cs_string message, cs<CSharpLogStackFrame*> pFrames, cs_int frameCount)
 {
-    std::vector<LogStackFrame> stackTrace;
+    stl::string msg(*message.data, MemoryLabel::Debug);
+    stl::vector<LogStackFrame> stackTrace(frameCount, MemoryLabel::Debug);
 
     for (cs_int_t i = 0; i < frameCount; i++)
     {
-        LogStackFrame& frame = stackTrace.emplace_back();
-        frame.Function = pFrames[i].MethodName.move();
-        frame.Filename = pFrames[i].Filename.move();
+        LogStackFrame& frame = stackTrace[static_cast<size_t>(i)];
+        frame.Function = stl::string(*pFrames[i].MethodName.data, MemoryLabel::Debug);
+        frame.Filename = stl::string(*pFrames[i].Filename.data, MemoryLabel::Debug);
         frame.Line = pFrames[i].Line;
     }
 
-    Log::Message(level, message.move(), std::move(stackTrace));
+    Log::Message(level, std::move(msg), std::move(stackTrace));
 }

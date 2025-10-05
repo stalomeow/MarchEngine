@@ -137,6 +137,7 @@ namespace march::stl
 
     using string = std::basic_string<char, std::char_traits<char>, allocator<char>>;
     using wstring = std::basic_string<wchar_t, std::char_traits<wchar_t>, allocator<wchar_t>>;
+    using u16string = std::basic_string<char16_t, std::char_traits<char16_t>, allocator<char16_t>>;
 
     template <typename T>
     struct unique_ptr_deleter

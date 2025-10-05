@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Engine/Memory/MemoryManager.h"
+#include "Engine/Misc/MathUtils.h"
+#include "Engine/Debug.h"
 #include <memory>
 #include <vector>
 #include <shared_mutex>
@@ -38,15 +40,137 @@ namespace march
         }
     };
 
-    static constexpr size_t g_MemoryLabelCount = static_cast<size_t>(MemoryLabel::_Count);
-    static std::unique_ptr<IMemoryAllocator> g_Allocators[g_MemoryLabelCount]{};
-
-    void MemoryManager::Initialize()
+    class StackAllocator : public IMemoryAllocator
     {
-        g_Allocators[static_cast<size_t>(MemoryLabel::Default)] = std::make_unique<DefaultAllocator>();
-        g_Allocators[static_cast<size_t>(MemoryLabel::Graphics)] = std::make_unique<DefaultAllocator>();
-        g_Allocators[static_cast<size_t>(MemoryLabel::ImGui)] = std::make_unique<DefaultAllocator>();
-    }
+        struct Header
+        {
+            size_t IsReleased: 1;
+            size_t Size: 63;
+            uintptr_t LastPtr;
+        };
+
+        uintptr_t m_BufferStart;
+        uintptr_t m_BufferEnd;
+        uintptr_t m_LastAlloc;
+
+        uintptr_t GetCurrentFreePtr() const
+        {
+            if (m_LastAlloc == 0)
+                return m_BufferStart;
+            Header* header = reinterpret_cast<Header*>(m_LastAlloc) - 1;
+            return m_LastAlloc + header->Size;
+        }
+
+    public:
+        explicit StackAllocator(size_t size)
+        {
+            void* p = malloc(size);
+            m_BufferStart = reinterpret_cast<uintptr_t>(p);
+            m_BufferEnd = m_BufferStart + size;
+            m_LastAlloc = 0;
+        }
+
+        ~StackAllocator() override
+        {
+            free(reinterpret_cast<void*>(m_BufferStart));
+        }
+
+        void* Allocate(size_t sizeInBytes, size_t alignment) override
+        {
+            assert(MathUtils::IsPowerOfTwo(alignment) && (alignment >= alignof(Header)));
+            assert((sizeInBytes & 0x8000000000000000) == 0); // 最高位不能是 1
+
+            uintptr_t currentPtr = GetCurrentFreePtr();
+            uintptr_t alignedPtr = MathUtils::AlignUp(currentPtr, alignment);
+
+            if (uintptr_t padding = alignedPtr - currentPtr; padding < sizeof(Header))
+            {
+                // 补加上 ceil((sizeof(Header) - padding) / alignment) * alignment
+                alignedPtr += (sizeof(Header) - padding + alignment - 1) / alignment * alignment;
+            }
+
+            // Fallback to default allocator
+            if (alignedPtr + sizeInBytes >= m_BufferEnd)
+            {
+                LOG_WARNING("StackAllocator out of memory, fallback to default allocator; Size={}; Alignment={}", sizeInBytes, alignment);
+                return mi_malloc_aligned(sizeInBytes, alignment);
+            }
+
+            Header* header = reinterpret_cast<Header*>(alignedPtr) - 1;
+            header->IsReleased = 0;
+            header->Size = sizeInBytes;
+            header->LastPtr = m_LastAlloc;
+
+            m_LastAlloc = alignedPtr;
+            return reinterpret_cast<void*>(alignedPtr);
+        }
+
+        void Release(void* ptr) override
+        {
+            assert(ptr != nullptr);
+
+            if (uintptr_t p = reinterpret_cast<uintptr_t>(ptr); p == m_LastAlloc)
+            {
+                Header* header = reinterpret_cast<Header*>(p) - 1;
+
+                do
+                {
+                    m_LastAlloc = header->LastPtr;
+                    header = m_LastAlloc == 0 ? nullptr : reinterpret_cast<Header*>(m_LastAlloc) - 1;
+                } while (header && header->IsReleased == 1);
+            }
+            else if (p < m_BufferStart || p >= m_BufferEnd)
+            {
+                mi_free(ptr);
+            }
+            else
+            {
+                Header* header = reinterpret_cast<Header*>(p) - 1;
+                header->IsReleased = 1;
+            }
+        }
+    };
+
+    static thread_local std::unique_ptr<StackAllocator> g_TlsStackAllocator;
+
+    class TlsStackAllocator : public IMemoryAllocator
+    {
+        static StackAllocator* GetAllocator()
+        {
+            if (g_TlsStackAllocator == nullptr)
+                g_TlsStackAllocator = std::make_unique<StackAllocator>(8 * 1024 * 1024); // 每个线程 8MB
+            return g_TlsStackAllocator.get();
+        }
+
+    public:
+        void* Allocate(size_t sizeInBytes, size_t alignment) override
+        {
+            return GetAllocator()->Allocate(sizeInBytes, alignment);
+        }
+
+        void Release(void* ptr) override
+        {
+            GetAllocator()->Release(ptr);
+        }
+    };
+
+    static constexpr size_t g_MemoryLabelCount = static_cast<size_t>(MemoryLabel::_Count);
+
+    struct MemoryManagerConfig
+    {
+        std::unique_ptr<IMemoryAllocator> Allocators[g_MemoryLabelCount];
+
+        MemoryManagerConfig()
+        {
+            Allocators[static_cast<size_t>(MemoryLabel::Default)] = std::make_unique<DefaultAllocator>();
+            Allocators[static_cast<size_t>(MemoryLabel::Temp)] = std::make_unique<TlsStackAllocator>();
+            Allocators[static_cast<size_t>(MemoryLabel::Debug)] = std::make_unique<DefaultAllocator>();
+            Allocators[static_cast<size_t>(MemoryLabel::Graphics)] = std::make_unique<DefaultAllocator>();
+            Allocators[static_cast<size_t>(MemoryLabel::ImGui)] = std::make_unique<DefaultAllocator>();
+        }
+    };
+
+    static MemoryManagerConfig g_Config{};
 
 #ifdef DEBUG_MEMORY
     struct AllocData
@@ -147,7 +271,7 @@ namespace march
         // 不要小于默认的对齐要求
         alignment = std::max<size_t>(alignment, DEFAULT_ALIGNMENT);
 
-        IMemoryAllocator* allocator = g_Allocators[static_cast<size_t>(label)].get();
+        IMemoryAllocator* allocator = g_Config.Allocators[static_cast<size_t>(label)].get();
         void* ptr = allocator->Allocate(sizeInBytes, alignment);
 
 #ifdef DEBUG_MEMORY
@@ -162,7 +286,7 @@ namespace march
         if (ptr == nullptr)
             return;
 
-        IMemoryAllocator* allocator = g_Allocators[static_cast<size_t>(label)].get();
+        IMemoryAllocator* allocator = g_Config.Allocators[static_cast<size_t>(label)].get();
 
 #ifdef DEBUG_MEMORY
         UnregisterAlloc(ptr, label);

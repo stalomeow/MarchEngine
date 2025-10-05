@@ -5,100 +5,100 @@
 
 namespace march
 {
-    LogLevel                Log::s_MinimumLevel = LogLevel::Trace;
-    std::deque<LogEntry>    Log::s_Entries{};
-    uint32_t                Log::s_Counts[]{};
-    std::mutex              Log::s_Mutex{};
+    static LogLevel             g_MinimumLevel = LogLevel::Trace;
+    static stl::deque<LogEntry> g_Entries(MemoryLabel::Debug);
+    static uint32_t             g_Counts[static_cast<size_t>(LogLevel::Error) + 1]{};
+    static std::mutex           g_Mutex{};
 
     LogLevel Log::GetMinimumLevel()
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        return s_MinimumLevel;
+        return g_MinimumLevel;
     }
 
     void Log::SetMinimumLevel(LogLevel level)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        s_MinimumLevel = level;
+        g_MinimumLevel = level;
     }
 
     bool Log::IsLevelEnabled(LogLevel level)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        return static_cast<int32_t>(level) >= static_cast<int32_t>(s_MinimumLevel);
+        return static_cast<int32_t>(level) >= static_cast<int32_t>(g_MinimumLevel);
     }
 
     uint32_t Log::GetCount(LogLevel level)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        return s_Counts[static_cast<int32_t>(level)];
+        return g_Counts[static_cast<int32_t>(level)];
     }
 
     void Log::Clear()
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        s_Entries.clear();
-        ZeroMemory(s_Counts, sizeof(s_Counts));
+        g_Entries.clear();
+        ZeroMemory(g_Counts, sizeof(g_Counts));
     }
 
     void Log::ForEach(const std::function<void(int32_t, const LogEntry&)>& action)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        for (size_t i = 0; i < s_Entries.size(); i++)
+        for (size_t i = 0; i < g_Entries.size(); i++)
         {
-            action(static_cast<int32_t>(i), s_Entries[i]);
+            action(static_cast<int32_t>(i), g_Entries[i]);
         }
     }
 
     bool Log::ReadAt(int32_t i, const std::function<void(const LogEntry&)>& action)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        if (i < 0 || static_cast<size_t>(i) >= s_Entries.size())
+        if (i < 0 || static_cast<size_t>(i) >= g_Entries.size())
         {
             return false;
         }
 
-        action(s_Entries[static_cast<size_t>(i)]);
+        action(g_Entries[static_cast<size_t>(i)]);
         return true;
     }
 
     bool Log::ReadLast(const std::function<void(const LogEntry&)>& action)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        if (s_Entries.empty())
+        if (g_Entries.empty())
         {
             return false;
         }
 
-        action(s_Entries.back());
+        action(g_Entries.back());
         return true;
     }
 
-    void Log::Message(LogLevel level, std::string&& message, std::vector<LogStackFrame>&& stackTrace)
+    void Log::Message(LogLevel level, stl::string&& message, stl::vector<LogStackFrame>&& stackTrace)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        if (static_cast<int32_t>(level) < static_cast<int32_t>(s_MinimumLevel))
+        if (static_cast<int32_t>(level) < static_cast<int32_t>(g_MinimumLevel))
         {
             return;
         }
 
-        while (s_Entries.size() > 9999)
+        while (g_Entries.size() > 9999)
         {
-            s_Counts[static_cast<int32_t>(s_Entries.front().Level)]--;
-            s_Entries.pop_front();
+            g_Counts[static_cast<int32_t>(g_Entries.front().Level)]--;
+            g_Entries.pop_front();
         }
 
-        LogEntry& entry = s_Entries.emplace_back();
-        s_Counts[static_cast<int32_t>(level)]++;
+        LogEntry& entry = g_Entries.emplace_back();
+        g_Counts[static_cast<int32_t>(level)]++;
 
         entry.Level = level;
         entry.Time = time(NULL);
@@ -106,23 +106,23 @@ namespace march
         entry.StackTrace = std::move(stackTrace);
     }
 
-    void Log::Message(LogLevel level, const std::string& message, std::vector<LogStackFrame>&& stackTrace)
+    void Log::Message(LogLevel level, const stl::string& message, stl::vector<LogStackFrame>&& stackTrace)
     {
-        std::lock_guard<std::mutex> lock(s_Mutex);
+        std::lock_guard lock(g_Mutex);
 
-        if (static_cast<int32_t>(level) < static_cast<int32_t>(s_MinimumLevel))
+        if (static_cast<int32_t>(level) < static_cast<int32_t>(g_MinimumLevel))
         {
             return;
         }
 
-        while (s_Entries.size() > 9999)
+        while (g_Entries.size() > 9999)
         {
-            s_Counts[static_cast<int32_t>(s_Entries.front().Level)]--;
-            s_Entries.pop_front();
+            g_Counts[static_cast<int32_t>(g_Entries.front().Level)]--;
+            g_Entries.pop_front();
         }
 
-        LogEntry& entry = s_Entries.emplace_back();
-        s_Counts[static_cast<int32_t>(level)]++;
+        LogEntry& entry = g_Entries.emplace_back();
+        g_Counts[static_cast<int32_t>(level)]++;
 
         entry.Level = level;
         entry.Time = time(NULL);

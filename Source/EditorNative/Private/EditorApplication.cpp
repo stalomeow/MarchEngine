@@ -61,8 +61,6 @@ namespace march
 
     void EditorApplication::OnStart(const std::vector<std::string>& args)
     {
-        MemoryManager::Initialize();
-
         argparse::ArgumentParser program(EDITOR_APP_NAME, EDITOR_APP_VERSION, argparse::default_arguments::none);
 
         program.add_argument("--project").metavar("PATH").help("Specify the project path").required();
@@ -275,7 +273,7 @@ namespace march
         {
             PlatformUtils::DebugOutput(StringUtils::Format("Leaked Memory: Ptr={}, Size={}, Alignment={}, Label={}, Location={}({})\n",
                 alloc.Pointer,
-                StringUtils::FormatSize(alloc.SizeInBytes),
+                StringUtils::FormatSize(MemoryLabel::Temp, alloc.SizeInBytes),
                 alloc.Alignment,
                 alloc.Label,
                 alloc.File,
