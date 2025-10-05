@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <stdint.h>
 
 #ifdef PLATFORM_WINDOWS
 #include <Windows.h>
@@ -13,6 +14,7 @@ namespace march
     {
         static bool IsDebuggerPresent();
         static void DebugBreak();
+        static void DebugOutput(std::string_view s);
 
         static std::string GetExecutableDirectory();
 
@@ -20,9 +22,11 @@ namespace march
         static void* GetDllExport(void* dllHandle, std::string_view exportName);
         static void FreeDllHandle(void* dllHandle);
 
-        static void SetCurrentThreadName(std::string_view name);
+        static void* GetCurrentThreadHandle();
+        static void SetThreadName(void* threadHandle, std::string_view name);
 
-        static void DebugOutput(std::string_view s);
+        static void* GetCurrentProcessHandle();
+        static size_t GetProcessPhysicalMemorySizeInBytes(void* processHandle);
 
 #ifdef PLATFORM_WINDOWS
         struct Windows

@@ -38,9 +38,9 @@ namespace march
         }
     }
 
-    InlineArray<TextureHandle, RenderPipelineResource::NumGBuffers> RenderPipelineResource::GetGBuffers(GBufferElements elements) const
+    stl::InlineVector<TextureHandle, RenderPipelineResource::NumGBuffers> RenderPipelineResource::GetGBuffers(GBufferElements elements) const
     {
-        InlineArray<TextureHandle, NumGBuffers> results{};
+        stl::InlineVector<TextureHandle, NumGBuffers> results{};
 
         for (size_t i = 0; i < NumGBuffers; i++)
         {

@@ -118,7 +118,7 @@ namespace march
 
     void BusyProgressBar::ThreadProc()
     {
-        PlatformUtils::SetCurrentThreadName("BusyProgressBar");
+        PlatformUtils::SetThreadName(PlatformUtils::GetCurrentThreadHandle(), "BusyProgressBar");
 
         auto checkAlive = [this](std::chrono::steady_clock::time_point& lastTime, bool force)
         {

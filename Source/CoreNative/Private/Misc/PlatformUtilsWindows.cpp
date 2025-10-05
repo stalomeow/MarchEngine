@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <processthreadsapi.h>
 #include <comdef.h>
+#include <Psapi.h>
 
 namespace march
 {
@@ -24,6 +25,12 @@ namespace march
     void PlatformUtils::DebugBreak()
     {
         ::DebugBreak();
+    }
+
+    void PlatformUtils::DebugOutput(std::string_view s)
+    {
+        std::wstring ws = Windows::Utf8ToWide(s);
+        OutputDebugStringW(ws.c_str());
     }
 
     std::string PlatformUtils::GetExecutableDirectory()
@@ -71,9 +78,15 @@ namespace march
         }
     }
 
-    void PlatformUtils::SetCurrentThreadName(std::string_view name)
+    void* PlatformUtils::GetCurrentThreadHandle()
     {
         HANDLE hThread = GetCurrentThread();
+        return static_cast<void*>(hThread);
+    }
+
+    void PlatformUtils::SetThreadName(void* threadHandle, std::string_view name)
+    {
+        HANDLE hThread = static_cast<HANDLE>(threadHandle);
         std::wstring description = Windows::Utf8ToWide(name);
 
         if (HRESULT hr = SetThreadDescription(hThread, description.c_str()); FAILED(hr))
@@ -82,10 +95,25 @@ namespace march
         }
     }
 
-    void PlatformUtils::DebugOutput(std::string_view s)
+    void* PlatformUtils::GetCurrentProcessHandle()
     {
-        std::wstring ws = Windows::Utf8ToWide(s);
-        OutputDebugStringW(ws.c_str());
+        HANDLE hProcess = GetCurrentProcess();
+        return static_cast<void*>(hProcess);
+    }
+
+    size_t PlatformUtils::GetProcessPhysicalMemorySizeInBytes(void* processHandle)
+    {
+        HANDLE hProcess = static_cast<HANDLE>(processHandle);
+
+        PROCESS_MEMORY_COUNTERS_EX2 pmc{};
+        if (GetProcessMemoryInfo(hProcess, reinterpret_cast<PPROCESS_MEMORY_COUNTERS>(&pmc), sizeof(pmc)) == FALSE)
+        {
+            throw std::runtime_error("Failed to get process memory info: " + Windows::GetLastErrorMessage());
+        }
+
+        // https://learn.microsoft.com/en-us/windows/win32/psapi/process-memory-usage-information
+        // 任务管理器显示的也是 PrivateWorkingSetSize
+        return static_cast<size_t>(pmc.PrivateWorkingSetSize);
     }
 
     // https://learn.microsoft.com/en-us/cpp/cpp/char-wchar-t-char16-t-char32-t?view=msvc-170

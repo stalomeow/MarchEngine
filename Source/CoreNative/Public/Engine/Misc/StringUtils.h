@@ -26,6 +26,12 @@ namespace march
             return ::fmt::format(format, std::forward<Args>(args)...);
         }
 
+        template <typename T>
+        static std::string ToString(const T& value)
+        {
+            return ::fmt::to_string(value);
+        }
+
         static std::string FormatSize(size_t sizeInBytes)
         {
             if (sizeInBytes < 1024)

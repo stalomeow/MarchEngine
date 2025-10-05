@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/STL/Core.h"
+#include <stdexcept>
 
 namespace march::stl
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Ints.h"
-#include "Engine/InlineArray.h"
+#include "Engine/STL/InlineVector.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/Rendering/RenderGraphImpl/RenderGraphResource.h"
 #include <d3dx12.h>
@@ -161,7 +161,7 @@ namespace march
         void SetRenderFunc(const std::function<void(RenderGraphContext&)>& func);
 
         template <size_t _Capacity>
-        void In(const InlineArray<BufferHandle, _Capacity>& buffers)
+        void In(const stl::InlineVector<BufferHandle, _Capacity>& buffers)
         {
             for (size_t i = 0; i < buffers.Num(); i++)
             {
@@ -170,7 +170,7 @@ namespace march
         }
 
         template <size_t _Capacity>
-        void Out(const InlineArray<BufferHandle, _Capacity>& buffers)
+        void Out(const stl::InlineVector<BufferHandle, _Capacity>& buffers)
         {
             for (size_t i = 0; i < buffers.Num(); i++)
             {
@@ -179,7 +179,7 @@ namespace march
         }
 
         template <size_t _Capacity>
-        void InOut(const InlineArray<BufferHandle, _Capacity>& buffers)
+        void InOut(const stl::InlineVector<BufferHandle, _Capacity>& buffers)
         {
             for (size_t i = 0; i < buffers.Num(); i++)
             {
@@ -188,7 +188,7 @@ namespace march
         }
 
         template <size_t _Capacity>
-        void In(const InlineArray<TextureHandle, _Capacity>& textures)
+        void In(const stl::InlineVector<TextureHandle, _Capacity>& textures)
         {
             for (size_t i = 0; i < textures.Num(); i++)
             {
@@ -197,7 +197,7 @@ namespace march
         }
 
         template <size_t _Capacity>
-        void Out(const InlineArray<TextureHandle, _Capacity>& textures)
+        void Out(const stl::InlineVector<TextureHandle, _Capacity>& textures)
         {
             for (size_t i = 0; i < textures.Num(); i++)
             {
@@ -206,7 +206,7 @@ namespace march
         }
 
         template <size_t _Capacity>
-        void InOut(const InlineArray<TextureHandle, _Capacity>& textures)
+        void InOut(const stl::InlineVector<TextureHandle, _Capacity>& textures)
         {
             for (size_t i = 0; i < textures.Num(); i++)
             {

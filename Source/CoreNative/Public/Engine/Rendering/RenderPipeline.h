@@ -4,7 +4,7 @@
 #include "Engine/Rendering/RenderGraph.h"
 #include "Engine/Rendering/D3D12.h"
 #include "Engine/AssetManger.h"
-#include "Engine/InlineArray.h"
+#include "Engine/STL/InlineVector.h"
 #include "Engine/Ints.h"
 #include <vector>
 #include <memory>
@@ -98,7 +98,7 @@ namespace march
 
         void Reset();
         void RequestGBuffers(RenderGraph* graph, uint32_t width, uint32_t height);
-        InlineArray<TextureHandle, NumGBuffers> GetGBuffers(GBufferElements elements) const;
+        stl::InlineVector<TextureHandle, NumGBuffers> GetGBuffers(GBufferElements elements) const;
     };
 
     class Camera;
