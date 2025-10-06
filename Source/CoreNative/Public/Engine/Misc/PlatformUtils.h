@@ -15,6 +15,7 @@ namespace march
         static bool IsDebuggerPresent();
         static void DebugBreak();
         static void DebugOutput(std::string_view s);
+        static void DebugOutputLine(std::string_view s);
 
         static std::string GetExecutableDirectory();
 

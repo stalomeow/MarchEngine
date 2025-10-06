@@ -33,6 +33,13 @@ namespace march
         OutputDebugStringW(ws.c_str());
     }
 
+    void PlatformUtils::DebugOutputLine(std::string_view s)
+    {
+        std::wstring ws = Windows::Utf8ToWide(s);
+        ws.push_back(L'\n');
+        OutputDebugStringW(ws.c_str());
+    }
+
     std::string PlatformUtils::GetExecutableDirectory()
     {
         WCHAR buf[MAX_PATH];

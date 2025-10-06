@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Engine/Memory/MemoryManager.h"
+#include "Engine/Misc/PlatformUtils.h"
+#include "Engine/Misc/StringUtils.h"
 #include "Engine/Misc/MathUtils.h"
 #include "Engine/Debug.h"
 #include <memory>
@@ -131,15 +133,15 @@ namespace march
         }
     };
 
-    static thread_local std::unique_ptr<StackAllocator> g_TlsStackAllocator;
-
     class TlsStackAllocator : public IMemoryAllocator
     {
         static StackAllocator* GetAllocator()
         {
-            if (g_TlsStackAllocator == nullptr)
-                g_TlsStackAllocator = std::make_unique<StackAllocator>(8 * 1024 * 1024); // 每个线程 8MB
-            return g_TlsStackAllocator.get();
+            static thread_local std::unique_ptr<StackAllocator> allocator = nullptr;
+
+            if (allocator == nullptr)
+                allocator = std::make_unique<StackAllocator>(8 * 1024 * 1024); // 每个线程 8MB
+            return allocator.get();
         }
 
     public:
@@ -154,109 +156,163 @@ namespace march
         }
     };
 
-    static constexpr size_t g_MemoryLabelCount = static_cast<size_t>(MemoryLabel::_Count);
-
-    struct MemoryManagerConfig
+    struct MemoryManagerData
     {
-        std::unique_ptr<IMemoryAllocator> Allocators[g_MemoryLabelCount];
+        static constexpr size_t LabelCount = static_cast<size_t>(MemoryLabel::_Count);
 
-        MemoryManagerConfig()
+        DefaultAllocator DefaultAllocator{};
+        TlsStackAllocator TlsStackAllocator{};
+
+#ifdef DEBUG_MEMORY
+        // 所有线程的 AllocMap
+        std::atomic<class ThreadAllocRecorder*> Recorders{ nullptr };
+
+        // 每个 Label 分配的内存总量
+        std::atomic<size_t> SizeInBytes[LabelCount]{};
+#endif
+    };
+
+    // 永远不释放
+    static MemoryManagerData* g_MemoryData = new MemoryManagerData();
+
+#ifdef DEBUG_MEMORY
+    class ThreadAllocRecorder
+    {
+        struct AllocData
         {
-            Allocators[static_cast<size_t>(MemoryLabel::Default)] = std::make_unique<DefaultAllocator>();
-            Allocators[static_cast<size_t>(MemoryLabel::Temp)] = std::make_unique<TlsStackAllocator>();
-            Allocators[static_cast<size_t>(MemoryLabel::Debug)] = std::make_unique<DefaultAllocator>();
-            Allocators[static_cast<size_t>(MemoryLabel::Graphics)] = std::make_unique<DefaultAllocator>();
-            Allocators[static_cast<size_t>(MemoryLabel::ImGui)] = std::make_unique<DefaultAllocator>();
+            size_t SizeInBytes;
+            size_t Alignment;
+            MemoryLabel Label;
+            const char* File;
+            int Line;
+        };
+
+        std::shared_mutex m_Mutex;
+        std::unordered_map<void*, AllocData> m_Data;
+        std::atomic<ThreadAllocRecorder*> m_Next;
+
+    public:
+        ThreadAllocRecorder(std::atomic<ThreadAllocRecorder*>& head) : m_Mutex{}, m_Data{}, m_Next(nullptr)
+        {
+            ThreadAllocRecorder* oldHead = head.load(std::memory_order_relaxed);
+            do
+            {
+                m_Next.store(oldHead, std::memory_order_relaxed);
+            } while (!head.compare_exchange_weak(oldHead, this, std::memory_order_release, std::memory_order_relaxed));
+        }
+
+        void Register(void* ptr, size_t sizeInBytes, size_t alignment, MemoryLabel label, const char* file, int line)
+        {
+            std::unique_lock lock(m_Mutex);
+            m_Data[ptr] = AllocData{ sizeInBytes, alignment, label, file, line };
+        }
+
+        bool Unregister(void* ptr, size_t& outSizeInBytes)
+        {
+            std::unique_lock lock(m_Mutex);
+
+            if (auto it = m_Data.find(ptr); it != m_Data.end())
+            {
+                outSizeInBytes = it->second.SizeInBytes;
+                m_Data.erase(it);
+                return true;
+            }
+
+            return false;
+        }
+
+        void GetAllocs(std::vector<MemoryAllocation>& result)
+        {
+            std::shared_lock lock(m_Mutex);
+
+            for (const auto& [ptr, data] : m_Data)
+            {
+                MemoryAllocation& alloc = result.emplace_back();
+                alloc.Pointer = ptr;
+                alloc.SizeInBytes = data.SizeInBytes;
+                alloc.Alignment = data.Alignment;
+                alloc.Label = data.Label;
+                alloc.File = data.File;
+                alloc.Line = data.Line;
+            }
+        }
+
+        ThreadAllocRecorder* GetNext() const
+        {
+            return m_Next.load(std::memory_order_relaxed);
         }
     };
 
-    static MemoryManagerConfig g_Config{};
-
-#ifdef DEBUG_MEMORY
-    struct AllocData
+    static ThreadAllocRecorder* GetThreadLocalAllocRecorder()
     {
-        size_t SizeInBytes;
-        size_t Alignment;
-        MemoryLabel Label;
-        const char* File;
-        int Line;
-    };
+        // 永远不释放
+        static thread_local ThreadAllocRecorder* recorder = nullptr;
 
-    struct AllocMap
-    {
-        bool Initialized;
-        std::unordered_map<void*, AllocData> Data;
-        std::shared_mutex Mutex;
-    };
+        if (recorder == nullptr)
+        {
+            recorder = new ThreadAllocRecorder(g_MemoryData->Recorders);
+        }
 
-    static thread_local AllocMap g_ThreadLocalAllocMap{};
-    static std::vector<AllocMap*> g_ThreadAllocMaps{};
-    static std::shared_mutex g_ThreadAllocMapsMutex{};
-
-    static std::atomic<size_t> g_AllocatedSizeInBytes[g_MemoryLabelCount]{};
+        return recorder;
+    }
 
     static void RegisterAlloc(void* ptr, size_t sizeInBytes, size_t alignment, MemoryLabel label, const char* file, int line)
     {
-        if (!g_ThreadLocalAllocMap.Initialized)
-        {
-            std::unique_lock lock(g_ThreadAllocMapsMutex);
-            g_ThreadAllocMaps.push_back(&g_ThreadLocalAllocMap);
-            g_ThreadLocalAllocMap.Initialized = true;
-        }
-
-        {
-            std::unique_lock lock(g_ThreadLocalAllocMap.Mutex);
-            g_ThreadLocalAllocMap.Data[ptr] = AllocData{ sizeInBytes, alignment, label, file, line };
-        }
-
-        g_AllocatedSizeInBytes[static_cast<size_t>(label)].fetch_add(sizeInBytes, std::memory_order_relaxed);
+        GetThreadLocalAllocRecorder()->Register(ptr, sizeInBytes, alignment, label, file, line);
+        g_MemoryData->SizeInBytes[static_cast<size_t>(label)].fetch_add(sizeInBytes, std::memory_order_relaxed);
     }
 
     static void UnregisterAlloc(void* ptr, MemoryLabel label)
     {
         bool found = false;
         size_t sizeInBytes = 0;
+        ThreadAllocRecorder* localRecorder = GetThreadLocalAllocRecorder();
 
-        if (g_ThreadLocalAllocMap.Initialized)
+        if (localRecorder->Unregister(ptr, sizeInBytes))
         {
-            std::unique_lock lock(g_ThreadLocalAllocMap.Mutex);
-
-            if (auto it = g_ThreadLocalAllocMap.Data.find(ptr); it != g_ThreadLocalAllocMap.Data.end())
-            {
-                found = true;
-                sizeInBytes = it->second.SizeInBytes;
-                g_ThreadLocalAllocMap.Data.erase(it);
-            }
+            found = true;
         }
-
-        // 有可能是在其他线程分配的内存
-        if (!found)
+        else
         {
-            std::shared_lock lock1(g_ThreadAllocMapsMutex);
+            ThreadAllocRecorder* recorder = g_MemoryData->Recorders.load(std::memory_order_acquire);
 
-            for (AllocMap* allocMap : g_ThreadAllocMaps)
+            // 有可能是在其他线程分配的内存
+            while (recorder)
             {
-                if (allocMap == &g_ThreadLocalAllocMap)
-                    continue;
-
-                std::unique_lock lock2(allocMap->Mutex);
-
-                if (auto it = allocMap->Data.find(ptr); it != allocMap->Data.end())
+                if (recorder != localRecorder && recorder->Unregister(ptr, sizeInBytes))
                 {
                     found = true;
-                    sizeInBytes = it->second.SizeInBytes;
-                    allocMap->Data.erase(it);
                     break;
                 }
+
+                recorder = recorder->GetNext();
             }
         }
 
         if (found && sizeInBytes > 0)
         {
-            g_AllocatedSizeInBytes[static_cast<size_t>(label)].fetch_sub(sizeInBytes, std::memory_order_relaxed);
+            g_MemoryData->SizeInBytes[static_cast<size_t>(label)].fetch_sub(sizeInBytes, std::memory_order_relaxed);
         }
     }
 #endif
+
+    static IMemoryAllocator* GetAllocator(MemoryLabel label)
+    {
+        switch (label)
+        {
+        case MemoryLabel::Default:
+        case MemoryLabel::Debug:
+        case MemoryLabel::Graphics:
+        case MemoryLabel::ImGui:
+            return &g_MemoryData->DefaultAllocator;
+
+        case MemoryLabel::Temp:
+            return &g_MemoryData->TlsStackAllocator;
+
+        default:
+            return nullptr;
+        }
+    }
 
     void* MemoryManager::Allocate(size_t sizeInBytes, MemoryLabel label, const char* file, int line)
     {
@@ -268,11 +324,8 @@ namespace march
         if (sizeInBytes == 0)
             return nullptr;
 
-        // 不要小于默认的对齐要求
-        alignment = std::max<size_t>(alignment, DEFAULT_ALIGNMENT);
-
-        IMemoryAllocator* allocator = g_Config.Allocators[static_cast<size_t>(label)].get();
-        void* ptr = allocator->Allocate(sizeInBytes, alignment);
+        alignment = std::max<size_t>(alignment, DEFAULT_ALIGNMENT); // 不要小于默认的对齐要求
+        void* ptr = GetAllocator(label)->Allocate(sizeInBytes, alignment);
 
 #ifdef DEBUG_MEMORY
         RegisterAlloc(ptr, sizeInBytes, alignment, label, file, line);
@@ -286,18 +339,20 @@ namespace march
         if (ptr == nullptr)
             return;
 
-        IMemoryAllocator* allocator = g_Config.Allocators[static_cast<size_t>(label)].get();
-
 #ifdef DEBUG_MEMORY
         UnregisterAlloc(ptr, label);
 #endif
 
-        allocator->Release(ptr);
+        GetAllocator(label)->Release(ptr);
     }
 
     size_t MemoryManager::GetAllocatedSizeInBytes(MemoryLabel label)
     {
-        return g_AllocatedSizeInBytes[static_cast<size_t>(label)].load(std::memory_order_relaxed);
+#ifdef DEBUG_MEMORY
+        return g_MemoryData->SizeInBytes[static_cast<size_t>(label)].load(std::memory_order_relaxed);
+#else
+        return 0;
+#endif
     }
 
     std::vector<MemoryAllocation> MemoryManager::GetActiveAllocations()
@@ -305,22 +360,12 @@ namespace march
         std::vector<MemoryAllocation> res{};
 
 #ifdef DEBUG_MEMORY
-        std::shared_lock lock1(g_ThreadAllocMapsMutex);
+        ThreadAllocRecorder* recorder = g_MemoryData->Recorders.load(std::memory_order_acquire);
 
-        for (AllocMap* allocMap : g_ThreadAllocMaps)
+        while (recorder)
         {
-            std::shared_lock lock2(allocMap->Mutex);
-
-            for (const auto& [ptr, data] : allocMap->Data)
-            {
-                MemoryAllocation& alloc = res.emplace_back();
-                alloc.Pointer = ptr;
-                alloc.SizeInBytes = data.SizeInBytes;
-                alloc.Alignment = data.Alignment;
-                alloc.Label = data.Label;
-                alloc.File = data.File;
-                alloc.Line = data.Line;
-            }
+            recorder->GetAllocs(res);
+            recorder = recorder->GetNext();
         }
 #endif
 

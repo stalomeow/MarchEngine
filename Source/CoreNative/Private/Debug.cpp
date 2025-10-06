@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "Engine/Debug.h"
 #include "Engine/Misc/StringUtils.h"
+#include <deque>
 #include <Windows.h>
 
 namespace march
 {
     static LogLevel             g_MinimumLevel = LogLevel::Trace;
-    static stl::deque<LogEntry> g_Entries(MemoryLabel::Debug);
+    static std::deque<LogEntry> g_Entries{};
     static uint32_t             g_Counts[static_cast<size_t>(LogLevel::Error) + 1]{};
     static std::mutex           g_Mutex{};
 
@@ -80,6 +81,24 @@ namespace march
 
         action(g_Entries.back());
         return true;
+    }
+
+    void Log::Message(LogLevel level, stl::string&& message, const char* func, const char* file, int32_t line)
+    {
+        stl::vector<LogStackFrame> stackTrace(1, MemoryLabel::Debug);
+        stackTrace[0].Function = stl::string(func, MemoryLabel::Debug);
+        stackTrace[0].Filename = stl::string(file, MemoryLabel::Debug);
+        stackTrace[0].Line = line;
+        Message(level, std::move(message), std::move(stackTrace));
+    }
+
+    void Log::Message(LogLevel level, const stl::string& message, const char* func, const char* file, int32_t line)
+    {
+        stl::vector<LogStackFrame> stackTrace(1, MemoryLabel::Debug);
+        stackTrace[0].Function = stl::string(func, MemoryLabel::Debug);
+        stackTrace[0].Filename = stl::string(file, MemoryLabel::Debug);
+        stackTrace[0].Line = line;
+        Message(level, message, std::move(stackTrace));
     }
 
     void Log::Message(LogLevel level, stl::string&& message, stl::vector<LogStackFrame>&& stackTrace)

@@ -268,16 +268,24 @@ namespace march
 
         DestroyGfxDevice();
         GfxUtils::ReportLiveObjects();
+        Log::Clear();
 
-        for (const MemoryAllocation& alloc : MemoryManager::GetActiveAllocations())
+        if (std::vector<MemoryAllocation> leaks = MemoryManager::GetActiveAllocations(); !leaks.empty())
         {
-            PlatformUtils::DebugOutput(StringUtils::Format("Leaked Memory: Ptr={}, Size={}, Alignment={}, Label={}, Location={}({})\n",
-                alloc.Pointer,
-                StringUtils::FormatSize(MemoryLabel::Temp, alloc.SizeInBytes),
-                alloc.Alignment,
-                alloc.Label,
-                alloc.File,
-                alloc.Line));
+            PlatformUtils::DebugOutputLine("============================ Memory Leak ============================");
+
+            for (const auto& alloc : leaks)
+            {
+                PlatformUtils::DebugOutputLine(StringUtils::Format(MemoryLabel::Temp, "({}) Size={}, Alignment={}, Label={}, File={}, Line={}",
+                    alloc.Pointer,
+                    StringUtils::FormatSize(MemoryLabel::Temp, alloc.SizeInBytes),
+                    alloc.Alignment,
+                    alloc.Label,
+                    alloc.File,
+                    alloc.Line));
+            }
+
+            PlatformUtils::DebugOutputLine("============================ Memory Leak ============================");
         }
     }
 

@@ -46,6 +46,8 @@ namespace march
         static bool ReadAt(int32_t i, const std::function<void(const LogEntry&)>& action);
         static bool ReadLast(const std::function<void(const LogEntry&)>& action);
 
+        static void Message(LogLevel level, stl::string&& message, const char* func, const char* file, int32_t line);
+        static void Message(LogLevel level, const stl::string& message, const char* func, const char* file, int32_t line);
         static void Message(LogLevel level, stl::string&& message, stl::vector<LogStackFrame>&& stackTrace);
         static void Message(LogLevel level, const stl::string& message, stl::vector<LogStackFrame>&& stackTrace);
     };
@@ -53,7 +55,7 @@ namespace march
 
 #define LOG_MSG(level, f, ...) \
     if (::march::Log::IsLevelEnabled(level)) \
-        ::march::Log::Message(level, ::march::StringUtils::Format(::march::MemoryLabel::Debug, f, __VA_ARGS__), { { __FUNCSIG__, __FILE__, __LINE__ } })
+        ::march::Log::Message(level, ::march::StringUtils::Format(::march::MemoryLabel::Debug, f, __VA_ARGS__), __FUNCSIG__, __FILE__, __LINE__)
 
 #define LOG_TRACE(format, ...)   LOG_MSG(::march::LogLevel::Trace, format, __VA_ARGS__)
 #define LOG_DEBUG(format, ...)   LOG_MSG(::march::LogLevel::Debug, format, __VA_ARGS__)

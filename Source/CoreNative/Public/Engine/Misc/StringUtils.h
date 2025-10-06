@@ -63,13 +63,13 @@ namespace march
         static stl::string FormatSize(MemoryLabel label, size_t sizeInBytes)
         {
             if (sizeInBytes < 1024)
-                return Format(label, "{} B", sizeInBytes);
+                return Format(label, "{}B", sizeInBytes);
             else if (sizeInBytes < 1024 * 1024)
-                return Format(label, "{:.2f} KB", sizeInBytes / 1024.0);
+                return Format(label, "{:.2f}K", sizeInBytes / 1024.0);
             else if (sizeInBytes < 1024 * 1024 * 1024)
-                return Format(label, "{:.2f} MB", sizeInBytes / (1024.0 * 1024.0));
+                return Format(label, "{:.2f}M", sizeInBytes / (1024.0 * 1024.0));
             else
-                return Format(label, "{:.2f} GB", sizeInBytes / (1024.0 * 1024.0 * 1024.0));
+                return Format(label, "{:.2f}G", sizeInBytes / (1024.0 * 1024.0 * 1024.0));
         }
     };
 }
