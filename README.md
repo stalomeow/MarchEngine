@@ -32,6 +32,36 @@
 - 使用 C++ 模板实现了自定义的 Marshal 机制
 - 利用 C# 实现部分 C++ 类型的反射
 
+### Memory Manager
+
+C++ 分配对象时，需要指定 `MemoryLabel`，目前 `MemoryLabel::Temp` 使用 TLS Stack Allocator，其他都使用 [mimalloc](https://github.com/microsoft/mimalloc)
+
+``` cpp
+// 分配单个对象
+auto a = MARCH_NEW(int, MemoryLabel::Default)();
+MARCH_DELETE(a, MemoryLabel::Default);
+
+// 分配一个数组
+auto b = MARCH_NEW_ARRAY(int, MemoryLabel::Default, /* length */ 10)();
+MARCH_DELETE_ARRAY(b, MemoryLabel::Default, /* length */ 10);
+```
+
+建议使用 [Source/CoreNative/Public/Engine/STL/Core.h](Source/CoreNative/Public/Engine/STL/Core.h) 中的模板
+
+``` cpp
+auto a = stl::make_unique<int>(MemoryLabel::Default);
+auto b = stl::make_unique<int[]>(MemoryLabel::Default, /* length */ 10);
+stl::vector<int> vec(MemoryLabel::Temp);
+```
+
+Debug 模式下，可以在 Memory Profiler 窗口查看分配情况，目前代码还没有完全适配 `MemoryLabel`，所以只会记录一部分
+
+<p align="center"><img src="Documentation/Attachments/memory-profiler.png"></p>
+
+Debug 模式下，引擎退出时会输出泄漏的内存信息
+
+<p align="center"><img src="Documentation/Attachments/memory-leaks.png"></p>
+
 ### Asset Pipeline
 
 - 类似 Unity 的 `AssetImporter` 和 `AssetDatabase`，`AssetImporter` 内部记录资产的弱引用，可以减少无用资产的内存占用
@@ -159,9 +189,6 @@ void RenderPipeline::HiZ()
     });
 }
 ```
-
-<p align="center"><del>斯巴拉西，真是太优雅了！</del></p>
-<p align="center"><img src="Documentation/Attachments/elegant.png"></p>
 
 #### Async Compute
 
