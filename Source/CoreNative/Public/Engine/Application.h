@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <stdint.h>
+#include <thread>
 
 namespace march
 {
@@ -35,6 +36,8 @@ namespace march
         float GetElapsedTime() const;
         uint64_t GetFrameCount() const;
         uint32_t GetFPS() const;
+
+        bool IsOnMainThread() const;
 
         void CrashWithMessage(const std::string& message, bool debugBreak = false);
         virtual void CrashWithMessage(const std::string& title, const std::string& message, bool debugBreak = false);
@@ -91,6 +94,8 @@ namespace march
         std::unique_ptr<RenderPipeline> m_RenderPipeline;
         HINSTANCE m_InstanceHandle;
         HWND m_WindowHandle;
+
+        std::thread::id m_MainThreadId;
     };
 
     // 仅限 C# 调用

@@ -4,5 +4,6 @@
 
 NATIVE_EXPORT_AUTO NativeMarchObject_Delete(cs<MarchObject*> ptr)
 {
-    MARCH_DELETE(ptr.data, MemoryLabel::Default);
+    // C# 的 Finalize 不在主线程调用
+    MarchObject::ThreadSafeDelete(ptr);
 }

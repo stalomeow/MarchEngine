@@ -18,6 +18,7 @@ namespace march
         , m_IsTicking(false)
         , m_InstanceHandle(NULL)
         , m_WindowHandle(NULL)
+        , m_MainThreadId{}
     {
         m_Timer = std::make_unique<EngineTimer>();
         m_RenderPipeline = nullptr;
@@ -103,10 +104,17 @@ namespace march
         return m_Timer->GetFPS();
     }
 
+    bool Application::IsOnMainThread() const
+    {
+        return std::this_thread::get_id() == m_MainThreadId;
+    }
+
     int Application::Run(HINSTANCE hInstance, LPWSTR lpCmdLine, int nCmdShow)
     {
         m_InstanceHandle = hInstance;
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
+        m_MainThreadId = std::this_thread::get_id();
 
         if (!InitWindow(nCmdShow))
         {

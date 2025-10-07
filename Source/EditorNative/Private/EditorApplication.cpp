@@ -21,6 +21,7 @@
 #include "Engine/Profiling/NsightAftermath.h"
 #include "Engine/Memory/MemoryManager.h"
 #include "Engine/Debug.h"
+#include "Engine/Object.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "ImGuizmo.h"
@@ -266,6 +267,8 @@ namespace march
         DotNet::RuntimeInvoke(ManagedMethod::Application_FullGC);
         DotNet::DestroyRuntime();
 
+        MarchObject::ProcessDeleteQueueOnMainThread();
+
         DestroyGfxDevice();
         GfxUtils::ReportLiveObjects();
         Log::Clear();
@@ -426,6 +429,8 @@ namespace march
         GfxDevice* device = GetGfxDevice();
         device->GetCommandManager()->SignalNextFrameFence(/* waitForGpuIdle */ false);
         device->CleanupResources();
+
+        MarchObject::ProcessDeleteQueueOnMainThread();
     }
 
     static std::string GetFontPath(Application* app, std::string fontName)
